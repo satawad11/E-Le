@@ -133,6 +133,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     // Admin: Settings & Fiscal Years
     Route::middleware('permission:manage_settings')->group(function () {
+        Route::get('/admin/settings', [\App\Http\Controllers\SettingController::class, 'index']);
         Route::post('/admin/settings', [\App\Http\Controllers\SettingController::class, 'update']);
         Route::post('/admin/settings/upload-logo', [\App\Http\Controllers\SettingController::class, 'uploadLogo']);
         Route::post('/admin/settings/upload-garuda', [\App\Http\Controllers\SettingController::class, 'uploadGarudaLogo']);
