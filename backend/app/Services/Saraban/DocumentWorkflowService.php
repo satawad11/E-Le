@@ -1,0 +1,154 @@
+<?php
+
+namespace App\Services\Saraban;
+
+use App\Models\Saraban\Document;
+use App\Models\Saraban\DocumentWorkflowStep;
+use App\Models\Saraban\DocumentSignature;
+use App\Models\Setting;
+use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\QROptions;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class DocumentWorkflowService
+{
+    /**
+     * Update the workflow state of a document.
+     */
+    public function transitionState(Document $document, string $newState, int $userId, string $action, ?string $comment = null, ?string $ip = null)
+    {
+        return DB::transaction(function () use ($document, $newState, $userId, $action, $comment, $ip) {
+            // Get current max step order
+            $lastStep = DocumentWorkflowStep::where('document_id', $document->id)
+                ->orderBy('step_order', 'desc')
+                ->first();
+                
+            $stepOrder = $lastStep ? $lastStep->step_order + 1 : 1;
+
+            // Record workflow step
+            DocumentWorkflowStep::create([
+                'document_id' => $document->id,
+                'user_id' => $userId,
+                'action' => $action,
+                'comment' => $comment,
+                'action_at' => now(),
+                'step_order' => $stepOrder,
+                'ip_address' => $ip,
+            ]);
+
+            // Update document status
+            $document->update(['status' => $newState]);
+
+            return $document;
+        });
+    }
+
+    /**
+     * Submit a document for review/approval.
+     */
+    public function submitDocument(Document $document, int $userId, ?string $comment = null, ?string $ip = null)
+    {
+        $result = $this->transitionState($document, 'pending_review', $userId, 'submitted', $comment, $ip);
+        
+        // Notify Saraban Officers (example)
+        $officers = \App\Models\User::role('Saraban Officer')->get();
+        \Illuminate\Support\Facades\Notification::send($officers, new \App\Notifications\SarabanDocumentNotification(
+            $document->id,
+            "เอกสารรอตรวจสอบ: {$document->title}",
+            "เอกสาร {$document->document_number} ถูกส่งเพื่อรอการตรวจสอบ",
+            'submitted'
+        ));
+        
+        return $result;
+    }
+
+    /**
+     * Approve a document.
+     */
+    public function approveDocument(Document $document, int $userId, ?string $comment = null, ?string $ip = null)
+    {
+        $newState = $document->status === 'pending_review' ? 'pending_approval' : 'approved_pending_signature';
+        $result = $this->transitionState($document, $newState, $userId, 'approved', $comment, $ip);
+        
+        if ($document->creator) {
+            $document->creator->notify(new \App\Notifications\SarabanDocumentNotification(
+                $document->id,
+                "เอกสารได้รับการอนุมัติ",
+                "เอกสาร {$document->title} ของคุณได้รับการอนุมัติแล้ว",
+                'approved'
+            ));
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Reject a document back to draft.
+     */
+    public function rejectDocument(Document $document, int $userId, string $comment, ?string $ip = null)
+    {
+        $result = $this->transitionState($document, 'draft', $userId, 'rejected', $comment, $ip);
+        
+        if ($document->creator) {
+            $document->creator->notify(new \App\Notifications\SarabanDocumentNotification(
+                $document->id,
+                "เอกสารถูกตีกลับ",
+                "เอกสาร {$document->title} ของคุณถูกตีกลับ: {$comment}",
+                'rejected'
+            ));
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Sign a document electronically.
+     */
+    public function signDocument(Document $document, \App\Models\User $user, ?string $password = null, ?string $ip = null, ?string $userAgent = null)
+    {
+        $requirePin = Setting::where('key', 'require_pin_for_signature')->first();
+        $isRequirePin = $requirePin && $requirePin->value === '1';
+
+        if ($isRequirePin) {
+            if (!$password || !Hash::check($password, $user->password)) {
+                throw new \Exception('รหัสผ่านไม่ถูกต้อง ไม่สามารถลงนามได้');
+            }
+        }
+
+        return DB::transaction(function () use ($document, $user, $ip, $userAgent) {
+            $hashString = $document->id . '-' . $user->id . '-' . now()->timestamp . '-' . Str::random(10);
+            $signatureHash = hash('sha256', $hashString);
+
+            DocumentSignature::create([
+                'document_id' => $document->id,
+                'signer_id' => $user->id,
+                'signature_hash' => $signatureHash,
+                'ip_address' => $ip,
+                'user_agent' => $userAgent,
+                'signed_at' => now(),
+            ]);
+
+            // Change status to signed
+            $this->transitionState($document, 'signed', $user->id, 'signed', null, $ip);
+
+            return $signatureHash;
+        });
+    }
+
+    /**
+     * Generate QR Code SVG string for verification.
+     */
+    public function generateVerificationQrCode(string $signatureHash, string $verificationUrl)
+    {
+        $options = new QROptions([
+            'version'      => 5,
+            'outputType'   => QRCode::OUTPUT_MARKUP_SVG,
+            'eccLevel'     => QRCode::ECC_L,
+        ]);
+        
+        $qrcode = new QRCode($options);
+        return $qrcode->render($verificationUrl);
+    }
+}

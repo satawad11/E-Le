@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-maroon-50: #fdf2f2;
+  --color-maroon-100: #fde8e8;
+  --color-maroon-200: #fbd5d5;
+  --color-maroon-300: #f8b4b4;
+  --color-maroon-400: #f98080;
+  --color-maroon-500: #800000;
+  --color-maroon-600: #700000;
+  --color-maroon-700: #5a0000;
+  --color-maroon-800: #4a0000;
+  --color-maroon-900: #3b0000;
+  --color-primary: #800000;
+}
+
+body {
+  font-family: 'Sarabun', 'TH Sarabun New', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root {
+  --primary: #800000;
+  --primary-dark: #600000;
+  --primary-light: #a00000;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f3f4f6; }
+::-webkit-scrollbar-thumb { background: #800000; border-radius: 3px; }

@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: eleave_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: eleave
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    ports:
+      - "3306:3306"
+    volumes:
+      - eleave_mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --skip-name-resolve
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: eleave_backend
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+    ports:
+      - "8001:8000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=eleave
+      - DB_USERNAME=root
+      - DB_PASSWORD=
+      - PHP_CLI_SERVER_WORKERS=4
+    command: >
+      bash -c "[ ! -d vendor/autoload.php ] && composer install; 
+               php artisan migrate --force || true; 
+               php artisan optimize:clear &&
+               php artisan serve --host=0.0.0.0 --port=8000 --no-reload"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: eleave_frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command: >
+      sh -c "npm install && 
+             npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend
+
+volumes:
+  eleave_mysql_data:

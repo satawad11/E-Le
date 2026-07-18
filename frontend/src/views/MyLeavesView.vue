@@ -1,0 +1,551 @@
+<template>
+  <div>
+    <!-- Page header -->
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">รายการใบลาของฉัน</h1>
+        <p class="text-gray-500 mt-1 text-sm">ดูและจัดการใบลาที่ยื่นไว้ทั้งหมด</p>
+      </div>
+      <router-link to="/request"
+        class="inline-flex items-center gap-2 px-4 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm transition-colors shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        ยื่นใบลาใหม่
+      </router-link>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="loading" class="flex justify-center py-16">
+      <div class="animate-spin h-10 w-10 rounded-full border-4 border-[#800000] border-t-transparent"></div>
+    </div>
+
+    <div v-else>
+      <!-- Filters and toggles -->
+      <div class="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-6">
+        <!-- Filter tabs -->
+        <div class="flex flex-wrap gap-1 bg-gray-100 p-1 rounded-xl text-xs font-semibold">
+          <button v-for="f in filters" :key="f.value"
+            @click="activeFilter = f.value; currentPage = 1"
+            :class="['px-3 py-1.5 rounded-lg transition-all', activeFilter === f.value
+              ? 'bg-[#800000] text-white shadow-sm'
+              : 'text-gray-500 hover:text-gray-700']">
+            {{ f.label }}
+            <span v-if="f.value !== 'all'" class="ml-1 opacity-70">({{ countByStatus(f.value) }})</span>
+          </button>
+        </div>
+
+        <!-- Toggle View Mode -->
+        <div v-if="allAllowed" class="flex bg-gray-100 p-1 rounded-xl text-xs font-semibold">
+          <button @click="viewMode = 'mine'; currentPage = 1"
+            :class="['px-4 py-1.5 rounded-lg transition-all', viewMode === 'mine' ? 'bg-white text-[#800000] shadow-sm' : 'text-gray-500 hover:text-gray-700']">
+            ใบลาของฉัน
+          </button>
+          <button @click="viewMode = 'all'; currentPage = 1"
+            :class="['px-4 py-1.5 rounded-lg transition-all', viewMode === 'all' ? 'bg-white text-[#800000] shadow-sm' : 'text-gray-500 hover:text-gray-700']">
+            ของทั้งองค์กร
+          </button>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div v-if="filteredLeaves.length === 0"
+        class="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <svg class="w-14 h-14 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <p class="text-gray-500 text-sm font-medium">ไม่มีรายการใบลา</p>
+        <p class="text-gray-400 text-xs mt-1">ลองเปลี่ยนตัวกรองหรือยื่นใบลาใหม่</p>
+      </div>
+
+      <!-- Leave cards -->
+      <div v-else class="space-y-4">
+        <div v-for="leave in paginatedLeaves" :key="leave.id"
+          class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+
+          <div class="p-5">
+            <div class="flex flex-col sm:flex-row sm:items-start gap-4">
+              <!-- Left: info -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <h3 class="font-bold text-gray-900 text-base">
+                    {{ viewMode === 'all' ? (leave.user?.name + ' - ') : '' }}{{ leave.type?.name }}
+                  </h3>
+                  <span :class="['px-2.5 py-0.5 text-xs font-bold rounded-full', compositeStatusBadgeClass(leave)]">
+                    {{ compositeStatusLabel(leave) }}
+                  </span>
+                </div>
+                <p class="text-sm text-gray-600 mb-1">
+                  <span class="font-medium">วันที่:</span>
+                  {{ ThaiDateFormatter.toThaiSlash(leave.start_date) }}
+                  <template v-if="leave.start_date !== leave.end_date">
+                    — {{ ThaiDateFormatter.toThaiSlash(leave.end_date) }}
+                  </template>
+                  <span class="ml-2 text-gray-400">({{ leave.total_days }} วัน)</span>
+                </p>
+                <p class="text-sm text-gray-500 line-clamp-2">
+                  <span class="font-medium text-gray-600">เหตุผล:</span> {{ leave.reason }}
+                </p>
+                <p class="text-xs text-gray-400 mt-1.5">
+                  ยื่นเมื่อ {{ ThaiDateFormatter.toThaiSlash(leave.created_at?.slice(0, 10)) }}
+                </p>
+              </div>
+
+              <!-- Right: actions -->
+              <div class="flex flex-col gap-2 flex-shrink-0">
+                <!-- PDF/Word download (All statuses) -->
+                <div class="flex gap-2">
+                  <button @click="downloadPdf(leave)"
+                    :disabled="pdfLoading === leave.id || wordLoading === leave.id"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#800000] border border-[#800000]/20 rounded-lg hover:bg-[#800000]/5 transition-colors">
+                    <svg v-if="pdfLoading === leave.id" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    PDF
+                  </button>
+                  <button @click="downloadWord(leave)"
+                    :disabled="wordLoading === leave.id || pdfLoading === leave.id"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 border border-blue-600/20 rounded-lg hover:bg-blue-50 transition-colors">
+                    <svg v-if="wordLoading === leave.id" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Word
+                  </button>
+                </div>
+
+                <!-- Cancel button (Pending, within 5 days or Admin) -->
+                <button v-if="canCancel(leave)"
+                  @click="confirmCancel(leave)"
+                  :disabled="cancelLoading === leave.id"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                  ยกเลิกใบลา
+                </button>
+                <button v-if="leave.status === 'Approved' && (leave.user_id === authStore.user?.id || isAdminOrHR) && leave.cancellation_status === 'None'"
+                  @click="confirmCancel(leave)"
+                  :disabled="cancelLoading === leave.id"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  ขอยกเลิก
+                </button>
+                
+                <!-- Admin/HR Actions -->
+                <div v-if="isAdminOrHR" class="flex gap-2">
+                  <!-- <button @click="editLeave(leave)" class="px-3 py-1.5 text-xs font-semibold text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50">แก้ไข</button> -->
+                  <button @click="deleteLeave(leave.id)" class="px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50">ลบ</button>
+                </div>
+
+                <!-- Print Cancellation Form (when cancellation is requested or approved or cancelled) -->
+                <div v-if="leave.cancellation_status !== 'None' || leave.status === 'Cancelled'" class="flex gap-2">
+                  <button @click="downloadCancelPdf(leave)"
+                    :disabled="pdfLoading === 'cancel_'+leave.id"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors">
+                    <svg v-if="pdfLoading === 'cancel_'+leave.id" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    PDF ยกเลิก
+                  </button>
+                  <button @click="downloadCancelWord(leave)"
+                    :disabled="wordLoading === 'cancel_'+leave.id"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors">
+                    <svg v-if="wordLoading === 'cancel_'+leave.id" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Word ยกเลิก
+                  </button>
+                </div>
+
+                <!-- Substitute actions -->
+                <div v-if="leave.substitute_id === authStore.user?.id && leave.substitute_status === 'Pending'" class="flex gap-2">
+                  <button @click="acceptSubstitute(leave.id)" class="px-3 py-1.5 text-xs font-semibold text-green-600 border border-green-200 rounded-lg hover:bg-green-50">รับทราบ</button>
+                  <button @click="rejectSubstitute(leave.id)" class="px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50">ปฏิเสธ</button>
+                </div>
+                <span v-if="leave.substitute_id === authStore.user?.id && leave.substitute_status === 'Accepted'" class="text-xs text-green-600 font-semibold px-3 py-1.5">
+                  รับทราบแล้ว
+                </span>
+                <span v-if="leave.substitute_id === authStore.user?.id && leave.substitute_status === 'Rejected'" class="text-xs text-red-600 font-semibold px-3 py-1.5">
+                  ปฏิเสธแล้ว
+                </span>
+              </div>
+            </div>
+
+            <!-- Approval trail -->
+            <div v-if="leave.approvals && leave.approvals.length > 0" class="mt-4 pt-4 border-t border-gray-50">
+              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">ประวัติการอนุมัติ</p>
+              <div class="flex flex-wrap gap-2">
+                <div v-for="approval in leave.approvals" :key="approval.id"
+                  class="flex items-center gap-1.5 text-xs bg-gray-50 rounded-lg px-2.5 py-1.5">
+                  <span :class="[
+                    'w-2 h-2 rounded-full flex-shrink-0',
+                    approval.status === 'Approved' ? 'bg-green-500' : 'bg-red-500'
+                  ]"></span>
+                  <span class="font-medium text-gray-700">{{ approval.approver?.name }}</span>
+                  <span class="text-gray-400">—</span>
+                  <span :class="approval.status === 'Approved' ? 'text-green-700' : 'text-red-700'">
+                    {{ approval.status === 'Approved' ? 'อนุมัติ' : 'ไม่อนุมัติ' }}
+                  </span>
+                  <span v-if="approval.comment" class="text-gray-400 italic truncate max-w-[120px]">"{{ approval.comment }}"</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Audit trail -->
+            <div v-if="leave.action_logs && leave.action_logs.length > 0" class="mt-4 pt-4 border-t border-gray-50">
+              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">ประวัติการดำเนินการ (Audit Logs)</p>
+              <div class="flex flex-col gap-1.5">
+                <div v-for="log in leave.action_logs" :key="log.id"
+                  class="flex items-center gap-2 text-xs bg-gray-50 rounded-lg px-2.5 py-1.5">
+                  <span class="text-gray-400 min-w-[120px]">{{ ThaiDateFormatter.toThaiSlash(log.created_at) }}</span>
+                  <span class="font-medium text-gray-700 min-w-[150px]">{{ log.user?.name || 'ระบบ' }}</span>
+                  <span class="text-blue-600 font-semibold">{{ log.action }}</span>
+                  <span v-if="log.details?.comment || log.details?.reason" class="text-gray-500 italic ml-2">
+                    "{{ log.details.comment || log.details.reason }}"
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="flex items-center justify-between py-4">
+          <span class="text-sm text-gray-500">แสดง {{ (currentPage - 1) * itemsPerPage + 1 }} ถึง {{ Math.min(currentPage * itemsPerPage, filteredLeaves.length) }} จาก {{ filteredLeaves.length }} รายการ</span>
+          <div class="flex items-center gap-1">
+            <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1" class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              ก่อนหน้า
+            </button>
+            <span class="text-sm text-gray-700 px-3">หน้า {{ currentPage }} / {{ totalPages }}</span>
+            <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages" class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              ถัดไป
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cancel Confirmation Modal -->
+    <transition name="fade">
+      <div v-if="showCancelModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+          <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+            :class="cancelTarget?.status === 'Approved' ? 'bg-yellow-100' : 'bg-red-100'">
+            <!-- ไอคอนสำหรับ Approved = ส่งคำขอยกเลิก -->
+            <svg v-if="cancelTarget?.status === 'Approved'" class="w-7 h-7 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <!-- ไอคอนสำหรับ Pending = ยกเลิกทันที -->
+            <svg v-else class="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+
+          <!-- หัวข้อต่างกันตามสถานะใบลา -->
+          <h3 class="font-bold text-gray-900 text-lg text-center mb-1">
+            <template v-if="cancelTarget?.status === 'Approved'">ส่งคำขอยกเลิกใบลา</template>
+            <template v-else>ยืนยันยกเลิกใบลา</template>
+          </h3>
+
+          <!-- คำเตือนสำหรับ Approved leave (ทุก Role) -->
+          <div v-if="cancelTarget?.status === 'Approved'"
+            class="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mb-3 text-xs text-yellow-800 text-center">
+            ⚠️ ใบลานี้ผ่านการอนุมัติแล้ว การยกเลิกจะต้องรอ<strong>การอนุมัติจากผู้มีอำนาจ</strong>อีกครั้ง
+          </div>
+
+          <p class="text-gray-500 text-sm text-center mb-2">
+            ประเภท: <strong>{{ cancelTarget?.type?.name }}</strong>
+          </p>
+          <p class="text-gray-400 text-xs text-center mb-4">
+            วันที่ {{ ThaiDateFormatter.toThaiSlash(cancelTarget?.start_date) }}
+            — {{ ThaiDateFormatter.toThaiSlash(cancelTarget?.end_date) }}
+            ({{ cancelTarget?.total_days }} วัน)
+          </p>
+
+          <!-- เหตุผลการขอยกเลิก (บังคับสำหรับ Approved leave) -->
+          <div v-if="cancelTarget?.status === 'Approved'" class="mb-4">
+            <label class="block text-xs font-semibold text-gray-700 mb-1">
+              เหตุผลการขอยกเลิก <span class="text-red-500">*</span>
+            </label>
+            <textarea v-model="cancellationReason" rows="2" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:border-[#800000] resize-none" placeholder="ระบุเหตุผล..."></textarea>
+          </div>
+
+          <div class="flex gap-3">
+            <button @click="showCancelModal = false"
+              class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors">
+              ยกเลิก
+            </button>
+            <button @click="doCancel"
+              :disabled="cancelLoading !== null"
+              class="flex-1 py-2.5 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-60"
+              :class="cancelTarget?.status === 'Approved' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-red-600 hover:bg-red-700'">
+              <template v-if="cancelLoading">กำลังดำเนินการ...</template>
+              <template v-else-if="cancelTarget?.status === 'Approved'">ส่งคำขอยกเลิก</template>
+              <template v-else>ยืนยันยกเลิก</template>
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useLeaveStore } from '../stores/leave'
+import { useAuthStore } from '../stores/auth'
+import { statusLabel, statusBadgeClass, compositeStatusLabel, compositeStatusBadgeClass } from '../utils/statusHelper'
+import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
+import api from '../axios'
+
+const leaveStore = useLeaveStore()
+const authStore  = useAuthStore()
+
+const loading      = ref(true)
+const pdfLoading   = ref(null)
+const wordLoading  = ref(null)
+const cancelLoading = ref(null)
+const showCancelModal = ref(false)
+const cancelTarget = ref(null)
+const cancellationReason = ref('')
+const activeFilter = ref('all')
+const viewMode = ref('mine')
+
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const filters = [
+  { label: 'ทั้งหมด',    value: 'all'       },
+  { label: 'รออนุมัติ', value: 'Pending'   },
+  { label: 'อนุมัติแล้ว', value: 'Approved'  },
+  { label: 'ไม่อนุมัติ', value: 'Rejected'  },
+  { label: 'ยกเลิกแล้ว', value: 'Cancelled' },
+  { label: 'งานที่ได้รับมอบหมาย', value: 'Substitute' },
+]
+
+const allAllowed = computed(() => authStore.user?.role?.name !== 'Employee')
+const isAdminOrHR = computed(() => ['Super Admin', 'HR Head'].includes(authStore.user?.role?.name))
+
+const canCancel = (leave) => {
+  if (leave.status !== 'Pending') return false;
+  if (isAdminOrHR.value) return true;
+  if (leave.user_id !== authStore.user?.id) return false;
+  
+  const createdDate = new Date(leave.created_at);
+  const now = new Date();
+  const diffTime = Math.abs(now - createdDate);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+  return diffDays <= 5;
+}
+
+// Show ALL leaves for non-employees if viewMode is 'all', but always ONLY OWN leaves for Employees or viewMode 'mine'
+const myLeaves = computed(() => {
+  if (!authStore.user) return []
+  if (viewMode.value === 'all' && allAllowed.value) {
+    return leaveStore.leaves
+  }
+  return leaveStore.leaves.filter(l => l.user_id === authStore.user.id)
+})
+
+const filteredLeaves = computed(() => {
+  if (activeFilter.value === 'all') return myLeaves.value
+  if (activeFilter.value === 'Substitute') return myLeaves.value.filter(l => l.substitute_id === authStore.user?.id)
+  return myLeaves.value.filter(l => l.status === activeFilter.value)
+})
+
+const countByStatus = (status) => {
+  if (status === 'Substitute') return myLeaves.value.filter(l => l.substitute_id === authStore.user?.id).length
+  return myLeaves.value.filter(l => l.status === status).length
+}
+
+const totalPages = computed(() => Math.ceil(filteredLeaves.value.length / itemsPerPage))
+
+const paginatedLeaves = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filteredLeaves.value.slice(start, start + itemsPerPage)
+})
+
+const changePage = (p) => {
+  if (p >= 1 && p <= totalPages.value) {
+    currentPage.value = p
+  }
+}
+
+const generateFilename = (leave, extension, isCancel = false) => {
+  const leaveTypeName = leave?.type?.name || 'การลา'
+  const userName = (leave?.user?.name || authStore.user?.name || '').trim().replace(/ /g, '_')
+  const docNumber = leave?.document_number || leave?.id
+  
+  let baseFilename = `${leaveTypeName}_${userName}_${docNumber}`
+  baseFilename = baseFilename.replace(/[\/\\]/g, '_')
+  
+  return isCancel ? `cancel_${baseFilename}.${extension}` : `${baseFilename}.${extension}`
+}
+
+const downloadPdf = async (leave) => {
+  if (pdfLoading.value === leave.id) return
+  pdfLoading.value = leave.id
+  try {
+    const response = await api.get(`/leaves/${leave.id}/pdf`, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', generateFilename(leave, 'pdf'))
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error('PDF error:', e)
+    alert('ไม่สามารถดาวน์โหลด PDF ได้')
+  } finally {
+    pdfLoading.value = null
+  }
+}
+
+const downloadWord = async (leave) => {
+  if (wordLoading.value === leave.id) return
+  wordLoading.value = leave.id
+  try {
+    const response = await api.get(`/leaves/${leave.id}/word`, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/msword' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', generateFilename(leave, 'doc'))
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error('Word error:', e)
+    alert('ไม่สามารถดาวน์โหลด Word ได้')
+  } finally {
+    wordLoading.value = null
+  }
+}
+
+const downloadCancelPdf = async (leave) => {
+  if (pdfLoading.value === 'cancel_'+leave.id) return
+  pdfLoading.value = 'cancel_'+leave.id
+  try {
+    const response = await api.get(`/leaves/${leave.id}/pdf?form=cancel`, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', generateFilename(leave, 'pdf', true))
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error('PDF error:', e)
+    alert('ไม่สามารถดาวน์โหลด PDF ใบยกเลิกได้')
+  } finally {
+    pdfLoading.value = null
+  }
+}
+
+const downloadCancelWord = async (leave) => {
+  if (wordLoading.value === 'cancel_'+leave.id) return
+  wordLoading.value = 'cancel_'+leave.id
+  try {
+    const response = await api.get(`/leaves/${leave.id}/word?form=cancel`, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/msword' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', generateFilename(leave, 'doc', true))
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error('Word error:', e)
+    alert('ไม่สามารถดาวน์โหลด Word ใบยกเลิกได้')
+  } finally {
+    wordLoading.value = null
+  }
+}
+
+const confirmCancel = (leave) => {
+  cancelTarget.value = leave
+  cancellationReason.value = ''
+  showCancelModal.value = true
+}
+
+const doCancel = async () => {
+  if (!cancelTarget.value) return
+  if (cancelTarget.value.status === 'Approved' && !cancellationReason.value.trim()) {
+    alert('กรุณาระบุเหตุผลการขอยกเลิก')
+    return
+  }
+  cancelLoading.value = cancelTarget.value.id
+  try {
+    await leaveStore.cancelLeave(cancelTarget.value.id, cancellationReason.value)
+    showCancelModal.value = false
+    cancelTarget.value = null
+  } catch (e) {
+    alert(e?.response?.data?.message || 'ยกเลิกไม่สำเร็จ กรุณาลองใหม่')
+  } finally {
+    cancelLoading.value = null
+  }
+}
+
+const deleteLeave = async (leaveId) => {
+  if (!confirm('ยืนยันการลบใบลา?')) return
+  try {
+    await api.delete(`/leaves/${leaveId}`)
+    await leaveStore.fetchLeaves()
+  } catch (e) {
+    alert(e?.response?.data?.message || 'ลบไม่สำเร็จ')
+  }
+}
+
+const acceptSubstitute = async (leaveId) => {
+  try {
+    await leaveStore.acceptSubstitute(leaveId)
+  } catch (e) {
+    alert('เกิดข้อผิดพลาด')
+  }
+}
+
+const rejectSubstitute = async (leaveId) => {
+  try {
+    await leaveStore.rejectSubstitute(leaveId)
+  } catch (e) {
+    alert('เกิดข้อผิดพลาด')
+  }
+}
+
+onMounted(async () => {
+  try {
+    await leaveStore.fetchLeaves()
+  } finally {
+    loading.value = false
+  }
+})
+</script>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>

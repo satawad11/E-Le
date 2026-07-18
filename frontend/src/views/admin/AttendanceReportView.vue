@@ -1,0 +1,295 @@
+<template>
+  <div class="max-w-7xl mx-auto py-8">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-gray-800">รายงานการลงเวลา (Admin)</h2>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div class="relative z-50">
+          <label class="block text-sm font-medium text-gray-700 mb-1">วันที่</label>
+          <ThaiDatePicker v-model="filters.date" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">เดือน</label>
+          <select v-model="filters.month" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]">
+            <option value="">ทั้งหมด</option>
+            <option v-for="(name, index) in months" :key="index" :value="index + 1">{{ name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">แผนก</label>
+          <select v-model="filters.department_id" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]">
+            <option value="">ทั้งหมด</option>
+            <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">ค้นหารายบุคคล</label>
+          <select v-model="filters.user_id" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]">
+            <option value="">ทั้งหมด</option>
+            <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }} {{ user.last_name }}</option>
+          </select>
+        </div>
+        <div class="flex items-end gap-2">
+          <button @click="fetchRecords(1)" class="flex-1 bg-[#800000] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#600000]">
+            ค้นหา
+          </button>
+        </div>
+      </div>
+      <div class="mt-4 flex justify-end gap-2">
+        <button @click="syncLeaves" :disabled="isSyncing" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 flex items-center gap-2 disabled:opacity-50">
+          <svg class="w-4 h-4" :class="{'animate-spin': isSyncing}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          {{ isSyncing ? 'กำลังซิงค์...' : 'ซิงค์ข้อมูลการลา' }}
+        </button>
+        <button @click="exportReport('pdf')" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+          ดาวน์โหลด PDF
+        </button>
+        <button @click="exportReport('word')" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+          ดาวน์โหลด Word
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm">
+              <th class="py-4 px-6 font-semibold">ชื่อ-สกุล</th>
+              <th class="py-4 px-6 font-semibold">แผนก</th>
+              <th class="py-4 px-4 font-semibold w-24">วันที่</th>
+              <th class="py-4 px-4 font-semibold text-center">เวลาเข้า</th>
+              <th class="py-4 px-4 font-semibold text-center">เวลาออก</th>
+              <th class="py-4 px-4 font-semibold text-center">เข้า OT</th>
+              <th class="py-4 px-4 font-semibold text-center">ออก OT</th>
+              <th class="py-4 px-4 font-semibold text-center">สถานะ</th>
+              <th class="py-4 px-4 font-semibold">หมายเหตุ</th>
+            </tr>
+          </thead>
+          <tbody class="text-sm">
+            <tr v-if="loading">
+              <td colspan="8" class="py-8 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
+            </tr>
+            <tr v-else-if="records.data && records.data.length === 0">
+              <td colspan="8" class="py-8 text-center text-gray-500">ไม่พบข้อมูลการลงเวลา</td>
+            </tr>
+            <tr v-else v-for="record in records.data" :key="record.id" class="border-b border-gray-50 hover:bg-gray-50/50">
+              <td class="py-4 px-6 font-medium text-gray-900">
+                {{ record.user?.name || '-' }}
+              </td>
+              <td class="py-4 px-6 text-gray-600">
+                {{ record.user?.department?.name || '-' }}
+              </td>
+              <td class="py-4 px-4 text-gray-600">
+                {{ formatDate(record.date) }}
+              </td>
+              <td class="py-4 px-4 text-center">
+                <div v-if="record.check_in_time">
+                  <span class="inline-flex items-center gap-1 text-green-700 bg-green-50 px-2 py-1 rounded text-xs font-medium border border-green-100">
+                    {{ formatTime(record.check_in_time) }}
+                  </span>
+                  <div v-if="record.late_minutes > 0" class="text-[10px] text-red-500 mt-1">สาย {{ record.late_minutes }} นาที</div>
+                </div>
+                <span v-else class="text-gray-400">-</span>
+              </td>
+              <td class="py-4 px-4 text-center">
+                <div v-if="record.check_out_time">
+                  <span class="inline-flex items-center gap-1 text-orange-700 bg-orange-50 px-2 py-1 rounded text-xs font-medium border border-orange-100">
+                    {{ formatTime(record.check_out_time) }}
+                  </span>
+                  <div v-if="record.early_leave_minutes > 0" class="text-[10px] text-yellow-600 mt-1">ออกก่อน {{ record.early_leave_minutes }} นาที</div>
+                </div>
+                <span v-else class="text-gray-400">-</span>
+              </td>
+              <td class="py-4 px-4 text-center">
+                <span v-if="record.ot_check_in_time" class="inline-flex items-center gap-1 text-blue-700 bg-blue-50 px-2 py-1 rounded text-xs font-medium border border-blue-100">
+                  {{ formatTime(record.ot_check_in_time) }}
+                </span>
+                <span v-else class="text-gray-400">-</span>
+              </td>
+              <td class="py-4 px-4 text-center">
+                <div v-if="record.ot_check_out_time">
+                  <span class="inline-flex items-center gap-1 text-purple-700 bg-purple-50 px-2 py-1 rounded text-xs font-medium border border-purple-100">
+                    {{ formatTime(record.ot_check_out_time) }}
+                  </span>
+                  <div v-if="record.ot_minutes > 0" class="text-[10px] text-purple-600 mt-1">
+                    รวม {{ Math.floor(record.ot_minutes / 60) }} ชม. {{ record.ot_minutes % 60 }} นาที
+                  </div>
+                </div>
+                <span v-else class="text-gray-400">-</span>
+              </td>
+              <td class="py-4 px-4 text-center">
+                <span class="inline-block px-2.5 py-1 rounded-full text-xs font-medium" :class="statusClass(record.status)">
+                  {{ statusText(record.status) }}
+                </span>
+              </td>
+              <td class="py-4 px-4 text-gray-600 truncate max-w-[150px]" :title="record.notes">
+                {{ record.notes || '-' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Pagination -->
+      <div v-if="records.last_page > 1" class="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+        <span class="text-sm text-gray-500">
+          แสดง {{ records.from }} ถึง {{ records.to }} จาก {{ records.total }} รายการ
+        </span>
+        <div class="flex gap-1">
+          <button v-for="link in records.links" :key="link.label"
+                  @click="link.url && fetchRecords(getPage(link.url))"
+                  :disabled="!link.url"
+                  v-html="link.label"
+                  class="px-3 py-1 text-sm rounded-md transition-colors"
+                  :class="link.active ? 'bg-[#800000] text-white' : (link.url ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'text-gray-400 cursor-not-allowed')">
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import api from '../../axios'
+import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
+
+const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
+
+const today = new Date()
+const localDateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0')
+
+const filters = ref({
+  date: localDateStr,
+  month: '',
+  year: today.getFullYear(),
+  department_id: '',
+  user_id: ''
+})
+
+const records = ref({ data: [], links: [], last_page: 1 })
+const loading = ref(false)
+const departments = ref([])
+const users = ref([])
+
+const fetchDepartments = async () => {
+  try {
+    const res = await api.get('/admin/departments-list')
+    departments.value = res.data
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const fetchUsers = async () => {
+  try {
+    const res = await api.get('/users/list')
+    users.value = res.data
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const fetchRecords = async (page = 1) => {
+  loading.value = true
+  try {
+    const res = await api.get('/admin/attendances', {
+      params: { ...filters.value, page }
+    })
+    records.value = res.data
+  } catch (error) {
+    console.error(error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const exportReport = async (type) => {
+  try {
+    const params = { ...filters.value }
+    const res = await api.get(`/admin/attendances/export/${type}`, { params, responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: type === 'pdf' ? 'application/pdf' : 'application/vnd.ms-word' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `รายงานการลงเวลา_${params.date}.${type === 'pdf' ? 'pdf' : 'doc'}`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('Error exporting report:', error)
+    alert('ไม่สามารถโหลดข้อมูลได้ หรือเกิดข้อผิดพลาดในการดาวน์โหลด')
+  }
+}
+
+const isSyncing = ref(false)
+
+const syncLeaves = async () => {
+  if (!confirm('ต้องการซิงค์ข้อมูลการลาของเดือนนี้หรือไม่?')) return
+  
+  isSyncing.value = true
+  try {
+    const res = await api.post('/admin/attendances/sync-leaves', {
+      month: filters.value.month || new Date().getMonth() + 1,
+      year: filters.value.year || new Date().getFullYear()
+    })
+    alert(res.data.message || 'ซิงค์ข้อมูลสำเร็จ')
+    fetchRecords(1)
+  } catch (error) {
+    console.error('Error syncing leaves:', error)
+    alert(error.response?.data?.message || 'เกิดข้อผิดพลาดในการซิงค์ข้อมูล')
+  } finally {
+    isSyncing.value = false
+  }
+}
+
+const getPage = (url) => {
+  const match = url.match(/page=(\d+)/)
+  return match ? parseInt(match[1]) : 1
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const formatTime = (datetimeStr) => {
+  if (!datetimeStr) return '-'
+  const d = new Date(datetimeStr)
+  return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.'
+}
+
+const statusClass = (status) => {
+  const map = {
+    'Present': 'bg-green-100 text-green-700',
+    'Late': 'bg-yellow-100 text-yellow-800',
+    'Absent': 'bg-red-100 text-red-700',
+    'Leave': 'bg-blue-100 text-blue-700'
+  }
+  return map[status] || 'bg-gray-100 text-gray-700'
+}
+
+const statusText = (status) => {
+  const map = {
+    'Present': 'มาปกติ',
+    'Late': 'มาสาย',
+    'Absent': 'ขาดงาน',
+    'Leave': 'ลา'
+  }
+  return map[status] || status
+}
+
+onMounted(() => {
+  Promise.all([
+    fetchDepartments(),
+    fetchUsers(),
+    fetchRecords()
+  ])
+})
+</script>
