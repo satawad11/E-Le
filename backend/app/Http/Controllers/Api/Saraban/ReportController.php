@@ -4,28 +4,42 @@ namespace App\Http\Controllers\Api\Saraban;
 
 use App\Http\Controllers\Controller;
 use App\Models\Saraban\Document;
+use App\Services\Saraban\AuditLogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
+    protected $auditLog;
+
+    public function __construct(AuditLogService $auditLog)
+    {
+        $this->auditLog = $auditLog;
+    }
+
     public function summary(Request $request)
     {
         // Monthly stats for current year
         $year = $request->input('year', date('Y'));
         
+        // MONTH() is MySQL-only; SQLite (used by the test suite) needs strftime.
+        $monthExpr = DB::connection()->getDriverName() === 'sqlite'
+            ? "CAST(strftime('%m', created_at) AS INTEGER)"
+            : 'MONTH(created_at)';
+
         $monthlyData = Document::select(
-            DB::raw('MONTH(created_at) as month'),
+            DB::raw("{$monthExpr} as month"),
             DB::raw('COUNT(*) as count')
         )
         ->whereYear('created_at', $year)
-        ->groupBy('month')
+        ->groupBy(DB::raw($monthExpr))
         ->orderBy('month')
         ->get();
 
         $monthly = array_fill(1, 12, 0);
         foreach ($monthlyData as $data) {
-            $monthly[$data->month] = $data->count;
+            $monthly[(int) $data->month] = $data->count;
         }
 
         // Stats by Priority
@@ -66,10 +80,14 @@ class ReportController extends Controller
     {
         $year = $request->input('year', date('Y'));
         
-        $documents = Document::with(['type', 'creator', 'department'])
+        $documents = Document::with(['type', 'creator.profile', 'department'])
             ->whereYear('created_at', $year)
+            ->when(!Auth::user()->can('saraban.document.view_classified'),
+                fn ($q) => $q->where('secrecy', 'normal'))
             ->orderBy('created_at', 'desc')
             ->get();
+
+        $this->auditLog->log('report.exported', null, ['year' => $year, 'rows' => $documents->count()]);
 
         $filename = "saraban_report_{$year}.csv";
         $handle = fopen('php://temp', 'w+');
@@ -83,7 +101,9 @@ class ReportController extends Controller
                 $doc->document_number,
                 $doc->title,
                 $doc->created_at->format('Y-m-d H:i:s'),
-                $doc->creator ? $doc->creator->first_name . ' ' . $doc->creator->last_name : '',
+                $doc->creator
+                    ? trim(trim(($doc->creator->profile?->first_name ?? '') . ' ' . ($doc->creator->profile?->last_name ?? '')) ?: $doc->creator->name)
+                    : '',
                 $doc->department ? $doc->department->name : '',
                 $this->translatePriority($doc->priority),
                 $this->translateStatus($doc->status)

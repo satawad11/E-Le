@@ -122,7 +122,7 @@
               <a :href="att.path" target="_blank" class="text-sm text-blue-600 hover:underline font-medium">เปิดลิงก์ →</a>
             </div>
             <div v-else-if="document.allow_download" class="ml-3">
-              <a :href="'/storage/' + att.path" target="_blank" download class="text-sm text-[#800000] hover:underline font-medium">ดาวน์โหลด ↓</a>
+              <button type="button" @click="downloadAttachment(att)" class="text-sm text-[#800000] hover:underline font-medium">ดาวน์โหลด ↓</button>
             </div>
             <div v-else class="ml-3">
               <span class="text-sm text-gray-400 cursor-not-allowed" title="ไม่อนุญาตให้ดาวน์โหลด">🔒 ไม่อนุญาต</span>
@@ -175,7 +175,7 @@
             <span class="absolute -left-[33px] flex items-center justify-center w-6 h-6 bg-white border-2 border-purple-500 rounded-full"></span>
             <div>
               <p class="font-medium text-gray-900">{{ step.user?.name || 'ระบบ' }} - <span class="text-purple-600 font-bold uppercase text-xs">{{ step.action }}</span></p>
-              <p class="text-sm text-gray-500">{{ new Date(step.action_at).toLocaleString('th-TH') }}</p>
+              <p class="text-sm text-gray-500">{{ step.action_at ? new Date(step.action_at).toLocaleString('th-TH') : 'ยังไม่ดำเนินการ' }}</p>
               <p v-if="step.comment" class="text-sm text-gray-700 mt-1 italic">"{{ step.comment }}"</p>
             </div>
           </div>
@@ -329,7 +329,7 @@
             <div class="border rounded-lg max-h-48 overflow-y-auto p-2 bg-gray-50">
               <label v-for="user in userList" :key="user.id" class="flex items-center gap-2 p-2 hover:bg-gray-100 rounded cursor-pointer">
                 <input type="checkbox" :value="user.id" v-model="circularUserIds" class="rounded text-[#800000] focus:ring-[#800000]">
-                <span>{{ user.first_name }} {{ user.last_name }} ({{ user.department?.name || 'ไม่มีฝ่าย' }})</span>
+                <span>{{ userDisplayName(user) }} ({{ user.department?.name || 'ไม่มีฝ่าย' }})</span>
               </label>
               <div v-if="userList.length === 0" class="text-sm text-gray-500 p-2">ไม่มีข้อมูลผู้ใช้</div>
             </div>
@@ -358,6 +358,9 @@ import { useRoute } from 'vue-router'
 import api from '../../axios'
 import { useSarabanDocumentStore } from '../../stores/useSarabanDocumentStore'
 import { useAuthStore } from '../../stores/auth'
+import { sarabanStatusConfig } from '../../utils/statusHelper'
+import { userDisplayName } from '../../utils/userName'
+import Swal from 'sweetalert2'
 
 const route = useRoute()
 const store = useSarabanDocumentStore()
@@ -438,6 +441,26 @@ const formatThaiDate = (dateStr) => {
   return `${day} ${month} ${year}`
 }
 
+/**
+ * ดาวน์โหลดผ่าน endpoint ที่มี auth + policy + audit log
+ * (แทนการลิงก์ตรงไปที่ /storage/ ซึ่งเปิดสาธารณะ)
+ */
+const downloadAttachment = async (att) => {
+  try {
+    const res = await api.get(`/saraban/attachments/${att.id}/download`, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const link = window.document.createElement('a')
+    link.href = url
+    link.setAttribute('download', att.name)
+    window.document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    Swal.fire('ดาวน์โหลดไม่สำเร็จ', 'คุณอาจไม่มีสิทธิ์ดาวน์โหลดไฟล์นี้', 'error')
+  }
+}
+
 const secrecyLabel = (val) => {
   const map = { normal: 'ปกติ', secret: 'ลับ', top_secret: 'ลับมาก', most_secret: 'ลับที่สุด' }
   return map[val] || val
@@ -455,19 +478,7 @@ const priorityLabel = (val) => {
   return map[val] || val
 }
 
-const statusConfig = (status) => {
-  const map = {
-    'draft': { label: 'ฉบับร่าง', class: 'bg-gray-100 text-gray-800 border-gray-200' },
-    'pending': { label: 'รอดำเนินการ', class: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-    'approved': { label: 'อนุมัติแล้ว', class: 'bg-green-100 text-green-800 border-green-200' },
-    'completed': { label: 'เสร็จสิ้น', class: 'bg-blue-100 text-blue-800 border-blue-200' },
-    'dispatched': { label: 'เสร็จสิ้น', class: 'bg-blue-100 text-blue-800 border-blue-200' },
-    'rejected': { label: 'ไม่อนุมัติ', class: 'bg-red-100 text-red-800 border-red-200' },
-    'cancelled': { label: 'ยกเลิก', class: 'bg-red-100 text-red-800 border-red-200' },
-    'published': { label: 'เผยแพร่', class: 'bg-indigo-100 text-indigo-800 border-indigo-200' }
-  }
-  return map[status?.toLowerCase()] || { label: status || '', class: 'bg-gray-100 text-gray-800 border-gray-200' }
-}
+const statusConfig = (status) => sarabanStatusConfig(status)
 
 onMounted(async () => {
   try {
@@ -598,10 +609,11 @@ const openCircularModal = async () => {
   
   if (userList.value.length === 0) {
     try {
-      const res = await api.get('/admin/users') // Make sure this endpoint returns all users
+      const res = await api.get('/saraban/users-list')
       userList.value = res.data.filter(u => u.id !== authStore.user?.id) // Exclude current user
     } catch (err) {
       console.error('Failed to fetch users', err)
+      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถโหลดรายชื่อผู้รับได้ กรุณาตรวจสอบสิทธิ์การใช้งาน', 'error')
     }
   }
 }

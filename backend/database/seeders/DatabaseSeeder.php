@@ -15,7 +15,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([RolesAndPermissionsSeeder::class]);
+        $this->call([
+            RolesAndPermissionsSeeder::class,
+            SarabanPermissionSeeder::class,
+            SarabanDocumentTypeSeeder::class,
+            SarabanSettingSeeder::class,
+        ]);
         
         $itDept = \App\Models\Department::firstOrCreate(
             ['name' => 'ฝ่ายสารสนเทศ'],

@@ -14,11 +14,11 @@ class PdfSignatureService
      * Stamp a signature onto a PDF file.
      *
      * @param string $pdfPath Path to the original PDF in storage.
-     * @param string $signatureImagePath Path to the signature image.
+     * @param string|null $signatureImagePath Path to the signature image, or null for text-only endorsement.
      * @param array $options Signature options like x, y, page, hash, signer_name, timestamp.
      * @return string Path to the newly created stamped PDF.
      */
-    public function stampSignature(string $pdfPath, string $signatureImagePath, array $options): string
+    public function stampSignature(string $pdfPath, ?string $signatureImagePath, array $options): string
     {
         $disk = Storage::disk('public');
 

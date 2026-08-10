@@ -147,7 +147,7 @@ const chartOptions = {
 const departmentsData = computed(() => reportData.value?.departments || [])
 const totalDocuments = computed(() => {
   if (!reportData.value) return 0
-  return reportData.value.monthly.reduce((a, b) => a + b, 0)
+  return (reportData.value.monthly ?? []).reduce((a, b) => a + b, 0)
 })
 
 const urgentDocuments = computed(() => {

@@ -152,7 +152,7 @@ const router = createRouter({
       path: '/saraban',
       name: 'saraban-list',
       component: () => import('../views/saraban/DocumentListView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, permission: 'saraban.document.view' }
     },
     {
       path: '/saraban/create',
@@ -164,25 +164,25 @@ const router = createRouter({
       path: '/saraban/incoming',
       name: 'saraban-incoming',
       component: () => import('../views/saraban/DocumentListView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, permission: 'saraban.document.view' }
     },
     {
       path: '/saraban/outgoing',
       name: 'saraban-outgoing',
       component: () => import('../views/saraban/DocumentListView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, permission: 'saraban.document.view' }
     },
     {
       path: '/saraban/circulars',
       name: 'saraban-circulars',
       component: () => import('../views/saraban/CircularsView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, permission: 'saraban.document.view' }
     },
     {
       path: '/saraban/reports',
       name: 'saraban-reports',
       component: () => import('../views/saraban/ReportsView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, permission: 'saraban.document.report' }
     },
     // ต้องอยู่ก่อน /saraban/:id ไม่งั้น "types" จะถูกตีความเป็น :id
     {
@@ -207,7 +207,7 @@ const router = createRouter({
       path: '/saraban/:id',
       name: 'saraban-detail',
       component: () => import('../views/saraban/DocumentDetailView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, permission: 'saraban.document.view' }
     },
     {
       path: '/saraban/:id/edit',
@@ -233,7 +233,10 @@ router.beforeEach(async (to, from) => {
     return { name: 'login' }
   } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
     return { name: 'dashboard' }
-  } else if (to.meta.permission && !authStore.isAdmin && !authStore.hasPermission(to.meta.permission) && !(to.meta.permission.startsWith('saraban.') && authStore.isSarabanOfficer)) {
+  } else if (to.meta.permission && !authStore.isAdmin && !authStore.hasPermission(to.meta.permission)) {
+    // ไม่มีทางลัดตาม role อีกต่อไป — สิทธิ์ saraban.* มาจาก SarabanPermissionSeeder
+    // ซึ่ง grant ให้ role เจ้าหน้าที่สารบัญไว้ครบแล้ว การ bypass ตาม role
+    // ทำให้การ gate รายสิทธิ์ไร้ผล
     return { name: 'dashboard' }
   }
 })

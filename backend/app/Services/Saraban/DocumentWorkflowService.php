@@ -52,8 +52,9 @@ class DocumentWorkflowService
     {
         $result = $this->transitionState($document, 'pending_review', $userId, 'submitted', $comment, $ip);
         
-        // Notify Saraban Officers (example)
-        $officers = \App\Models\User::role('Saraban Officer')->get();
+        // Notify the registrars. Selected by permission rather than by a role name
+        // string, because the role that holds it differs between installs.
+        $officers = \App\Models\User::permission('saraban.document.manage_types')->get();
         \Illuminate\Support\Facades\Notification::send($officers, new \App\Notifications\SarabanDocumentNotification(
             $document->id,
             "เอกสารรอตรวจสอบ: {$document->title}",
@@ -106,10 +107,12 @@ class DocumentWorkflowService
     /**
      * Sign a document electronically.
      */
-    public function signDocument(Document $document, \App\Models\User $user, ?string $password = null, ?string $ip = null, ?string $userAgent = null)
+    public function signDocument(Document $document, \App\Models\User $user, ?string $password = null, ?string $ip = null, ?string $userAgent = null, ?string $mode = null)
     {
         $requirePin = Setting::where('key', 'require_pin_for_signature')->first();
-        $isRequirePin = $requirePin && $requirePin->value === '1';
+        // Default to requiring the PIN when the setting row is absent, so a missing
+        // setting can never silently downgrade signing to no identity check at all.
+        $isRequirePin = $requirePin ? $requirePin->value === '1' : true;
 
         if ($isRequirePin) {
             if (!$password || !Hash::check($password, $user->password)) {
@@ -117,7 +120,7 @@ class DocumentWorkflowService
             }
         }
 
-        return DB::transaction(function () use ($document, $user, $ip, $userAgent) {
+        return DB::transaction(function () use ($document, $user, $ip, $userAgent, $mode) {
             $hashString = $document->id . '-' . $user->id . '-' . now()->timestamp . '-' . Str::random(10);
             $signatureHash = hash('sha256', $hashString);
 
@@ -127,6 +130,7 @@ class DocumentWorkflowService
                 'signature_hash' => $signatureHash,
                 'ip_address' => $ip,
                 'user_agent' => $userAgent,
+                'mode' => $mode ?: 'esignature',
                 'signed_at' => now(),
             ]);
 

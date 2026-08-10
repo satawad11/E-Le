@@ -6,13 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentCircular;
 use App\Models\Saraban\DocumentCircularRecipient;
+use App\Services\Saraban\AuditLogService;
 use Illuminate\Http\Request;
 
 class CircularController extends Controller
 {
+    protected $auditLog;
+
+    public function __construct(AuditLogService $auditLog)
+    {
+        $this->auditLog = $auditLog;
+    }
+
     public function incoming(Request $request)
     {
-        $circulars = DocumentCircularRecipient::with(['circular.document', 'circular.sender'])
+        $circulars = DocumentCircularRecipient::with(['circular.document', 'circular.sender.profile'])
             ->where('user_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -22,7 +30,7 @@ class CircularController extends Controller
 
     public function outgoing(Request $request)
     {
-        $circulars = DocumentCircular::with(['document', 'recipients.user'])
+        $circulars = DocumentCircular::with(['document', 'recipients.user.profile'])
             ->where('sender_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -39,6 +47,7 @@ class CircularController extends Controller
         ]);
 
         $document = Document::findOrFail($id);
+        $this->authorize('circulate', $document);
 
         $circular = DocumentCircular::create([
             'document_id' => $document->id,
@@ -60,6 +69,11 @@ class CircularController extends Controller
                 'circular'
             ));
         }
+
+        $this->auditLog->log('circular.sent', $document, [
+            'circular_id' => $circular->id,
+            'recipient_count' => $usersToNotify->count(),
+        ]);
 
         return response()->json(['message' => 'Circular sent successfully.']);
     }
@@ -88,12 +102,18 @@ class CircularController extends Controller
             'acknowledged_at' => now()
         ]);
 
+        $this->auditLog->log('circular.acknowledged', $recipient->circular?->document_id, [
+            'circular_id' => $circularId,
+        ]);
+
         return response()->json(['message' => 'Acknowledged.']);
     }
 
     public function tracking($id)
     {
-        $circulars = DocumentCircular::with(['recipients.user', 'sender'])
+        $this->authorize('circulate', Document::findOrFail($id));
+
+        $circulars = DocumentCircular::with(['recipients.user.profile', 'sender.profile'])
             ->where('document_id', $id)
             ->get();
         return response()->json($circulars);

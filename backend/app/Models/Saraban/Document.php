@@ -34,6 +34,9 @@ class Document extends Model
         'allow_download',
         'incoming_document_number',
         'incoming_date',
+        'creation_mode',
+        'content',
+        'template_type',
     ];
 
     public function type(): BelongsTo

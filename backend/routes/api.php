@@ -144,49 +144,80 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::delete('/admin/fiscal-years/{fiscalYear}',     [\App\Http\Controllers\FiscalYearController::class, 'destroy']);
     });
     
-    // Saraban Document routes
-    Route::group(['middleware' => ['auth:sanctum']], function () {
-        // Document Types
-        Route::get('/saraban/types', [\App\Http\Controllers\Api\Saraban\DocumentTypeController::class, 'index']);
-        Route::post('/saraban/types', [\App\Http\Controllers\Api\Saraban\DocumentTypeController::class, 'store']);
-        Route::put('/saraban/types/{type}', [\App\Http\Controllers\Api\Saraban\DocumentTypeController::class, 'update']);
-        Route::delete('/saraban/types/{type}', [\App\Http\Controllers\Api\Saraban\DocumentTypeController::class, 'destroy']);
+    // Saraban Document routes.
+    // Route-level `permission:` middleware is the coarse gate; DocumentPolicy
+    // (checked inside the controllers) enforces per-document rules on top of it.
+    Route::prefix('saraban')->group(function () {
+        // Document Types — read for anyone who can see the register, write for registrars.
+        Route::middleware('permission:saraban.document.view')->group(function () {
+            Route::get('/types', [\App\Http\Controllers\Api\Saraban\DocumentTypeController::class, 'index']);
+        });
+        Route::middleware('permission:saraban.document.manage_types')->group(function () {
+            Route::post('/types', [\App\Http\Controllers\Api\Saraban\DocumentTypeController::class, 'store']);
+            Route::put('/types/{type}', [\App\Http\Controllers\Api\Saraban\DocumentTypeController::class, 'update']);
+            Route::delete('/types/{type}', [\App\Http\Controllers\Api\Saraban\DocumentTypeController::class, 'destroy']);
 
-        // Workflow Templates
-        Route::get('/saraban/workflow-templates', [\App\Http\Controllers\Api\Saraban\DocumentWorkflowTemplateController::class, 'index']);
-        Route::post('/saraban/workflow-templates', [\App\Http\Controllers\Api\Saraban\DocumentWorkflowTemplateController::class, 'store']);
-        Route::put('/saraban/workflow-templates/{id}', [\App\Http\Controllers\Api\Saraban\DocumentWorkflowTemplateController::class, 'update']);
-        Route::delete('/saraban/workflow-templates/{id}', [\App\Http\Controllers\Api\Saraban\DocumentWorkflowTemplateController::class, 'destroy']);
+            Route::post('/workflow-templates', [\App\Http\Controllers\Api\Saraban\DocumentWorkflowTemplateController::class, 'store']);
+            Route::put('/workflow-templates/{id}', [\App\Http\Controllers\Api\Saraban\DocumentWorkflowTemplateController::class, 'update']);
+            Route::delete('/workflow-templates/{id}', [\App\Http\Controllers\Api\Saraban\DocumentWorkflowTemplateController::class, 'destroy']);
+        });
 
-        // Documents
-        Route::get('/saraban/documents',       [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'index']);
-        Route::get('/saraban/documents/stats', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'stats']);
-        Route::delete('/saraban/documents/bulk', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'destroyMultiple']);
-        Route::post('/saraban/documents',      [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'store']);
-        Route::get('/saraban/documents/{document}', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'show']);
-        Route::put('/saraban/documents/{document}', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'update']);
-        Route::delete('/saraban/documents/{document}', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'destroy']);
-        Route::post('/saraban/documents/{document}/read', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'read']);
-        Route::post('/saraban/documents/{id}/state', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'updateState']);
+        Route::middleware('permission:saraban.document.view')->group(function () {
+            Route::get('/workflow-templates', [\App\Http\Controllers\Api\Saraban\DocumentWorkflowTemplateController::class, 'index']);
+
+            // Pickers for the document form / circular recipients. Scoped read-only
+            // lists so saraban users do not need the admin `view_users` permission.
+            Route::get('/users-list', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'usersList']);
+            Route::get('/departments-list', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'departmentsList']);
+
+            // Documents — read
+            Route::get('/documents',       [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'index']);
+            Route::get('/documents/stats', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'stats']);
+            Route::get('/documents/{document}', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'show'])
+                ->middleware('saraban.classified');
+            Route::post('/documents/{document}/read', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'read']);
+            Route::post('/documents/{id}/state', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'updateState']);
+            Route::get('/attachments/{attachment}/download', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'downloadAttachment']);
+        });
+
+        Route::post('/documents', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'store'])
+            ->middleware('permission:saraban.document.create');
+
+        Route::put('/documents/{document}', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'update'])
+            ->middleware(['permission:saraban.document.edit', 'saraban.classified']);
+
+        Route::delete('/documents/bulk', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'destroyMultiple'])
+            ->middleware('permission:saraban.document.delete');
+        Route::delete('/documents/{document}', [\App\Http\Controllers\Api\Saraban\DocumentController::class, 'destroy'])
+            ->middleware(['permission:saraban.document.delete', 'saraban.classified']);
 
         // Saraban Workflow
-        Route::post('/saraban/documents/{id}/workflow/submit', [\App\Http\Controllers\Api\Saraban\WorkflowController::class, 'submit']);
-        Route::post('/saraban/documents/{id}/workflow/approve', [\App\Http\Controllers\Api\Saraban\WorkflowController::class, 'approve']);
-        Route::post('/saraban/documents/{id}/workflow/reject', [\App\Http\Controllers\Api\Saraban\WorkflowController::class, 'reject']);
+        Route::middleware('permission:saraban.document.view')->group(function () {
+            Route::post('/documents/{id}/workflow/submit', [\App\Http\Controllers\Api\Saraban\WorkflowController::class, 'submit']);
+        });
+        Route::middleware(['permission:saraban.document.approve', 'saraban.classified'])->group(function () {
+            Route::post('/documents/{id}/workflow/approve', [\App\Http\Controllers\Api\Saraban\WorkflowController::class, 'approve']);
+            Route::post('/documents/{id}/workflow/reject', [\App\Http\Controllers\Api\Saraban\WorkflowController::class, 'reject']);
+        });
 
         // Saraban Signatures
-        Route::post('/saraban/documents/{id}/sign', [\App\Http\Controllers\Api\Saraban\SignatureController::class, 'sign']);
+        Route::post('/documents/{id}/sign', [\App\Http\Controllers\Api\Saraban\SignatureController::class, 'sign'])
+            ->middleware(['permission:saraban.document.sign', 'saraban.classified']);
 
         // Saraban Circulars
-        Route::get('/saraban/circulars/incoming', [\App\Http\Controllers\Api\Saraban\CircularController::class, 'incoming']);
-        Route::get('/saraban/circulars/outgoing', [\App\Http\Controllers\Api\Saraban\CircularController::class, 'outgoing']);
-        Route::post('/saraban/documents/{id}/circular', [\App\Http\Controllers\Api\Saraban\CircularController::class, 'send']);
-        Route::post('/saraban/circulars/{id}/acknowledge', [\App\Http\Controllers\Api\Saraban\CircularController::class, 'acknowledge']);
-        Route::get('/saraban/documents/{id}/circulars/tracking', [\App\Http\Controllers\Api\Saraban\CircularController::class, 'tracking']);
+        Route::middleware('permission:saraban.document.view')->group(function () {
+            Route::get('/circulars/incoming', [\App\Http\Controllers\Api\Saraban\CircularController::class, 'incoming']);
+            Route::get('/circulars/outgoing', [\App\Http\Controllers\Api\Saraban\CircularController::class, 'outgoing']);
+            Route::post('/documents/{id}/circular', [\App\Http\Controllers\Api\Saraban\CircularController::class, 'send']);
+            Route::post('/circulars/{id}/acknowledge', [\App\Http\Controllers\Api\Saraban\CircularController::class, 'acknowledge']);
+            Route::get('/documents/{id}/circulars/tracking', [\App\Http\Controllers\Api\Saraban\CircularController::class, 'tracking']);
+        });
 
         // Saraban Reports
-        Route::get('/saraban/reports/summary', [\App\Http\Controllers\Api\Saraban\ReportController::class, 'summary']);
-        Route::get('/saraban/reports/export', [\App\Http\Controllers\Api\Saraban\ReportController::class, 'exportCsv']);
+        Route::middleware('permission:saraban.document.report')->group(function () {
+            Route::get('/reports/summary', [\App\Http\Controllers\Api\Saraban\ReportController::class, 'summary']);
+            Route::get('/reports/export', [\App\Http\Controllers\Api\Saraban\ReportController::class, 'exportCsv']);
+        });
     });
 
     Route::get('/fiscal-year/current',                    [\App\Http\Controllers\FiscalYearController::class, 'current']);

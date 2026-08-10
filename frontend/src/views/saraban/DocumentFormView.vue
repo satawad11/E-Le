@@ -318,12 +318,15 @@ onMounted(async () => {
   } catch(e) { console.warn('Could not fetch types', e) }
 
   try {
-    const deptRes = await api.get('/admin/departments-list')
+    const deptRes = await api.get('/saraban/departments-list')
     departments.value = deptRes.data
-  } catch(e) { console.warn('Could not fetch departments', e) }
-  
+  } catch(e) {
+    console.warn('Could not fetch departments', e)
+    Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถโหลดรายชื่อฝ่าย/แผนกได้ กรุณาตรวจสอบสิทธิ์การใช้งาน', 'error')
+  }
+
   try {
-    const userRes = await api.get('/users/list')
+    const userRes = await api.get('/saraban/users-list')
     users.value = userRes.data.data || userRes.data
   } catch(e) { console.warn('Could not fetch users', e) }
 

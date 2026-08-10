@@ -47,7 +47,7 @@
                   {{ item.circular?.document?.title || 'ไม่มีชื่อเรื่อง' }}
                 </router-link>
               </td>
-              <td class="p-4 text-sm">{{ item.circular?.sender?.first_name }} {{ item.circular?.sender?.last_name }}</td>
+              <td class="p-4 text-sm">{{ userDisplayName(item.circular?.sender) }}</td>
               <td class="p-4 text-sm text-gray-600 truncate max-w-xs">{{ item.circular?.message }}</td>
               <td class="p-4 text-sm">
                 <span v-if="item.is_acknowledged" class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">รับทราบแล้ว</span>
@@ -135,7 +135,7 @@
             </thead>
             <tbody>
               <tr v-for="rec in selectedCircular?.recipients" :key="rec.id" class="border-b">
-                <td class="p-3 text-sm">{{ rec.user?.first_name }} {{ rec.user?.last_name }}</td>
+                <td class="p-3 text-sm">{{ userDisplayName(rec.user) }}</td>
                 <td class="p-3 text-sm">
                   <span v-if="rec.is_acknowledged" class="text-green-600 flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> รับทราบแล้ว
@@ -156,6 +156,7 @@
 import { ref, onMounted, watch } from 'vue'
 import api from '../../axios'
 import Swal from 'sweetalert2'
+import { userDisplayName } from '../../utils/userName'
 
 const activeTab = ref('incoming')
 const loading = ref(false)

@@ -5,32 +5,27 @@ namespace App\Http\Controllers\Api\Saraban;
 use App\Http\Controllers\Controller;
 use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentSignature;
+use App\Services\Saraban\AuditLogService;
 use App\Services\Saraban\DocumentWorkflowService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class SignatureController extends Controller
 {
     protected $workflowService;
+    protected $auditLog;
 
-    public function __construct(DocumentWorkflowService $workflowService)
+    public function __construct(DocumentWorkflowService $workflowService, AuditLogService $auditLog)
     {
         $this->workflowService = $workflowService;
+        $this->auditLog = $auditLog;
     }
 
     public function sign(Request $request, $id)
     {
         $document = Document::findOrFail($id);
-        
-        $user = $request->user();
-        $isSuperAdmin = $user->hasRole(['Super Admin', 'SuperAdmin']);
-        $isSarabanOfficer = $user->hasRole(['Saraban Officer', 'เจ้าหน้าที่สารบัญ', 'admin_saraban']);
-        $isManager = $user->hasRole(['Director', 'Deputy Director', 'Deputy', 'HR Head', 'HRHead']);
-        $isCreator = $document->created_by === $user->id;
+        $this->authorize('sign', $document);
 
-        if (!$isSuperAdmin && !$isSarabanOfficer && !$isManager && !$isCreator) {
-            abort(403, 'คุณไม่มีสิทธิ์ลงนามในเอกสารนี้');
-        }
-        
         $password = $request->input('password');
         $mode = $request->input('mode', 'esignature');
 
@@ -85,32 +80,56 @@ class SignatureController extends Controller
                 ]);
             }
             
+            $this->auditLog->log('document.signed', $document, [
+                'mode' => $mode,
+                'hash' => $hash,
+            ]);
+
             return response()->json(['message' => 'Document signed successfully.', 'hash' => $hash]);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 400);
         }
     }
 
+    /**
+     * Public QR verification. Confirms that a signature exists and is intact
+     * without disclosing the contents of classified documents.
+     */
     public function verify($hash)
     {
-        $signature = DocumentSignature::with(['document', 'signer'])->where('signature_hash', $hash)->first();
+        $signature = DocumentSignature::with(['document', 'signer.profile'])
+            ->where('signature_hash', $hash)
+            ->first();
 
-        if (!$signature) {
+        if (!$signature || !$signature->document) {
             return response()->json(['message' => 'Signature not found or invalid.'], 404);
         }
 
+        $document = $signature->document;
+
+        // A signature is only valid while the document it belongs to still exists
+        // and has not been rolled back out of a signed state.
+        $isValid = !$document->trashed()
+            && in_array($document->status, ['signed', 'dispatched', 'archived'], true);
+
+        $isClassified = $document->secrecy !== 'normal';
+
+        $this->auditLog->log('signature.verified', $document, ['hash' => $hash]);
+
         return response()->json([
-            'document' => [
-                'id' => $signature->document->id,
-                'document_number' => $signature->document->document_number,
-                'title' => $signature->document->title,
-            ],
+            'document' => $isClassified
+                ? ['classified' => true]
+                : [
+                    'id' => $document->id,
+                    'document_number' => $document->document_number,
+                    'title' => $document->title,
+                ],
             'signer' => [
                 'name' => $signature->signer->name,
                 'position' => $signature->signer->profile?->position,
             ],
             'signed_at' => $signature->signed_at,
-            'is_valid' => true
+            'is_valid' => $isValid,
         ]);
     }
 

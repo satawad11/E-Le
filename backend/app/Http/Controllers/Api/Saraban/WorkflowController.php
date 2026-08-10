@@ -4,49 +4,29 @@ namespace App\Http\Controllers\Api\Saraban;
 
 use App\Http\Controllers\Controller;
 use App\Models\Saraban\Document;
+use App\Services\Saraban\AuditLogService;
 use App\Services\Saraban\DocumentWorkflowService;
 use Illuminate\Http\Request;
 
 class WorkflowController extends Controller
 {
     protected $workflowService;
+    protected $auditLog;
 
-    public function __construct(DocumentWorkflowService $workflowService)
+    public function __construct(DocumentWorkflowService $workflowService, AuditLogService $auditLog)
     {
         $this->workflowService = $workflowService;
-    }
-
-    private function checkPermission(Request $request, Document $document, string $action)
-    {
-        $user = $request->user();
-        
-        // Super Admin has all rights
-        if ($user->hasRole(['Super Admin', 'SuperAdmin'])) {
-            return true;
-        }
-
-        $isSarabanOfficer = $user->hasRole(['Saraban Officer', 'เจ้าหน้าที่สารบัญ', 'admin_saraban']);
-        $isManager = $user->hasRole(['Director', 'Deputy Director', 'Deputy', 'HR Head', 'HRHead']);
-        $isCreator = $document->created_by === $user->id;
-
-        if ($action === 'submit' && ($isSarabanOfficer || $isCreator)) {
-            return true;
-        }
-
-        if (in_array($action, ['approve', 'reject']) && ($isSarabanOfficer || $isManager)) {
-            return true;
-        }
-
-        abort(403, 'คุณไม่มีสิทธิ์ดำเนินการนี้ (Unauthorized Action)');
+        $this->auditLog = $auditLog;
     }
 
     public function submit(Request $request, $id)
     {
         $document = Document::findOrFail($id);
-        $this->checkPermission($request, $document, 'submit');
-        
+        $this->authorize('submit', $document);
+
         $comment = $request->input('comment');
         $this->workflowService->submitDocument($document, $request->user()->id, $comment, $request->ip());
+        $this->auditLog->log('document.submitted', $document, ['comment' => $comment]);
 
         return response()->json(['message' => 'Document submitted for review successfully.']);
     }
@@ -54,10 +34,11 @@ class WorkflowController extends Controller
     public function approve(Request $request, $id)
     {
         $document = Document::findOrFail($id);
-        $this->checkPermission($request, $document, 'approve');
-        
+        $this->authorize('approve', $document);
+
         $comment = $request->input('comment');
         $this->workflowService->approveDocument($document, $request->user()->id, $comment, $request->ip());
+        $this->auditLog->log('document.approved', $document, ['comment' => $comment]);
 
         return response()->json(['message' => 'Document approved successfully.']);
     }
@@ -69,9 +50,10 @@ class WorkflowController extends Controller
         ]);
 
         $document = Document::findOrFail($id);
-        $this->checkPermission($request, $document, 'reject');
-        
+        $this->authorize('approve', $document);
+
         $this->workflowService->rejectDocument($document, $request->user()->id, $request->input('comment'), $request->ip());
+        $this->auditLog->log('document.rejected', $document, ['comment' => $request->input('comment')]);
 
         return response()->json(['message' => 'Document rejected.']);
     }
