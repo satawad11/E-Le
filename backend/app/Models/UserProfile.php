@@ -15,7 +15,8 @@ class UserProfile extends Model
         'id_card_number_hash',
         'date_of_birth',
         'nationality',
-        'ethnicity',
+        // 'ethnicity' และ 'religion' ถอดออกจาก fillable โดยตั้งใจ
+        // เป็นข้อมูลอ่อนไหวตาม ม.26 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล และระบบไม่ได้นำไปใช้งาน
         'passport_number',
         'passport_issue_date',
         'passport_expiry_date',
@@ -26,7 +27,6 @@ class UserProfile extends Model
         'gender',
         'first_name_en',
         'last_name_en',
-        'religion',
         'house_registration_number',
         'house_number',
         'moo',

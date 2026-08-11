@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="space-y-6">
     <div class="flex justify-between items-center">
       <h1 class="text-2xl font-bold text-gray-800">ตั้งค่าระบบ</h1>
@@ -10,11 +10,16 @@
 
     <!-- Tabs -->
     <div class="border-b border-gray-200">
-      <nav class="-mb-px flex space-x-8">
+      <nav class="-mb-px flex gap-6 overflow-x-auto" role="tablist" aria-label="หมวดการตั้งค่าระบบ">
         <button
           v-for="tab in tabs"
           :key="tab.id"
           @click="currentTab = tab.id"
+          @keydown.left.prevent="moveTab(-1)"
+          @keydown.right.prevent="moveTab(1)"
+          role="tab"
+          :aria-selected="currentTab === tab.id"
+          :aria-controls="'settings-panel-' + tab.id"
           :class="[
             currentTab === tab.id
               ? 'border-red-500 text-red-600'
@@ -31,7 +36,7 @@
       <form @submit.prevent="saveSettings">
         
         <!-- Tab 1: ข้อมูลพื้นฐานของสถานศึกษา -->
-        <div v-show="currentTab === 'basic'" class="space-y-6">
+        <div v-show="currentTab === 'basic'" id="settings-panel-basic" role="tabpanel" class="space-y-6">
           <h3 class="text-lg leading-6 font-medium text-red-700 border-b pb-2">ข้อมูลพื้นฐานของสถานศึกษา</h3>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -65,7 +70,7 @@
                 <div class="flex justify-start gap-2">
                   <input type="file" ref="logoInput" @change="handleLogoChange" class="hidden" accept="image/jpeg,image/png,image/jpg" />
                   <button type="button" @click="$refs.logoInput.click()" class="bg-white border border-gray-300 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-50">เลือกรูป (.jpg)</button>
-                  <button type="button" @click="deleteLogo" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">ลบรูปภาพ</button>
+                  <button type="button" @click="deleteLogo" :disabled="isDeletingLogo || !settings.organization_logo" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 disabled:opacity-50">{{ isDeletingLogo ? 'กำลังลบ...' : 'ลบรูปภาพ' }}</button>
                 </div>
                 <div class="mt-4 flex justify-center">
                   <img v-if="settings.organization_logo" :src="settings.organization_logo" alt="Logo" class="w-32 h-32 object-contain" />
@@ -90,7 +95,7 @@
         </div>
 
         <!-- Tab 2: ข้อมูลเพิ่มเติม -->
-        <div v-show="currentTab === 'additional'" class="space-y-6">
+        <div v-show="currentTab === 'additional'" id="settings-panel-additional" role="tabpanel" class="space-y-6">
           <h3 class="text-lg leading-6 font-medium text-red-700 border-b pb-2">ข้อมูลเพิ่มเติม</h3>
           
           <div class="border rounded-md p-4 space-y-4">
@@ -130,11 +135,11 @@
               </div>
               <div>
                 <label class="block text-sm text-gray-700 mb-1 text-red-500">เวลาเข้าเรียน *</label>
-                <input type="time" v-model="settings.start_time" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                <input type="time" v-model="settings.start_time" required class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
               </div>
               <div>
                 <label class="block text-sm text-gray-700 mb-1 text-red-500">เวลาเลิกเรียน *</label>
-                <input type="time" v-model="settings.end_time" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                <input type="time" v-model="settings.end_time" required class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
               </div>
               <div>
                 <label class="block text-sm text-gray-700 mb-1">เลขที่หนังสือออก</label>
@@ -158,11 +163,29 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm text-gray-700 mb-1">พิกัด GPS ละติจูด (Latitude)</label>
-                <input type="text" v-model="settings.college_latitude" placeholder="เช่น 13.7563" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                <input type="number" step="any" min="-90" max="90" v-model="settings.college_latitude" placeholder="เช่น 13.7563" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
               </div>
               <div>
                 <label class="block text-sm text-gray-700 mb-1">พิกัด GPS ลองจิจูด (Longitude)</label>
-                <input type="text" v-model="settings.college_longitude" placeholder="เช่น 100.5018" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                <input type="number" step="any" min="-180" max="180" v-model="settings.college_longitude" placeholder="เช่น 100.5018" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">รัศมีลงเวลาสูงสุด (เมตร)</label>
+                <input type="number" min="0" max="100000" v-model.number="settings.max_attendance_radius" class="block w-full border border-gray-300 rounded py-1 px-2 sm:text-sm">
+              </div>
+              <label class="flex items-center gap-3 text-sm text-gray-700">
+                <input type="checkbox" v-model="settings.require_attendance_selfie" true-value="1" false-value="0" class="h-5 w-5 rounded border-gray-300 text-red-600">
+                บังคับถ่ายภาพขณะลงเวลา
+              </label>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">ยกเลิกใบลาได้ภายใน (วัน)</label>
+                <input type="number" min="0" max="365" v-model.number="settings.cancel_allowed_days" class="block w-full border border-gray-300 rounded py-1 px-2 sm:text-sm">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">เก็บหลักฐานใบลา (วัน)</label>
+                <input type="number" min="1" max="36500" v-model.number="settings.leave_evidence_retention_days" class="block w-full border border-gray-300 rounded py-1 px-2 sm:text-sm">
               </div>
             </div>
 
@@ -184,15 +207,15 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label class="block text-sm text-gray-700 mb-1">จำนวนชั่วโมงในการใช้อินเตอร์เน็ต</label>
-                <input type="number" v-model="settings.internet_hours" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                <input type="number" v-model.number="settings.internet_hours" min="0" max="168" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
               </div>
               <div>
                 <label class="block text-sm text-gray-700 mb-1">จำนวนคอมพิวเตอร์สำหรับการเรียนการสอน</label>
-                <input type="number" v-model="settings.teaching_computers" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                <input type="number" v-model.number="settings.teaching_computers" min="0" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
               </div>
               <div>
                 <label class="block text-sm text-gray-700 mb-1">จำนวนคอมพิวเตอร์สำหรับการบริหารจัดการ</label>
-                <input type="number" v-model="settings.admin_computers" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                <input type="number" v-model.number="settings.admin_computers" min="0" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
               </div>
             </div>
 
@@ -231,7 +254,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
@@ -263,7 +287,26 @@ const executiveFields = [
 
 const currentTab = ref('basic')
 const isSaving = ref(false)
+const isDeletingLogo = ref(false)
 const users = ref([])
+const initialSnapshot = ref('')
+const isDirty = computed(() => Boolean(initialSnapshot.value) && JSON.stringify(settings.value) !== initialSnapshot.value)
+
+const validationMessage = (error, fallback) => Object.values(error.response?.data?.errors || {}).flat()[0] || fallback
+
+const syncSnapshotField = (key, value) => {
+  if (!initialSnapshot.value) return
+  const snapshot = JSON.parse(initialSnapshot.value)
+  snapshot[key] = value
+  initialSnapshot.value = JSON.stringify(snapshot)
+}
+
+const moveTab = async (direction) => {
+  const index = tabs.findIndex(tab => tab.id === currentTab.value)
+  currentTab.value = tabs[(index + direction + tabs.length) % tabs.length].id
+  await nextTick()
+  document.querySelector('[role="tab"][aria-selected="true"]')?.focus()
+}
 
 const settings = ref({
   institution_code: '',
@@ -305,15 +348,14 @@ const settings = ref({
   electricity_system: 'มีไฟฟ้าจากหน่วยงานรัฐ-รัฐวิสาหกิจ',
   telephone_system: 'มีโทรศัพท์พื้นฐาน',
   internet_system: 'มีการเชื่อมต่ออินเตอร์เน็ตด้วย ADSL (Broadband)',
-  telegram_bot_token: '',
   college_latitude: '',
   college_longitude: '',
   default_work_start_time: '',
   default_work_end_time: '',
   max_attendance_radius: '',
   require_attendance_selfie: '0',
-  line_channel_access_token: '',
-  line_admin_user_id: ''
+  cancel_allowed_days: 5,
+  leave_evidence_retention_days: 2555
 })
 
 const formatThaiDate = (dateString) => {
@@ -332,9 +374,12 @@ const formatThaiDate = (dateString) => {
 const fetchSettings = async () => {
   try {
     const response = await api.get('/admin/settings')
-    settings.value = { ...settings.value, ...response.data }
+    for (const key of Object.keys(settings.value)) {
+      if (Object.prototype.hasOwnProperty.call(response.data, key)) settings.value[key] = response.data[key]
+    }
+    initialSnapshot.value = JSON.stringify(settings.value)
   } catch (error) {
-    alertStore.error('โหลดข้อมูลการตั้งค่าล้มเหลว')
+    alertStore.error(validationMessage(error, 'โหลดข้อมูลการตั้งค่าล้มเหลว'))
   }
 }
 
@@ -351,9 +396,10 @@ const saveSettings = async () => {
   isSaving.value = true
   try {
     await api.post('/admin/settings', settings.value)
+    initialSnapshot.value = JSON.stringify(settings.value)
     alertStore.success('บันทึกการตั้งค่าระบบเรียบร้อยแล้ว')
   } catch (error) {
-    alertStore.error('เกิดข้อผิดพลาดในการบันทึก')
+    alertStore.error(validationMessage(error, 'เกิดข้อผิดพลาดในการบันทึก'))
   } finally {
     isSaving.value = false
   }
@@ -367,24 +413,49 @@ const handleLogoChange = async (event) => {
   formData.append('logo', file)
 
   try {
-    const response = await api.post('/admin/settings/logo', formData, {
+    const response = await api.post('/admin/settings/upload-logo', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     })
     settings.value.organization_logo = response.data.url
+    syncSnapshotField('organization_logo', response.data.url)
     alertStore.success('อัพโหลดรูปภาพสำเร็จ')
   } catch (error) {
     alertStore.error('อัพโหลดรูปภาพล้มเหลว')
   }
 }
 
-const deleteLogo = () => {
-  settings.value.organization_logo = ''
+const deleteLogo = async () => {
+  if (!window.confirm('ยืนยันการลบโลโก้สถานศึกษา?')) return
+  isDeletingLogo.value = true
+  try {
+    await api.delete('/admin/settings/logo')
+    settings.value.organization_logo = ''
+    syncSnapshotField('organization_logo', '')
+    alertStore.success('ลบโลโก้เรียบร้อยแล้ว')
+  } catch (error) {
+    alertStore.error(validationMessage(error, 'ลบโลโก้ไม่สำเร็จ'))
+  } finally {
+    isDeletingLogo.value = false
+  }
 }
+
+const handleBeforeUnload = (event) => {
+  if (!isDirty.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+onBeforeRouteLeave(() => !isDirty.value || window.confirm('มีการตั้งค่าที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?'))
 
 onMounted(() => {
   fetchSettings()
   fetchUsers()
+  window.addEventListener('beforeunload', handleBeforeUnload)
 })
+
+onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
 </script>
+
+

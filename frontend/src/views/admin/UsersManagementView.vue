@@ -122,6 +122,9 @@
                     <button @click="toggleStatus(user)" class="px-3 py-1 rounded text-xs transition" :class="user.is_active ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'" :disabled="submitting" title="เปิด-ปิด การใช้งาน">
                       <i class="fas" :class="user.is_active ? 'fa-ban' : 'fa-check'"></i> {{ user.is_active ? 'ระงับ' : 'เปิดใช้งาน' }}
                     </button>
+                    <button @click="openPermissionModal(user)" class="px-3 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 transition" title="จัดการสิทธิ์การเข้าถึงรายบุคคล">
+                      <i class="fas fa-shield-alt mr-1"></i> สิทธิ์
+                    </button>
                     <button @click="openEditModal(user)" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition">
                       <i class="fas fa-edit mr-1"></i> แก้ไข
                     </button>
@@ -203,10 +206,8 @@
                     <label class="block text-xs text-gray-700 mb-1">สัญชาติ *</label>
                     <input v-model="form.profile.nationality" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
                   </div>
-                  <div class="md:col-span-1">
-                    <label class="block text-xs text-gray-700 mb-1">เชื้อชาติ *</label>
-                    <input v-model="form.profile.ethnicity" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
-                  </div>
+                  <!-- เลิกเก็บ "เชื้อชาติ" — เป็นข้อมูลอ่อนไหวตาม ม.26 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล
+                       และไม่มีส่วนใดของระบบนำไปใช้ จึงไม่มีฐานทางกฎหมายรองรับการเก็บ -->
                   
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">คำนำหน้าชื่อ *</label>
@@ -244,10 +245,7 @@
                     <label class="block text-xs text-gray-700 mb-1">นามสกุล (อังกฤษ)</label>
                     <input v-model="form.profile.last_name_en" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
-                  <div class="md:col-span-1">
-                    <label class="block text-xs text-gray-700 mb-1">ศาสนา</label>
-                    <input v-model="form.profile.religion" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
-                  </div>
+                  <!-- เลิกเก็บ "ศาสนา" ด้วยเหตุผลเดียวกับเชื้อชาติ (ข้อมูลอ่อนไหวตาม ม.26) -->
                 </div>
 
                 <!-- Tab: Address -->
@@ -395,53 +393,33 @@
                   </div>
                 </div>
 
-                <!-- Tab: Permissions (Super Admin Only) -->
-                <div v-show="activeTab === 'permissions'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div class="md:col-span-2">
-                    <p class="text-sm text-gray-600 mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
-                      <i class="fas fa-info-circle text-yellow-500 mr-2"></i> กำหนดสิทธิ์การเข้าถึงเมนูต่างๆ ให้กับผู้ใช้งานคนนี้เป็นกรณีพิเศษ นอกเหนือจากสิทธิ์พื้นฐานตามบทบาท (Role)
+                <!-- Tab: Permissions (Custom Individual Direct Permissions) -->
+                <div v-show="activeTab === 'permissions'" class="space-y-4 max-h-[450px] overflow-y-auto pr-2">
+                  <div>
+                    <p class="text-xs text-gray-600 bg-amber-50 border-l-4 border-amber-400 p-3 rounded mb-3">
+                      <i class="fas fa-info-circle text-amber-500 mr-2"></i> กำหนดสิทธิ์การเข้าถึงระบบเพิ่มเติมให้กับผู้ใช้งานคนนี้เป็นกรณีพิเศษ (Direct Custom Permissions)
                     </p>
                   </div>
                   
-                  <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                    <input type="checkbox" id="perm-admin-settings" value="admin-settings" v-model="form.custom_permissions" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
-                    <label for="perm-admin-settings" class="text-sm text-gray-700 cursor-pointer w-full">ข้อมูลสถานศึกษา</label>
-                  </div>
-                  <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                    <input type="checkbox" id="perm-admin-departments" value="admin-departments" v-model="form.custom_permissions" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
-                    <label for="perm-admin-departments" class="text-sm text-gray-700 cursor-pointer w-full">จัดการแผนกวิชา</label>
-                  </div>
-                  <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                    <input type="checkbox" id="perm-admin-workflow" value="admin-workflow" v-model="form.custom_permissions" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
-                    <label for="perm-admin-workflow" class="text-sm text-gray-700 cursor-pointer w-full">จัดการลำดับการอนุมัติ</label>
-                  </div>
-                  <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                    <input type="checkbox" id="perm-admin-leave-types" value="admin-leave-types" v-model="form.custom_permissions" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
-                    <label for="perm-admin-leave-types" class="text-sm text-gray-700 cursor-pointer w-full">ประเภทการลา</label>
-                  </div>
-                  <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                    <input type="checkbox" id="perm-admin-fiscal-years" value="admin-fiscal-years" v-model="form.custom_permissions" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
-                    <label for="perm-admin-fiscal-years" class="text-sm text-gray-700 cursor-pointer w-full">ปีงบประมาณ</label>
-                  </div>
-                  <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                    <input type="checkbox" id="perm-admin-notifications" value="admin-notifications" v-model="form.custom_permissions" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
-                    <label for="perm-admin-notifications" class="text-sm text-gray-700 cursor-pointer w-full">การแจ้งเตือน</label>
-                  </div>
-                  <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                    <input type="checkbox" id="perm-admin-users" value="admin-users" v-model="form.custom_permissions" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
-                    <label for="perm-admin-users" class="text-sm text-gray-700 cursor-pointer w-full">จัดการผู้ใช้</label>
-                  </div>
-                  <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                    <input type="checkbox" id="perm-approvals" value="approvals" v-model="form.custom_permissions" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
-                    <label for="perm-approvals" class="text-sm text-gray-700 cursor-pointer w-full">อนุมัติใบลา</label>
-                  </div>
-                  <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                    <input type="checkbox" id="perm-cancel-approvals" value="cancel-approvals" v-model="form.custom_permissions" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
-                    <label for="perm-cancel-approvals" class="text-sm text-gray-700 cursor-pointer w-full">อนุมัติยกเลิกใบลา</label>
-                  </div>
-                  <div class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
-                    <input type="checkbox" id="perm-reports" value="reports" v-model="form.custom_permissions" class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500">
-                    <label for="perm-reports" class="text-sm text-gray-700 cursor-pointer w-full">รายงานสถิติการลา</label>
+                  <div v-for="(groupPerms, groupName) in groupedPermissions" :key="groupName" class="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                    <h5 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                      <span>📌</span>
+                      <span>{{ groupName }}</span>
+                    </h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div v-for="perm in groupPerms" :key="perm.id" class="flex items-center gap-2 bg-white p-2 rounded border border-gray-200 hover:border-red-300 transition-colors">
+                        <input
+                          type="checkbox"
+                          :id="'perm-' + perm.id"
+                          :value="perm.name"
+                          v-model="form.custom_permissions"
+                          class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500 cursor-pointer"
+                        />
+                        <label :for="'perm-' + perm.id" class="text-xs font-mono text-gray-800 cursor-pointer w-full select-none">
+                          {{ perm.name }}
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -470,6 +448,13 @@
         </div>
       </div>
     </transition>
+    <!-- User Individual Permissions Modal -->
+    <UserPermissionModal 
+      :show="permissionModal.show" 
+      :user-id="permissionModal.userId" 
+      @close="permissionModal.show = false" 
+      @saved="onPermissionsSaved" 
+    />
   </div>
 </template>
 
@@ -479,6 +464,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useAlertStore } from '../../stores/alert'
 import api from '../../axios'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
+import UserPermissionModal from '../../components/admin/UserPermissionModal.vue'
 
 const authStore = useAuthStore()
 const alertStore = useAlertStore()
@@ -488,18 +474,60 @@ const submitting = ref(false)
 const users = ref([])
 const departments = ref([])
 const roles = ref([])
+const availablePermissions = ref([])
+
+const permissionModal = reactive({
+  show: false,
+  userId: null
+})
+
+const openPermissionModal = (user) => {
+  permissionModal.userId = user.id
+  permissionModal.show = true
+}
+
+const onPermissionsSaved = async () => {
+  await fetchUsers()
+  await authStore.fetchUser()
+}
 
 const roleLabel = (name) => {
   const map = {
+    'ผู้ดูแลระบบสูงสุด': '👑 ผู้ดูแลระบบสูงสุด',
     'Super Admin': '👑 ผู้ดูแลระบบสูงสุด',
+    'SuperAdmin':  '👑 ผู้ดูแลระบบสูงสุด',
+    'ผู้อำนวยการ': '🏢 ผู้อำนวยการ',
     'Director':    '🏢 ผู้อำนวยการ',
+    'รองผู้อำนวยการ': '👔 รองผู้อำนวยการ',
     'Deputy Director': '👔 รองผู้อำนวยการ',
-    'Document Officer': '📂 เจ้าหน้าที่สารบรรณ',
-    'HR Head':     '📋 หัวหน้าบุคลากร',
-    'Employee':    '👤 พนักงานทั่วไป',
+    'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย': '💼 หัวหน้าแผนกวิชา / หัวหน้าฝ่าย',
+    'HeadOfDepartment': '💼 หัวหน้าแผนกวิชา / หัวหน้าฝ่าย',
+    'เจ้าหน้าที่บุคลากร (HR)': '📋 เจ้าหน้าที่บุคลากร (HR)',
+    'HROfficer':   '📋 เจ้าหน้าที่บุคลากร (HR)',
+    'HR Head':     '📋 เจ้าหน้าที่บุคลากร (HR)',
+    'เจ้าหน้าที่สารบรรณกลาง': '📑 เจ้าหน้าที่สารบรรณกลาง',
+    'SarabanOfficer': '📑 เจ้าหน้าที่สารบรรณกลาง',
+    'Document Officer': '📑 เจ้าหน้าที่สารบรรณกลาง',
+    'บุคลากร / ครู / เจ้าหน้าที่': '👤 บุคลากร / ครู / เจ้าหน้าที่',
+    'Employee':    '👤 บุคลากร / ครู / เจ้าหน้าที่',
   }
   return map[name] || name || ''
 }
+
+const groupedPermissions = computed(() => {
+  const groups = {}
+  availablePermissions.value.forEach(p => {
+    let groupName = 'ทั่วไป (GENERAL)'
+    if (p.name.includes('.')) {
+      groupName = p.name.split('.')[0].toUpperCase() + ' MODULE'
+    } else if (p.name.includes('_')) {
+      groupName = p.name.split('_')[0].toUpperCase() + ' MODULE'
+    }
+    if (!groups[groupName]) groups[groupName] = []
+    groups[groupName].push(p)
+  })
+  return groups
+})
 
 const activeTab = ref('personal')
 const csvInput = ref(null)
@@ -537,7 +565,7 @@ const getDefaultProfile = () => ({
   id_card_number: '',
   date_of_birth: '',
   nationality: 'ไทย',
-  ethnicity: 'ไทย',
+
   passport_number: '',
   passport_issue_date: '',
   passport_expiry_date: '',
@@ -548,7 +576,7 @@ const getDefaultProfile = () => ({
   gender: 'ชาย',
   first_name_en: '',
   last_name_en: '',
-  religion: 'พุทธ',
+
   house_registration_number: '',
   house_number: '',
   moo: '',
@@ -599,7 +627,8 @@ onMounted(async () => {
     await Promise.all([
       fetchUsers(),
       fetchDepartments(),
-      fetchRoles()
+      fetchRoles(),
+      fetchPermissions()
     ])
   } catch (e) {
     console.error(e)
@@ -621,7 +650,16 @@ const fetchDepartments = async () => {
 
 const fetchRoles = async () => {
   const res = await api.get('/admin/roles')
-  roles.value = res.data
+  roles.value = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : [])
+}
+
+const fetchPermissions = async () => {
+  try {
+    const res = await api.get('/admin/permissions')
+    availablePermissions.value = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : [])
+  } catch (e) {
+    console.error('Failed to fetch permissions', e)
+  }
 }
 
 const formatDate = (dateStr) => {
@@ -676,11 +714,11 @@ const openEditModal = (user) => {
   form.phone = user.phone || ''
   form.password = ''
   form.department_id = user.department_id || ''
-  form.role_id = user.role_id || user.role?.id || ''
+  form.role_id = user.role_id || user.role?.id || (user.roles && user.roles[0] ? user.roles[0].id : '')
   form.telegram_chat_id = user.telegram_chat_id || ''
   form.work_start_time = user.work_start_time || ''
   form.work_end_time = user.work_end_time || ''
-  form.custom_permissions = user.custom_permissions || []
+  form.custom_permissions = Array.isArray(user.custom_permissions) ? [...user.custom_permissions] : (user.permissions ? user.permissions.map(p => typeof p === 'string' ? p : p.name) : [])
   
   form.profile = { ...getDefaultProfile(), ...(user.profile || {}) }
   

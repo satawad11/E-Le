@@ -18,6 +18,8 @@ class ProfileController extends Controller
         $request->validate([
             'phone' => 'nullable|string|max:20',
             'telegram_chat_id' => 'nullable|string|max:255',
+            'line_user_id' => 'nullable|string|max:255',
+            'notification_channel' => 'nullable|string|in:line,telegram,both,none',
             'password' => 'nullable|string|min:6',
             'profile' => 'nullable|array',
             'signature_file' => 'nullable|image|max:2048',
@@ -26,6 +28,8 @@ class ProfileController extends Controller
 
         $user->phone = $request->phone;
         $user->telegram_chat_id = $request->telegram_chat_id;
+        $user->line_user_id = $request->line_user_id;
+        $user->notification_channel = $request->notification_channel ?? 'both';
         
         if ($request->filled('password')) {
             $user->password = bcrypt($request->password);
@@ -36,8 +40,9 @@ class ProfileController extends Controller
         if ($request->has('profile')) {
             $allowedProfileFields = [
                 'house_registration_number', 'house_number', 'moo', 'soi', 'road', 
-                'province', 'district', 'sub_district', 'zipcode', 
-                'fax', 'website', 'religion'
+                'province', 'district', 'sub_district', 'zipcode',
+                'fax', 'website',
+                // ไม่รับ 'religion'/'ethnicity' อีกต่อไป — ข้อมูลอ่อนไหวตาม ม.26 ที่ระบบไม่ได้ใช้
             ];
             
             $profileData = is_string($request->profile) ? json_decode($request->profile, true) : $request->profile;

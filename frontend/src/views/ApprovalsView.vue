@@ -19,6 +19,32 @@
         </div>
       </div>
 
+      <!-- Bulk Action Bar (ปรากฏเมื่อเลือกรายการ) -->
+      <transition name="slide-down">
+        <div v-if="selectedIds.length > 0" class="mb-4 px-5 py-3 bg-[#800000] rounded-2xl flex items-center justify-between shadow-md">
+          <span class="text-white text-sm font-semibold">เลือกแล้ว {{ selectedIds.length }} รายการ</span>
+          <div class="flex items-center gap-2">
+            <button @click="bulkApprove" class="px-5 py-2 bg-green-500 hover:bg-green-400 text-white text-sm font-bold rounded-xl shadow transition-colors flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              อนุมัติที่เลือก ({{ selectedIds.length }})
+            </button>
+            <button @click="selectedIds = []" class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-semibold rounded-xl transition-colors">
+              ยกเลิกการเลือก
+            </button>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Select All checkbox header -->
+      <div v-if="filteredApprovals.length > 0 && !isCancel" class="mb-3 flex items-center gap-3 px-2">
+        <label class="flex items-center gap-2 text-sm text-gray-600 font-medium cursor-pointer">
+          <input type="checkbox" :indeterminate.prop="selectedIds.length > 0 && selectedIds.length < filteredApprovals.length"
+            :checked="selectedIds.length === filteredApprovals.length && filteredApprovals.length > 0"
+            @change="toggleSelectAll" class="rounded text-[#800000] focus:ring-[#800000] w-4 h-4">
+          เลือกทั้งหมด ({{ filteredApprovals.length }} รายการ)
+        </label>
+      </div>
+
       <div v-if="filteredApprovals.length === 0" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
         <svg class="mx-auto h-14 w-14 text-gray-200 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -31,6 +57,10 @@
         <div v-for="leave in paginatedApprovals" :key="leave.id"
           class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow">
           <div class="flex flex-col md:flex-row md:items-start gap-4">
+            <!-- Checkbox for bulk select -->
+            <div v-if="!isCancel" class="flex-shrink-0 pt-1">
+              <input type="checkbox" :value="leave.id" v-model="selectedIds" class="w-4 h-4 rounded text-[#800000] focus:ring-[#800000] cursor-pointer">
+            </div>
             <!-- Avatar + User info -->
             <div class="flex items-start gap-4 flex-1">
               <div class="w-12 h-12 bg-[#800000] text-white rounded-xl flex items-center justify-center font-bold text-xl flex-shrink-0">
@@ -156,10 +186,27 @@
           </div>
         </div>
 
+        <!-- Quick Rejection Presets (แสดงเฉพาะกรณีปฏิเสธ) -->
+        <div v-if="!modal.isApprove" class="mb-3">
+          <p class="text-xs font-semibold text-gray-500 mb-2">เหตุผลด่วน:</p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="preset in rejectionPresets"
+              :key="preset"
+              type="button"
+              @click="modal.comment = preset"
+              :class="['px-3 py-1.5 text-xs font-medium rounded-full border transition-colors', modal.comment === preset ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-600 border-gray-300 hover:border-red-400 hover:text-red-600']"
+            >
+              {{ preset }}
+            </button>
+          </div>
+        </div>
+
         <textarea v-model="modal.comment" rows="3"
           :placeholder="modal.isApprove ? 'ความเห็น (ไม่บังคับ)' : 'ระบุเหตุผลที่ปฏิเสธ (ไม่บังคับ)'"
           class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-[#800000] transition-colors text-sm resize-none">
         </textarea>
+
         <div class="flex gap-3 mt-4">
           <button @click="modal.show = false" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors">ยกเลิก</button>
           <button @click="confirmAction" :class="['flex-1 py-2.5 text-white font-semibold rounded-xl text-sm transition-colors', modal.isApprove ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700']">
@@ -202,6 +249,45 @@ const getImageUrl = (path) => {
 const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 10
+const selectedIds = ref([])
+
+const rejectionPresets = [
+  'เอกสารแนบไม่สมบูรณ์/ไม่ชัดเจน',
+  'ภารกิจด่วนในช่วงเวลาดังกล่าว',
+  'ข้อมูลการลาซ้ำซ้อน',
+  'พ้นกำหนดเวลาการยื่นลาตามระเบียบ'
+]
+
+const toggleSelectAll = (e) => {
+  if (e.target.checked) {
+    selectedIds.value = filteredApprovals.value.map(l => l.id)
+  } else {
+    selectedIds.value = []
+  }
+}
+
+const bulkApprove = async () => {
+  if (selectedIds.value.length === 0) return
+  if (!confirm(`คุณต้องการอนุมัติใบลาจำนวน ${selectedIds.value.length} รายการที่เลือกใช่หรือไม่?`)) return
+  
+  loading.value = true
+  let successCount = 0
+  let failCount = 0
+  
+  for (const id of selectedIds.value) {
+    try {
+      await leaveStore.approveLeave(id, 'อนุมัติแบบกลุ่ม')
+      successCount++
+    } catch (e) {
+      failCount++
+    }
+  }
+  
+  selectedIds.value = []
+  alertStore.success(`อนุมัติสำเร็จ ${successCount} รายการ${failCount > 0 ? ` (ล้มเหลว ${failCount} รายการ)` : ''}`)
+  await loadApprovals()
+}
+
 
 const props = defineProps({
   isCancel: {

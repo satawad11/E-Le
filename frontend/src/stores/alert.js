@@ -23,6 +23,16 @@ export const useAlertStore = defineStore('alert', {
     },
     info(message, duration = 3000) {
       this.addAlert(message, 'info', duration)
+    },
+    // Aliases for compatibility
+    showSuccess(message, duration = 3000) {
+      this.success(message, duration)
+    },
+    showError(message, duration = 4000) {
+      this.error(message, duration)
+    },
+    showInfo(message, duration = 3000) {
+      this.info(message, duration)
     }
   }
 })

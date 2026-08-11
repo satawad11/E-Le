@@ -1,8 +1,28 @@
 <template>
   <div>
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900">โปรไฟล์ของฉัน</h1>
-      <p class="text-gray-500 mt-1">ดูและแก้ไขข้อมูลส่วนตัวของคุณ</p>
+    <div class="mb-8 flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">โปรไฟล์ของฉัน</h1>
+        <p class="text-gray-500 mt-1">ดูและแก้ไขข้อมูลส่วนตัวของคุณ</p>
+      </div>
+      <!-- สิทธิของเจ้าของข้อมูลตาม ม.30 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล -->
+      <div class="flex flex-wrap gap-2">
+        <router-link
+          to="/my-access-history"
+          class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          title="ดูว่าใครเปิดดูข้อมูลส่วนบุคคลของท่านบ้าง"
+        >
+          ประวัติการเข้าถึงข้อมูล
+        </router-link>
+        <button
+          type="button"
+          @click="downloadPersonalData"
+          class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          title="ดาวน์โหลดสำเนาข้อมูลส่วนบุคคลทั้งหมดที่ระบบเก็บไว้เกี่ยวกับท่าน"
+        >
+          ขอสำเนาข้อมูลส่วนบุคคล
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="flex justify-center py-16">
@@ -63,7 +83,20 @@
           </div>
           <div>
             <label class="block text-xs text-gray-700 mb-1">Telegram Chat ID</label>
-            <input v-model="form.telegram_chat_id" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+            <input v-model="form.telegram_chat_id" type="text" placeholder="เช่น 123456789" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-700 mb-1">LINE User ID / Account</label>
+            <input v-model="form.line_user_id" type="text" placeholder="เช่น U1234567890abcdef..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-700 mb-1">ช่องทางการแจ้งเตือนหลัก</label>
+            <select v-model="form.notification_channel" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
+              <option value="both">ทั้งสองช่องทาง (LINE & Telegram)</option>
+              <option value="line">LINE เท่านั้น</option>
+              <option value="telegram">Telegram เท่านั้น</option>
+              <option value="none">ปิดการแจ้งเตือน (None)</option>
+            </select>
           </div>
           <div class="md:col-span-2">
             <h3 class="text-lg font-bold text-red-700 mb-2 border-b pb-2 mt-4">ตั้งค่ารหัสผ่านใหม่</h3>
@@ -188,6 +221,20 @@ const alertStore = useAlertStore()
 
 const loading = ref(true)
 const submitting = ref(false)
+
+const downloadPersonalData = async () => {
+  try {
+    const res = await api.get('/profile/personal-data', { responseType: 'blob' })
+    const url = URL.createObjectURL(res.data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `personal-data-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    alertStore.error('ดาวน์โหลดสำเนาข้อมูลส่วนบุคคลไม่สำเร็จ')
+  }
+}
 const savingDelegation = ref(false)
 const usersList = ref([])
 
@@ -218,6 +265,8 @@ const form = reactive({
   email: '',
   phone: '',
   telegram_chat_id: '',
+  line_user_id: '',
+  notification_channel: 'both',
   password: '',
   role: null,
   department: null,
@@ -239,6 +288,8 @@ onMounted(async () => {
     form.email = user.email
     form.phone = user.phone || ''
     form.telegram_chat_id = user.telegram_chat_id || ''
+    form.line_user_id = user.line_user_id || ''
+    form.notification_channel = user.notification_channel || 'both'
     form.role = user.role
     form.department = user.department
     form.profile = user.profile || {}
@@ -373,6 +424,8 @@ const submitProfile = async () => {
     const formData = new FormData()
     formData.append('phone', form.phone || '')
     formData.append('telegram_chat_id', form.telegram_chat_id || '')
+    formData.append('line_user_id', form.line_user_id || '')
+    formData.append('notification_channel', form.notification_channel || 'both')
     
     // Add profile data as individual fields (Server expects an array)
     for (const key in form.profile) {

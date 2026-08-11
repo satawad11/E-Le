@@ -113,6 +113,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '../axios'
+import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
+
 
 const currentDate = new Date()
 const currentMonth = ref(currentDate.getMonth())
@@ -211,9 +213,10 @@ const showLeaveDetails = (leave) => {
 }
 
 const formatDate = (dateStr) => {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
+  if (!dateStr) return '-'
+  return ThaiDateFormatter.toThaiShortText(dateStr)
 }
+
 
 onMounted(() => {
   fetchTeamLeaves()

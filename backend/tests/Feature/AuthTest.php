@@ -26,12 +26,12 @@ class AuthTest extends TestCase
         $user->assignRole('Employee');
 
         $response = $this->postJson('/api/login', [
-            'employee_id' => $user->employee_id,
+            'email'       => $user->email,
             'password'    => 'password123',
         ]);
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['token', 'user']);
+            ->assertJsonStructure(['access_token', 'token_type', 'user']);
     }
 
     public function test_login_fails_with_wrong_password(): void
@@ -42,11 +42,11 @@ class AuthTest extends TestCase
         $user->assignRole('Employee');
 
         $response = $this->postJson('/api/login', [
-            'employee_id' => $user->employee_id,
+            'email'       => $user->email,
             'password'    => 'wrongpassword',
         ]);
 
-        $response->assertStatus(401);
+        $response->assertStatus(422);
     }
 
     public function test_authenticated_user_can_get_profile(): void

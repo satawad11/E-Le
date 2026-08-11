@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+﻿import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import DashboardView from '../views/DashboardView.vue'
 import LeaveRequestView from '../views/LeaveRequestView.vue'
@@ -83,6 +83,18 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 'view_users' }
     },
     {
+      path: '/admin/menus',
+      name: 'admin-menus',
+      component: () => import('../views/admin/MenusManagementView.vue'),
+      meta: { requiresAuth: true, permission: 'edit_users' }
+    },
+    {
+      path: '/admin/roles',
+      name: 'admin-roles',
+      component: () => import('../views/admin/RolesManagementView.vue'),
+      meta: { requiresAuth: true, permission: 'edit_users' }
+    },
+    {
       path: '/admin/attendances',
       name: 'admin-attendances',
       component: () => import('../views/admin/AttendanceReportView.vue'),
@@ -128,6 +140,18 @@ const router = createRouter({
       path: '/admin/fiscal-years',
       name: 'admin-fiscal-years',
       component: () => import('../views/admin/FiscalYearManagementView.vue'),
+      meta: { requiresAuth: true, permission: 'manage_settings' }
+    },
+    {
+      path: '/admin/export-settings',
+      name: 'admin-export-settings',
+      component: () => import('../views/admin/ExportSettingsView.vue'),
+      meta: { requiresAuth: true, permission: 'manage_settings' }
+    },
+    {
+      path: '/admin/document-templates',
+      name: 'admin-document-templates',
+      component: () => import('../views/admin/DocumentTemplatesView.vue'),
       meta: { requiresAuth: true, permission: 'manage_settings' }
     },
     {
@@ -233,9 +257,10 @@ router.beforeEach(async (to, from) => {
     return { name: 'login' }
   } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
     return { name: 'dashboard' }
-  } else if (to.meta.permission && !authStore.isAdmin && !authStore.hasPermission(to.meta.permission) && !(to.meta.permission.startsWith('saraban.') && authStore.isSarabanOfficer)) {
+  } else if (to.meta.permission && !authStore.isAdmin && !authStore.hasPermission(to.meta.permission)) {
     return { name: 'dashboard' }
   }
 })
 
 export default router
+

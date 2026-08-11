@@ -44,12 +44,21 @@ class LeaveTest extends TestCase
         ]);
     }
 
+    /** ต้องเป็นวันทำการเสมอ ไม่งั้นเทสต์จะล้มเองเมื่อรันในวันที่ +5 วันตกเสาร์-อาทิตย์ */
+    private function workdayRange(): array
+    {
+        $start = now()->addWeek()->nextWeekday();
+        return [$start->toDateString(), $start->copy()->nextWeekday()->toDateString()];
+    }
+
     public function test_employee_can_submit_leave_request(): void
     {
+        [$start, $end] = $this->workdayRange();
+
         $response = $this->actingAs($this->employee)->postJson('/api/leaves', [
             'leave_type_id' => $this->leaveType->id,
-            'start_date'    => now()->addDays(5)->toDateString(),
-            'end_date'      => now()->addDays(6)->toDateString(),
+            'start_date'    => $start,
+            'end_date'      => $end,
             'reason'        => 'ป่วย ไข้หวัด',
         ]);
 
@@ -90,15 +99,18 @@ class LeaveTest extends TestCase
 
     public function test_employee_can_cancel_pending_leave(): void
     {
+        [$start, $end] = $this->workdayRange();
+
         // Create a leave
         $leaveResponse = $this->actingAs($this->employee)->postJson('/api/leaves', [
             'leave_type_id' => $this->leaveType->id,
-            'start_date'    => now()->addDays(5)->toDateString(),
-            'end_date'      => now()->addDays(6)->toDateString(),
+            'start_date'    => $start,
+            'end_date'      => $end,
             'reason'        => 'ทดสอบ',
         ]);
 
         $leaveId = $leaveResponse->json('leave.id');
+        $this->assertGreaterThan(0, \App\Models\LeaveBalance::where('user_id', $this->employee->id)->value('reserved'));
 
         $cancelResponse = $this->actingAs($this->employee)
             ->postJson("/api/leaves/{$leaveId}/cancel");
@@ -110,6 +122,9 @@ class LeaveTest extends TestCase
             'id'     => $leaveId,
             'status' => 'Cancelled',
         ]);
+
+        // ยกเลิกตอนรออนุมัติต้องคืนวันที่จองไว้ ไม่งั้นสิทธิ์จะหายถาวร
+        $this->assertEquals(0.0, (float) \App\Models\LeaveBalance::where('user_id', $this->employee->id)->value('reserved'));
     }
 
     public function test_employee_cannot_cancel_approved_leave(): void

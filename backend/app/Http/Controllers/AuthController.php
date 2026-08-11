@@ -49,8 +49,9 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         $user->load('department', 'profile');
-        $user->permissions = $user->getAllPermissions()->pluck('name');
-        $user->role_names = $user->roles->pluck('name');
+        $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
+        $user->direct_permissions = array_values(array_unique($user->getDirectPermissions()->pluck('name')->toArray()));
+        $user->role_names = array_values(array_unique($user->roles->pluck('name')->toArray()));
 
         return response()->json([
             'access_token' => $token,
@@ -61,7 +62,19 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $accessToken = $request->user()?->currentAccessToken();
+
+        // Session-authenticated requests receive Sanctum's TransientToken,
+        // which is not a persisted model and therefore cannot be deleted.
+        if ($accessToken && method_exists($accessToken, 'delete')) {
+            $accessToken->delete();
+        }
+
+        Auth::guard('web')->logout();
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
         return response()->json(['message' => 'Logged out successfully']);
     }
@@ -69,8 +82,9 @@ class AuthController extends Controller
     public function user(Request $request)
     {
         $user = $request->user()->load('department', 'profile');
-        $user->permissions = $user->getAllPermissions()->pluck('name');
-        $user->role_names = $user->roles->pluck('name');
+        $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
+        $user->direct_permissions = array_values(array_unique($user->getDirectPermissions()->pluck('name')->toArray()));
+        $user->role_names = array_values(array_unique($user->roles->pluck('name')->toArray()));
         
         return response()->json($user);
     }

@@ -30,7 +30,7 @@ class ApprovalTest extends TestCase
         $dept     = Department::create(['name' => 'ทดสอบ']);
 
         // Approval step: Manager approves at step 1
-        ApprovalStep::create(['role_id' => $mgmtRole->id, 'step_order' => 1]);
+        ApprovalStep::create(['name' => 'Manager approval', 'role_id' => $mgmtRole->id, 'step_order' => 1]);
 
         $this->employee = User::factory()->create([
             'department_id' => $dept->id,

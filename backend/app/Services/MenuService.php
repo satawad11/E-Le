@@ -1,0 +1,112 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Menu;
+use App\Models\User;
+use Illuminate\Support\Facades\Cache;
+
+class MenuService
+{
+    /**
+     * Get accessible menu tree for the given user.
+     */
+    public function getUserMenuTree(User $user): array
+    {
+        $cacheKey = "user_menu_tree_{$user->id}";
+
+        return Cache::remember($cacheKey, 3600, function () use ($user) {
+            $userPermissions = $user->getAllPermissions()->pluck('name')->toArray();
+            $isAdmin = $user->hasRole('admin') || $user->hasRole('super_admin') || $user->hasRole('admin_saraban');
+
+            $rootMenus = Menu::with(['children.permissions', 'permissions'])
+                ->whereNull('parent_id')
+                ->where('is_active', true)
+                ->orderBy('sort_order', 'asc')
+                ->get();
+
+            $result = [];
+            foreach ($rootMenus as $menu) {
+                $formatted = $this->formatMenuItem($menu, $userPermissions, $isAdmin);
+                if ($formatted) {
+                    $result[] = $formatted;
+                }
+            }
+
+            return $result;
+        });
+    }
+
+    /**
+     * Format menu item and filter authorized children.
+     */
+    protected function formatMenuItem(Menu $menu, array $userPermissions, bool $isAdmin): ?array
+    {
+        if (!$menu->is_active) {
+            return null;
+        }
+
+        // Check if user is authorized for this menu item
+        if (!$this->isAuthorized($menu, $userPermissions, $isAdmin)) {
+            return null;
+        }
+
+        $children = [];
+        if ($menu->children && $menu->children->count() > 0) {
+            foreach ($menu->children as $child) {
+                $formattedChild = $this->formatMenuItem($child, $userPermissions, $isAdmin);
+                if ($formattedChild) {
+                    $children[] = $formattedChild;
+                }
+            }
+        }
+
+        // If it's a parent menu without route_path and all children are unauthorized, omit parent
+        if (empty($menu->route_path) && empty($menu->route_name) && empty($children) && $menu->children->count() > 0) {
+            return null;
+        }
+
+        return [
+            'id' => $menu->id,
+            'code' => $menu->code,
+            'title_th' => $menu->title_th,
+            'title_en' => $menu->title_en,
+            'module' => $menu->module,
+            'icon' => $menu->icon,
+            'route_name' => $menu->route_name,
+            'route_path' => $menu->route_path,
+            'component_path' => $menu->component_path,
+            'is_external' => $menu->is_external,
+            'sort_order' => $menu->sort_order,
+            'children' => $children,
+        ];
+    }
+
+    /**
+     * Determine if user has permission for a menu item.
+     */
+    protected function isAuthorized(Menu $menu, array $userPermissions, bool $isAdmin): bool
+    {
+        if ($isAdmin) {
+            return true;
+        }
+
+        $requiredPermissions = $menu->permissions->pluck('name')->toArray();
+
+        // If no permissions attached, accessible to all logged in users
+        if (empty($requiredPermissions)) {
+            return true;
+        }
+
+        // User must have at least one of the required permissions
+        return count(array_intersect($requiredPermissions, $userPermissions)) > 0;
+    }
+
+    /**
+     * Clear menu cache for a specific user.
+     */
+    public function clearUserMenuCache(User $user): void
+    {
+        Cache::forget("user_menu_tree_{$user->id}");
+    }
+}

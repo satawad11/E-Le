@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <div class="min-h-screen flex bg-gray-50">
     <AlertList />
 
     <!-- Sidebar (desktop) -->
     <aside
-      v-if="route.name !== 'login'"
+      v-if="!isBareLayout"
       class="hidden md:flex md:flex-col bg-[#800000] text-white shadow-2xl flex-shrink-0 transition-all duration-300 relative"
       :class="isSidebarCollapsed ? 'w-20' : 'w-64'"
     >
@@ -103,6 +103,15 @@
               รายงานสถิติการลา
             </router-link>
 
+            <!-- บัตรลา -->
+            <router-link
+              to="/leave-card"
+              class="nav-link !py-2 !text-sm"
+              active-class="nav-link-active"
+            >
+              บัตรลา
+            </router-link>
+
             <!-- รายการใบลา -->
             <router-link
               to="/leaves"
@@ -158,11 +167,21 @@
             >
               จัดการ/ซิงค์วันลา (HR)
             </router-link>
+
+            <!-- คัดกรองเกณฑ์เลื่อนเงินเดือน -->
+            <router-link
+              v-if="authStore.hasAnyPermission(['leave.report.view', 'leave.management.manage'])"
+              to="/admin/promotion-screening"
+              class="nav-link !py-2 !text-sm"
+              active-class="nav-link-active"
+            >
+              คัดกรองเลื่อนเงินเดือน
+            </router-link>
           </div>
         </div>
 
-        <!-- ระบบลงเวลาออนไลน์ Collapsible -->
-        <div>
+        <!-- ระบบลงเวลาออนไลน์ Collapsible — แสดงเฉพาะผู้ที่มีสิทธิ์ attendance module และเปิดใช้งานโมดูล -->
+        <div v-if="settingStore.isAttendanceEnabled && authStore.hasAttendanceAccess">
           <button
             @click="attendanceMenuOpen = !attendanceMenuOpen; if(isSidebarCollapsed) isSidebarCollapsed = false"
             class="nav-link w-full flex justify-between items-center"
@@ -179,10 +198,11 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
             </svg>
           </button>
-          
+
           <div v-show="attendanceMenuOpen && !isSidebarCollapsed" class="mt-1 space-y-1 pl-9">
             <!-- ลงเวลาเข้า-ออก -->
             <router-link
+              v-if="authStore.canCheckIn"
               to="/attendance/check-in"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -192,6 +212,7 @@
 
             <!-- ประวัติการลงเวลา -->
             <router-link
+              v-if="authStore.canViewSelfAttendance"
               to="/attendance/history"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -199,9 +220,9 @@
               ประวัติการลงเวลา
             </router-link>
 
-            <!-- รายงานการลงเวลา (Admin) -->
+            <!-- รายงานการลงเวลา (Admin/HR) -->
             <router-link
-              v-if="authStore.isAdmin || authStore.isHRHead"
+              v-if="authStore.canViewAllAttendance"
               to="/admin/attendances"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -209,9 +230,9 @@
               รายงานการลงเวลา
             </router-link>
 
-            <!-- สรุปผลการปฏิบัติงาน (Admin) -->
+            <!-- สรุปผลการปฏิบัติงาน (Admin/HR) -->
             <router-link
-              v-if="authStore.isAdmin || authStore.isHRHead"
+              v-if="authStore.canViewAllAttendance"
               to="/admin/attendances/summary"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -219,9 +240,9 @@
               สรุปผลการปฏิบัติงาน
             </router-link>
 
-            <!-- สรุปผลการปฏิบัติงาน (OT) -->
+            <!-- สรุปผล OT -->
             <router-link
-              v-if="authStore.isAdmin || authStore.isHRHead"
+              v-if="authStore.canManageOT"
               to="/admin/ot-summary"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -231,19 +252,19 @@
           </div>
         </div>
 
-        <!-- ระบบสารบัญอิเล็กทรอนิกส์ Collapsible -->
-        <div v-if="globalSettings.enable_saraban_menu !== '0'">
+        <!-- ระบบสารบรรณอิเล็กทรอนิกส์ Collapsible -->
+        <div v-if="settingStore.isSarabanEnabled && (authStore.isAdmin || authStore.hasAnyPermission(['saraban.view', 'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast', 'saraban.setting.manage']))">
           <button
             @click="sarabanMenuOpen = !sarabanMenuOpen; if(isSidebarCollapsed) isSidebarCollapsed = false"
             class="nav-link w-full flex justify-between items-center"
             :class="[isSarabanRouteActive ? 'bg-white/10 text-white' : '', isSidebarCollapsed ? 'justify-center px-0' : '']"
-            :title="isSidebarCollapsed ? 'ระบบสารบัญ' : ''"
+            :title="isSidebarCollapsed ? 'ระบบสารบรรณ' : ''"
           >
             <div class="flex items-center gap-3">
               <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
-              <span v-show="!isSidebarCollapsed" class="whitespace-nowrap">ระบบสารบัญ</span>
+              <span v-show="!isSidebarCollapsed" class="whitespace-nowrap">ระบบสารบรรณ</span>
             </div>
             <svg v-show="!isSidebarCollapsed" class="w-4 h-4 transition-transform duration-200 flex-shrink-0" :class="{ 'rotate-180': sarabanMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -309,7 +330,7 @@
 
             <!-- จัดการหมวดหมู่เอกสาร -->
             <router-link
-              v-if="authStore.isAdmin || authStore.isSarabanOfficer"
+              v-if="authStore.isAdmin || authStore.hasAnyPermission(['saraban.config.manage', 'saraban.setting.manage', 'saraban.document.manage_types'])"
               to="/saraban/types"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -325,14 +346,14 @@
             >
               สายการอนุมัติ
             </router-link>
-            <!-- ตั้งค่าระบบสารบัญ -->
+            <!-- ตั้งค่าระบบสารบรรณ -->
             <router-link
               v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')"
               to="/saraban/settings"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
             >
-              ตั้งค่าระบบสารบัญ
+              ตั้งค่าระบบสารบรรณ
             </router-link>
           </div>
         </div>
@@ -344,21 +365,48 @@
           <div v-else class="h-px bg-white/20 mx-4 my-2"></div>
         </div>
 
-        <!-- SuperAdmin & HR: จัดการผู้ใช้ -->
-        <router-link
-          v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasPermission('admin-users')"
-          to="/admin/users"
-          class="nav-link flex items-center"
-          :class="isSidebarCollapsed ? 'justify-center px-0' : ''"
-          active-class="nav-link-active"
-          :title="isSidebarCollapsed ? 'จัดการผู้ใช้' : ''"
-        >
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
-          <span v-show="!isSidebarCollapsed" class="whitespace-nowrap">จัดการผู้ใช้</span>
-        </router-link>
+        <!-- SuperAdmin & HR: จัดการผู้ใช้งาน Collapsible -->
+        <div v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasPermission('admin-users')">
+          <button
+            @click="userMenuOpen = !userMenuOpen; if(isSidebarCollapsed) isSidebarCollapsed = false"
+            class="nav-link w-full flex justify-between items-center"
+            :class="[isUserRouteActive ? 'bg-white/10 text-white' : '', isSidebarCollapsed ? 'justify-center px-0' : '']"
+            :title="isSidebarCollapsed ? 'จัดการผู้ใช้งาน' : ''"
+          >
+            <div class="flex items-center gap-3">
+              <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+              <span v-show="!isSidebarCollapsed" class="whitespace-nowrap">จัดการผู้ใช้งาน</span>
+            </div>
+            <svg v-show="!isSidebarCollapsed" class="w-4 h-4 transition-transform duration-200 flex-shrink-0" :class="{ 'rotate-180': userMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
+          <div v-show="userMenuOpen && !isSidebarCollapsed" class="mt-1 space-y-1 pl-9">
+            <router-link to="/admin/users" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+              รายชื่อผู้ใช้งาน
+            </router-link>
+            <router-link
+              v-if="authStore.isAdmin || authStore.hasPermission('edit_users')"
+              to="/admin/menus"
+              class="nav-link !py-2 !text-sm"
+              active-class="nav-link-active"
+            >
+              จัดการเมนูตามสิทธิ์
+            </router-link>
+            <router-link
+              v-if="authStore.isAdmin || authStore.hasPermission('edit_users')"
+              to="/admin/roles"
+              class="nav-link !py-2 !text-sm"
+              active-class="nav-link-active"
+            >
+              จัดการบทบาทและสิทธิ์
+            </router-link>
+          </div>
+        </div>
 
         <!-- SuperAdmin only: ตั้งค่าระบบ Collapsible -->
         <div v-if="authStore.hasAnySettingsMenu">
@@ -384,6 +432,9 @@
             <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-settings')" to="/admin/settings" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               ข้อมูลสถานศึกษา
             </router-link>
+            <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-settings')" to="/admin/export-settings" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+              ตั้งค่าแบบฟอร์ม & ส่งออก
+            </router-link>
             <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-departments')" to="/admin/departments" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               จัดการแผนกวิชา
             </router-link>
@@ -398,6 +449,10 @@
             </router-link>
             <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-notifications')" to="/admin/notifications" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               การแจ้งเตือน
+            </router-link>
+
+            <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-settings')" to="/admin/document-templates" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+              จัดการแม่แบบเอกสาร
             </router-link>
             <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-settings')" to="/admin/modules" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               โมดูลระบบ
@@ -431,7 +486,7 @@
 
       <!-- Mobile top bar -->
       <header
-        v-if="route.name !== 'login'"
+        v-if="!isBareLayout"
         class="md:hidden bg-[#800000] text-white px-4 py-3 flex justify-between items-center shadow-md z-10 relative"
       >
         <div class="flex items-center gap-2">
@@ -452,7 +507,12 @@
 
       <!-- Mobile menu -->
       <transition name="slide-down">
-        <div v-if="mobileMenu && route.name !== 'login'" class="md:hidden bg-[#700000] text-white px-4 py-3 space-y-1 shadow-md">
+        <div v-if="mobileMenu && !isBareLayout" class="relative md:hidden z-40">
+          <!-- Dark backdrop overlay -->
+          <div class="fixed inset-0 bg-black/50 z-30" @click="mobileMenu = false"></div>
+          <!-- Mobile menu panel -->
+          <div class="bg-[#700000] text-white px-4 py-3 space-y-1 shadow-md relative z-40">
+
           <router-link to="/" @click="mobileMenu=false"
             class="flex items-center gap-2 px-3 py-2 rounded-lg text-white/80 hover:bg-white/10"
             active-class="!bg-white/20 !text-white">
@@ -484,6 +544,11 @@
                 active-class="!bg-white/20 !text-white">
                 รายงานสถิติการลา
               </router-link>
+              <router-link to="/leave-card" @click="mobileMenu=false"
+                class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
+                active-class="!bg-white/20 !text-white">
+                บัตรลา
+              </router-link>
               <router-link to="/leaves" @click="mobileMenu=false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
                 active-class="!bg-white/20 !text-white">
@@ -509,7 +574,7 @@
             </div>
           </div>
           <!-- ระบบลงเวลาออนไลน์ Collapsible (Mobile) -->
-          <div>
+          <div v-if="settingStore.isAttendanceEnabled && authStore.hasAttendanceAccess">
             <button @click="attendanceMenuOpen = !attendanceMenuOpen"
               class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-white/80 hover:bg-white/10"
               :class="{ 'bg-white/20 text-white': isAttendanceRouteActive }">
@@ -521,29 +586,29 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
-            
+
             <div v-show="attendanceMenuOpen" class="mt-1 pl-6 space-y-1">
-              <router-link to="/attendance/check-in" @click="mobileMenu=false"
+              <router-link v-if="authStore.canCheckIn" to="/attendance/check-in" @click="mobileMenu=false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
                 active-class="!bg-white/20 !text-white">
                 ลงเวลาปฏิบัติงาน
               </router-link>
-              <router-link to="/attendance/history" @click="mobileMenu=false"
+              <router-link v-if="authStore.canViewSelfAttendance" to="/attendance/history" @click="mobileMenu=false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
                 active-class="!bg-white/20 !text-white">
                 ประวัติการลงเวลา
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.isHRHead" to="/admin/attendances" @click="mobileMenu=false"
+              <router-link v-if="authStore.canViewAllAttendance" to="/admin/attendances" @click="mobileMenu=false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
                 active-class="!bg-white/20 !text-white">
                 รายงานการลงเวลา
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.isHRHead" to="/admin/attendances/summary" @click="mobileMenu=false"
+              <router-link v-if="authStore.canViewAllAttendance" to="/admin/attendances/summary" @click="mobileMenu=false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
                 active-class="!bg-white/20 !text-white">
                 สรุปผลการปฏิบัติงาน
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.isHRHead" to="/admin/ot-summary" @click="mobileMenu=false"
+              <router-link v-if="authStore.canManageOT" to="/admin/ot-summary" @click="mobileMenu=false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
                 active-class="!bg-white/20 !text-white">
                 สรุปผลการปฏิบัติงาน (OT)
@@ -551,14 +616,15 @@
             </div>
           </div>
 
-          <!-- ระบบสารบัญอิเล็กทรอนิกส์ Collapsible (Mobile) -->
-          <div v-if="(globalSettings.enable_saraban_menu !== '0') && (authStore.isAdmin || authStore.isSarabanOfficer || authStore.hasPermission('saraban.document.view') || authStore.isManager)">
+
+          <!-- ระบบสารบรรณอิเล็กทรอนิกส์ Collapsible (Mobile) -->
+          <div v-if="settingStore.isSarabanEnabled && (authStore.isAdmin || authStore.hasAnyPermission(['saraban.view', 'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast', 'saraban.setting.manage']))">
             <button @click="sarabanMenuOpen = !sarabanMenuOpen"
               class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-white/80 hover:bg-white/10"
               :class="{ 'bg-white/20 text-white': isSarabanRouteActive }">
               <div class="flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                ระบบสารบัญ
+                ระบบสารบรรณ
               </div>
               <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': sarabanMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -611,17 +677,43 @@
               <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/saraban/settings" @click="mobileMenu=false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
                 active-class="!bg-white/20 !text-white">
-                ตั้งค่าระบบสารบัญ
+                ตั้งค่าระบบสารบรรณ
               </router-link>
             </div>
           </div>
 
-          <router-link v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasPermission('admin-users')" to="/admin/users" @click="mobileMenu=false"
-            class="flex items-center gap-2 px-3 py-2 rounded-lg text-white/80 hover:bg-white/10"
-            active-class="!bg-white/20 !text-white">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            จัดการผู้ใช้
-          </router-link>
+          <!-- จัดการผู้ใช้งาน Collapsible (Mobile) -->
+          <div v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasPermission('admin-users')">
+            <button @click="userMenuOpen = !userMenuOpen"
+              class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-white/80 hover:bg-white/10"
+              :class="{ 'bg-white/20 text-white': isUserRouteActive }">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                จัดการผู้ใช้งาน
+              </div>
+              <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': userMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+
+            <div v-show="userMenuOpen" class="mt-1 pl-6 space-y-1">
+              <router-link to="/admin/users" @click="mobileMenu=false"
+                class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
+                active-class="!bg-white/20 !text-white">
+                รายชื่อผู้ใช้งาน
+              </router-link>
+              <router-link v-if="authStore.isAdmin || authStore.hasPermission('edit_users')" to="/admin/menus" @click="mobileMenu=false"
+                class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
+                active-class="!bg-white/20 !text-white">
+                จัดการเมนูตามสิทธิ์
+              </router-link>
+              <router-link v-if="authStore.isAdmin || authStore.hasPermission('edit_users')" to="/admin/roles" @click="mobileMenu=false"
+                class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
+                active-class="!bg-white/20 !text-white">
+                จัดการบทบาทและสิทธิ์
+              </router-link>
+            </div>
+          </div>
           <!-- SuperAdmin only: ตั้งค่าระบบ Collapsible (Mobile) -->
           <div v-if="authStore.hasAnySettingsMenu">
             <button @click="adminMenuOpen = !adminMenuOpen"
@@ -641,6 +733,20 @@
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
                 active-class="!bg-white/20 !text-white">
                 ข้อมูลสถานศึกษา
+              </router-link>              <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-settings')" to="/admin/export-settings" @click="mobileMenu=false"
+                class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
+                active-class="!bg-white/20 !text-white">
+                ตั้งค่าแบบฟอร์มและส่งออก
+              </router-link>
+              <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-settings')" to="/admin/document-templates" @click="mobileMenu=false"
+                class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
+                active-class="!bg-white/20 !text-white">
+                จัดการแม่แบบเอกสาร
+              </router-link>
+              <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-settings')" to="/admin/notifications" @click="mobileMenu=false"
+                class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
+                active-class="!bg-white/20 !text-white">
+                การแจ้งเตือน
               </router-link>
               <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-departments')" to="/admin/departments" @click="mobileMenu=false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
@@ -662,10 +768,10 @@
                 active-class="!bg-white/20 !text-white">
                 ปีงบประมาณ
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-notifications')" to="/admin/notifications" @click="mobileMenu=false"
+              <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-settings')" to="/admin/modules" @click="mobileMenu=false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
                 active-class="!bg-white/20 !text-white">
-                การแจ้งเตือน
+                โมดูลระบบ
               </router-link>
             </div>
           </div>
@@ -676,12 +782,13 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
             ออกจากระบบ
           </button>
+          </div>
         </div>
       </transition>
 
       <!-- Desktop Header -->
       <header
-        v-if="route.name !== 'login'"
+        v-if="!isBareLayout"
         class="hidden md:flex bg-white shadow-sm border-b border-gray-200 px-8 py-3 justify-end items-center gap-4 z-10"
       >
         <NotificationBell />
@@ -726,23 +833,27 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useLeaveStore } from './stores/leave'
+import { useSettingStore } from './stores/settingStore'
 import AlertList from './components/AlertList.vue'
 import NotificationBell from './components/NotificationBell.vue'
 import api from './axios'
 
 const router = useRouter()
 const route  = useRoute()
+// หน้าที่ไม่ต้องมีเมนู/แถบบน และไม่ต้องนับเวลาหมดอายุการใช้งาน (หน้าล็อกอิน และหน้าตรวจสอบเอกสารสาธารณะ)
+const isBareLayout = computed(() => ['login', 'verify-leave'].includes(route.name))
 const authStore = useAuthStore()
 const leaveStore = useLeaveStore()
+const settingStore = useSettingStore()
 const mobileMenu = ref(false)
 const showLogoutModal = ref(false)
 const isSidebarCollapsed = ref(false)
-const globalSettings = ref({})
 
 const leaveMenuOpen = ref(false)
 const attendanceMenuOpen = ref(false)
 const adminMenuOpen = ref(false)
 const sarabanMenuOpen = ref(false)
+const userMenuOpen = ref(false)
 
 const isLeaveRouteActive = computed(() => {
   return ['request', 'leaves', 'reports', 'approvals', 'cancel-approvals', 'team-calendar'].includes(route.name)
@@ -751,10 +862,13 @@ const isAttendanceRouteActive = computed(() => {
   return ['attendance-check-in', 'attendance-history', 'admin-attendances'].includes(route.name)
 })
 const isAdminRouteActive = computed(() => {
-  return ['admin-settings', 'admin-departments', 'admin-workflow', 'admin-leave-types', 'admin-fiscal-years', 'admin-notifications'].includes(route.name)
+  return ['admin-settings', 'admin-export-settings', 'admin-document-templates', 'admin-modules', 'admin-departments', 'admin-workflow', 'admin-leave-types', 'admin-fiscal-years', 'admin-notifications'].includes(route.name)
 })
 const isSarabanRouteActive = computed(() => {
   return ['saraban-list', 'saraban-create', 'saraban-detail'].includes(route.name)
+})
+const isUserRouteActive = computed(() => {
+  return ['admin-users', 'admin-menus', 'admin-roles'].includes(route.name)
 })
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -763,7 +877,7 @@ let idleTimer = null;
 let countdownInterval = null;
 
 const resetIdleTimer = () => {
-  if (route.name === 'login') return;
+  if (isBareLayout) return;
   idleTimeLeft.value = IDLE_TIMEOUT_MS;
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
@@ -772,7 +886,7 @@ const resetIdleTimer = () => {
 };
 
 const updateCountdown = () => {
-  if (route.name === 'login') return;
+  if (isBareLayout) return;
   idleTimeLeft.value = Math.max(0, idleTimeLeft.value - 1000);
 };
 
@@ -784,16 +898,7 @@ const formattedIdleTime = computed(() => {
 });
 
 onMounted(async () => {
-  if (authStore.token && !authStore.user) {
-    await authStore.fetchUser()
-  }
-
-  try {
-    const res = await api.get('/settings')
-    globalSettings.value = res.data || {}
-  } catch (e) {
-    console.error('Failed to fetch global settings', e)
-  }
+  await settingStore.fetchSettings();
 
   window.addEventListener('mousemove', resetIdleTimer);
   window.addEventListener('keydown', resetIdleTimer);
@@ -904,4 +1009,5 @@ const doLogout = () => {
   opacity: 0;
 }
 </style>
+
 

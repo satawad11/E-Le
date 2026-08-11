@@ -156,6 +156,7 @@
 import { ref, onMounted, watch } from 'vue'
 import api from '../../axios'
 import Swal from 'sweetalert2'
+import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 
 const activeTab = ref('incoming')
 const loading = ref(false)
@@ -168,7 +169,7 @@ const selectedCircular = ref(null)
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return ThaiDateFormatter.toThaiDateTime(dateStr)
 }
 
 const getAckCount = (circular) => {

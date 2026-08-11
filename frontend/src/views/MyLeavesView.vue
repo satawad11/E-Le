@@ -422,10 +422,10 @@ const downloadWord = async (leave) => {
   wordLoading.value = leave.id
   try {
     const response = await api.get(`/leaves/${leave.id}/word`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/msword' }))
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }))
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', generateFilename(leave, 'doc'))
+    link.setAttribute('download', generateFilename(leave, 'docx'))
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -464,10 +464,10 @@ const downloadCancelWord = async (leave) => {
   wordLoading.value = 'cancel_'+leave.id
   try {
     const response = await api.get(`/leaves/${leave.id}/word?form=cancel`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/msword' }))
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }))
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', generateFilename(leave, 'doc', true))
+    link.setAttribute('download', generateFilename(leave, 'docx', true))
     document.body.appendChild(link)
     link.click()
     link.remove()

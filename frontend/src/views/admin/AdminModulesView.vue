@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="space-y-6">
     <div class="flex justify-between items-center">
       <h1 class="text-2xl font-bold text-gray-800">โมดูลระบบ</h1>
@@ -16,14 +16,37 @@
         <!-- Saraban Module Toggle -->
         <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div>
-            <h4 class="text-md font-semibold text-gray-800">ระบบรับ-ส่งเอกสาร (สารบัญ)</h4>
+            <h4 class="text-md font-semibold text-gray-800">ระบบรับ-ส่งเอกสาร (สารบรรณ)</h4>
             <p class="text-sm text-gray-500 mt-1">อนุญาตให้ผู้ใช้งานสร้าง ส่ง และรับเอกสารภายในองค์กร</p>
           </div>
           
           <label class="flex items-center cursor-pointer relative">
-            <input type="checkbox" v-model="settings.enable_saraban_menu" true-value="1" false-value="0" class="sr-only">
+            <input type="checkbox" aria-label="เปิดหรือปิดระบบสารบรรณ" v-model="settings.enable_saraban_menu" true-value="1" false-value="0" class="sr-only">
             <div class="w-14 h-7 bg-gray-300 rounded-full transition-colors duration-300 shadow-inner" :class="{'bg-green-500': settings.enable_saraban_menu === '1'}"></div>
             <div class="absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform duration-300 shadow" :class="{'translate-x-7': settings.enable_saraban_menu === '1'}"></div>
+          </label>
+        </div>
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div>
+            <h4 class="text-md font-semibold text-gray-800">ระบบลงเวลาออนไลน์</h4>
+            <p class="text-sm text-gray-500 mt-1">เปิดเมนูลงเวลา ประวัติ และรายงานการลงเวลา</p>
+          </div>
+          <label class="flex items-center cursor-pointer relative">
+            <input type="checkbox" aria-label="เปิดหรือปิดระบบลงเวลาออนไลน์" v-model="settings.enable_attendance_menu" true-value="1" false-value="0" class="sr-only">
+            <div class="w-14 h-7 bg-gray-300 rounded-full transition-colors duration-300 shadow-inner" :class="{'bg-green-500': settings.enable_attendance_menu === '1'}"></div>
+            <div class="absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform duration-300 shadow" :class="{'translate-x-7': settings.enable_attendance_menu === '1'}"></div>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div>
+            <h4 class="text-md font-semibold text-gray-800">ระบบบริหารการลา</h4>
+            <p class="text-sm text-gray-500 mt-1">เปิดเมนูคำขอลา การอนุมัติ และรายงานการลา</p>
+          </div>
+          <label class="flex items-center cursor-pointer relative">
+            <input type="checkbox" aria-label="เปิดหรือปิดระบบบริหารการลา" v-model="settings.enable_leave_menu" true-value="1" false-value="0" class="sr-only">
+            <div class="w-14 h-7 bg-gray-300 rounded-full transition-colors duration-300 shadow-inner" :class="{'bg-green-500': settings.enable_leave_menu === '1'}"></div>
+            <div class="absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform duration-300 shadow" :class="{'translate-x-7': settings.enable_leave_menu === '1'}"></div>
           </label>
         </div>
       </div>
@@ -40,13 +63,17 @@ const alertStore = useAlertStore()
 
 const isSaving = ref(false)
 const settings = ref({
-  enable_saraban_menu: '0'
+  enable_saraban_menu: '1',
+  enable_attendance_menu: '1',
+  enable_leave_menu: '1'
 })
 
 const fetchSettings = async () => {
   try {
     const response = await api.get('/admin/settings')
-    settings.value.enable_saraban_menu = response.data.enable_saraban_menu || '0'
+    settings.value.enable_saraban_menu = response.data.enable_saraban_menu ?? '1'
+    settings.value.enable_attendance_menu = response.data.enable_attendance_menu ?? '1'
+    settings.value.enable_leave_menu = response.data.enable_leave_menu ?? '1'
   } catch (error) {
     alertStore.error('โหลดข้อมูลการตั้งค่าล้มเหลว')
   }
@@ -73,3 +100,4 @@ onMounted(() => {
   fetchSettings()
 })
 </script>
+

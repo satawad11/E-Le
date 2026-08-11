@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentSignature;
 use App\Services\Saraban\DocumentWorkflowService;
+use App\Services\Saraban\AuditLogService;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 
 class SignatureController extends Controller
@@ -38,6 +40,13 @@ class SignatureController extends Controller
             // Only verify password if mode is esignature
             $passwordToVerify = $mode === 'esignature' ? $password : null;
             $hash = $this->workflowService->signDocument($document, $request->user(), $passwordToVerify, $request->ip(), $request->userAgent(), $mode);
+            
+            // Record Immutable Audit Log
+            AuditLogService::log($document->id, 'signed', [
+                'hash' => $hash,
+                'mode' => $mode,
+                'signed_at' => now()->toIso8601String(),
+            ], $request);
             
             // Phase 3: Check if there's an attached PDF and stamp the signature
             $pdfAttachment = $document->attachments()->where('mime_type', 'application/pdf')->first();

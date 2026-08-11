@@ -20,14 +20,16 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('/ping', function () {
         return response()->json(['message' => 'pong']);
     });
-    Route::get('/run-migration', function () {
-        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-        return response()->json(['message' => 'Migration completed!', 'output' => \Illuminate\Support\Facades\Artisan::output()]);
-    });
 
     // Public Saraban verify routes
     Route::get('/saraban/verify/{hash}', [\App\Http\Controllers\Api\Saraban\SignatureController::class, 'verify']);
     Route::get('/saraban/verify/{hash}/qrcode', [\App\Http\Controllers\Api\Saraban\SignatureController::class, 'getQrCode']);
+
+    // ตรวจสอบใบลาจาก QR บนเอกสารที่พิมพ์ออกไป — จำกัดอัตราเพื่อกันการสุ่มโทเคน
+    Route::middleware('throttle:30,1')->group(function () {
+        Route::get('/leaves/verify/{hash}', [\App\Http\Controllers\LeaveVerificationController::class, 'verify']);
+        Route::get('/leaves/verify/{hash}/qrcode', [\App\Http\Controllers\LeaveVerificationController::class, 'qrcode']);
+    });
 });
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login');
 
@@ -38,11 +40,14 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/users/list',  [\App\Http\Controllers\Admin\UserController::class, 'list']);
     Route::get('/profile',                 [ProfileController::class, 'show']);
     Route::post('/profile',                [ProfileController::class, 'update']);
+    // สิทธิขอรับสำเนาข้อมูลส่วนบุคคลของตนเอง (ม.30 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล)
+    Route::get('/profile/personal-data',   [\App\Http\Controllers\PersonalDataController::class, 'export']);
+    Route::get('/profile/access-history',  [\App\Http\Controllers\PersonalDataController::class, 'accessHistory']);
     Route::get('/profile/delegations',     [ProfileController::class, 'getDelegation']);
     Route::post('/profile/delegations',    [ProfileController::class, 'setDelegation']);
 
     // Global settings for frontend
-    Route::get('/settings',                [SettingController::class, 'index']);
+    Route::get('/settings',                [\App\Http\Controllers\SecureSettingController::class, 'index']);
 
     // Dashboard stats
     Route::get('/dashboard',   [DashboardController::class, 'index']);
@@ -64,28 +69,41 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::put('/leaves/{leave}',          [LeaveController::class, 'update']);
     Route::delete('/leaves/{leave}',       [LeaveController::class, 'destroy']);
 
-    // Attendance routes
-    Route::post('/attendances/check-in',   [AttendanceController::class, 'checkIn']);
-    Route::post('/attendances/check-out',  [AttendanceController::class, 'checkOut']);
-    Route::post('/attendances/ot-check-in', [AttendanceController::class, 'otCheckIn']);
-    Route::post('/attendances/ot-check-out',[AttendanceController::class, 'otCheckOut']);
-    Route::get('/attendances/me',          [AttendanceController::class, 'myRecords']);
-    Route::get('/attendances/today',       [AttendanceController::class, 'today']);
-    Route::group(['middleware' => ['can:view_all_attendances']], function () {
-        Route::get('/admin/attendances',       [AttendanceController::class, 'allRecords']);
-        Route::get('/admin/attendances/export/pdf',  [AttendanceController::class, 'exportPdf']);
-        Route::get('/admin/attendances/export/word', [AttendanceController::class, 'exportWord']);
-        Route::get('/admin/attendances/summary', [AttendanceController::class, 'summary']);
-        Route::get('/admin/attendances/ot-summary', [AttendanceController::class, 'otSummary']);
+    // Attendance routes — ตรวจสอบสิทธิ์รายฟังก์ชันตามโมดูล attendance
+    Route::group(['middleware' => ['permission:attendance.checkin|attendance.view_self']], function () {
+        Route::post('/attendances/check-in',    [AttendanceController::class, 'checkIn']);
+        Route::post('/attendances/check-out',   [AttendanceController::class, 'checkOut']);
+        Route::get('/attendances/today',        [AttendanceController::class, 'today']);
+    });
+
+    Route::group(['middleware' => ['can:attendance.ot']], function () {
+        Route::post('/attendances/ot-check-in',  [AttendanceController::class, 'otCheckIn']);
+        Route::post('/attendances/ot-check-out', [AttendanceController::class, 'otCheckOut']);
+    });
+
+    Route::get('/attendances/me', [AttendanceController::class, 'myRecords'])
+        ->middleware('can:attendance.view_self');
+
+    // Admin attendance — ต้องมีสิทธิ์ view_all
+    Route::group(['middleware' => ['can:attendance.view_all']], function () {
+        Route::get('/admin/attendances',              [AttendanceController::class, 'allRecords']);
+        Route::get('/admin/attendances/export/pdf',   [AttendanceController::class, 'exportPdf']);
+        Route::get('/admin/attendances/export/word',  [AttendanceController::class, 'exportWord']);
+        Route::get('/admin/attendances/summary',      [AttendanceController::class, 'summary']);
         Route::post('/admin/attendances/sync-leaves', [AttendanceController::class, 'syncLeaves']);
     });
-    
+
+    // OT Summary — สิทธิ์เฉพาะ
+    Route::get('/admin/attendances/ot-summary', [AttendanceController::class, 'otSummary'])
+        ->middleware('can:attendance.ot_summary');
+
+
     Route::post('/admin/leaves', [LeaveController::class, 'storeAsAdmin']);
 
     // Approval routes
+    // approve/reject ประกาศไว้ที่ routes/leave_government.php (GovernmentApprovalController)
+    // ซึ่งลงทะเบียนทีหลังจึงทับเส้นทางนี้อยู่แล้ว — ย้ายไปไว้ที่เดียวเพื่อไม่ให้เข้าใจผิดว่าใช้ตัวไหน
     Route::get('/approvals/pending',          [ApprovalController::class, 'pending']);
-    Route::post('/approvals/{leave}/approve', [ApprovalController::class, 'approve']);
-    Route::post('/approvals/{leave}/reject',  [ApprovalController::class, 'reject']);
 
     // Report routes
     Route::get('/reports/summary',        [ReportController::class, 'summary']);
@@ -99,11 +117,17 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/admin/departments-list',  [UserController::class, 'departments']);
     });
 
-    Route::group(['middleware' => ['can:edit_users']], function () {
+    Route::group(['middleware' => ['permission:edit_users|system.user.manage|admin.users.manage_permissions']], function () {
         Route::post('/admin/users',            [UserController::class, 'store']);
         Route::post('/admin/users/import',     [UserController::class, 'importCsv']);
         Route::put('/admin/users/{user}',      [UserController::class, 'update']);
         Route::post('/admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
+
+        // Individual Permission Management API
+        Route::get('/admin/permissions/modules', [\App\Http\Controllers\Admin\PermissionController::class, 'modules']);
+        Route::get('/admin/permissions/user-counts', [\App\Http\Controllers\Admin\PermissionController::class, 'userCounts']);
+        Route::get('/admin/users/{user}/permissions', [\App\Http\Controllers\Admin\PermissionController::class, 'getUserPermissions']);
+        Route::put('/admin/users/{user}/permissions', [\App\Http\Controllers\Admin\PermissionController::class, 'updateUserPermissions']);
     });
 
     Route::delete('/admin/users/{user}',   [UserController::class, 'destroy'])->middleware('can:delete_users');
@@ -132,11 +156,25 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     });
 
     // Admin: Settings & Fiscal Years
-    Route::middleware('permission:manage_settings')->group(function () {
-        Route::get('/admin/settings', [\App\Http\Controllers\SettingController::class, 'index']);
-        Route::post('/admin/settings', [\App\Http\Controllers\SettingController::class, 'update']);
-        Route::post('/admin/settings/upload-logo', [\App\Http\Controllers\SettingController::class, 'uploadLogo']);
-        Route::post('/admin/settings/upload-garuda', [\App\Http\Controllers\SettingController::class, 'uploadGarudaLogo']);
+    Route::middleware('permission:manage_settings|system.setting.manage|saraban.setting.manage')->group(function () {
+        Route::get('/admin/settings', [\App\Http\Controllers\SecureSettingController::class, 'adminIndex']);
+        Route::post('/admin/settings', [\App\Http\Controllers\SecureSettingController::class, 'update']);
+        Route::post('/admin/settings/upload-logo', [\App\Http\Controllers\SecureSettingController::class, 'uploadLogo']);
+        Route::post('/admin/settings/upload-garuda', [\App\Http\Controllers\SecureSettingController::class, 'uploadGarudaLogo']);
+        Route::delete('/admin/settings/logo', [\App\Http\Controllers\SecureSettingController::class, 'deleteLogo']);
+        Route::delete('/admin/settings/secrets/{key}', [\App\Http\Controllers\SecureSettingController::class, 'clearSecret']);
+        Route::post('/admin/settings/test-notification/{channel}', [\App\Http\Controllers\SecureSettingController::class, 'testNotification']);
+
+        Route::get('/admin/export-settings', [\App\Http\Controllers\Admin\SecureExportSettingController::class, 'index']);
+        Route::post('/admin/export-settings', [\App\Http\Controllers\Admin\SecureExportSettingController::class, 'update']);
+        Route::post('/admin/export-settings/upload-logo', [\App\Http\Controllers\Admin\SecureExportSettingController::class, 'uploadLogo']);
+
+        Route::get('/admin/document-templates', [\App\Http\Controllers\Admin\DocumentTemplateController::class, 'index']);
+        Route::post('/admin/document-templates', [\App\Http\Controllers\Admin\DocumentTemplateController::class, 'store']);
+        Route::post('/admin/document-templates/seed-defaults', [\App\Http\Controllers\Admin\DocumentTemplateController::class, 'seedDefaults']);
+        Route::get('/admin/document-templates/{template}', [\App\Http\Controllers\Admin\DocumentTemplateController::class, 'show']);
+        Route::put('/admin/document-templates/{template}', [\App\Http\Controllers\Admin\DocumentTemplateController::class, 'update']);
+        Route::delete('/admin/document-templates/{template}', [\App\Http\Controllers\Admin\DocumentTemplateController::class, 'destroy']);
 
         Route::get('/admin/fiscal-years',                     [\App\Http\Controllers\FiscalYearController::class, 'index']);
         Route::post('/admin/fiscal-years',                    [\App\Http\Controllers\FiscalYearController::class, 'store']);
@@ -194,8 +232,14 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     // Notifications
     Route::get('/notifications',                          [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::post('/notifications/mark-all-read',           [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
-    Route::put('/notifications/{id}/read',                [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
-
+    // Dynamic Menu & Role Management routes
+    Route::get('/user/menus', [\App\Http\Controllers\Api\MenuController::class, 'index']);
+    Route::group(['middleware' => ['permission:edit_users|system.menu.manage']], function () {
+        Route::get('/admin/menus', [\App\Http\Controllers\Api\MenuController::class, 'adminIndex']);
+        Route::put('/admin/menus/{menu}/permissions', [\App\Http\Controllers\Api\MenuController::class, 'updatePermissions']);
+        Route::get('/admin/permissions', [\App\Http\Controllers\Api\RoleController::class, 'permissions']);
+        Route::apiResource('/admin/roles', \App\Http\Controllers\Api\RoleController::class);
+    });
 
 });
 
@@ -224,3 +268,6 @@ Route::middleware('throttle:300,1')->get('/storage/{path}', function ($path) {
     }
     abort(404);
 })->where('path', '.*');
+
+
+

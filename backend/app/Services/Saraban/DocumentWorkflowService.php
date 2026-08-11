@@ -142,12 +142,16 @@ class DocumentWorkflowService
      */
     public function generateVerificationQrCode(string $signatureHash, string $verificationUrl)
     {
+        // php-qrcode v6 เลิกใช้ค่าคงที่ OUTPUT_*/ECC_* แล้ว ต้องระบุ outputInterface แทน
         $options = new QROptions([
-            'version'      => 5,
-            'outputType'   => QRCode::OUTPUT_MARKUP_SVG,
-            'eccLevel'     => QRCode::ECC_L,
+            'version'         => 5,
+            'outputInterface' => \chillerlan\QRCode\Output\QRMarkupSVG::class,
+            'eccLevel'        => \chillerlan\QRCode\Common\EccLevel::L,
+            // controller ส่งกลับเป็น image/svg+xml จึงต้องได้ SVG ดิบ ไม่ใช่ data URI
+            'outputBase64'    => false,
+            'svgUseFillAttributes' => false,
         ]);
-        
+
         $qrcode = new QRCode($options);
         return $qrcode->render($verificationUrl);
     }

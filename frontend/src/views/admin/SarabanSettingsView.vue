@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="p-6">
     <h2 class="text-2xl font-bold mb-6">ตั้งค่าระบบงานสารบรรณ (e-Saraban)</h2>
     
@@ -12,7 +12,7 @@
         </div>
         
         <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" v-model="requirePin" class="sr-only peer" @change="saveSettings">
+          <input type="checkbox" v-model="requirePin" aria-label="บังคับใช้รหัสผ่านก่อนลงนาม" class="sr-only peer" @change="saveSettings">
           <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#800000]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#800000]"></div>
         </label>
       </div>
@@ -24,7 +24,7 @@
         </div>
         
         <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" v-model="requirePinForCircular" class="sr-only peer" @change="saveSettings">
+          <input type="checkbox" v-model="requirePinForCircular" aria-label="บังคับใช้รหัสผ่านก่อนรับทราบหนังสือเวียน" class="sr-only peer" @change="saveSettings">
           <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#800000]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#800000]"></div>
         </label>
       </div>
@@ -81,17 +81,20 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../../axios'
+import { useAlertStore } from '../../stores/alert'
 
+const alertStore = useAlertStore()
 const requirePin = ref(false)
 const requirePinForCircular = ref(false)
 const garudaLogoUrl = ref('')
 const isUploadingLogo = ref(false)
 const formatIncoming = ref('{dept_code}/{year}/{running_number}')
 const formatOutgoing = ref('{dept_code}อ/{year}/{running_number}')
+const assetUrl = (path) => path ? new URL(path, window.location.origin).toString() : ''
 
 onMounted(async () => {
   try {
-    const res = await api.get('/settings')
+    const res = await api.get('/admin/settings')
     const settings = res.data || {}
     
     if (settings.require_pin_for_signature) {
@@ -100,8 +103,10 @@ onMounted(async () => {
     if (settings.require_pin_for_circular_ack) {
       requirePinForCircular.value = settings.require_pin_for_circular_ack === '1'
     }
+    formatIncoming.value = settings.saraban_incoming_number_format || formatIncoming.value
+    formatOutgoing.value = settings.saraban_outgoing_number_format || formatOutgoing.value
     if (settings.saraban_garuda_logo) {
-      garudaLogoUrl.value = import.meta.env.VITE_API_URL.replace('/api', '') + settings.saraban_garuda_logo
+      garudaLogoUrl.value = assetUrl(settings.saraban_garuda_logo)
     }
   } catch (err) {
     console.error('Failed to load settings', err)
@@ -120,11 +125,11 @@ const uploadGarudaLogo = async (event) => {
     const res = await api.post('/admin/settings/upload-garuda', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
-    garudaLogoUrl.value = import.meta.env.VITE_API_URL.replace('/api', '') + res.data.url
-    alert('อัปโหลดตราครุฑเรียบร้อยแล้ว')
+    garudaLogoUrl.value = assetUrl(res.data.url)
+    alertStore.success('อัปโหลดตราครุฑเรียบร้อยแล้ว')
   } catch (err) {
     console.error(err)
-    alert('เกิดข้อผิดพลาดในการอัปโหลด')
+    alertStore.error('เกิดข้อผิดพลาดในการอัปโหลด')
   } finally {
     isUploadingLogo.value = false
     event.target.value = null
@@ -135,14 +140,17 @@ const saveSettings = async () => {
   try {
     const payload = {
       require_pin_for_signature: requirePin.value ? '1' : '0',
-      require_pin_for_circular_ack: requirePinForCircular.value ? '1' : '0'
+      require_pin_for_circular_ack: requirePinForCircular.value ? '1' : '0',
+      saraban_incoming_number_format: formatIncoming.value,
+      saraban_outgoing_number_format: formatOutgoing.value
     }
     await api.post('/admin/settings', payload)
     
-    // Create a temporary success alert or toast if possible, but minimal is fine
+    alertStore.success('บันทึกการตั้งค่าสารบรรณเรียบร้อยแล้ว')
   } catch (err) {
     console.error('Failed to save settings', err)
-    alert('เกิดข้อผิดพลาดในการบันทึกการตั้งค่า')
+    alertStore.error(Object.values(err.response?.data?.errors || {}).flat()[0] || 'เกิดข้อผิดพลาดในการบันทึกการตั้งค่า')
   }
 }
 </script>
+

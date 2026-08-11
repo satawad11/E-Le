@@ -95,9 +95,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../../axios'
+import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 
 const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
 const currentYear = new Date().getFullYear()
+
 const years = Array.from({length: 5}, (_, i) => currentYear - i)
 
 const selectedMonth = ref(new Date().getMonth() + 1)
@@ -124,8 +126,7 @@ const fetchHistory = async () => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' })
+  return ThaiDateFormatter.toThaiShortText(dateStr)
 }
 
 const formatTime = (datetimeStr) => {

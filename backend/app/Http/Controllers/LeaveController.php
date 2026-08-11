@@ -8,6 +8,7 @@ use App\Models\LeaveBalance;
 use App\Models\LeaveType;
 use App\Models\LeaveActionLog;
 use App\Models\Setting;
+use App\Services\LeavePolicyService;
 use App\Services\LeaveService;
 use App\Services\ThaiDateService;
 use Carbon\Carbon;
@@ -15,22 +16,39 @@ use Carbon\Carbon;
 class LeaveController extends Controller
 {
     protected $leaveService;
+    protected LeavePolicyService $policies;
 
-    public function __construct(LeaveService $leaveService)
+    public function __construct(LeaveService $leaveService, LeavePolicyService $policies)
     {
         $this->leaveService = $leaveService;
+        $this->policies = $policies;
     }
 
     public function index(Request $request)
     {
         $user = $request->user();
-        $roleName = $user->role->name;
+        
+        $canViewAll = $user->hasAnyRole([
+            'ผู้ดูแลระบบสูงสุด', 'Super Admin',
+            'ผู้อำนวยการ', 'Director',
+            'รองผู้อำนวยการ', 'Deputy Director',
+            'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย', 'Head of Department',
+            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head'
+        ]) || $user->can('leave.management.manage') || $user->can('leave.report.view') || $user->can('leave.approval.dept');
 
         $perPage = min((int)($request->input('per_page', 100)), 500);
 
-        if ($roleName !== 'Employee') {
-            $query = Leave::with(['user:id,name,department_id', 'type:id,name', 'approvals.approver:id,name', 'actionLogs.user:id,name'])
+        if ($canViewAll) {
+            $query = Leave::with(['user:id,name,department_id', 'user.department', 'type:id,name', 'approvals.approver:id,name', 'actionLogs.user:id,name'])
                 ->orderBy('created_at', 'desc');
+
+            // If Department Head, filter by department unless user requested specific user
+            if ($user->hasRole('หัวหน้าแผนกวิชา / หัวหน้าฝ่าย') && !$user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'เจ้าหน้าที่บุคลากร (HR)'])) {
+                $deptId = $user->department_id ?? $user->profile?->department_id;
+                if ($deptId) {
+                    $query->whereHas('user', fn($q) => $q->where('department_id', $deptId));
+                }
+            }
 
             // กรองตาม fiscal_year ถ้าส่งมา เพื่อลดข้อมูล
             if ($request->fiscal_year) {
@@ -44,7 +62,6 @@ class LeaveController extends Controller
             }
 
             $paginated = $query->paginate($perPage);
-            // คืนเป็น array เพื่อ backward-compatible กับ frontend ที่ใช้ res.data
             return response()->json([
                 'data'         => $paginated->items(),
                 'current_page' => $paginated->currentPage(),
@@ -53,7 +70,7 @@ class LeaveController extends Controller
                 'per_page'     => $paginated->perPage(),
             ]);
         } else {
-            $leaves = Leave::with(['user:id,name,department_id', 'type:id,name', 'approvals.approver:id,name', 'actionLogs.user:id,name'])
+            $leaves = Leave::with(['user:id,name,department_id', 'user.department', 'type:id,name', 'approvals.approver:id,name', 'actionLogs.user:id,name'])
                 ->where(function ($query) use ($user) {
                     $query->where('user_id', $user->id)
                           ->orWhere('substitute_id', $user->id);
@@ -82,9 +99,13 @@ class LeaveController extends Controller
             $selectedFY = \App\Models\FiscalYear::current();
         }
 
-        $year = $selectedFY ? Carbon::parse($selectedFY->start_date)->year : date('Y');
+        // ต้องใช้สูตรเดียวกับที่ตอนตัดสิทธิ์ใช้ ไม่งั้นจะอ่าน balance คนละแถวกับที่ระบบเขียน
+        $year = $this->policies->fiscalYearNumber(
+            $selectedFY,
+            $selectedFY ? Carbon::parse($selectedFY->start_date) : today()
+        );
 
-        $balances = LeaveBalance::with('type')
+        $balances = LeaveBalance::with(['type', 'policy'])
             ->where('user_id', $userId)
             ->where('year', $year)
             ->get();
@@ -111,11 +132,22 @@ class LeaveController extends Controller
         $approvedLeaves = $approvedQuery->groupBy('leave_type_id')->pluck('used_days', 'leave_type_id')->toArray();
 
         foreach ($balances as $balance) {
-            $pending = $pendingLeaves[$balance->leave_type_id] ?? 0;
-            $used = $approvedLeaves[$balance->leave_type_id] ?? 0;
-            
-            $balance->pending = (float)$pending;
-            $balance->used = (float)$used;
+            // used/reserved ในตารางคือตัวเลขที่ระบบใช้ตัดสิทธิ์จริง จึงต้องเป็นตัวที่แสดงด้วย
+            // ส่วนยอดที่คำนวณสดจากตาราง leaves ส่งไปเป็นข้อมูลเทียบ (ไว้ตรวจว่าข้อมูลเพี้ยนหรือไม่)
+            $balance->pending = (float) $balance->reserved;
+            $balance->leaves_pending_days = (float) ($pendingLeaves[$balance->leave_type_id] ?? 0);
+            $balance->leaves_used_days = (float) ($approvedLeaves[$balance->leave_type_id] ?? 0);
+            // นโยบายที่ไม่กำหนดโควตา (annual_quota = null) เก็บเป็น 0 ในตาราง ต้องบอกหน้าจอว่า "ไม่จำกัด"
+            $balance->unlimited = $balance->relationLoaded('policy')
+                && $balance->policy !== null
+                && $balance->policy->annual_quota === null;
+
+            // เพดานวันที่ได้รับเงินเดือน (เช่น ลาป่วย 60 วันแรก) — null = ได้รับเงินเดือนทุกวัน
+            $paidCap = $balance->policy?->max_days_with_pay;
+            $balance->paid_quota = $paidCap === null ? null : (float) $paidCap;
+            $balance->paid_remaining = $paidCap === null
+                ? null
+                : max(0.0, (float) $paidCap - (float) $balance->used - (float) $balance->reserved);
         }
 
         return response()->json($balances);
@@ -124,26 +156,33 @@ class LeaveController extends Controller
     /**
      * Get team leaves for the calendar view.
      */
+    /**
+     * Get team leaves for the calendar view.
+     */
     public function teamCalendar(Request $request)
     {
         $user = $request->user();
-        $query = \App\Models\Leave::with(['user.profile', 'type'])
+        $query = \App\Models\Leave::with(['user.profile', 'user.department', 'type'])
             ->whereIn('status', ['Approved', 'Pending']);
         
-        // If not admin/HR, only show leaves from the same department
-        if (!in_array($user->role->name, ['Super Admin', 'HR Head'])) {
-            $departmentId = $user->profile->department_id ?? null;
+        $isGlobalViewer = $user->hasAnyRole([
+            'ผู้ดูแลระบบสูงสุด', 'Super Admin',
+            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head',
+            'ผู้อำนวยการ', 'Director',
+            'รองผู้อำนวยการ', 'Deputy Director'
+        ]) || $user->can('attendance.view_all');
+
+        if (!$isGlobalViewer) {
+            $departmentId = $user->department_id ?? ($user->profile->department_id ?? null);
             if ($departmentId) {
-                $query->whereHas('user.profile', function ($q) use ($departmentId) {
+                $query->whereHas('user', function ($q) use ($departmentId) {
                     $q->where('department_id', $departmentId);
                 });
             } else {
-                // If the user doesn't belong to a department, they only see their own leaves
                 $query->where('user_id', $user->id);
             }
         }
 
-        // Limit to a specific timeframe, e.g., current year
         $year = date('Y');
         $query->where(function($q) use ($year) {
             $q->whereYear('start_date', $year)
@@ -172,7 +211,7 @@ class LeaveController extends Controller
             'end_date'          => 'required|date|after_or_equal:start_date',
             'leave_period'      => 'nullable|in:full_day,morning,afternoon',
             'reason'            => 'required|string|max:1000',
-            'contact_address'   => 'required|string|max:1000',
+            'contact_address'   => 'nullable|string|max:1000',
             'attachment'        => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
             'substitute_id'     => 'nullable|exists:users,id',
             'substitute_reason' => 'nullable|string|max:1000',
@@ -249,9 +288,15 @@ class LeaveController extends Controller
             'details' => ['reason' => $data['reason']]
         ]);
 
-        // Notify Approvers
-        $approvers = \App\Models\User::whereHas('role', function($q) {
-            $q->whereIn('name', ['Director', 'Deputy Director', 'HR Head', 'Head of Department']);
+        // Notify Approvers using Spatie roles & permissions
+        $approvers = \App\Models\User::whereHas('roles', function($q) {
+            $q->whereIn('name', [
+                'ผู้ดูแลระบบสูงสุด', 'Super Admin',
+                'ผู้อำนวยการ', 'Director',
+                'รองผู้อำนวยการ', 'Deputy Director',
+                'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย', 'Head of Department',
+                'เจ้าหน้าที่บุคลากร (HR)', 'HR Head'
+            ]);
         })->get();
 
         foreach ($approvers as $approver) {
@@ -317,7 +362,10 @@ class LeaveController extends Controller
     public function cancel(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $isAdminOrHR = in_array($user->role->name, ['Super Admin', 'HR Head']);
+        $isAdminOrHR = $user->hasAnyRole([
+            'ผู้ดูแลระบบสูงสุด', 'Super Admin',
+            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head'
+        ]) || $user->can('leave.management.manage');
 
         // Only the owner or Admin/HR can cancel
         if ($leave->user_id !== $user->id && !$isAdminOrHR) {
@@ -325,7 +373,8 @@ class LeaveController extends Controller
         }
 
         if ($leave->status === 'Pending') {
-            // ใบลาที่ยังไม่ได้รับการอนุมัติ: ผู้ใช้ทุกคนสามารถยกเลิกได้ทันที ไม่ต้องรออนุมัติ
+            // ต้องคืนวันลาที่จองไว้ (reserved) ก่อน ไม่งั้นสิทธิ์จะค้างหายถาวร
+            $this->leaveService->restoreBalance($leave);
             $leave->status = 'Cancelled';
             $leave->save();
 
@@ -338,15 +387,12 @@ class LeaveController extends Controller
 
             return response()->json(['message' => 'ยกเลิกใบลาเรียบร้อยแล้ว']);
         } elseif ($leave->status === 'Approved') {
-            // ใบลาที่อนุมัติแล้ว: ทุกคน (รวม Admin/HR) ต้องส่งคำขอยกเลิกและรอการอนุมัติ
-            // Admin/HR มีสิทธิ์อนุมัติการยกเลิกผ่าน approveCancellation
             $request->validate(['cancellation_reason' => 'required|string|max:1000']);
 
             $leave->cancellation_status = 'Pending';
             $leave->cancellation_reason = $request->cancellation_reason;
             $leave->cancellation_date = now();
 
-            // Reset approval level for cancellation workflow
             $firstStep = \App\Models\ApprovalStep::orderBy('step_order', 'asc')->first();
             $leave->approval_level = $firstStep ? $firstStep->step_order : 1;
 
@@ -371,18 +417,20 @@ class LeaveController extends Controller
     public function approveCancellation(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $role = $user->role->name;
+        $isSuperAdmin = $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin']);
 
-        if ($role !== 'Super Admin') {
+        if (!$isSuperAdmin) {
             $currentStep = \App\Models\ApprovalStep::where('step_order', $leave->approval_level)->first();
-            if (!$currentStep || $currentStep->role_id !== $user->role_id) {
+            $userRoleIds = $user->roles->pluck('id')->toArray();
+            if ($user->role_id) $userRoleIds[] = $user->role_id;
+
+            if (!$currentStep || !in_array($currentStep->role_id, $userRoleIds)) {
                 return response()->json(['message' => 'ไม่มีสิทธิ์อนุมัติในระดับนี้'], 403);
             }
         }
 
-        // Check if there is a next step
         $nextStep = null;
-        if ($role !== 'Super Admin') {
+        if (!$isSuperAdmin) {
             $nextStep = \App\Models\ApprovalStep::where('step_order', '>', $leave->approval_level)
                 ->orderBy('step_order', 'asc')
                 ->first();
@@ -400,7 +448,6 @@ class LeaveController extends Controller
                 'details' => $request->has('comment') && $request->comment ? ['comment' => $request->comment] : null
             ]);
         } else {
-            // Move to next level
             $leave->approval_level = $nextStep->step_order;
             LeaveActionLog::create([
                 'leave_id' => $leave->id,
@@ -421,11 +468,14 @@ class LeaveController extends Controller
     public function rejectCancellation(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $role = $user->role->name;
+        $isSuperAdmin = $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin']);
 
-        if ($role !== 'Super Admin') {
+        if (!$isSuperAdmin) {
             $currentStep = \App\Models\ApprovalStep::where('step_order', $leave->approval_level)->first();
-            if (!$currentStep || $currentStep->role_id !== $user->role_id) {
+            $userRoleIds = $user->roles->pluck('id')->toArray();
+            if ($user->role_id) $userRoleIds[] = $user->role_id;
+
+            if (!$currentStep || !in_array($currentStep->role_id, $userRoleIds)) {
                 return response()->json(['message' => 'ไม่มีสิทธิ์ปฏิเสธในระดับนี้'], 403);
             }
         }
@@ -525,7 +575,8 @@ class LeaveController extends Controller
             return response()->json(['message' => 'ไม่มีสิทธิ์ลบใบลานี้'], 403);
         }
 
-        if ($leave->status === 'Approved') {
+        // คืนสิทธิ์ทั้งกรณี Pending (ปลด reserved) และ Approved (ปลด used)
+        if (in_array($leave->status, ['Pending', 'Approved'], true)) {
             $this->leaveService->restoreBalance($leave);
         }
 
@@ -571,7 +622,7 @@ class LeaveController extends Controller
      */
     public function exportPdf(Request $request, Leave $leave, ThaiDateService $thaiDateService)
     {
-        $leave->load(['user.department', 'user.role', 'user.profile', 'type', 'approvals.approver']);
+        $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
 
         $lastLeave = \App\Models\Leave::where('user_id', $leave->user_id)
             ->where('leave_type_id', $leave->leave_type_id)
@@ -637,15 +688,20 @@ class LeaveController extends Controller
         if ($isCancel) {
             $viewName = 'pdf.leave_cancel';
         } elseif ($leave->type) {
-            if ($leave->type->name === 'ลาพักผ่อน') {
+            $tName = $leave->type->name;
+            if ($tName === 'ลาพักผ่อน') {
                 $viewName = 'pdf.leave_vacation';
-            } elseif ($leave->type->name === 'ลาอุปสมบท') {
+            } elseif (str_contains($tName, 'ราชการ') || str_contains($tName, 'เดินทาง')) {
+                $viewName = 'pdf.official_travel';
+            } elseif (str_contains($tName, 'ช่วยเหลือภริยา')) {
+                $viewName = 'pdf.leave_paternity';
+            } elseif ($tName === 'ลาอุปสมบท') {
                 $viewName = 'pdf.leave_ordination';
-            } elseif ($leave->type->name === 'ลาไปประกอบพิธีฮัจญ์') {
+            } elseif ($tName === 'ลาไปประกอบพิธีฮัจญ์') {
                 $viewName = 'pdf.leave_hajj';
-            } elseif ($leave->type->name === 'ลาติดตามคู่สมรส') {
+            } elseif ($tName === 'ลาติดตามคู่สมรส') {
                 $viewName = 'pdf.leave_spouse';
-            } elseif ($leave->type->name === 'ลาไปศึกษาต่อ ดูงาน ฝึกอบรม') {
+            } elseif ($tName === 'ลาไปศึกษาต่อ ดูงาน ฝึกอบรม') {
                 $viewName = 'pdf.leave_study';
             }
         }
@@ -659,32 +715,21 @@ class LeaveController extends Controller
                 ->first();
         }
 
-        $year = Carbon::parse($leave->start_date)->year;
-        $balancesQuery = \App\Models\LeaveBalance::with('type')
-            ->where('user_id', $leave->user_id)
-            ->where('year', $year)
-            ->get();
-            
-        $statBalances = [];
-        foreach ($balancesQuery as $b) {
-            if (!$b->type) continue;
-            $typeName = $b->type->name;
-            $used = $b->used;
-            if ($leave->status === 'Approved' && ($leave->type->name ?? '') === $typeName) {
-                $usedBefore = max(0, $used - $leave->total_days);
-                $total = $used;
-            } else {
-                $usedBefore = $used;
-                $total = $used + (($leave->type->name ?? '') === $typeName ? $leave->total_days : 0);
-            }
-            $statBalances[$typeName] = [
-                'used_before' => $usedBefore > 0 ? $usedBefore : '',
-                'total' => $total > 0 ? $total : ''
-            ];
-        }
+        // Calculate 2 Fiscal Semesters Stats for Standard Leave Form
+        $statSem1 = ['ป่วย' => ['used_times' => '', 'used_days' => ''], 'กิจ' => ['used_times' => '', 'used_days' => ''], 'คลอด' => ['used_times' => '', 'used_days' => '']];
+        $statSem2 = ['ป่วย' => ['used_times' => '', 'used_days' => ''], 'กิจ' => ['used_times' => '', 'used_days' => ''], 'คลอด' => ['used_times' => '', 'used_days' => '']];
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($viewName, compact('leave', 'thaiDateService', 'lastLeave', 'leaveBalance', 'settings', 'approverBlocks', 'statBalances'))
-            ->setPaper('a4', 'portrait');
+        // QR ตรวจสอบเอกสาร ฝังเป็น data URI เพราะ dompdf โหลดรูปจาก URL ภายนอกไม่ได้
+        $verification = app(\App\Services\LeaveVerificationService::class);
+        $verificationHash = $verification->ensureHash($leave);
+        $verificationQr = $verification->qrCodeDataUri($verificationHash);
+        $verificationUrl = $verification->verificationUrl($verificationHash);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($viewName, compact(
+            'leave', 'thaiDateService', 'lastLeave', 'leaveBalance', 'settings',
+            'approverBlocks', 'statSem1', 'statSem2',
+            'verificationQr', 'verificationUrl', 'verificationHash'
+        ))->setPaper('a4', 'portrait');
 
         $leaveTypeName = $leave->type->name ?? 'การลา';
         $userName = str_replace(' ', '_', trim($leave->user->name));
@@ -702,7 +747,7 @@ class LeaveController extends Controller
      */
     public function exportWord(Request $request, Leave $leave, ThaiDateService $thaiDateService)
     {
-        $leave->load(['user.department', 'user.role', 'user.profile', 'type', 'approvals.approver']);
+        $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
 
         $lastLeave = \App\Models\Leave::where('user_id', $leave->user_id)
             ->where('leave_type_id', $leave->leave_type_id)
@@ -815,12 +860,6 @@ class LeaveController extends Controller
             ];
         }
 
-        $html = view($viewName, compact('leave', 'thaiDateService', 'lastLeave', 'leaveBalance', 'settings', 'approverBlocks', 'statBalances'))->render();
-
-        // Adding xmlns to force word layout formatting if needed
-        $content = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">';
-        $content .= '<head><meta charset="utf-8"></head><body>' . $html . '</body></html>';
-
         $leaveTypeName = $leave->type->name ?? 'การลา';
         $userName = str_replace(' ', '_', trim($leave->user->name));
         $docNumber = $leave->document_number ?? $leave->id;
@@ -828,6 +867,18 @@ class LeaveController extends Controller
         $baseFilename = "{$leaveTypeName}_{$userName}_{$docNumber}";
         $baseFilename = str_replace(['/', '\\'], '_', $baseFilename);
 
+        if (class_exists(\PhpOffice\PhpWord\PhpWord::class)) {
+            $wordService = app(\App\Services\Export\LeaveWordService::class);
+            $tempFile = $wordService->generateLeaveDocx($leave, $settings->toArray(), $approverBlocks);
+            $filename = $isCancel ? "cancel_{$baseFilename}.docx" : "{$baseFilename}.docx";
+            return response()->download($tempFile, $filename)->deleteFileAfterSend(true);
+        }
+
+        $statSem1 = ['ป่วย' => ['used_times' => '', 'used_days' => ''], 'กิจ' => ['used_times' => '', 'used_days' => ''], 'คลอด' => ['used_times' => '', 'used_days' => '']];
+        $statSem2 = ['ป่วย' => ['used_times' => '', 'used_days' => ''], 'กิจ' => ['used_times' => '', 'used_days' => ''], 'คลอด' => ['used_times' => '', 'used_days' => '']];
+
+        $html = view($viewName, compact('leave', 'thaiDateService', 'lastLeave', 'leaveBalance', 'settings', 'approverBlocks', 'statSem1', 'statSem2'))->render();
+        $content = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>' . $html . '</body></html>';
         $filename = $isCancel ? "cancel_{$baseFilename}.doc" : "{$baseFilename}.doc";
 
         return response($content)

@@ -17,7 +17,6 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $roleName = $user->role->name;
 
         $baseQuery = Leave::query();
 
@@ -49,11 +48,27 @@ class DashboardController extends Controller
             $fiscalYearLabel = $fallbackYear + 543;
         }
 
+        $canViewGlobalDashboard = $user->hasAnyRole([
+            'ผู้ดูแลระบบสูงสุด', 'Super Admin',
+            'ผู้อำนวยการ', 'Director',
+            'รองผู้อำนวยการ', 'Deputy Director',
+            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head'
+        ]);
+
         if ($viewSelf) {
             $baseQuery->where('user_id', $user->id);
         } else {
-            if (!in_array($roleName, ['Super Admin', 'Director', 'HR Head', 'Deputy Director'])) {
-                $baseQuery->where('user_id', $user->id);
+            if (!$canViewGlobalDashboard) {
+                if ($user->hasRole('หัวหน้าแผนกวิชา / หัวหน้าฝ่าย')) {
+                    $deptId = $user->department_id ?? ($user->profile?->department_id ?? null);
+                    if ($deptId) {
+                        $baseQuery->whereHas('user', fn($q) => $q->where('department_id', $deptId));
+                    } else {
+                        $baseQuery->where('user_id', $user->id);
+                    }
+                } else {
+                    $baseQuery->where('user_id', $user->id);
+                }
             }
         }
 

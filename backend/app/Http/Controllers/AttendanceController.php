@@ -26,7 +26,7 @@ class AttendanceController extends Controller
         $time = Carbon::now();
 
         // ดึง settings ทั้งหมดครั้งเดียว (แทนการ query แยก 5 ครั้ง)
-        $settings = \Illuminate\Support\Facades\Cache::remember('app_settings', 300, fn() => Setting::pluck('value', 'key'));
+        $settings = app(\App\Services\SystemSettingService::class)->runtimeValues();
 
         // Check if already checked in today
         $attendance = Attendance::where('user_id', $user->id)
@@ -134,7 +134,7 @@ class AttendanceController extends Controller
         $time = Carbon::now();
 
         // ดึง settings ทั้งหมดครั้งเดียว (แทนการ query แยก 4 ครั้ง)
-        $settings = \Illuminate\Support\Facades\Cache::remember('app_settings', 300, fn() => Setting::pluck('value', 'key'));
+        $settings = app(\App\Services\SystemSettingService::class)->runtimeValues();
 
         $attendance = Attendance::where('user_id', $user->id)
             ->where('date', $date)
@@ -382,7 +382,7 @@ class AttendanceController extends Controller
 
         // ใช้ settings ที่ส่งมาถ้ามี มิฉะนั้นดึงจาก cache
         if ($settings === null) {
-            $settings = \Illuminate\Support\Facades\Cache::remember('app_settings', 300, fn() => Setting::pluck('value', 'key'));
+            $settings = app(\App\Services\SystemSettingService::class)->runtimeValues();
         }
 
         $collegeLat = $settings->get('college_latitude');
@@ -910,10 +910,10 @@ class AttendanceController extends Controller
 
     protected function sendLineMessage($message)
     {
-        $settings = \Illuminate\Support\Facades\Cache::remember('app_settings', 300, fn() => Setting::pluck('value', 'key'));
+        $settings = app(\App\Services\SystemSettingService::class)->runtimeValues();
 
         $token   = $settings->get('line_channel_access_token');
-        $adminId = $settings->get('line_admin_user_id');
+        $adminId = $settings->get('line_group_id') ?: $settings->get('line_admin_user_id');
 
         if (!$token || !$adminId) {
             return;

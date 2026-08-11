@@ -33,19 +33,19 @@ class DatabaseSeeder extends Seeder
         $superAdminRole = \App\Models\Role::firstOrCreate(['name' => 'Super Admin'], ['description' => 'ผู้ดูแลระบบสูงสุด']);
         $docOfficerRole = \App\Models\Role::firstOrCreate(['name' => 'Document Officer'], ['description' => 'เจ้าหน้าที่สารบัญ']);
 
-        // Thai leave types from spec
+        // Core Thai government leave types. The complete set is maintained by
+        // NewLeaveTypesSeeder so fresh and existing installations stay aligned.
         $leaveTypes = [
             ['name' => 'ลาป่วย',      'description' => 'ลาป่วยด้วยโรคภัยไข้เจ็บ'],
-            ['name' => 'ลากิจ',       'description' => 'ลากิจส่วนตัวที่จำเป็น'],
+            ['name' => 'ลากิจส่วนตัว', 'description' => 'ลากิจส่วนตัวที่จำเป็น'],
             ['name' => 'ลาพักผ่อน',   'description' => 'ลาพักผ่อนประจำปี'],
-            ['name' => 'ลาคลอด',      'description' => 'ลาคลอดบุตร'],
-            ['name' => 'ลาอบรม',      'description' => 'ลาเข้ารับการอบรม/สัมมนา'],
-            ['name' => 'ลาอื่นๆ',     'description' => 'ลาประเภทอื่นๆ ที่ไม่ระบุ'],
+            ['name' => 'ลาคลอดบุตร',  'description' => 'ลาคลอดบุตร'],
         ];
 
         foreach ($leaveTypes as $type) {
             \App\Models\LeaveType::firstOrCreate(['name' => $type['name']], ['description' => $type['description']]);
         }
+        $this->call([NewLeaveTypesSeeder::class]);
 
         // Create Users
         $faker = \Faker\Factory::create('th_TH');
@@ -95,12 +95,11 @@ class DatabaseSeeder extends Seeder
         // Seed leave balances for current year
         $currentYear = (int) date('Y');
         $quotas = [
-            'ลาป่วย' => 30,
-            'ลากิจ' => 10,
+            'ลาป่วย' => 60,
+            'ลากิจส่วนตัว' => 45,
             'ลาพักผ่อน' => 10,
-            'ลาคลอด' => 90,
-            'ลาอบรม' => 15,
-            'ลาอื่นๆ' => 5,
+            'ลาคลอดบุตร' => 90,
+            'ลาไปช่วยเหลือภริยาที่คลอดบุตร' => 15,
         ];
 
         $userIds = [$superAdmin->id, $director->id, $deputy->id, $hrHead->id, $employee->id, $docOfficer->id];
@@ -109,7 +108,7 @@ class DatabaseSeeder extends Seeder
             foreach (\App\Models\LeaveType::all() as $lt) {
                 \App\Models\LeaveBalance::firstOrCreate(
                     ['user_id' => $userId, 'leave_type_id' => $lt->id, 'year' => $currentYear],
-                    ['quota' => $quotas[$lt->name] ?? 10, 'used' => 0]
+                    ['quota' => $quotas[$lt->name] ?? ($lt->max_days ?? 0), 'used' => 0]
                 );
             }
         }

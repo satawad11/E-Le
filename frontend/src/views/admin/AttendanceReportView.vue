@@ -158,6 +158,7 @@
 import { ref, onMounted } from 'vue'
 import api from '../../axios'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
+import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 
 const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
 
@@ -255,8 +256,7 @@ const getPage = (url) => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' })
+  return ThaiDateFormatter.toThaiShortText(dateStr)
 }
 
 const formatTime = (datetimeStr) => {

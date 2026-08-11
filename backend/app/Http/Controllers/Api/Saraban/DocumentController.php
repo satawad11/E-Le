@@ -115,10 +115,14 @@ class DocumentController extends Controller
             $yearBe = $fiscalYear ? $fiscalYear->year : (date('Y') + 543);
             
             $runningNumber = $this->generatorService->generate($data['department_id'], $data['type_id'], $yearBe);
-            $formattedNumber = $this->generatorService->format($runningNumber);
             $type = \App\Models\Saraban\DocumentType::find($data['type_id']);
-            $typeCode = $type && $type->code ? $type->code . ' ' : '';
-            $data['document_number'] = "{$typeCode}{$formattedNumber}/{$yearBe}";
+            $departmentCode = (string) ($type?->code ?: $data['department_id']);
+            $data['document_number'] = $this->generatorService->formatWithTemplate(
+                $runningNumber,
+                $yearBe,
+                $departmentCode,
+                filled($data['incoming_document_number'] ?? null) || filled($data['incoming_date'] ?? null),
+            );
         }
 
         DB::beginTransaction();
@@ -126,13 +130,13 @@ class DocumentController extends Controller
             $document = Document::create($data);
 
             // 1. Process files
-            if ($data['creation_mode'] === 'digital' && !empty($data['content'])) {
+            if (($data['creation_mode'] ?? 'physical') === 'digital' && !empty($data['content'])) {
                 // Generate PDF from content
                 $htmlContent = $data['content'];
                 
                 // You could wrap the content in a standardized HTML wrapper here if needed
                 // Add Garuda logo if configured
-                $settings = \App\Models\Setting::pluck('value', 'key');
+                $settings = app(\App\Services\SystemSettingService::class)->runtimeValues();
                 $logoUrl = $settings['saraban_garuda_logo'] ?? '';
                 $logoHtml = '';
                 if ($logoUrl) {
@@ -258,7 +262,7 @@ class DocumentController extends Controller
                 }
 
                 $htmlContent = $data['content'];
-                $settings = \App\Models\Setting::pluck('value', 'key');
+                $settings = app(\App\Services\SystemSettingService::class)->runtimeValues();
                 $logoUrl = $settings['saraban_garuda_logo'] ?? '';
                 $logoHtml = '';
                 if ($logoUrl) {

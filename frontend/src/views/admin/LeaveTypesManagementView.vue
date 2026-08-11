@@ -28,9 +28,7 @@
             <tr>
               <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">ชื่อประเภทการลา</th>
               <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">รหัสเริ่มต้น</th>
-              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">โควต้าสูงสุด (วัน)</th>
-              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">ทบวันลาข้ามปี</th>
-              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">ต้องมีเอกสาร</th>
+              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">ค่าตั้งต้น (วัน)</th>
               <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">คำอธิบาย</th>
               <th class="px-6 py-3"></th>
             </tr>
@@ -42,21 +40,7 @@
             <tr v-for="lt in leaveTypes" :key="lt.id" class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4 font-semibold text-gray-900">{{ lt.name }}</td>
               <td class="px-6 py-4 text-gray-700">{{ lt.code_prefix || '—' }}</td>
-              <td class="px-6 py-4 text-gray-700">{{ lt.max_days ?? '—' }} วัน</td>
-              <td class="px-6 py-4">
-                <span v-if="lt.is_carry_forward" class="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                  ✓ ได้ (สูงสุด {{ lt.max_carry_forward ?? 'ไม่จำกัด' }} วัน)
-                </span>
-                <span v-else class="text-xs text-gray-500">—</span>
-              </td>
-              <td class="px-6 py-4">
-                <span :class="[
-                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold',
-                  lt.requires_doc ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
-                ]">
-                  {{ lt.requires_doc ? '✓ ต้องมีเอกสาร' : 'ไม่จำเป็น' }}
-                </span>
-              </td>
+              <td class="px-6 py-4 text-gray-700">{{ lt.max_days === null ? 'ตามหลักเกณฑ์' : `${lt.max_days} วัน` }}</td>
               <td class="px-6 py-4 text-gray-500 max-w-xs truncate">{{ lt.description || '—' }}</td>
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2 justify-end">
@@ -114,10 +98,22 @@
                 class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]/30 focus:border-[#800000]"/>
             </div>
 
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">โควต้าสูงสุด (วันต่อปี) <span class="text-red-500">*</span></label>
-              <input v-model.number="form.max_days" type="number" min="1" max="365" required placeholder="30"
+            <div v-if="!editMode">
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">ค่าตั้งต้น (วัน) <span class="text-gray-400 font-normal">(เว้นว่างหากเป็นไปตามหลักเกณฑ์)</span></label>
+              <input v-model.number="form.max_days" type="number" min="1" max="3650" placeholder="30"
                 class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]/30 focus:border-[#800000]"/>
+              <p class="text-xs text-gray-500 mt-1.5">ใช้เป็นค่าเริ่มต้นจนกว่าจะกำหนดนโยบายสิทธิการลาให้ประเภทลานี้</p>
+            </div>
+
+            <div v-else>
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">ค่าตั้งต้น (วัน)</label>
+              <div class="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm text-gray-500">
+                {{ form.max_days === null || form.max_days === '' ? 'ตามหลักเกณฑ์' : `${form.max_days} วัน` }}
+              </div>
+              <p class="text-xs text-gray-500 mt-1.5">
+                สิทธิ์ต่อปีที่ใช้จริงกำหนดที่หน้านโยบายสิทธิการลา แยกตามประเภทบุคลากร —
+                <router-link to="/admin/leave-policies" class="text-[#800000] font-semibold hover:underline">ไปที่หน้านโยบาย →</router-link>
+              </p>
             </div>
 
             <div>
@@ -126,57 +122,37 @@
                 class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]/30 focus:border-[#800000] resize-none"/>
             </div>
 
-            <div class="flex items-center justify-between border-t border-gray-100 pt-3">
-              <div class="flex items-center gap-3">
-                <button type="button" @click="form.is_carry_forward = !form.is_carry_forward"
-                  :class="[
-                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                    form.is_carry_forward ? 'bg-[#800000]' : 'bg-gray-200'
-                  ]">
-                  <span :class="[
-                    'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                    form.is_carry_forward ? 'translate-x-6' : 'translate-x-1'
-                  ]"/>
-                </button>
-                <label class="text-sm font-medium text-gray-700">อนุญาตให้ทบวันลาข้ามปีได้</label>
-              </div>
-            </div>
-
-            <div v-if="form.is_carry_forward" class="pl-14">
-              <label class="block text-xs font-semibold text-gray-700 mb-1">จำนวนที่ทบได้สูงสุด (วัน) <span class="text-gray-400 font-normal">(เว้นว่างหากไม่จำกัด)</span></label>
-              <input v-model.number="form.max_carry_forward" type="number" min="1" max="365" placeholder="ไม่จำกัด"
-                class="w-full border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]/30 focus:border-[#800000]"/>
-            </div>
-
-            <div class="flex items-center gap-3 border-t border-gray-100 pt-3">
-              <button type="button" @click="form.is_prorated = !form.is_prorated"
+            <!--
+              เงื่อนไขการลา (ทบวันข้ามปี / เอกสารแนบ / ลาครึ่งวัน / ลาย้อนหลัง) กำหนดแยกตามประเภทบุคลากร
+              ที่ leave_policies เท่านั้น สวิตช์เดิมบนหน้านี้ไม่มีผลกับการยื่น-อนุมัติจริง จึงเอาออก
+            -->
+            <!-- สวิตช์นี้มีผลจริงกับรายงานคัดกรองเลื่อนเงินเดือน -->
+            <div class="flex items-start gap-3 border-t border-gray-100 pt-3">
+              <button type="button" @click="form.counts_toward_promotion = !form.counts_toward_promotion"
                 :class="[
-                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                  form.is_prorated ? 'bg-[#800000]' : 'bg-gray-200'
+                  'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors',
+                  form.counts_toward_promotion ? 'bg-[#800000]' : 'bg-gray-200'
                 ]">
                 <span :class="[
                   'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                  form.is_prorated ? 'translate-x-6' : 'translate-x-1'
+                  form.counts_toward_promotion ? 'translate-x-6' : 'translate-x-1'
                 ]"/>
               </button>
               <label class="text-sm font-medium text-gray-700 flex flex-col">
-                <span>คำนวณวันลาตามสัดส่วนอายุงาน (Proration)</span>
-                <span class="text-xs text-gray-500 font-normal">เช่น ได้ 1 วันต่อเดือนสำหรับอายุงานไม่ถึง 1 ปี</span>
+                <span>นับรวมในเกณฑ์พิจารณาเลื่อนเงินเดือน</span>
+                <span class="text-xs text-gray-500 font-normal">ปิดสำหรับการลาที่ระเบียบไม่ให้นับ เช่น ลาอุปสมบท ลาคลอดบุตร ลาพักผ่อน</span>
               </label>
             </div>
 
-            <div class="flex items-center gap-3 border-t border-gray-100 pt-3">
-              <button type="button" @click="form.requires_doc = !form.requires_doc"
-                :class="[
-                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                  form.requires_doc ? 'bg-[#800000]' : 'bg-gray-200'
-                ]">
-                <span :class="[
-                  'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
-                  form.requires_doc ? 'translate-x-6' : 'translate-x-1'
-                ]"/>
-              </button>
-              <label class="text-sm font-medium text-gray-700">ต้องมีเอกสารแนบ</label>
+            <div class="border-t border-gray-100 pt-3">
+              <div class="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
+                <p class="text-sm font-semibold text-gray-700 mb-1">เงื่อนไขการลาอื่น ๆ</p>
+                <p class="text-xs text-gray-500 leading-relaxed">
+                  การทบวันลาข้ามปี, การต้องแนบหลักฐาน, การลาครึ่งวัน และการลาย้อนหลัง
+                  กำหนดแยกตามประเภทบุคลากรที่หน้านโยบายสิทธิการลา —
+                  <router-link to="/admin/leave-policies" class="text-[#800000] font-semibold hover:underline">ไปที่หน้านโยบาย →</router-link>
+                </p>
+              </div>
             </div>
 
             <div class="flex gap-3 pt-2">
@@ -248,10 +224,11 @@ const form = ref({
   is_carry_forward: false,
   max_carry_forward: null,
   is_prorated: false,
+  counts_toward_promotion: true,
 })
 
 const resetForm = () => {
-  form.value = { name: '', code_prefix: '', max_days: 30, description: '', requires_doc: false, is_carry_forward: false, max_carry_forward: null, is_prorated: false }
+  form.value = { name: '', code_prefix: '', max_days: 30, description: '', requires_doc: false, is_carry_forward: false, max_carry_forward: null, is_prorated: false, counts_toward_promotion: true }
   formError.value = ''
 }
 
@@ -273,12 +250,13 @@ const openEdit = (lt) => {
   form.value = {
     name: lt.name,
     code_prefix: lt.code_prefix || '',
-    max_days: lt.max_days ?? 30,
+    max_days: lt.max_days,
     description: lt.description ?? '',
     requires_doc: !!lt.requires_doc,
     is_carry_forward: !!lt.is_carry_forward,
     max_carry_forward: lt.max_carry_forward ?? null,
     is_prorated: !!lt.is_prorated,
+    counts_toward_promotion: lt.counts_toward_promotion ?? true,
   }
   formError.value = ''
   showModal.value = true
@@ -289,7 +267,9 @@ const submitForm = async () => {
   formError.value = ''
   try {
     if (editMode.value) {
-      await api.put(`/admin/leave-types/${editId.value}`, form.value)
+      // max_days เป็นค่าตั้งต้นเท่านั้น แก้ไม่ได้หลังสร้าง — สิทธิ์จริงอยู่ที่ leave_policies
+      const { max_days, ...payload } = form.value
+      await api.put(`/admin/leave-types/${editId.value}`, payload)
     } else {
       await api.post('/admin/leave-types', form.value)
     }

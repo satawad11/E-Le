@@ -2,6 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
+    <title>แบบใบลาอุปสมบท</title>
     <style>
         @font-face {
             font-family: 'THSarabunNew';
@@ -16,356 +17,212 @@
             src: url("{{ public_path('fonts/THSarabunNew/THSarabunNew Bold.ttf') }}") format('truetype');
         }
         @page {
-            margin: 5mm 15mm;
+            margin: 8mm 12mm;
             size: A4 portrait;
         }
         body { 
             font-family: 'THSarabunNew', sans-serif; 
-            font-size: 15pt; 
-            margin: 0; 
-            padding: 0; 
+            font-size: 14pt; 
+            line-height: 1.08;
             color: #000; 
-            line-height: 0.95; 
         }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .font-bold { font-weight: bold; }
         
-        .table-stats { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-top: 5px; 
-            font-size: 14pt; 
-        }
-        .table-stats th, .table-stats td { 
-            border: 1px solid #000; 
-            padding: 2px; 
-            text-align: center; 
-        }
-        
-        .dot-line {
-            border-bottom: 1px dotted #000;
-        }
-        
-        table.layout {
+        table.form-table {
             width: 100%;
             border-collapse: collapse;
+            margin-bottom: 2px;
         }
-        table.layout td {
+        table.form-table td {
             vertical-align: bottom;
-            padding-bottom: 0px;
-            padding-top: 0px;
+            padding: 1px 0;
+            white-space: nowrap;
+        }
+        td.dotted {
+            border-bottom: 1px dotted #000;
+            text-align: center;
+        }
+        td.dotted-left {
+            border-bottom: 1px dotted #000;
+            text-align: left;
+            padding-left: 5px;
+        }
+        .circle-opt {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border: 1px solid #000;
+            border-radius: 50%;
+            margin-right: 3px;
+            vertical-align: middle;
+        }
+        .circle-opt.checked {
+            background-color: #000;
         }
     </style>
 </head>
 <body>
-    <div class="text-center font-bold" style="font-size: 18pt; margin-bottom: 10px;">
+    <div class="text-center font-bold" style="font-size: 17pt; margin-bottom: 6px;">
         แบบใบลาอุปสมบท
     </div>
     
-    <table class="layout">
+    <table class="form-table">
         <tr>
             <td width="55%"></td>
-            <td width="8%">เขียนที่</td>
-            <td width="37%" class="dot-line text-center">{{ $settings['institution_name'] ?? '' }}</td>
+            <td width="8%" class="text-right">(เขียนที่)&nbsp;</td>
+            <td width="37%" class="dotted">{{ $settings['school_name'] ?? 'วิทยาลัยเทคนิคดอนเมือง' }}</td>
         </tr>
     </table>
     
     @php
         $thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        $createdMonth = \Carbon\Carbon::parse($leave->created_at)->month;
-        $createdYear = \Carbon\Carbon::parse($leave->created_at)->year + 543;
+        $createdDay = $leave->created_at ? \Carbon\Carbon::parse($leave->created_at)->day : '';
+        $createdMonth = $leave->created_at ? \Carbon\Carbon::parse($leave->created_at)->month : '';
+        $createdYear = $leave->created_at ? \Carbon\Carbon::parse($leave->created_at)->year + 543 : '';
+
+        $meta = is_array($leave->meta_data) ? $leave->meta_data : json_decode($leave->meta_data ?? '[]', true);
+        $ordainStatus = $meta['ordain_status'] ?? 'ยังไม่เคย';
+        $isEver = $ordainStatus === 'เคย';
+        $isNever = $ordainStatus === 'ยังไม่เคย';
     @endphp
 
-    <table class="layout">
+    <table class="form-table">
         <tr>
             <td width="45%"></td>
             <td width="5%" class="text-right">วันที่&nbsp;</td>
-            <td width="10%" class="dot-line text-center">{{ \Carbon\Carbon::parse($leave->created_at)->day }}</td>
-            <td width="7%" class="text-center">เดือน</td>
-            <td width="18%" class="dot-line text-center">{{ $thaiMonths[$createdMonth] }}</td>
+            <td width="8%" class="dotted">{{ $createdDay }}</td>
+            <td width="6%" class="text-center">เดือน</td>
+            <td width="18%" class="dotted">{{ $createdMonth ? $thaiMonths[$createdMonth] : '' }}</td>
             <td width="5%" class="text-center">พ.ศ.</td>
-            <td width="10%" class="dot-line text-center">{{ $createdYear }}</td>
+            <td width="13%" class="dotted">{{ $createdYear }}</td>
         </tr>
     </table>
 
-    <table class="layout" style="margin-top: 5px;">
+    <table class="form-table" style="margin-top: 4px;">
         <tr>
-            <td width="5%">เรื่อง</td>
-            <td width="40%" class="dot-line">&nbsp;ขอลาอุปสมบท</td>
-            <td width="55%"></td>
+            <td width="5%" class="font-bold">เรื่อง</td>
+            <td width="95%" class="font-bold">ขอลาอุปสมบท</td>
         </tr>
         <tr>
-            <td width="5%">เรียน</td>
-            <td width="40%" class="dot-line">&nbsp;ผู้อำนวยการ{{ $settings['institution_name'] ?? '' }}</td>
-            <td width="55%"></td>
+            <td width="5%" class="font-bold">เรียน</td>
+            <td width="95%">{{ $settings['director_position'] ?? 'ผู้อำนวยการวิทยาลัยเทคนิคดอนเมือง' }}</td>
         </tr>
     </table>
 
-    <table class="layout" style="margin-top: 10px;">
+    <table class="form-table" style="margin-top: 4px;">
         <tr>
-            <td width="15%"></td>
+            <td width="12%"></td>
             <td width="7%">ข้าพเจ้า</td>
-            <td width="35%" class="dot-line text-center">{{ $leave->user->name ?? '' }}</td>
+            <td width="43%" class="dotted">{{ $leave->user->name ?? '' }}</td>
             <td width="8%" class="text-center">ตำแหน่ง</td>
-            <td width="35%" class="dot-line text-center">{{ $leave->user->role->name ?? '' }}</td>
+            <td width="30%" class="dotted">{{ $leave->user->profile->position ?? ($leave->user->role->description ?? 'บุคลากร') }}</td>
         </tr>
-    </table>
-    <table class="layout">
         <tr>
-            <td width="5%">สังกัด</td>
-            <td width="95%" class="dot-line">&nbsp;{{ $leave->user->department->name ?? '' }}</td>
+            <td width="10%">แผนก/งาน</td>
+            <td width="35%" class="dotted">{{ $leave->user->department->name ?? '' }}</td>
+            <td width="8%" class="text-center">สังกัด</td>
+            <td width="47%" class="dotted">{{ $settings['school_name'] ?? 'วิทยาลัยเทคนิคดอนเมือง' }}</td>
         </tr>
     </table>
 
-    <table class="layout" style="margin-top: 5px;">
+    <table class="form-table" style="margin-top: 4px;">
         <tr>
-            <td width="30%">ข้าพเจ้ามีความประสงค์ขอลาอุปสมบท</td>
-            <td width="10%">ในศาสนา</td>
-            <td width="60%" class="dot-line text-center">พุทธ</td>
+            <td width="20%">เกิดวันที่</td>
+            <td width="30%" class="dotted">{{ $leave->user->profile->date_of_birth ? \Carbon\Carbon::parse($leave->user->profile->date_of_birth)->day . ' ' . $thaiMonths[\Carbon\Carbon::parse($leave->user->profile->date_of_birth)->month] . ' ' . (\Carbon\Carbon::parse($leave->user->profile->date_of_birth)->year + 543) : '-' }}</td>
+            <td width="15%" class="text-center">เข้ารับราชการเมื่อวันที่</td>
+            <td width="35%" class="dotted">{{ $leave->user->profile->start_date ? \Carbon\Carbon::parse($leave->user->profile->start_date)->day . ' ' . $thaiMonths[\Carbon\Carbon::parse($leave->user->profile->start_date)->month] . ' ' . (\Carbon\Carbon::parse($leave->user->profile->start_date)->year + 543) : '-' }}</td>
         </tr>
-    </table>
-    <table class="layout">
         <tr>
-            <td width="15%">กำหนดอุปสมบท</td>
-            <td width="5%">วันที่</td>
-            <td width="80%" class="dot-line text-center">{{ isset($leave->meta_data['ordain_date']) ? $thaiDateService->formatToThaiText($leave->meta_data['ordain_date']) : '' }}</td>
+            <td width="30%">ข้าพเจ้า <span class="circle-opt {{ $isNever ? 'checked' : '' }}"></span> ยังไม่เคยอุปสมบท &nbsp;&nbsp; <span class="circle-opt {{ $isEver ? 'checked' : '' }}"></span> เคยอุปสมบทมาแล้ว</td>
+            <td width="70%">มีความประสงค์ขอลาอุปสมบท ณ วัด <span class="dotted" style="display:inline-block; width: 40%;">{{ $meta['temple_name'] ?? '-' }}</span></td>
         </tr>
-    </table>
-    <table class="layout">
         <tr>
-            <td width="10%">ณ วัด</td>
-            <td width="40%" class="dot-line text-center">{{ $leave->meta_data['temple_name'] ?? '' }}</td>
             <td width="10%">ตั้งอยู่ ณ</td>
-            <td width="40%" class="dot-line text-center">{{ $leave->meta_data['temple_location'] ?? '' }}</td>
+            <td width="90%" class="dotted-left">{{ $meta['temple_location'] ?? '-' }}</td>
         </tr>
-    </table>
-    <table class="layout">
         <tr>
-            <td width="15%">และจำพรรษา ณ วัด</td>
-            <td width="35%" class="dot-line text-center">{{ $leave->meta_data['stay_temple_name'] ?? '' }}</td>
-            <td width="10%">ตั้งอยู่ ณ</td>
-            <td width="40%" class="dot-line text-center">{{ $leave->meta_data['stay_temple_location'] ?? '' }}</td>
-        </tr>
-    </table>
-    
-    <table class="layout" style="margin-top: 5px;">
-        <tr>
-            <td width="12%">ตั้งแต่วันที่</td>
-            <td width="30%" class="dot-line text-center">{{ $thaiDateService->formatToThaiText($leave->start_date) }}</td>
-            <td width="10%" class="text-center">ถึงวันที่</td>
-            <td width="30%" class="dot-line text-center">{{ $thaiDateService->formatToThaiText($leave->end_date) }}</td>
-            <td width="8%" class="text-center">มีกำหนด</td>
-            <td width="7%" class="dot-line text-center">{{ $leave->total_days }}</td>
-            <td width="3%" class="text-right">วัน</td>
+            <td width="20%">กำหนดอุปสมบทวันที่</td>
+            <td width="30%" class="dotted">{{ !empty($meta['ordain_date']) ? \Carbon\Carbon::parse($meta['ordain_date'])->day . ' ' . $thaiMonths[\Carbon\Carbon::parse($meta['ordain_date'])->month] . ' ' . (\Carbon\Carbon::parse($meta['ordain_date'])->year + 543) : '-' }}</td>
+            <td width="20%" class="text-center">และจะจำพรรษาอยู่ ณ วัด</td>
+            <td width="30%" class="dotted">{{ $meta['stay_temple_name'] ?? ($meta['temple_name'] ?? '-') }}</td>
         </tr>
     </table>
 
-    <table class="layout" style="margin-top: 5px;">
+    @php
+        $startDay = $leave->start_date ? \Carbon\Carbon::parse($leave->start_date)->day : '';
+        $startMonth = $leave->start_date ? \Carbon\Carbon::parse($leave->start_date)->month : '';
+        $startYear = $leave->start_date ? \Carbon\Carbon::parse($leave->start_date)->year + 543 : '';
+        
+        $endDay = $leave->end_date ? \Carbon\Carbon::parse($leave->end_date)->day : '';
+        $endMonth = $leave->end_date ? \Carbon\Carbon::parse($leave->end_date)->month : '';
+        $endYear = $leave->end_date ? \Carbon\Carbon::parse($leave->end_date)->year + 543 : '';
+    @endphp
+
+    <table class="form-table" style="margin-top: 4px;">
         <tr>
-            <td width="75%">ข้าพเจ้า ( @if(($leave->meta_data['ordain_status'] ?? '') == 'เคย') / @else &nbsp; @endif ) เคย ( @if(($leave->meta_data['ordain_status'] ?? '') == 'ยังไม่เคย') / @else &nbsp; @endif ) ยังไม่เคย อุปสมบท</td>
-            <td width="25%" class="text-center"></td>
-        </tr>
-    </table>
-    <table class="layout">
-        <tr>
-            <td width="8%">ถึงวันที่</td>
-            <td width="25%" class="dot-line text-center">{{ $lastLeave ? $thaiDateService->formatToThaiText($lastLeave->end_date) : '-' }}</td>
-            <td width="8%" class="text-center">มีกำหนด</td>
-            <td width="8%" class="dot-line text-center">{{ $lastLeave ? $lastLeave->total_days : '-' }}</td>
-            <td width="30%" class="text-center">วัน ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่</td>
-            <td width="21%" class="dot-line text-center"></td>
-        </tr>
-    </table>
-    <table class="layout">
-        <tr>
-            <td width="100%" class="dot-line text-left">&nbsp;{{ $leave->contact_address ?? '' }}</td>
-        </tr>
-    </table>
-    <table class="layout">
-        <tr>
-            <td width="60%" class="dot-line text-center"></td>
-            <td width="15%" class="text-center">หมายเลขโทรศัพท์</td>
-            <td width="25%" class="dot-line text-center">{{ $leave->user->phone ?? '' }}</td>
+            <td width="18%">ขอลาอุปสมบทตั้งแต่วันที่</td>
+            <td width="6%" class="dotted">{{ $startDay }}</td>
+            <td width="5%" class="text-center">เดือน</td>
+            <td width="18%" class="dotted">{{ $startMonth ? $thaiMonths[$startMonth] : '' }}</td>
+            <td width="5%" class="text-center">พ.ศ.</td>
+            <td width="10%" class="dotted">{{ $startYear }}</td>
+            <td width="7%" class="text-center">ถึงวันที่</td>
+            <td width="6%" class="dotted">{{ $endDay }}</td>
+            <td width="5%" class="text-center">เดือน</td>
+            <td width="18%" class="dotted">{{ $endMonth ? $thaiMonths[$endMonth] : '' }}</td>
+            <td width="5%" class="text-center">พ.ศ.</td>
+            <td width="10%" class="dotted">{{ $endYear }}</td>
         </tr>
     </table>
 
-    <table class="layout" style="margin-top: 10px;">
+    <table class="form-table">
         <tr>
-            <td width="40%"></td>
-            <td width="60%">
-                @php
-                    $sigPath = $leave->signature_path ?: ($leave->user->profile ? $leave->user->profile->signature_path : null);
-                    $userSig = $sigPath ? public_path(str_replace('/storage/', 'storage/', $sigPath)) : null;
-                @endphp
-                <table class="layout">
-                    <tr>
-                        <td width="15%" class="text-right">(ลงชื่อ)</td>
-                        <td width="70%" class="dot-line text-center">
-                            @if($userSig && file_exists($userSig))
-                                <img src="{{ $userSig }}" height="30" style="margin-bottom: -10px;">
-                            @endif
-                        </td>
-                        <td width="15%"></td>
-                    </tr>
-                    <tr>
-                        <td class="text-right">(</td>
-                        <td class="text-center">&nbsp;{{ $leave->user->name ?? '' }}&nbsp;</td>
-                        <td>)</td>
-                    </tr>
-                </table>
+            <td width="9%">มีกำหนด</td>
+            <td width="8%" class="dotted">{{ $leave->total_days }}</td>
+            <td width="83%">&nbsp;วัน (วันทำการ)</td>
+        </tr>
+    </table>
+
+    <!-- Signature & Approval Split Layout -->
+    <table width="100%" style="margin-top: 20px;">
+        <tr>
+            <!-- Left Side -->
+            <td width="48%" style="vertical-align: top; padding-right: 10px;">
+                <div style="font-size: 13pt;">
+                    (ลงชื่อ).........................................................ผู้ตรวจสอบ<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(........................................................)<br>
+                    วันที่......../................/............
+                </div>
+            </td>
+
+            <!-- Right Side: Applicant Sign & Approver Decision -->
+            <td width="52%" style="vertical-align: top; padding-left: 10px;">
+                <div class="text-center" style="font-size: 13pt;">
+                    ขอแสดงความนับถือ<br><br>
+                    (ลงชื่อ)........................................................<br>
+                    ( {{ $leave->user->name ?? '' }} )
+                </div>
+
+                <div style="margin-top: 15px; font-size: 13pt;">
+                    <div class="font-bold"><u>ความเห็นผู้บังคับบัญชา</u></div>
+                    ....................................................................................<br>
+                    (ลงชื่อ)........................................................<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(........................................................)<br>
+                    วันที่......../................/............
+                </div>
+
+                <div style="margin-top: 15px; font-size: 13pt;">
+                    <div class="font-bold"><u>คำสั่ง</u> &nbsp;&nbsp;&nbsp;&nbsp; <span class="circle-opt"></span> อนุญาต &nbsp;&nbsp;&nbsp;&nbsp; <span class="circle-opt"></span> ไม่อนุญาต</div>
+                    ....................................................................................<br>
+                    (ลงชื่อ)........................................................<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;( {{ $settings['director_name'] ?? '........................................................' }} )<br>
+                    วันที่......../................/............
+                </div>
             </td>
         </tr>
     </table>
-
-    <!-- Bottom Section -->
-    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 5px;">
-        <tr>
-            <td width="48%" valign="top">
-                <!-- Left Column -->
-                <div style="text-align: center; font-weight: bold; margin-bottom: 5px;">สถิติการลาในปีงบประมาณนี้</div>
-                <table class="table-stats">
-                    <tr>
-                        <th width="50%">ประเภทการลา</th>
-                        <th width="50%">ลามาแล้ว (วัน)</th>
-                    </tr>
-                    <tr>
-                        <td align="left">ลาอุปสมบท</td>
-                        <td></td>
-                    </tr>
-                </table>
-                
-                @php 
-                    $hrBlock = $approverBlocks[0] ?? null;
-                    $hrName = $hrBlock ? $hrBlock['name'] : '........................................................';
-                    $hrDate = $hrBlock ? $hrBlock['date'] : null;
-                    $hrSig = $hrBlock ? $hrBlock['signature'] : null;
-                    $hrPosition = $hrBlock ? $hrBlock['position'] : 'หัวหน้างานบุคลากร';
-                @endphp
-                <table class="layout" style="margin-top: 10px;">
-                    <tr>
-                        <td width="20%">(ลงชื่อ)</td>
-                        <td width="70%" class="dot-line text-center">
-                            @if($hrSig && file_exists($hrSig))
-                                <img src="{{ $hrSig }}" height="30" style="margin-bottom: -10px;">
-                            @endif
-                        </td>
-                        <td width="10%"></td>
-                    </tr>
-                    <tr>
-                        <td class="text-right">(</td>
-                        <td class="text-center">{{ $hrName }}</td>
-                        <td>)</td>
-                    </tr>
-                    <tr>
-                        <td colspan="3" class="text-center">ผู้ตรวจสอบ</td>
-                    </tr>
-                    <tr>
-                        <td>ตำแหน่ง</td>
-                        <td colspan="2" class="dot-line text-center">{{ $hrPosition }}</td>
-                    </tr>
-                    <tr>
-                        <td>วันที่</td>
-                        <td colspan="2" class="dot-line text-center">@if($hrDate) {{ $hrDate->day }} / {{ $thaiMonths[$hrDate->month] }} / {{ $hrDate->year + 543 }} @else ......./......./....... @endif</td>
-                    </tr>
-                </table>
-            </td>
-            <td width="4%"></td>
-            <td width="48%" valign="top">
-                <!-- Right Column -->
-                <div style="font-weight: bold; margin-bottom: 5px;">ความเห็นผู้บังคับบัญชา</div>
-                @php 
-                    $deputyBlock = $approverBlocks[1] ?? null;
-                    $deputyName = $deputyBlock ? $deputyBlock['name'] : '........................................................';
-                    $deputyDate = $deputyBlock ? $deputyBlock['date'] : null;
-                    $deputySig = $deputyBlock ? $deputyBlock['signature'] : null;
-                    $deputyPosition = $deputyBlock ? $deputyBlock['position'] : 'รองผู้อำนวยการฝ่ายบริหารทรัพยากร';
-                    $deputyComment = $deputyBlock ? $deputyBlock['comment'] : '&nbsp;';
-                @endphp
-                <table class="layout">
-                    <tr><td class="dot-line text-center" style="color: #333;">{!! $deputyComment ?: '&nbsp;' !!}</td></tr>
-                    <tr><td class="dot-line">&nbsp;</td></tr>
-                </table>
-                <table class="layout" style="margin-top: 5px;">
-                    <tr>
-                        <td width="20%">(ลงชื่อ)</td>
-                        <td width="70%" class="dot-line text-center">
-                            @if($deputySig && file_exists($deputySig))
-                                <img src="{{ $deputySig }}" height="30" style="margin-bottom: -10px;">
-                            @endif
-                        </td>
-                        <td width="10%"></td>
-                    </tr>
-                    <tr>
-                        <td class="text-right">(</td>
-                        <td class="text-center">{{ $deputyName }}</td>
-                        <td>)</td>
-                    </tr>
-                    <tr>
-                        <td>ตำแหน่ง</td>
-                        <td colspan="2" class="dot-line text-center" style="font-size: 14pt;">{{ $deputyPosition }}</td>
-                    </tr>
-                    <tr>
-                        <td>วันที่</td>
-                        <td colspan="2" class="dot-line text-center">@if($deputyDate) {{ $deputyDate->day }} / {{ $thaiMonths[$deputyDate->month] }} / {{ $deputyDate->year + 543 }} @else ......./......./....... @endif</td>
-                    </tr>
-                </table>
-
-                <div style="font-weight: bold; margin-top: 10px; margin-bottom: 5px;">คำสั่ง</div>
-                <table class="layout">
-                    <tr>
-                        <td width="10%"></td>
-                        <td width="10%">( {!! isset($approverBlocks[2]) && $approverBlocks[2]['status'] === 'Approved' ? '/' : '&nbsp;&nbsp;&nbsp;' !!} )</td>
-                        <td width="30%">อนุญาต</td>
-                        <td width="10%">( {!! isset($approverBlocks[2]) && $approverBlocks[2]['status'] === 'Rejected' ? '/' : '&nbsp;&nbsp;&nbsp;' !!} )</td>
-                        <td width="40%">ไม่อนุญาต</td>
-                    </tr>
-                </table>
-                @php 
-                    $directorBlock = $approverBlocks[2] ?? null;
-                    $directorName = $directorBlock ? $directorBlock['name'] : '........................................................';
-                    $directorDate = $directorBlock ? $directorBlock['date'] : null;
-                    $directorSig = $directorBlock ? $directorBlock['signature'] : null;
-                    $directorPosition = $directorBlock ? $directorBlock['position'] : 'ผู้อำนวยการ';
-                    if (strpos($directorPosition, $settings['institution_name'] ?? '') === false) {
-                        $directorPosition .= $settings['institution_name'] ?? '';
-                    }
-                    $directorComment = $directorBlock ? $directorBlock['comment'] : '&nbsp;';
-                @endphp
-                <table class="layout">
-                    <tr><td class="dot-line text-center" style="color: #333;">{!! $directorComment ?: '&nbsp;' !!}</td></tr>
-                    <tr><td class="dot-line">&nbsp;</td></tr>
-                </table>
-                <table class="layout" style="margin-top: 5px;">
-                    <tr>
-                        <td width="20%">(ลงชื่อ)</td>
-                        <td width="70%" class="dot-line text-center">
-                            @if($directorSig && file_exists($directorSig))
-                                <img src="{{ $directorSig }}" height="30" style="margin-bottom: -10px;">
-                            @endif
-                        </td>
-                        <td width="10%"></td>
-                    </tr>
-                    <tr>
-                        <td class="text-right">(</td>
-                        <td class="text-center">{{ $directorName }}</td>
-                        <td>)</td>
-                    </tr>
-                    <tr>
-                        <td>ตำแหน่ง</td>
-                        <td colspan="2" class="dot-line text-center" style="font-size: 14pt;">{{ $directorPosition }}</td>
-                    </tr>
-                    <tr>
-                        <td>วันที่</td>
-                        <td colspan="2" class="dot-line text-center">@if($directorDate) {{ $directorDate->day }} / {{ $thaiMonths[$directorDate->month] }} / {{ $directorDate->year + 543 }} @else ......./......./....... @endif</td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-
-    <div style="position: absolute; bottom: 20px; left: 30px; font-size: 14pt;">
-        {{ $leave->document_number ?? '' }}
-    </div>
+@include('pdf.partials.verification_qr')
 </body>
 </html>

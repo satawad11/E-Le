@@ -20,9 +20,25 @@
       </div>
     </div>
 
-    <div v-if="loading" class="flex justify-center py-16">
-      <div class="animate-spin h-10 w-10 rounded-full border-4 border-[#800000] border-t-transparent"></div>
+    <!-- Skeleton Loader -->
+    <div v-if="loading" class="space-y-8 animate-pulse">
+      <!-- Attendance Card Skeleton -->
+      <div class="h-28 bg-gray-200 rounded-2xl"></div>
+      <!-- Stats Skeleton -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="h-24 bg-gray-200 rounded-2xl"></div>
+        <div class="h-24 bg-gray-200 rounded-2xl"></div>
+        <div class="h-24 bg-gray-200 rounded-2xl"></div>
+        <div class="h-24 bg-gray-200 rounded-2xl"></div>
+      </div>
+      <!-- Balances Skeleton -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="h-32 bg-gray-200 rounded-2xl"></div>
+        <div class="h-32 bg-gray-200 rounded-2xl"></div>
+        <div class="h-32 bg-gray-200 rounded-2xl"></div>
+      </div>
     </div>
+
 
     <div v-else>
       <!-- Today's Attendance Card -->
@@ -86,7 +102,8 @@
           <div v-for="balance in leaveStore.balances" :key="balance.id" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:-translate-y-0.5 transition-transform duration-200">
             <div class="flex justify-between items-start mb-3">
               <h3 class="font-semibold text-gray-800 text-sm">{{ balance.type.name }}</h3>
-              <span :class="[
+              <span v-if="balance.unlimited" class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">ไม่จำกัดโควตา</span>
+              <span v-else :class="[
                 'text-xs font-bold px-2 py-0.5 rounded-full',
                 (balance.quota + (balance.carried_forward || 0) - balance.used - (balance.pending || 0)) <= 2 ? 'bg-red-100 text-red-700' :
                 (balance.quota + (balance.carried_forward || 0) - balance.used - (balance.pending || 0)) <= 5 ? 'bg-amber-100 text-amber-700' :
@@ -94,9 +111,9 @@
               ]">เหลือ {{ balance.quota + (balance.carried_forward || 0) - balance.used - (balance.pending || 0) }} วัน</span>
             </div>
             <div class="flex items-baseline gap-1 mb-2">
-              <span class="text-4xl font-extrabold text-[#800000]">{{ balance.quota + (balance.carried_forward || 0) - balance.used - (balance.pending || 0) }}</span>
+              <span class="text-4xl font-extrabold text-[#800000]">{{ balance.unlimited ? balance.used : balance.quota + (balance.carried_forward || 0) - balance.used - (balance.pending || 0) }}</span>
               <span class="text-gray-400 text-sm flex flex-col gap-0.5">
-                <span>/ {{ balance.quota + (balance.carried_forward || 0) }} วัน</span>
+                <span>{{ balance.unlimited ? 'วันที่ใช้ไป' : `/ ${balance.quota + (balance.carried_forward || 0)} วัน` }}</span>
                 <span v-if="balance.carried_forward" class="text-xs text-blue-600 font-medium">(มีวันทบยอด {{ balance.carried_forward }} วัน)</span>
               </span>
             </div>

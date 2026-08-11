@@ -10,11 +10,44 @@
         <!-- Leave type -->
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">ประเภทการลา <span class="text-red-500">*</span></label>
-          <select v-model="form.leave_type_id" required id="leave-type" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-900 focus:outline-none focus:border-[#800000] transition-colors bg-white">
+          <select v-model="form.leave_type_id" required id="leave-type" @change="onLeaveTypeChange" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-900 focus:outline-none focus:border-[#800000] transition-colors bg-white">
             <option value="" disabled>เลือกประเภทการลา...</option>
             <option v-for="type in leaveStore.types" :key="type.id" :value="type.id">{{ type.name }}</option>
           </select>
+
+          <!-- Contextual Leave Balance (แสดงเมื่อเลือกประเภทการลาแล้ว) -->
+          <transition name="fade">
+            <div v-if="selectedBalance" class="mt-2 flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-[#800000]/5 to-amber-50 border border-[#800000]/15">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs text-gray-500 font-medium">สิทธิทั้งหมด:</span>
+                <span class="text-sm font-bold text-gray-800">{{ selectedBalance.unlimited ? 'ไม่จำกัดโควตา' : `${selectedBalance.quota + (selectedBalance.carried_forward || 0)} วัน` }}</span>
+              </div>
+              <div class="w-px h-4 bg-gray-300"></div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs text-gray-500 font-medium">ใช้ไปแล้ว:</span>
+                <span class="text-sm font-bold text-orange-600">{{ selectedBalance.used }} วัน</span>
+              </div>
+              <div class="w-px h-4 bg-gray-300"></div>
+              <div v-if="selectedBalance.pending" class="flex items-center gap-1.5">
+                <span class="text-xs text-gray-500 font-medium">รออนุมัติ:</span>
+                <span class="text-sm font-bold text-amber-600">{{ selectedBalance.pending }} วัน</span>
+              </div>
+              <div v-if="selectedBalance.pending" class="w-px h-4 bg-gray-300"></div>
+              <div v-if="selectedBalance.paid_quota !== null && selectedBalance.paid_quota !== undefined" class="flex items-center gap-1.5">
+                <span class="text-xs text-gray-500 font-medium">ได้รับเงินเดือนอีก:</span>
+                <span class="text-sm font-bold text-emerald-700">{{ selectedBalance.paid_remaining }} / {{ selectedBalance.paid_quota }} วัน</span>
+              </div>
+              <div v-if="selectedBalance.paid_quota !== null && selectedBalance.paid_quota !== undefined" class="w-px h-4 bg-gray-300"></div>
+              <div v-if="!selectedBalance.unlimited" class="flex items-center gap-1.5">
+                <span class="text-xs text-gray-500 font-medium">คงเหลือ:</span>
+                <span class="text-sm font-bold px-2.5 py-0.5 rounded-full" :class="remainingDays <= 2 ? 'bg-red-100 text-red-700' : remainingDays <= 5 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'">
+                  {{ remainingDays }} วัน
+                </span>
+              </div>
+            </div>
+          </transition>
         </div>
+
 
         <!-- Dates -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -64,6 +97,15 @@
             <span class="text-sm text-gray-700">จำนวนวันทำการเบื้องต้น: <strong class="text-[#800000]">{{ calculatedDays }} วัน</strong> (ไม่นับเสาร์-อาทิตย์)</span>
           </div>
           <p class="text-xs text-gray-500 ml-8">* ระบบจะทำการคำนวณหักลบวันหยุดราชการเพิ่มเติมให้โดยอัตโนมัติตามประเภทการลาเมื่อส่งคำขอ</p>
+        </div>
+
+        <!-- เตือนเมื่อจำนวนวันที่ขอลาเกินส่วนที่ได้รับเงินเดือน -->
+        <div v-if="unpaidWarningDays > 0" class="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3">
+          <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.71-3.03l-6.93-11a2 2 0 00-3.42 0l-6.93 11A2 2 0 005.07 19z"/></svg>
+          <div class="text-sm text-amber-900">
+            <p class="font-semibold">การลาครั้งนี้จะมี {{ unpaidWarningDays }} วันที่ไม่ได้รับเงินเดือน</p>
+            <p class="text-xs mt-0.5">สิทธิ์ลาโดยได้รับเงินเดือนของท่านเหลืออีก {{ selectedBalance?.paid_remaining }} วัน ส่วนที่เกินต้องได้รับอนุญาตจากผู้บังคับบัญชาและจะไม่ได้รับเงินเดือนระหว่างลา</p>
+          </div>
         </div>
 
         <!-- Reason -->
@@ -314,6 +356,31 @@ const selectedLeaveTypeName = computed(() => {
   return leaveStore.types.find(t => t.id === form.leave_type_id)?.name || ''
 })
 
+const selectedBalance = computed(() => {
+  if (!form.leave_type_id) return null
+  return leaveStore.balances.find(b => b.leave_type_id === form.leave_type_id || b.type?.id === form.leave_type_id) || null
+})
+
+const remainingDays = computed(() => {
+  if (!selectedBalance.value) return 0
+  const b = selectedBalance.value
+  return (b.quota + (b.carried_forward || 0)) - b.used - (b.pending || 0)
+})
+
+// จำนวนวันของคำขอนี้ที่จะตกเป็นวันไม่ได้รับเงินเดือน (เกินเพดาน max_days_with_pay)
+const unpaidWarningDays = computed(() => {
+  const b = selectedBalance.value
+  if (!b || b.paid_remaining === null || b.paid_remaining === undefined) return 0
+  if (!calculatedDays.value) return 0
+  return Math.max(0, calculatedDays.value - b.paid_remaining)
+})
+
+const onLeaveTypeChange = () => {
+  // Reset date calculation if needed
+  calcDays()
+}
+
+
 const form = reactive({
   leave_type_id: '',
   start_date: '',
@@ -347,7 +414,10 @@ const form = reactive({
 })
 
 onMounted(async () => {
-  await leaveStore.fetchTypes()
+  await Promise.all([
+    leaveStore.fetchTypes(),
+    leaveStore.fetchBalances()
+  ])
   try {
     const res = await api.get('/users/list')
     // Exclude self
@@ -359,6 +429,7 @@ onMounted(async () => {
   // Setup Canvas Context initially in case 'draw' is selected later
   setupCanvas()
 })
+
 
 import { watch } from 'vue'
 watch(sigType, (val) => {

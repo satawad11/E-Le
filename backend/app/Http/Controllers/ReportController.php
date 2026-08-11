@@ -18,6 +18,71 @@ class ReportController extends Controller
         $this->thaiDateService = $thaiDateService;
     }
 
+    private const THAI_MONTHS = [
+        1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม', 4 => 'เมษายน',
+        5 => 'พฤษภาคม', 6 => 'มิถุนายน', 7 => 'กรกฎาคม', 8 => 'สิงหาคม',
+        9 => 'กันยายน', 10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม',
+    ];
+
+    /**
+     * query ใบลาที่อนุมัติแล้วตามตัวกรองเดียวกันทั้ง 3 รายงาน (สรุป/PDF/Excel)
+     * basis=fiscal (ค่าเริ่มต้น) นับตามปีงบประมาณให้ตรงกับระบบสิทธิ์ — 1 ต.ค. ปีก่อน ถึง 30 ก.ย. ปีนั้น
+     */
+    private function reportQuery(Request $request, int $year, ?int $month)
+    {
+        $query = Leave::with(['user.department', 'type'])->where('status', 'Approved');
+
+        if ($request->input('basis', 'fiscal') === 'fiscal') {
+            $query->whereBetween('start_date', [
+                Carbon::create($year - 1, 10, 1)->startOfDay(),
+                Carbon::create($year, 9, 30)->endOfDay(),
+            ]);
+        } else {
+            $query->whereYear('start_date', $year);
+        }
+
+        if ($month) {
+            $query->whereMonth('start_date', $month);
+        }
+
+        if ($request->filled('leave_type_id')) {
+            $query->where('leave_type_id', $request->leave_type_id);
+        }
+
+        if ($request->filled('department_id')) {
+            $query->whereHas('user', fn ($q) => $q->where('department_id', $request->department_id));
+        }
+
+        $user = $request->user();
+        $canViewAllReports = $user->hasAnyRole([
+            'ผู้ดูแลระบบสูงสุด', 'Super Admin',
+            'ผู้อำนวยการ', 'Director',
+            'รองผู้อำนวยการ', 'Deputy Director',
+            'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย', 'Head of Department',
+            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head',
+        ]) || $user->can('leave.report.view');
+
+        if (!$canViewAllReports) {
+            $query->where('user_id', $user->id);
+            return $query;
+        }
+
+        // หัวหน้าแผนก/ฝ่ายเห็นได้เฉพาะหน่วยงานตนเอง
+        if ($user->hasRole('หัวหน้าแผนกวิชา / หัวหน้าฝ่าย')
+            && !$user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'เจ้าหน้าที่บุคลากร (HR)'])) {
+            $deptId = $user->department_id ?? ($user->profile->department_id ?? null);
+            if ($deptId) {
+                $query->whereHas('user', fn ($q) => $q->where('department_id', $deptId));
+            }
+        }
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        return $query;
+    }
+
     /**
      * Get summary statistics for reports.
      * Query params: year (ค.ศ.), month (1-12, optional), leave_type_id (optional), department_id (optional)
@@ -29,40 +94,13 @@ class ReportController extends Controller
             'month'         => 'nullable|integer|min:1|max:12',
             'leave_type_id' => 'nullable|exists:leave_types,id',
             'department_id' => 'nullable|exists:departments,id',
+            'basis'         => 'nullable|in:fiscal,calendar',
         ]);
 
-        $year  = $request->input('year', now()->year);
-        $month = $request->input('month');
+        $year  = (int) $request->input('year', now()->year);
+        $month = $request->input('month') ? (int) $request->input('month') : null;
 
-        $query = Leave::with(['user.department', 'type'])
-            ->whereYear('start_date', $year)
-            ->where('status', 'Approved');
-
-        $user = $request->user();
-        $roleName = $user->role->name ?? '';
-
-        if ($roleName !== 'Employee') {
-            // Non-employees can see all leaves in the organization
-            if ($request->filled('user_id')) {
-                $query->where('user_id', $request->user_id);
-            }
-        } else {
-            $query->where('user_id', $user->id);
-        }
-
-        if ($month) {
-            $query->whereMonth('start_date', $month);
-        }
-
-        if ($request->leave_type_id) {
-            $query->where('leave_type_id', $request->leave_type_id);
-        }
-
-        if ($request->department_id) {
-            $query->whereHas('user', fn($q) => $q->where('department_id', $request->department_id));
-        }
-
-        $leaves = $query->get();
+        $leaves = $this->reportQuery($request, $year, $month)->get();
 
         // Total days by type
         $byType = $leaves->groupBy('leave_type_id')->map(function ($group) {
@@ -98,6 +136,7 @@ class ReportController extends Controller
         return response()->json([
             'year'        => $year,
             'month'       => $month,
+            'basis'       => $request->input('basis', 'fiscal'),
             'leave_types' => $leaveTypes,
             'summary'     => $totals,
         ]);
@@ -111,42 +150,24 @@ class ReportController extends Controller
         $request->validate([
             'year'  => 'nullable|integer|min:2000|max:2100',
             'month' => 'nullable|integer|min:1|max:12',
+            'basis' => 'nullable|in:fiscal,calendar',
         ]);
 
-        $year  = $request->input('year', now()->year);
-        $month = $request->input('month');
+        $year  = (int) $request->input('year', now()->year);
+        $month = $request->input('month') ? (int) $request->input('month') : null;
 
-        $query = Leave::with(['user.department', 'type'])
-            ->whereYear('start_date', $year)
-            ->where('status', 'Approved');
+        $query = $this->reportQuery($request, $year, $month);
 
         $user = $request->user();
-        $roleName = $user->role->name ?? '';
-
         $selectedUserName = null;
-        if ($roleName !== 'Employee') {
-            // Non-employees can see all leaves in the organization
-            if ($request->filled('user_id')) {
-                $query->where('user_id', $request->user_id);
-                $targetUser = \App\Models\User::find($request->user_id);
-                $selectedUserName = $targetUser?->name;
-            }
-        } else {
-            $query->where('user_id', $user->id);
+        if ($request->filled('user_id')) {
+            $selectedUserName = \App\Models\User::find($request->user_id)?->name;
+        } elseif (!$user->can('leave.report.view') && !$user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'รองผู้อำนวยการ', 'Deputy Director', 'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย', 'Head of Department', 'เจ้าหน้าที่บุคลากร (HR)', 'HR Head'])) {
             $selectedUserName = $user->name;
         }
 
-        if ($month) {
-            $query->whereMonth('start_date', $month);
-        }
-
-        $thaiMonths = [
-            1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม', 4 => 'เมษายน',
-            5 => 'พฤษภาคม', 6 => 'มิถุนายน', 7 => 'กรกฎาคม', 8 => 'สิงหาคม',
-            9 => 'กันยายน', 10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม',
-        ];
         $thaiYear      = $year + 543;
-        $thaiMonthName = $month ? ($thaiMonths[$month] ?? '') : null;
+        $thaiMonthName = $month ? (self::THAI_MONTHS[$month] ?? '') : null;
 
         $leaves          = $query->orderBy('start_date')->get();
         $leaveTypes      = LeaveType::all();
@@ -172,66 +193,22 @@ class ReportController extends Controller
         $request->validate([
             'year'  => 'nullable|integer|min:2000|max:2100',
             'month' => 'nullable|integer|min:1|max:12',
+            'basis' => 'nullable|in:fiscal,calendar',
         ]);
 
-        $year  = $request->input('year', now()->year);
-        $month = $request->input('month');
+        $year  = (int) $request->input('year', now()->year);
+        $month = $request->input('month') ? (int) $request->input('month') : null;
 
-        $query = Leave::with(['user.department', 'type'])
-            ->whereYear('start_date', $year)
-            ->where('status', 'Approved');
+        // เดิมรับ month มาแต่ไม่เคยกรอง ทำให้หัวรายงานบอกเดือนเดียวแต่ข้อมูลออกมาทั้งปี
+        $leaves = $this->reportQuery($request, $year, $month)->orderBy('start_date')->get();
 
-        $user = $request->user();
-        $roleName = $user->role->name ?? '';
+        $excelService = app(\App\Services\Export\LeaveExcelService::class);
+        $title = "รายงานสรุปสถิติการลา ประจำปี พ.ศ. " . ($year + 543)
+            . ($month ? ' เดือน ' . (self::THAI_MONTHS[$month] ?? $month) : '');
+        $tempFile = $excelService->generateReportXlsx($leaves->toArray() ? $leaves->all() : [], $title);
 
-        if ($roleName !== 'Employee') {
-            // Non-employees can see all leaves in the organization
-            if ($request->filled('user_id')) {
-                $query->where('user_id', $request->user_id);
-            }
-        } else {
-            $query->where('user_id', $user->id);
-        }
+        $filename = "report_{$year}" . ($month ? "_{$month}" : '') . ".xlsx";
 
-        if ($month) {
-            $query->whereMonth('start_date', $month);
-        }
-
-        $leaves = $query->orderBy('start_date')->get();
-
-        $filename = "report_{$year}" . ($month ? "_{$month}" : '') . ".csv";
-
-        $headers = [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        $callback = function () use ($leaves) {
-            $handle = fopen('php://output', 'w');
-            // BOM for Excel UTF-8
-            fputs($handle, "\xEF\xBB\xBF");
-
-            fputcsv($handle, [
-                'ลำดับ', 'ชื่อ-นามสกุล', 'หน่วยงาน', 'ประเภทการลา',
-                'วันที่เริ่มลา', 'วันที่สิ้นสุด', 'จำนวนวัน', 'เหตุผล',
-            ]);
-
-            foreach ($leaves as $i => $leave) {
-                fputcsv($handle, [
-                    $i + 1,
-                    $leave->user->name ?? '—',
-                    $leave->user->department->name ?? '—',
-                    $leave->type->name ?? '—',
-                    $leave->start_date,
-                    $leave->end_date,
-                    $leave->total_days,
-                    $leave->reason,
-                ]);
-            }
-
-            fclose($handle);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        return response()->download($tempFile, $filename)->deleteFileAfterSend(true);
     }
 }

@@ -23,8 +23,8 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="mysql" force="true"/>
-        <env name="DB_DATABASE" value="eleave_test" force="true"/>
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
         <env name="DB_HOST" value="db" force="true"/>
         <env name="DB_PORT" value="3306" force="true"/>
         <env name="DB_USERNAME" value="root" force="true"/>

@@ -25,12 +25,13 @@ class LeaveTypeController extends Controller
         $data = $request->validate([
             'name'          => 'required|string|max:100|unique:leave_types,name',
             'code_prefix'   => 'nullable|string|max:10|unique:leave_types,code_prefix',
-            'max_days'         => 'required|integer|min:1|max:365',
+            'max_days'         => 'nullable|integer|min:1|max:3650',
             'description'      => 'nullable|string|max:500',
             'requires_doc'     => 'boolean',
             'is_carry_forward' => 'boolean',
             'max_carry_forward'=> 'nullable|integer|min:1|max:365',
             'is_prorated'      => 'boolean',
+            'counts_toward_promotion' => 'boolean',
         ]);
 
         $leaveType = LeaveType::create($data);
@@ -50,12 +51,13 @@ class LeaveTypeController extends Controller
         $data = $request->validate([
             'name'         => "required|string|max:100|unique:leave_types,name,{$type->id}",
             'code_prefix'  => "nullable|string|max:10|unique:leave_types,code_prefix,{$type->id}",
-            'max_days'         => 'required|integer|min:1|max:365',
+            'max_days'         => 'nullable|integer|min:1|max:3650',
             'description'      => 'nullable|string|max:500',
             'requires_doc'     => 'boolean',
             'is_carry_forward' => 'boolean',
             'max_carry_forward'=> 'nullable|integer|min:1|max:365',
             'is_prorated'      => 'boolean',
+            'counts_toward_promotion' => 'boolean',
         ]);
 
         $type->update($data);

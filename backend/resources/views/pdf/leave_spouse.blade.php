@@ -360,5 +360,6 @@
     <div style="position: absolute; bottom: 20px; left: 30px; font-size: 14pt;">
         {{ $leave->document_number ?? '' }}
     </div>
+@include('pdf.partials.verification_qr')
 </body>
 </html>

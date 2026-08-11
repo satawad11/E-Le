@@ -2,90 +2,113 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Models\User;
-use App\Models\LeaveType;
 use App\Models\LeaveBalance;
-use App\Models\FiscalYear;
+use App\Models\LeavePolicy;
+use App\Models\User;
+use App\Services\LeavePolicyService;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
+/**
+ * ทบวันลาที่เหลือของปีงบประมาณที่ปิดไปแล้ว ไปเป็นวันสะสมของปีถัดไป
+ *
+ * อิง leave_policies ตามประเภทบุคลากร (ไม่ใช่ leave_types) และเคารพเพดาน 2 ชั้นตามระเบียบ:
+ *  - max_carry_forward  = ทบได้สูงสุดกี่วันต่อปี
+ *  - max_accumulated    = วันสะสมรวมกับสิทธิ์ประจำปีต้องไม่เกินเท่าไร
+ *    (ข้าราชการ 30 วัน = สะสม 20 + สิทธิ์ประจำปี 10, พนักงานราชการ 15 วัน = สะสม 5 + 10)
+ *
+ * รันซ้ำได้ (idempotent) เพราะเป็นการ "กำหนดค่า" carried_forward ไม่ใช่การบวกเพิ่ม
+ */
 class CarryForwardLeaves extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'app:carry-forward-leaves';
+    protected $signature = 'app:carry-forward-leaves
+        {--year= : ปีงบประมาณ (ค.ศ.) ที่ปิดรอบ เช่น 2026 หมายถึงทบจากปี 2026 ไป 2027}
+        {--dry-run : แสดงผลที่จะเกิดขึ้นโดยไม่บันทึก}';
+    protected $description = 'ทบวันลาคงเหลือของปีงบประมาณที่ปิดรอบ ไปเป็นวันสะสมของปีถัดไปตามนโยบายสิทธิการลา';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Carry forward unused leaves to the next year based on leave type settings';
-
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(LeavePolicyService $policies): int
     {
-        $this->info('Starting leave carry-forward process...');
+        $dryRun = (bool) $this->option('dry-run');
 
-        $currentFiscalYear = FiscalYear::where('is_current', true)->first();
-        if (!$currentFiscalYear) {
-            $this->error('No current fiscal year found.');
-            return;
+        // ค่าเริ่มต้น: คำสั่งนี้ถูกตั้งเวลาให้รันเช้าวันที่ 1 ต.ค. ซึ่งนับเป็นปีงบประมาณใหม่แล้ว
+        // จึงทบ "จากปีที่เพิ่งปิด" (ปีปัจจุบัน - 1) ไปยังปีที่เพิ่งเริ่ม
+        $toYear = $this->option('year')
+            ? (int) $this->option('year') + 1
+            : $policies->fiscalYearNumber($policies->fiscalYear(today()), today());
+        $fromYear = $toYear - 1;
+
+        $this->info("ทบวันลาจากปีงบประมาณ " . ($fromYear + 543) . " ไปยังปี " . ($toYear + 543));
+
+        $carryPolicies = LeavePolicy::with(['leaveType'])
+            ->where('is_active', true)
+            ->where('is_carry_forward', true)
+            ->get();
+
+        if ($carryPolicies->isEmpty()) {
+            $this->warn('ไม่มีนโยบายที่เปิดให้ทบวันลาข้ามปี');
+            return self::SUCCESS;
         }
 
-        $nextFiscalYear = FiscalYear::where('year', $currentFiscalYear->year + 1)->first();
-        if (!$nextFiscalYear) {
-            $this->error('Next fiscal year not found. Please create it first.');
-            return;
-        }
-
-        $leaveTypes = LeaveType::where('is_carry_forward', true)->get();
-        if ($leaveTypes->isEmpty()) {
-            $this->info('No leave types configured for carry-forward.');
-            return;
-        }
-
-        $users = User::where('status', 'Active')->get();
+        $rows = [];
         $count = 0;
 
-        foreach ($users as $user) {
-            foreach ($leaveTypes as $leaveType) {
-                $currentBalance = LeaveBalance::where('user_id', $user->id)
-                    ->where('leave_type_id', $leaveType->id)
-                    ->where('year', $currentFiscalYear->year)
+        foreach ($carryPolicies as $policy) {
+            // เพดานที่ทบได้จริง = น้อยที่สุดระหว่างเพดานต่อปี กับ (เพดานสะสมรวม - สิทธิ์ประจำปีของปีใหม่)
+            $cap = $policy->max_carry_forward ?? INF;
+            if ($policy->max_accumulated !== null) {
+                $cap = min($cap, max(0, (float) $policy->max_accumulated - (float) ($policy->annual_quota ?? 0)));
+            }
+
+            $userIds = User::where('personnel_type_id', $policy->personnel_type_id)
+                ->where('is_active', true)
+                ->pluck('id');
+
+            foreach ($userIds as $userId) {
+                $previous = LeaveBalance::where('user_id', $userId)
+                    ->where('leave_type_id', $policy->leave_type_id)
+                    ->where('year', $fromYear)
                     ->first();
+                if (!$previous) continue;
 
-                if ($currentBalance) {
-                    $remaining = ($currentBalance->quota + $currentBalance->carried_forward) - $currentBalance->used;
+                // ใบลาที่ยังค้างอนุมัติข้ามปีต้องไม่ถูกนับเป็นวันว่าง
+                $remaining = (float) $previous->quota + (float) $previous->carried_forward
+                    - (float) $previous->used - (float) $previous->reserved;
+                if ($remaining <= 0) continue;
 
-                    if ($remaining > 0) {
-                        $carryForwardAmount = $remaining;
-                        
-                        // Limit by max carry forward if configured
-                        if ($leaveType->max_carry_forward !== null && $carryForwardAmount > $leaveType->max_carry_forward) {
-                            $carryForwardAmount = $leaveType->max_carry_forward;
-                        }
+                $carry = min($remaining, $cap);
+                if ($carry <= 0) continue;
 
-                        LeaveBalance::updateOrCreate(
-                            [
-                                'user_id' => $user->id,
-                                'leave_type_id' => $leaveType->id,
-                                'year' => $nextFiscalYear->year,
-                            ],
-                            [
-                                'carried_forward' => $carryForwardAmount,
-                            ]
-                        );
-                        $count++;
+                $rows[] = [$userId, $policy->leaveType?->name ?? $policy->leave_type_id, $remaining, $carry];
+                $count++;
+
+                if ($dryRun) continue;
+
+                DB::transaction(function () use ($userId, $policy, $toYear, $carry) {
+                    $next = LeaveBalance::firstOrNew([
+                        'user_id' => $userId,
+                        'leave_type_id' => $policy->leave_type_id,
+                        'year' => $toYear,
+                    ]);
+                    if (!$next->exists) {
+                        $next->quota = $policy->annual_quota ?? 0;
+                        $next->used = 0;
+                        $next->reserved = 0;
                     }
-                }
+                    $next->carried_forward = $carry; // กำหนดค่า ไม่ใช่บวกเพิ่ม จึงรันซ้ำได้
+                    $next->leave_policy_id = $policy->id;
+                    $next->save();
+                });
             }
         }
 
-        $this->info("Successfully processed carry-forward for {$count} records into year {$nextFiscalYear->year}.");
+        if ($rows) {
+            $this->table(['user_id', 'ประเภทลา', 'คงเหลือปีเก่า', 'ทบให้'], $rows);
+        }
+
+        $this->info($dryRun
+            ? "จะทบวันลา {$count} รายการ (โหมด dry-run ยังไม่บันทึก)"
+            : "ทบวันลาเรียบร้อย {$count} รายการ");
+
+        return self::SUCCESS;
     }
 }

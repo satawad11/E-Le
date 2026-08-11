@@ -2,158 +2,182 @@
 
 namespace App\Services;
 
+use App\Models\Holiday;
 use App\Models\Leave;
-use App\Models\LeaveType;
+use App\Models\LeaveApproval;
 use App\Models\LeaveBalance;
+use App\Models\LeaveEvidence;
+use App\Models\LeavePolicy;
+use App\Models\LeaveType;
+use App\Models\User;
+use App\Models\WorkCalendarException;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
-use App\Models\Holiday;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class LeaveService
 {
-    /**
-     * Calculate total leave days excluding weekends, and optionally holidays.
-     */
-    public function calculateTotalDays($startDate, $endDate, $excludeHolidays = true): float
+    public function __construct(
+        private LeavePolicyService $policies,
+        private LeaveDocumentNumberService $numbers,
+        private LeaveAuditService $audit,
+        private LeaveEligibilityRuleService $eligibilityRules,
+        private LeaveVerificationService $verification,
+    ) {}
+
+    public function calculateTotalDays($startDate, $endDate, bool $excludeHolidays = true, ?int $departmentId = null): float
     {
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate);
-        $totalDays = 0;
+        if (!$excludeHolidays) return (float) ($start->diffInDays($end) + 1);
 
-        $holidays = [];
-        if ($excludeHolidays) {
-            $holidays = Holiday::where('is_active', true)
-                ->whereBetween('date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
-                ->pluck('date')
-                ->map(fn($date) => $date->format('Y-m-d'))
-                ->toArray();
+        $holidays = Holiday::where('is_active', true)
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->pluck('date')->map(fn ($date) => Carbon::parse($date)->toDateString())->all();
+
+        $exceptions = WorkCalendarException::query()
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->where(fn ($query) => $query->whereNull('department_id')
+                ->when($departmentId, fn ($query) => $query->orWhere('department_id', $departmentId)))
+            ->orderByRaw('CASE WHEN department_id IS NULL THEN 0 ELSE 1 END')
+            ->get()->keyBy(fn ($item) => Carbon::parse($item->date)->toDateString());
+
+        $days = 0;
+        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+            $key = $date->toDateString();
+            $exception = $exceptions->get($key);
+            $isWorkingDay = $exception ? (bool) $exception->is_working_day : ($date->isWeekday() && !in_array($key, $holidays, true));
+            if ($isWorkingDay) $days++;
         }
-
-        $current = $start->copy();
-        while ($current->lte($end)) {
-            $dateStr = $current->format('Y-m-d');
-            $isHoliday = $excludeHolidays && in_array($dateStr, $holidays);
-
-            if ($current->isWeekday() && !$isHoliday) {
-                $totalDays += 1;
-            }
-            $current->addDay();
-        }
-
-        return $totalDays < 0.5 ? 0.5 : (float) $totalDays;
+        return (float) $days;
     }
 
-    /**
-     * Store a new leave request.
-     */
     public function createLeaveRequest(array $data, int $userId, ?UploadedFile $attachment): Leave
     {
-        $leaveType = LeaveType::find($data['leave_type_id']);
-        
-        $leavePeriod = $data['leave_period'] ?? 'full_day';
-        if ($leavePeriod !== 'full_day') {
-            $totalDays = 0.5;
-        } else {
-            $totalDays = $this->calculateTotalDays($data['start_date'], $data['end_date'], $leaveType->exclude_holidays);
-        }
+        return DB::transaction(function () use ($data, $userId, $attachment) {
+            $user = User::with(['personnelType', 'profile'])->lockForUpdate()->findOrFail($userId);
+            $start = Carbon::parse($data['start_date']);
+            $end = Carbon::parse($data['end_date']);
+            $policy = $this->policies->resolve($user, (int) $data['leave_type_id'], $start);
+            $period = $data['leave_period'] ?? 'full_day';
+            $days = $period === 'full_day'
+                ? $this->calculateTotalDays($start, $end, $policy->exclude_holidays, $user->department_id)
+                : 0.5;
+            if ($days <= 0) throw ValidationException::withMessages(['start_date' => 'ช่วงวันที่เลือกไม่มีวันทำการ']);
+            if ($period !== 'full_day' && !$start->isSameDay($end)) throw ValidationException::withMessages(['leave_period' => 'ลาครึ่งวันต้องเป็นวันเดียวกัน']);
+            if ($policy->requires_substitute && !($data['substitute_id'] ?? null)) throw ValidationException::withMessages(['substitute_id' => 'ต้องระบุผู้ปฏิบัติงานแทน']);
+            $this->policies->assertEligible($user, $policy, $start, $end, $days, $period, (bool) $attachment);
+            // เงื่อนไขเฉพาะประเภทลาตามระเบียบ เช่น ลาอุปสมบทได้ครั้งเดียวตลอดอายุราชการ
+            $this->eligibilityRules->assert($user, $policy, $start);
 
-        $attachmentPath = null;
-        if ($attachment) {
-            $attachmentPath = $attachment->store('attachments', 'public');
-        }
+            $overlap = Leave::where('user_id', $userId)->whereNotIn('status', ['Cancelled', 'Rejected', 'Voided'])
+                ->where('start_date', '<=', $end)->where('end_date', '>=', $start)->lockForUpdate()->exists();
+            if ($overlap) throw ValidationException::withMessages(['start_date' => 'มีใบลาในช่วงเวลานี้อยู่แล้ว']);
 
-        $prefix = $leaveType->code_prefix ?: 'L';
-        $yearMonth = date('Ym');
+            $balance = $this->policies->balance($user, $policy, $start);
+            $balance = LeaveBalance::whereKey($balance->id)->lockForUpdate()->first();
+            $available = (float) $balance->quota + (float) $balance->carried_forward - (float) $balance->used - (float) $balance->reserved;
+            if ($policy->annual_quota !== null && $available < $days) throw ValidationException::withMessages(['leave_type_id' => 'วันลาคงเหลือไม่เพียงพอ (รวมรายการรออนุมัติแล้ว)']);
 
-        $lastLeave = Leave::where('leave_type_id', $leaveType->id)
-            ->where('document_number', 'like', "{$prefix}-{$yearMonth}-%")
-            ->orderBy('id', 'desc')
-            ->first();
+            // แยกวันที่ได้รับเงินเดือน/ไม่ได้รับเงินเดือน ตามเพดาน max_days_with_pay ของนโยบาย
+            [$paidDays, $unpaidDays] = $this->splitPaidDays($policy, $balance, $days);
 
-        $sequence = 1;
-        if ($lastLeave && preg_match('/-(\d+)$/', $lastLeave->document_number, $matches)) {
-            $sequence = intval($matches[1]) + 1;
-        }
-
-        $documentNumber = sprintf("%s-%s-%04d", $prefix, $yearMonth, $sequence);
-
-        return Leave::create([
-            'user_id'         => $userId,
-            'leave_type_id'   => $data['leave_type_id'],
-            'document_number' => $documentNumber,
-            'start_date'      => $data['start_date'],
-            'end_date'        => $data['end_date'],
-            'leave_period'    => $leavePeriod,
-            'total_days'      => $totalDays,
-            'reason'          => $data['reason'],
-            'contact_address' => $data['contact_address'] ?? null,
-            'attachment'      => $attachmentPath,
-            'status'          => 'Pending',
-            'approval_level'  => 1,
-            'substitute_id'     => $data['substitute_id'] ?? null,
-            'substitute_status' => isset($data['substitute_id']) ? 'Pending' : null,
-            'substitute_reason' => $data['substitute_reason'] ?? null,
-            'meta_data'         => isset($data['meta_data']) ? json_decode($data['meta_data'], true) : null,
-            'signature_path'    => $data['signature_path'] ?? null,
-        ]);
+            $type = LeaveType::findOrFail($policy->leave_type_id);
+            $fiscalYear = $this->policies->fiscalYear($start);
+            $number = $this->numbers->next($type->code_prefix ?: 'L', $this->policies->periodYear($policy, $start) + 543);
+            $path = $attachment ? Storage::disk('local')->putFile('private/leave-evidences', $attachment) : null;
+            $leave = Leave::create([
+                'user_id' => $userId, 'leave_type_id' => $policy->leave_type_id, 'leave_policy_id' => $policy->id,
+                'fiscal_year_id' => $fiscalYear?->id, 'document_number' => $number, 'start_date' => $start,
+                'end_date' => $end, 'leave_period' => $period, 'total_days' => $days,
+                'paid_days' => $paidDays, 'unpaid_days' => $unpaidDays,
+                'reserved_days' => $policy->annual_quota !== null ? $days : 0, 'reason' => $data['reason'],
+                'contact_address' => $data['contact_address'] ?? null, 'status' => 'Pending', 'approval_level' => 1,
+                'substitute_id' => $data['substitute_id'] ?? null, 'substitute_status' => isset($data['substitute_id']) ? 'Pending' : null,
+                'substitute_reason' => $data['substitute_reason'] ?? null,
+                'meta_data' => isset($data['meta_data']) ? (is_array($data['meta_data']) ? $data['meta_data'] : json_decode($data['meta_data'], true)) : null,
+                'signature_path' => $data['signature_path'] ?? null, 'notified_supervisor_at' => $data['notified_supervisor_at'] ?? null,
+                'verification_hash' => Str::random(40),
+                'submitted_at' => now(),
+            ]);
+            if ($leave->reserved_days > 0) {
+                $balance->reserved += (float) $leave->reserved_days;
+                $balance->leave_policy_id = $policy->id;
+                $balance->save();
+            }
+            if ($attachment) LeaveEvidence::create([
+                'leave_id' => $leave->id, 'uploaded_by' => $userId,
+                'evidence_type' => $policy->required_evidence_type ?: 'supporting_document',
+                'original_name' => $attachment->getClientOriginalName(), 'storage_path' => $path,
+                'mime_type' => $attachment->getMimeType(), 'file_size' => $attachment->getSize(),
+                'sha256' => hash_file('sha256', $attachment->getRealPath()),
+            ]);
+            foreach (\App\Models\ApprovalStep::with('role')->orderBy('step_order')->get() as $step) {
+                LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'step_order' => $step->step_order], [
+                    'step_name' => $step->name, 'required_role_id' => $step->role_id, 'status' => 'Pending',
+                ]);
+            }
+            $this->audit->log($leave, 'created', null, $leave->toArray());
+            return $leave;
+        }, 5);
     }
 
     /**
-     * Deduct leave balance when a leave is fully approved.
-     * Returns false if balance is insufficient.
+     * แบ่งจำนวนวันของใบลาออกเป็น "วันที่ได้รับเงินเดือน" กับ "วันที่ไม่ได้รับเงินเดือน"
+     * นับจากวันที่ใช้ไปแล้วในรอบปีนี้ (รวมใบที่ยังรออนุมัติ) เทียบกับเพดาน max_days_with_pay
+     * นโยบายที่ไม่กำหนดเพดาน = ได้รับเงินเดือนทั้งหมด
+     *
+     * @return array{0: float, 1: float} [paid_days, unpaid_days]
      */
+    public function splitPaidDays(LeavePolicy $policy, ?LeaveBalance $balance, float $days): array
+    {
+        if ($policy->max_days_with_pay === null) return [$days, 0.0];
+
+        $alreadyTaken = $balance ? (float) $balance->used + (float) $balance->reserved : 0.0;
+        $paidRemaining = max(0.0, (float) $policy->max_days_with_pay - $alreadyTaken);
+        $paid = min($days, $paidRemaining);
+
+        return [$paid, $days - $paid];
+    }
+
     public function deductBalance(Leave $leave): bool
     {
-        $balance = LeaveBalance::where('user_id', $leave->user_id)
-            ->where('leave_type_id', $leave->leave_type_id)
-            ->where('year', Carbon::parse($leave->start_date)->year)
-            ->first();
-
-        if (!$balance) {
-            return false;
-        }
-
-        $remaining = $balance->quota - $balance->used;
-        if ($remaining < $leave->total_days) {
-            return false;
-        }
-
-        $balance->used += $leave->total_days;
-        $balance->save();
-
-        return true;
+        return DB::transaction(function () use ($leave) {
+            $balance = $this->balanceFor($leave, true); if (!$balance) return false;
+            $reserved = min((float) $balance->reserved, (float) $leave->reserved_days);
+            $available = (float) $balance->quota + (float) $balance->carried_forward - (float) $balance->used - ((float) $balance->reserved - $reserved);
+            if ($available < $leave->total_days) return false;
+            $balance->reserved -= $reserved; $balance->used += (float) $leave->total_days; $balance->save();
+            $leave->reserved_days = 0; $leave->save();
+            // ผนึกลายนิ้วมือเนื้อหาไว้ตอนอนุมัติ เพื่อให้ QR ตรวจการแก้ไขย้อนหลังได้
+            $this->verification->seal($leave);
+            return true;
+        }, 5);
     }
 
-    /**
-     * Restore leave balance when a leave is cancelled or rejected after being approved.
-     */
     public function restoreBalance(Leave $leave): void
     {
-        $balance = LeaveBalance::where('user_id', $leave->user_id)
-            ->where('leave_type_id', $leave->leave_type_id)
-            ->where('year', Carbon::parse($leave->start_date)->year)
-            ->first();
-
-        if ($balance) {
-            $balance->used = max(0, $balance->used - $leave->total_days);
-            $balance->save();
-        }
+        DB::transaction(function () use ($leave) {
+            $balance = $this->balanceFor($leave, true); if (!$balance) return;
+            if ($leave->reserved_days > 0) $balance->reserved = max(0, (float) $balance->reserved - (float) $leave->reserved_days);
+            elseif ($leave->status === 'Approved') $balance->used = max(0, (float) $balance->used - (float) $leave->total_days);
+            $balance->save(); $leave->reserved_days = 0; $leave->save();
+        });
     }
 
-    /**
-     * Check if the user has enough leave balance.
-     */
     public function hasEnoughBalance(Leave $leave): bool
     {
-        $balance = LeaveBalance::where('user_id', $leave->user_id)
-            ->where('leave_type_id', $leave->leave_type_id)
-            ->where('year', Carbon::parse($leave->start_date)->year)
-            ->first();
+        $balance = $this->balanceFor($leave, false);
+        return $balance && ((float) $balance->quota + (float) $balance->carried_forward - (float) $balance->used - (float) $balance->reserved + (float) $leave->reserved_days) >= $leave->total_days;
+    }
 
-        if (!$balance) {
-            return false;
-        }
-
-        return ($balance->quota - $balance->used) >= $leave->total_days;
+    private function balanceFor(Leave $leave, bool $lock): ?LeaveBalance
+    {
+        $year = $this->policies->periodYearForLeave($leave);
+        $query = LeaveBalance::where('user_id', $leave->user_id)->where('leave_type_id', $leave->leave_type_id)->where('year', $year);
+        return $lock ? $query->lockForUpdate()->first() : $query->first();
     }
 }

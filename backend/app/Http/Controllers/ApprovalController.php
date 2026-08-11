@@ -23,10 +23,11 @@ class ApprovalController extends Controller
     public function pending(Request $request)
     {
         $user = $request->user();
-        $roleName = $user->role->name ?? '';
+        $isSuperAdmin = $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin']);
+        $isDeptHead = $user->hasRole('หัวหน้าแผนกวิชา / หัวหน้าฝ่าย');
 
-        if ($roleName === 'Super Admin') {
-            $leaves = Leave::with(['user.profile', 'type:id,name', 'approvals.approver:id,name'])
+        if ($isSuperAdmin) {
+            $leaves = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name'])
                 ->where(function($query) {
                     $query->where('status', 'Pending')
                           ->orWhere('cancellation_status', 'Pending');
@@ -34,21 +35,29 @@ class ApprovalController extends Controller
                 ->orderBy('created_at', 'asc')
                 ->get();
         } else {
-            // Get user's own approval steps
-            $userRoleSteps = \App\Models\ApprovalStep::where('role_id', $user->role_id)->pluck('step_order')->toArray();
+            // Get user's own role IDs (both Spatie roles and legacy role_id)
+            $userRoleIds = $user->roles->pluck('id')->toArray();
+            if ($user->role_id) {
+                $userRoleIds[] = $user->role_id;
+            }
+            $userRoleIds = array_unique($userRoleIds);
 
-            // Check if user is a delegate for anyone
+            // Get user's approval steps
+            $userRoleSteps = \App\Models\ApprovalStep::whereIn('role_id', $userRoleIds)->pluck('step_order')->toArray();
+
+            // Check active delegations
             $activeDelegations = \App\Models\UserDelegation::where('delegate_id', $user->id)
                 ->where('is_active', true)
                 ->where('start_date', '<=', now())
                 ->where('end_date', '>=', now())
-                ->with('user.role')
+                ->with('user.roles')
                 ->get();
 
-            // Add delegator's approval steps
             foreach ($activeDelegations as $delegation) {
-                if ($delegation->user && $delegation->user->role_id) {
-                    $delegatorSteps = \App\Models\ApprovalStep::where('role_id', $delegation->user->role_id)->pluck('step_order')->toArray();
+                if ($delegation->user) {
+                    $delRoleIds = $delegation->user->roles->pluck('id')->toArray();
+                    if ($delegation->user->role_id) $delRoleIds[] = $delegation->user->role_id;
+                    $delegatorSteps = \App\Models\ApprovalStep::whereIn('role_id', array_unique($delRoleIds))->pluck('step_order')->toArray();
                     $userRoleSteps = array_unique(array_merge($userRoleSteps, $delegatorSteps));
                 }
             }
@@ -57,14 +66,24 @@ class ApprovalController extends Controller
                 return response()->json([]);
             }
 
-            $leaves = Leave::with(['user.profile', 'type:id,name', 'approvals.approver:id,name'])
-                ->where(function($query) {
-                    $query->where('status', 'Pending')
-                          ->orWhere('cancellation_status', 'Pending');
+            $query = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name'])
+                ->where(function($q) {
+                    $q->where('status', 'Pending')
+                      ->orWhere('cancellation_status', 'Pending');
                 })
-                ->whereIn('approval_level', $userRoleSteps)
-                ->orderBy('created_at', 'asc')
-                ->get();
+                ->whereIn('approval_level', $userRoleSteps);
+
+            // Department Scope Isolation: If Department Head (and not Director/SuperAdmin/HR), only show leaves from own department
+            if ($isDeptHead && !$user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'เจ้าหน้าที่บุคลากร (HR)'])) {
+                $deptId = $user->department_id ?? ($user->profile->department_id ?? null);
+                if ($deptId) {
+                    $query->whereHas('user', function ($q) use ($deptId) {
+                        $q->where('department_id', $deptId);
+                    });
+                }
+            }
+
+            $leaves = $query->orderBy('created_at', 'asc')->get();
         }
 
         return response()->json($leaves);
@@ -73,19 +92,28 @@ class ApprovalController extends Controller
     public function approve(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $role = $user->role->name;
+        $isSuperAdmin = $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin']);
 
         // Only pending leaves can be approved
         if ($leave->status !== 'Pending') {
             return response()->json(['message' => 'ใบลานี้ไม่อยู่ในสถานะรออนุมัติ'], 422);
         }
 
+        // Check if substitute has accepted assignment (if substitute is assigned)
+        if ($leave->substitute_id && $leave->substitute_status !== 'Accepted') {
+            return response()->json([
+                'message' => 'ไม่สามารถอนุมัติได้เนื่องจากผู้ปฏิบัติงานแทนยังไม่ได้ตอบรับการมอบหมายงาน'
+            ], 422);
+        }
+
         // Check if user is authorized to approve this level
-        if ($role !== 'Super Admin') {
+        if (!$isSuperAdmin) {
             $currentStep = \App\Models\ApprovalStep::where('step_order', $leave->approval_level)->first();
+            $userRoleIds = $user->roles->pluck('id')->toArray();
+            if ($user->role_id) $userRoleIds[] = $user->role_id;
             
             $isAuthorized = false;
-            if ($currentStep && $currentStep->role_id === $user->role_id) {
+            if ($currentStep && in_array($currentStep->role_id, $userRoleIds)) {
                 $isAuthorized = true;
             } else if ($currentStep) {
                 $isDelegate = \App\Models\UserDelegation::where('delegate_id', $user->id)
@@ -93,7 +121,8 @@ class ApprovalController extends Controller
                     ->where('start_date', '<=', now())
                     ->where('end_date', '>=', now())
                     ->whereHas('user', function($q) use ($currentStep) {
-                        $q->where('role_id', $currentStep->role_id);
+                        $q->where('role_id', $currentStep->role_id)
+                          ->orWhereHas('roles', fn($rq) => $rq->where('roles.id', $currentStep->role_id));
                     })->exists();
                 if ($isDelegate) {
                     $isAuthorized = true;
@@ -105,7 +134,7 @@ class ApprovalController extends Controller
             }
         }
 
-        DB::transaction(function () use ($leave, $user, $request, $role) {
+        DB::transaction(function () use ($leave, $user, $request, $isSuperAdmin) {
             $profile = $user->profile;
             $signaturePath = $profile ? $profile->signature_path : null;
 
@@ -143,7 +172,7 @@ class ApprovalController extends Controller
 
             // Check if there is a next step
             $nextStep = null;
-            if ($role !== 'Super Admin') {
+            if (!$isSuperAdmin) {
                 $nextStep = \App\Models\ApprovalStep::where('step_order', '>', $leave->approval_level)
                     ->orderBy('step_order', 'asc')
                     ->first();
@@ -156,13 +185,16 @@ class ApprovalController extends Controller
                 }
                 $this->leaveService->deductBalance($leave);
                 $leave->status = 'Approved';
-                if ($role === 'Super Admin' && !$leave->hr_verified_at) {
+                if ($isSuperAdmin && !$leave->hr_verified_at) {
                     $leave->hr_verified_at = now();
 
                     // Auto-fill signatures for all approval steps (HR, Deputy, Director)
                     $steps = \App\Models\ApprovalStep::orderBy('step_order', 'asc')->get();
                     foreach ($steps as $st) {
-                        $stepUser = \App\Models\User::where('role_id', $st->role_id)->first();
+                        $stepUser = \App\Models\User::where('role_id', $st->role_id)
+                            ->orWhereHas('roles', fn($rq) => $rq->where('roles.id', $st->role_id))
+                            ->first();
+
                         if ($stepUser) {
                             $stepProfile = $stepUser->profile;
                             \App\Models\LeaveApproval::firstOrCreate([
@@ -197,13 +229,19 @@ class ApprovalController extends Controller
         // Notify user if fully approved
         if ($leave->status === 'Approved') {
             $leave->user->notify(new \App\Notifications\LeaveStatusChanged($leave, 'Approved', $user->name));
+            $startDateStr = $leave->start_date ? $leave->start_date->format('d/m/Y') : '';
+            $endDateStr = $leave->end_date ? $leave->end_date->format('d/m/Y') : '';
+            $msg = "✅ ใบลาของท่านได้รับการอนุมัติเรียบร้อยแล้ว\n"
+                 . "ประเภท: " . ($leave->type->name ?? 'การลา') . "\n"
+                 . "ตั้งแต่วันที่: {$startDateStr}\n"
+                 . "ถึงวันที่: {$endDateStr}";
+
             if ($leave->user->telegram_chat_id) {
-                $msg = "✅ ใบลาของท่านได้รับการอนุมัติเรียบร้อยแล้ว\n";
-                $msg .= "ประเภท: {$leave->type->name}\n";
-                $msg .= "ตั้งแต่วันที่: {$leave->start_date->format('Y-m-d')}\n";
-                $msg .= "ถึงวันที่: {$leave->end_date->format('Y-m-d')}";
                 $this->telegramService->sendMessage($leave->user->telegram_chat_id, $msg);
             }
+            
+            $lineService = new \App\Services\LineNotificationService();
+            $lineService->sendMessage($msg, $leave->user->line_user_id ?? null);
         }
 
         return response()->json(['message' => 'อนุมัติเรียบร้อยแล้ว']);
@@ -212,7 +250,7 @@ class ApprovalController extends Controller
     public function reject(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $role = $user->role->name;
+        $isSuperAdmin = $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin']);
 
         // Only pending leaves can be rejected
         if ($leave->status !== 'Pending') {
@@ -220,11 +258,13 @@ class ApprovalController extends Controller
         }
 
         // Check if user is authorized to reject this level
-        if ($role !== 'Super Admin') {
+        if (!$isSuperAdmin) {
             $currentStep = \App\Models\ApprovalStep::where('step_order', $leave->approval_level)->first();
-            
+            $userRoleIds = $user->roles->pluck('id')->toArray();
+            if ($user->role_id) $userRoleIds[] = $user->role_id;
+
             $isAuthorized = false;
-            if ($currentStep && $currentStep->role_id === $user->role_id) {
+            if ($currentStep && in_array($currentStep->role_id, $userRoleIds)) {
                 $isAuthorized = true;
             } else if ($currentStep) {
                 $isDelegate = \App\Models\UserDelegation::where('delegate_id', $user->id)
@@ -232,7 +272,8 @@ class ApprovalController extends Controller
                     ->where('start_date', '<=', now())
                     ->where('end_date', '>=', now())
                     ->whereHas('user', function($q) use ($currentStep) {
-                        $q->where('role_id', $currentStep->role_id);
+                        $q->where('role_id', $currentStep->role_id)
+                          ->orWhereHas('roles', fn($rq) => $rq->where('roles.id', $currentStep->role_id));
                     })->exists();
                 if ($isDelegate) {
                     $isAuthorized = true;

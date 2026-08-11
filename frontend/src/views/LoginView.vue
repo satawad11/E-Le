@@ -167,11 +167,12 @@ const features = [
 ]
 
 const testAccounts = [
-  { email: 'superadmin@example.com', label: 'ผู้ดูแลระบบ', icon: '👑', id_card: '1111111111111' },
-  { email: 'director@example.com',   label: 'ผู้อำนวยการ', icon: '🏢', id_card: '2222222222222' },
-  { email: 'deputy@example.com',     label: 'รองผอ.',       icon: '👔', id_card: '3333333333333' },
-  { email: 'hrhead@example.com',     label: 'หัวหน้าบุคลากร', icon: '📋', id_card: '4444444444444' },
-  { email: 'employee@example.com',   label: 'พนักงาน',     icon: '👤', wide: true, id_card: '5555555555555' },
+  { email: 'superadmin@example.com', label: 'ผู้ดูแลระบบสูงสุด', icon: '👑', id_card: '1111111111111' },
+  { email: 'director@example.com',   label: 'ผู้อำนวยการ',     icon: '🏢', id_card: '2222222222222' },
+  { email: 'deputy@example.com',     label: 'รองผู้อำนวยการ',   icon: '👔', id_card: '3333333333333' },
+  { email: 'hrhead@example.com',     label: 'เจ้าหน้าที่ HR',    icon: '📋', id_card: '4444444444444' },
+  { email: 'doc@example.com',        label: 'สารบรรณกลาง',    icon: '📑', id_card: 'doc@example.com' },
+  { email: 'employee@example.com',   label: 'ครู/เจ้าหน้าที่',    icon: '👤', id_card: '5555555555555' },
 ]
 
 const handleLogin = async () => {
@@ -189,8 +190,8 @@ const handleLogin = async () => {
 }
 
 const fill = (acc) => {
-  email.value    = acc.id_card
-  password.value = acc.id_card
+  email.value    = acc.email
+  password.value = acc.id_card === 'doc@example.com' ? 'password' : acc.id_card
   errorMsg.value = ''
 }
 </script>
