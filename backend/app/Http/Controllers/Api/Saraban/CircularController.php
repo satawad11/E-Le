@@ -39,6 +39,7 @@ class CircularController extends Controller
         ]);
 
         $document = Document::findOrFail($id);
+        $this->authorize('circulate', $document);
 
         $circular = DocumentCircular::create([
             'document_id' => $document->id,
@@ -60,6 +61,11 @@ class CircularController extends Controller
                 'circular'
             ));
         }
+
+        \App\Services\Saraban\AuditLogger::log('document.circulated', $document, [
+            'circular_id' => $circular->id,
+            'recipient_ids' => $usersToNotify->pluck('id')->all(),
+        ]);
 
         return response()->json(['message' => 'Circular sent successfully.']);
     }
@@ -88,11 +94,19 @@ class CircularController extends Controller
             'acknowledged_at' => now()
         ]);
 
+        \App\Services\Saraban\AuditLogger::log(
+            'document.circular_acknowledged',
+            $recipient->circular?->document_id,
+            ['circular_id' => $circularId]
+        );
+
         return response()->json(['message' => 'Acknowledged.']);
     }
 
     public function tracking($id)
     {
+        $this->authorize('view', Document::findOrFail($id));
+
         $circulars = DocumentCircular::with(['recipients.user', 'sender'])
             ->where('document_id', $id)
             ->get();

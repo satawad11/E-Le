@@ -122,7 +122,7 @@
               <a :href="att.path" target="_blank" class="text-sm text-blue-600 hover:underline font-medium">เปิดลิงก์ →</a>
             </div>
             <div v-else-if="document.allow_download" class="ml-3">
-              <a :href="'/storage/' + att.path" target="_blank" download class="text-sm text-[#800000] hover:underline font-medium">ดาวน์โหลด ↓</a>
+              <button type="button" @click="downloadAttachment(att)" class="text-sm text-[#800000] hover:underline font-medium">ดาวน์โหลด ↓</button>
             </div>
             <div v-else class="ml-3">
               <span class="text-sm text-gray-400 cursor-not-allowed" title="ไม่อนุญาตให้ดาวน์โหลด">🔒 ไม่อนุญาต</span>
@@ -364,6 +364,23 @@ const store = useSarabanDocumentStore()
 const authStore = useAuthStore()
 const loading = ref(true)
 const document = ref(null)
+
+// ไฟล์แนบเก็บบน disk ส่วนตัวของ backend — ต้องดึงผ่าน API ที่ตรวจสิทธิ์ ไม่ใช่ /storage ตรงๆ
+const downloadAttachment = async (att) => {
+  try {
+    const res = await api.get(`/saraban/attachments/${att.id}/download`, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const link = window.document.createElement('a')
+    link.href = url
+    link.download = att.name || 'attachment'
+    window.document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    alert('ไม่สามารถดาวน์โหลดไฟล์แนบนี้ได้ (อาจไม่มีสิทธิ์เข้าถึง)')
+  }
+}
 
 // Action states
 const showActionModal = ref(false)

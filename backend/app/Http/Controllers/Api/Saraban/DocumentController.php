@@ -4,8 +4,13 @@ namespace App\Http\Controllers\Api\Saraban;
 
 use App\Http\Controllers\Controller;
 use App\Models\Saraban\Document;
+use App\Models\Saraban\DocumentAttachment;
 use App\Http\Requests\Saraban\StoreDocumentRequest;
+use App\Policies\Saraban\DocumentPolicy;
+use App\Services\Saraban\AttachmentStorage;
+use App\Services\Saraban\AuditLogger;
 use App\Services\Saraban\DocumentNumberGeneratorService;
+use App\Services\Saraban\DocumentPdfRenderer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,15 +19,17 @@ use App\Models\User;
 
 class DocumentController extends Controller
 {
-    protected $generatorService;
-
-    public function __construct(DocumentNumberGeneratorService $generatorService)
-    {
-        $this->generatorService = $generatorService;
+    public function __construct(
+        protected DocumentNumberGeneratorService $generatorService,
+        protected AttachmentStorage $storage,
+        protected DocumentPdfRenderer $pdfRenderer,
+    ) {
     }
 
     public function index(Request $request)
     {
+        $this->authorize('viewAny', Document::class);
+
         $user = Auth::user();
         $query = Document::with(['type', 'creator', 'department'])
             ->leftJoin('saraban_document_user_states', function($join) use ($user) {
@@ -34,15 +41,23 @@ class DocumentController extends Controller
                   ->orWhere('saraban_document_user_states.is_hidden', false);
             })
             ->select('saraban_documents.*', 'saraban_document_user_states.is_read', 'saraban_document_user_states.is_pinned');
-        
+
         // If not admin and not saraban officer, filter only relevant documents
-        if (!$user->hasRole(['Super Admin', 'SuperAdmin', 'admin_saraban', 'Saraban Officer', 'เจ้าหน้าที่สารบัญ'])) {
+        if (!DocumentPolicy::isOfficer($user)) {
             $query->where(function($q) use ($user) {
                 $q->where('saraban_documents.created_by', $user->id)
                   ->orWhereHas('receivers', function($rq) use ($user) {
                       $rq->where('users.id', $user->id);
                   });
             });
+
+            // ชั้นความลับ: ผู้ที่ไม่มีสิทธิ์เห็นเฉพาะหนังสือปกติ หรือหนังสือที่ตนเองเป็นผู้สร้าง
+            if (!$user->can('saraban.document.view_classified')) {
+                $query->where(function($q) use ($user) {
+                    $q->where('saraban_documents.secrecy', 'normal')
+                      ->orWhere('saraban_documents.created_by', $user->id);
+                });
+            }
         }
 
         // Search by title or document_number
@@ -79,14 +94,14 @@ class DocumentController extends Controller
         } elseif ($tab === 'pinned') {
             $query->where('saraban_document_user_states.is_pinned', true);
         }
-        
+
         $perPage = $request->input('per_page', 10);
         $documents = $query->orderByRaw('COALESCE(saraban_document_user_states.is_pinned, 0) DESC')
               ->orderByRaw('COALESCE(saraban_document_user_states.is_read, 0) ASC')
               ->orderByRaw("CASE WHEN saraban_documents.priority IN ('urgent', 'very_urgent', 'most_urgent') THEN 1 ELSE 0 END DESC")
               ->orderBy('saraban_documents.created_at', 'desc')
               ->paginate($perPage);
-              
+
         return response()->json($documents);
     }
 
@@ -98,27 +113,40 @@ class DocumentController extends Controller
             'ids.*' => 'exists:saraban_documents,id'
         ]);
 
-        Document::whereIn('id', $request->ids)->delete();
-        
+        $documents = Document::whereIn('id', $request->ids)->get();
+
+        // ตรวจสิทธิ์รายฉบับก่อน แล้วจึงลบทั้งชุด (ห้ามลบบางส่วนแล้ว 403 กลางทาง)
+        foreach ($documents as $document) {
+            $this->authorize('delete', $document);
+        }
+
+        DB::transaction(function () use ($documents) {
+            foreach ($documents as $document) {
+                $document->delete();
+                AuditLogger::log('document.deleted', $document, ['bulk' => true]);
+            }
+        });
+
         return response()->json(['message' => 'Documents deleted successfully'], 200);
     }
 
     public function store(StoreDocumentRequest $request)
     {
+        $this->authorize('create', Document::class);
+
         $data = $request->validated();
         $data['created_by'] = Auth::id();
         $data['status'] = 'dispatched';
+        $creationMode = $data['creation_mode'] ?? 'physical';
 
-        // Example of number generation if not provided (will refine later with business logic)
         if (empty($data['document_number'])) {
-            $fiscalYear = \App\Models\FiscalYear::where('is_current', true)->first();
-            $yearBe = $fiscalYear ? $fiscalYear->year : (date('Y') + 543);
-            
-            $runningNumber = $this->generatorService->generate($data['department_id'], $data['type_id'], $yearBe);
-            $formattedNumber = $this->generatorService->format($runningNumber);
             $type = \App\Models\Saraban\DocumentType::find($data['type_id']);
-            $typeCode = $type && $type->code ? $type->code . ' ' : '';
-            $data['document_number'] = "{$typeCode}{$formattedNumber}/{$yearBe}";
+
+            $data['document_number'] = $this->generatorService->buildDocumentNumber(
+                $data['department_id'],
+                $data['type_id'],
+                $type?->code
+            );
         }
 
         DB::beginTransaction();
@@ -126,63 +154,10 @@ class DocumentController extends Controller
             $document = Document::create($data);
 
             // 1. Process files
-            if ($data['creation_mode'] === 'digital' && !empty($data['content'])) {
-                // Generate PDF from content
-                $htmlContent = $data['content'];
-                
-                // You could wrap the content in a standardized HTML wrapper here if needed
-                // Add Garuda logo if configured
-                $settings = \App\Models\Setting::pluck('value', 'key');
-                $logoUrl = $settings['saraban_garuda_logo'] ?? '';
-                $logoHtml = '';
-                if ($logoUrl) {
-                    $absoluteLogoPath = public_path(str_replace('/storage/', 'storage/', $logoUrl));
-                    if (file_exists($absoluteLogoPath)) {
-                        $logoData = base64_encode(file_get_contents($absoluteLogoPath));
-                        $logoHtml = '<div style="text-align: center; margin-bottom: 20px;"><img src="data:image/png;base64,' . $logoData . '" width="60" /></div>';
-                    }
-                }
-
-                $fullHtml = '
-                <html>
-                <head>
-                    <style>
-                        body { font-family: "THSarabunNew", sans-serif; font-size: 16pt; padding: 2cm 1.5cm; }
-                        p { margin: 0; padding: 0; }
-                    </style>
-                </head>
-                <body>
-                    ' . $logoHtml . '
-                    ' . $htmlContent . '
-                </body>
-                </html>';
-
-                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($fullHtml);
-                $pdf->setPaper('A4', 'portrait');
-                
-                $filename = 'edoc_' . time() . '.pdf';
-                $path = 'saraban/attachments/' . $filename;
-                
-                Storage::disk('public')->put($path, $pdf->output());
-                
-                $document->attachments()->create([
-                    'name' => 'เอกสารอิเล็กทรอนิกส์.pdf',
-                    'type' => 'file',
-                    'path' => $path,
-                    'mime_type' => 'application/pdf',
-                    'uploaded_by' => Auth::id(),
-                ]);
+            if ($creationMode === 'digital' && !empty($data['content'])) {
+                $this->storeGeneratedPdf($document, $data['content']);
             } else if ($request->hasFile('files')) {
-                foreach ($request->file('files') as $file) {
-                    $path = $file->store('saraban/attachments', 'public');
-                    $document->attachments()->create([
-                        'name' => $file->getClientOriginalName(),
-                        'type' => 'file',
-                        'path' => $path,
-                        'mime_type' => $file->getClientMimeType(),
-                        'uploaded_by' => Auth::id(),
-                    ]);
-                }
+                $this->storeUploadedFiles($document, $request->file('files'));
             }
 
             // 2. Process links
@@ -199,20 +174,12 @@ class DocumentController extends Controller
             }
 
             // 3. Process receivers (users + users in selected departments)
-            $userIds = collect($request->input('receivers', []));
-            
-            $departmentIds = $request->input('receiver_departments', []);
-            if (!empty($departmentIds)) {
-                $deptUserIds = User::whereIn('department_id', $departmentIds)->pluck('id');
-                $userIds = $userIds->merge($deptUserIds);
-            }
-            
-            // Unique user IDs, filter out current user if desired (optional, we keep it simple here)
-            $uniqueUserIds = $userIds->unique()->filter()->values();
-            
-            if ($uniqueUserIds->isNotEmpty()) {
-                $document->receivers()->sync($uniqueUserIds);
-            }
+            $this->syncReceivers($document, $request, false);
+
+            AuditLogger::log('document.created', $document, [
+                'document_number' => $document->document_number,
+                'secrecy' => $document->secrecy,
+            ]);
 
             DB::commit();
             return response()->json($document->load(['attachments', 'receivers']), 201);
@@ -224,6 +191,10 @@ class DocumentController extends Controller
 
     public function show(Document $document)
     {
+        $this->authorize('view', $document);
+
+        AuditLogger::log('document.viewed', $document);
+
         return response()->json($document->load([
             'type',
             'creator',
@@ -242,72 +213,31 @@ class DocumentController extends Controller
 
     public function update(StoreDocumentRequest $request, Document $document)
     {
+        $this->authorize('update', $document);
+
         $data = $request->validated();
-        
+        $creationMode = $data['creation_mode'] ?? $document->creation_mode ?? 'physical';
+        $original = $document->only(['title', 'secrecy', 'priority', 'status', 'document_number']);
+
         DB::beginTransaction();
         try {
             $document->update($data);
 
             // Process new files or digital content
-            if ($data['creation_mode'] === 'digital' && !empty($data['content'])) {
+            if ($creationMode === 'digital' && !empty($data['content'])) {
                 // Delete previous generated e-docs if exist
-                $oldDocs = $document->attachments()->where('name', 'เอกสารอิเล็กทรอนิกส์.pdf')->get();
+                $oldDocs = $document->attachments()
+                    ->where('name', DocumentPdfRenderer::GENERATED_NAME)
+                    ->get();
+
                 foreach ($oldDocs as $oldDoc) {
-                    Storage::disk('public')->delete($oldDoc->path);
+                    $this->storage->delete($oldDoc->path);
                     $oldDoc->delete();
                 }
 
-                $htmlContent = $data['content'];
-                $settings = \App\Models\Setting::pluck('value', 'key');
-                $logoUrl = $settings['saraban_garuda_logo'] ?? '';
-                $logoHtml = '';
-                if ($logoUrl) {
-                    $absoluteLogoPath = public_path(str_replace('/storage/', 'storage/', $logoUrl));
-                    if (file_exists($absoluteLogoPath)) {
-                        $logoData = base64_encode(file_get_contents($absoluteLogoPath));
-                        $logoHtml = '<div style="text-align: center; margin-bottom: 20px;"><img src="data:image/png;base64,' . $logoData . '" width="60" /></div>';
-                    }
-                }
-
-                $fullHtml = '
-                <html>
-                <head>
-                    <style>
-                        body { font-family: "THSarabunNew", sans-serif; font-size: 16pt; padding: 2cm 1.5cm; }
-                        p { margin: 0; padding: 0; }
-                    </style>
-                </head>
-                <body>
-                    ' . $logoHtml . '
-                    ' . $htmlContent . '
-                </body>
-                </html>';
-
-                $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($fullHtml);
-                $pdf->setPaper('A4', 'portrait');
-                
-                $filename = 'edoc_' . time() . '.pdf';
-                $path = 'saraban/attachments/' . $filename;
-                Storage::disk('public')->put($path, $pdf->output());
-                
-                $document->attachments()->create([
-                    'name' => 'เอกสารอิเล็กทรอนิกส์.pdf',
-                    'type' => 'file',
-                    'path' => $path,
-                    'mime_type' => 'application/pdf',
-                    'uploaded_by' => Auth::id(),
-                ]);
+                $this->storeGeneratedPdf($document, $data['content']);
             } else if ($request->hasFile('files')) {
-                foreach ($request->file('files') as $file) {
-                    $path = $file->store('saraban/attachments', 'public');
-                    $document->attachments()->create([
-                        'name' => $file->getClientOriginalName(),
-                        'type' => 'file',
-                        'path' => $path,
-                        'mime_type' => $file->getClientMimeType(),
-                        'uploaded_by' => Auth::id(),
-                    ]);
-                }
+                $this->storeUploadedFiles($document, $request->file('files'));
             }
 
             // Process new links
@@ -326,19 +256,12 @@ class DocumentController extends Controller
             }
 
             // Process receivers
-            $userIds = collect($request->input('receivers', []));
-            $departmentIds = $request->input('receiver_departments', []);
-            if (!empty($departmentIds)) {
-                $deptUserIds = User::whereIn('department_id', $departmentIds)->pluck('id');
-                $userIds = $userIds->merge($deptUserIds);
-            }
-            
-            $uniqueUserIds = $userIds->unique()->filter()->values();
-            if ($uniqueUserIds->isNotEmpty()) {
-                $document->receivers()->sync($uniqueUserIds);
-            } else {
-                $document->receivers()->detach();
-            }
+            $this->syncReceivers($document, $request, true);
+
+            AuditLogger::log('document.updated', $document, [
+                'before' => $original,
+                'after' => $document->only(['title', 'secrecy', 'priority', 'status', 'document_number']),
+            ]);
 
             DB::commit();
             return response()->json($document->load(['attachments', 'receivers']), 200);
@@ -350,20 +273,54 @@ class DocumentController extends Controller
 
     public function destroy(Document $document)
     {
+        $this->authorize('delete', $document);
+
         $document->delete();
+
+        AuditLogger::log('document.deleted', $document, [
+            'document_number' => $document->document_number,
+        ]);
+
         return response()->json(null, 204);
+    }
+
+    /**
+     * ดาวน์โหลดไฟล์แนบผ่าน API เท่านั้น (ไฟล์อยู่บน disk ส่วนตัว)
+     */
+    public function downloadAttachment(DocumentAttachment $attachment)
+    {
+        $document = $attachment->document;
+
+        abort_if(!$document, 404);
+        $this->authorize('download', $document);
+
+        if ($attachment->type === 'link') {
+            return response()->json(['url' => $attachment->path]);
+        }
+
+        $disk = $this->storage->resolveDisk($attachment->path);
+        abort_if(!$disk, 404, 'ไม่พบไฟล์แนบ');
+
+        AuditLogger::log('document.attachment_downloaded', $document, [
+            'attachment_id' => $attachment->id,
+            'name' => $attachment->name,
+        ]);
+
+        return Storage::disk($disk)->download($attachment->path, $attachment->name);
     }
 
     public function read(Document $document)
     {
+        $this->authorize('view', $document);
+
         $userId = Auth::id();
-        
+
         // Find if user is a receiver and hasn't read it yet
         $receiver = $document->receivers()->where('user_id', $userId)->first();
         if ($receiver && is_null($receiver->pivot->read_at)) {
             $document->receivers()->updateExistingPivot($userId, ['read_at' => now()]);
         }
-        
+
         // Also update the global state
         $state = \App\Models\Saraban\DocumentUserState::firstOrNew([
             'document_id' => $document->id,
@@ -371,7 +328,7 @@ class DocumentController extends Controller
         ]);
         $state->is_read = true;
         $state->save();
-        
+
         return response()->json(['message' => 'Document marked as read']);
     }
 
@@ -383,9 +340,12 @@ class DocumentController extends Controller
             'is_hidden' => 'nullable|boolean'
         ]);
 
+        $document = Document::findOrFail($id);
+        $this->authorize('view', $document);
+
         $user = Auth::user();
         $state = \App\Models\Saraban\DocumentUserState::firstOrNew([
-            'document_id' => $id,
+            'document_id' => $document->id,
             'user_id' => $user->id
         ]);
 
@@ -406,6 +366,8 @@ class DocumentController extends Controller
 
     public function stats()
     {
+        $this->authorize('viewAny', Document::class);
+
         $user = Auth::user();
         $query = Document::leftJoin('saraban_document_user_states', function($join) use ($user) {
             $join->on('saraban_documents.id', '=', 'saraban_document_user_states.document_id')
@@ -416,13 +378,20 @@ class DocumentController extends Controller
               ->orWhere('saraban_document_user_states.is_hidden', false);
         });
 
-        if (!$user->hasRole(['Super Admin', 'SuperAdmin', 'admin_saraban', 'Saraban Officer', 'เจ้าหน้าที่สารบัญ'])) {
+        if (!DocumentPolicy::isOfficer($user)) {
             $query->where(function($q) use ($user) {
                 $q->where('saraban_documents.created_by', $user->id)
                   ->orWhereHas('receivers', function($rq) use ($user) {
                       $rq->where('users.id', $user->id);
                   });
             });
+
+            if (!$user->can('saraban.document.view_classified')) {
+                $query->where(function($q) use ($user) {
+                    $q->where('saraban_documents.secrecy', 'normal')
+                      ->orWhere('saraban_documents.created_by', $user->id);
+                });
+            }
         }
 
         $allQuery = clone $query;
@@ -446,5 +415,53 @@ class DocumentController extends Controller
             'urgent' => $urgent,
             'pinned' => $pinned
         ]);
+    }
+
+    /**
+     * สร้าง PDF จากเนื้อหาที่พิมพ์ในระบบ แล้วผูกเป็นไฟล์แนบ
+     */
+    protected function storeGeneratedPdf(Document $document, string $content): void
+    {
+        $path = $this->pdfRenderer->render($content);
+
+        $document->attachments()->create([
+            'name' => DocumentPdfRenderer::GENERATED_NAME,
+            'type' => 'file',
+            'path' => $path,
+            'mime_type' => 'application/pdf',
+            'uploaded_by' => Auth::id(),
+        ]);
+    }
+
+    protected function storeUploadedFiles(Document $document, array $files): void
+    {
+        foreach ($files as $file) {
+            $document->attachments()->create([
+                'name' => $file->getClientOriginalName(),
+                'type' => 'file',
+                'path' => $this->storage->putUploadedFile($file),
+                'mime_type' => $file->getClientMimeType(),
+                'uploaded_by' => Auth::id(),
+            ]);
+        }
+    }
+
+    protected function syncReceivers(Document $document, Request $request, bool $detachWhenEmpty): void
+    {
+        $userIds = collect($request->input('receivers', []));
+
+        $departmentIds = $request->input('receiver_departments', []);
+        if (!empty($departmentIds)) {
+            $deptUserIds = User::whereIn('department_id', $departmentIds)->pluck('id');
+            $userIds = $userIds->merge($deptUserIds);
+        }
+
+        $uniqueUserIds = $userIds->unique()->filter()->values();
+
+        if ($uniqueUserIds->isNotEmpty()) {
+            $document->receivers()->sync($uniqueUserIds);
+        } elseif ($detachWhenEmpty) {
+            $document->receivers()->detach();
+        }
     }
 }

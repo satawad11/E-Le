@@ -18,19 +18,25 @@ class PdfSignatureService
      * @param array $options Signature options like x, y, page, hash, signer_name, timestamp.
      * @return string Path to the newly created stamped PDF.
      */
-    public function stampSignature(string $pdfPath, string $signatureImagePath, array $options): string
+    public function __construct(protected ?AttachmentStorage $storage = null)
     {
-        $disk = Storage::disk('public');
+        $this->storage = $storage ?: new AttachmentStorage();
+    }
 
-        if (!$disk->exists($pdfPath)) {
+    public function stampSignature(string $pdfPath, ?string $signatureImagePath, array $options): string
+    {
+        $pdfDisk = $this->storage->resolveDisk($pdfPath);
+
+        if (!$pdfDisk) {
             throw new \Exception("PDF file not found at: {$pdfPath}");
         }
 
         // We assume signature is an image if they have one, otherwise we just stamp text
-        $hasImage = $signatureImagePath && $disk->exists($signatureImagePath);
+        $signatureDisk = $signatureImagePath ? $this->storage->resolveDisk($signatureImagePath) : null;
+        $hasImage = (bool) $signatureDisk;
 
-        $pdfFullPath = $disk->path($pdfPath);
-        
+        $pdfFullPath = Storage::disk($pdfDisk)->path($pdfPath);
+
         $pdf = new Fpdi();
         $pageCount = $pdf->setSourceFile($pdfFullPath);
 
@@ -51,7 +57,7 @@ class PdfSignatureService
             if ($pageNo == $targetPage) {
                 // Add signature image if available
                 if ($hasImage) {
-                    $sigFullPath = $disk->path($signatureImagePath);
+                    $sigFullPath = Storage::disk($signatureDisk)->path($signatureImagePath);
                     // Get image info to maintain aspect ratio (optional)
                     // For now, stamp with a fixed width of 40mm
                     $pdf->Image($sigFullPath, $x, $y, 40);
@@ -109,16 +115,9 @@ class PdfSignatureService
             }
         }
 
-        // Save the new PDF
-        $filename = 'signed_' . basename($pdfPath);
-        $directory = dirname($pdfPath);
-        $newPdfPath = $directory . '/' . $filename;
-        
-        $newFullPath = $disk->path($newPdfPath);
-        
-        // Output to file
-        $pdf->Output('F', $newFullPath);
+        // Save the new PDF บน disk ส่วนตัวเสมอ (ห้ามหลุดออก /storage สาธารณะ)
+        $filename = 'signed_' . time() . '_' . basename($pdfPath);
 
-        return $newPdfPath;
+        return $this->storage->putContents($filename, $pdf->Output('S'));
     }
 }

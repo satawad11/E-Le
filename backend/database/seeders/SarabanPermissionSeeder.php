@@ -16,6 +16,12 @@ class SarabanPermissionSeeder extends Seeder
             'saraban.document.edit',
             'saraban.document.delete',
             'saraban.document.approve',
+            'saraban.document.sign',
+            'saraban.document.circulate',
+            'saraban.document.download',
+            'saraban.document.view_classified',
+            'saraban.document.manage_types',
+            'saraban.document.report',
         ];
 
         foreach ($permissions as $permission) {
@@ -26,9 +32,21 @@ class SarabanPermissionSeeder extends Seeder
         $adminRole->givePermissionTo($permissions);
 
         $managerRole = Role::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
-        $managerRole->givePermissionTo(['saraban.document.view', 'saraban.document.approve']);
+        $managerRole->givePermissionTo([
+            'saraban.document.view',
+            'saraban.document.approve',
+            'saraban.document.sign',
+            'saraban.document.download',
+            'saraban.document.view_classified',
+            'saraban.document.report',
+        ]);
 
         $staffRole = Role::firstOrCreate(['name' => 'staff', 'guard_name' => 'web']);
-        $staffRole->givePermissionTo(['saraban.document.view', 'saraban.document.create', 'saraban.document.edit']);
+        $staffRole->givePermissionTo([
+            'saraban.document.view',
+            'saraban.document.create',
+            'saraban.document.edit',
+            'saraban.document.download',
+        ]);
     }
 }

@@ -34,6 +34,15 @@ class Document extends Model
         'allow_download',
         'incoming_document_number',
         'incoming_date',
+        'creation_mode',
+        'content',
+        'template_type',
+    ];
+
+    protected $casts = [
+        // เนื้อหาหนังสือถือเป็นข้อมูลอ่อนไหว (CLAUDE.md กฎข้อ 7) — เข้ารหัสที่ชั้น model
+        'content' => \App\Casts\TolerantEncrypted::class,
+        'allow_download' => 'boolean',
     ];
 
     public function type(): BelongsTo
