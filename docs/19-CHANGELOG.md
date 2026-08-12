@@ -3,6 +3,10 @@
 ## Unreleased
 - Initial documentation pack created.
 
+### LEGACY-03 Core Data Foundation
+
+- เพิ่ม organization hierarchy, department mapping, users.org_unit_id, effective-dated personnel assignments และ UUID สำหรับ public resources แบบ additive พร้อม backfill/dual-write
+
 ### LEGACY-02 Security Hardening
 
 - ปิด LEGACY-02 ครบ 02-A ถึง 02-E; full regression ผ่าน 195 tests / 485 assertions, Pint 304 files, Composer audit 0 advisory และ frontend build 879 modules

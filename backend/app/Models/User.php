@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -14,7 +16,7 @@ use Spatie\Permission\Traits\HasRoles;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, HasRoles, Notifiable;
+    use HasApiTokens, HasFactory, HasPublicUuid, HasRoles, Notifiable;
 
     protected function casts(): array
     {
@@ -25,6 +27,35 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
+        static::saving(function (User $user): void {
+            if ($user->isDirty('department_id')) {
+                $user->org_unit_id = $user->department_id
+                    ? Department::find($user->department_id)?->orgUnit?->id
+                    : null;
+            }
+        });
+
+        static::saved(function (User $user): void {
+            if ($user->wasRecentlyCreated || $user->wasChanged(['department_id', 'personnel_type_id'])) {
+                $current = PersonnelAssignment::where('user_id', $user->id)->whereNull('effective_to')->first();
+                $position = $user->profile?->position;
+                if ($current && ($current->org_unit_id !== $user->org_unit_id || $current->personnel_type_id !== $user->personnel_type_id)) {
+                    $current->update(['effective_to' => now()->subDay()->toDateString()]);
+                    $current = null;
+                }
+                if (! $current) {
+                    PersonnelAssignment::create([
+                        'uuid' => (string) Str::uuid(),
+                        'user_id' => $user->id,
+                        'org_unit_id' => $user->org_unit_id,
+                        'personnel_type_id' => $user->personnel_type_id,
+                        'position' => $position,
+                        'effective_from' => $user->profile?->start_date?->toDateString() ?: now()->toDateString(),
+                    ]);
+                }
+            }
+        });
+
         static::updated(function (User $user) {
             if ($user->wasChanged('password') || ($user->wasChanged('is_active') && ! $user->is_active)) {
                 $user->tokens()->delete();
@@ -42,6 +73,16 @@ class User extends Authenticatable
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function orgUnit()
+    {
+        return $this->belongsTo(OrgUnit::class);
+    }
+
+    public function personnelAssignments()
+    {
+        return $this->hasMany(PersonnelAssignment::class);
     }
 
     public function personnelType()

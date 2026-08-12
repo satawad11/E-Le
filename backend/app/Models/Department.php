@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 #[Fillable(['name', 'description', 'head_of_department_id', 'is_active'])]
 class Department extends Model
@@ -11,6 +12,32 @@ class Department extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (Department $department): void {
+            $root = OrgUnit::where('type', 'organization')->whereNull('parent_id')->firstOrFail();
+            $unit = OrgUnit::create([
+                'uuid' => (string) Str::uuid(),
+                'parent_id' => $root->id,
+                'code' => 'DEPT-'.str_pad((string) $department->id, 6, '0', STR_PAD_LEFT),
+                'name' => $department->name,
+                'type' => 'department',
+                'effective_from' => now()->toDateString(),
+                'is_active' => $department->is_active ?? true,
+            ]);
+            $department->orgUnits()->attach($unit->id);
+        });
+
+        static::updated(function (Department $department): void {
+            if ($department->wasChanged(['name', 'is_active'])) {
+                $department->orgUnit?->update([
+                    'name' => $department->name,
+                    'is_active' => $department->is_active,
+                ]);
+            }
+        });
+    }
 
     public function users()
     {
@@ -20,5 +47,15 @@ class Department extends Model
     public function headOfDepartment()
     {
         return $this->belongsTo(User::class, 'head_of_department_id');
+    }
+
+    public function orgUnits()
+    {
+        return $this->belongsToMany(OrgUnit::class, 'department_org_unit_map')->withTimestamps();
+    }
+
+    public function getOrgUnitAttribute(): ?OrgUnit
+    {
+        return $this->orgUnits()->first();
     }
 }

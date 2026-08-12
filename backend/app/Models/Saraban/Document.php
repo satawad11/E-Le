@@ -2,6 +2,7 @@
 
 namespace App\Models\Saraban;
 
+use App\Models\Concerns\HasPublicUuid;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Document extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasPublicUuid, SoftDeletes;
 
     protected $table = 'saraban_documents';
 

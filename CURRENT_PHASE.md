@@ -8,7 +8,7 @@
 
 ## Current Phase
 
-`LEGACY-02 SECURITY HARDENING — COMPLETE`
+`LEGACY-03 CORE DATA FOUNDATION — IN PROGRESS`
 
 | เฟส | สถานะ |
 |---|---|
@@ -16,6 +16,7 @@
 | LEGACY-00 Freeze & Baseline | ✅ เสร็จ 2026-08-12 · ไม่มี FAIL · `docs/checkpoints/LEGACY-00-REPORT.md` |
 | LEGACY-01 Stabilization | ✅ เสร็จ 2026-08-13 |
 | LEGACY-02 Security Hardening | ✅ เสร็จ 2026-08-13 · 195 tests / 485 assertions · `docs/checkpoints/LEGACY-02-REPORT.md` |
+| LEGACY-03 Core Data Foundation | 🟡 กำลังดำเนินการ · 03-1 ถึง 03-5 ผ่าน targeted verification |
 
 **Architecture Decision (อนุมัติแล้ว 2026-08-12):** คงเทคโนโลยีเดิม Laravel + Vue 3 + MySQL 8 + Tailwind + Docker
 เอกสาร Target Architecture ตีความเป็น Architectural Principles และ Engineering Standards ไม่ใช่คำสั่งให้ rewrite stack

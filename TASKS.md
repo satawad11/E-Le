@@ -76,6 +76,10 @@
   - [x] LEGACY-02D E-Signature Integrity — password ทุก mode, assigned signer, sealed content hash, public throttle
   - [x] LEGACY-02E General Hardening — security headers, safe HTML rendering, generic errors, export/download throttles, route audit
 - [ ] LEGACY-03 Core Data Foundation
+  - [x] LEGACY-03A Organization, Personnel & UUID foundation (03-1 ถึง 03-5)
+  - [ ] LEGACY-03B Central audit dual-write (03-6 ถึง 03-7)
+  - [ ] LEGACY-03C Document template version foundation (03-8)
+  - [x] LEGACY-03D Leave status checked varchar (03-9) — ทำแล้วใน LEGACY-01
 - [ ] LEGACY-04 RBAC + ABAC
 - [ ] LEGACY-05 Workflow Engine
 - [ ] CORE CHECKPOINT
