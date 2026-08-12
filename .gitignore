@@ -12,3 +12,8 @@ Thumbs.db
 docs/checkpoints/*/backups/
 *.sql.gz
 *.dump
+
+# ไฟล์ env ของ docker compose มี DB credential จริง — ห้าม commit
+.env
+.env.*
+!.env.example

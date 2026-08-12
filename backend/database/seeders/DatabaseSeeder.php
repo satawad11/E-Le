@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             SarabanPermissionSeeder::class,
             SarabanDocumentTypeSeeder::class,
             SarabanSettingSeeder::class,
+            FiscalYearSeeder::class,
         ]);
 
         $itDept = Department::firstOrCreate(
