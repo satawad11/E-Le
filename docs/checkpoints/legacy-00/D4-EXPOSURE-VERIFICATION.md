@@ -113,17 +113,84 @@ Endpoint นี้ตอบ **200** โดยไม่ต้องยืนย�
 
 ---
 
-## 4. มาตรการหยุดเลือดที่เสนอ (ยังไม่ดำเนินการ — รออนุมัติ)
+## 4-A · ผลการแก้ไข (ดำเนินการแล้ว 2026-08-12 · commit `f843b3c`)
+
+ผู้ใช้สั่ง "แก้ไขเลย" · ทำเป็น hotfix commit เดียว revert ได้ด้วย `git revert f843b3c`
+
+### ยิงซ้ำหลังแก้ (ไม่ส่ง token)
+
+| Endpoint | ก่อน | หลัง |
+|---|:---:|:---:|
+| `GET /info.php` | 200 | **404** ✅ |
+| `GET /test.php` | 200 | **404** ✅ |
+| `GET /test_db.php` | 200 | **404** ✅ |
+| `GET /fix-leaves` | 200 | **404** ✅ |
+| `GET /api/storage/{path}` | 200 | **404** ✅ |
+| `GET /storage/{path}` | 200 | **200** ⚠️ ยังเปิดอยู่ — ดูเหตุผลด้านล่าง |
+| `GET /api/ping` (ตรวจว่าระบบยังทำงาน) | 200 | 200 ✅ |
+
+### สิ่งที่แก้
+
+| ไฟล์ | การเปลี่ยนแปลง |
+|---|---|
+| `backend/public/info.php` | ลบ — ต้นเหตุ SEC-020 |
+| `backend/public/test_db.php` | ลบ — มี DB credential ฝังในไฟล์ |
+| `backend/public/test.php` | ลบ |
+| `backend/routes/web.php` | ถอด route `GET /fix-leaves` (SEC-011) แทนด้วยคอมเมนต์ชี้ไป `php artisan leaves:fix-document-numbers` |
+| `backend/routes/api.php` | ถอด route `GET /api/storage/{path}` (SEC-001 บางส่วน) |
+
+รวม 5 ไฟล์ · +13 / −64 บรรทัด · **ไม่แตะ business logic, leave policy, workflow, schema หรือข้อมูล**
+
+### การตรวจสอบ
+
+- `php artisan test` → **86/86 ผ่าน (256 assertions)** เท่าเดิมกับ baseline
+- ตรวจก่อนลบ route `/api/storage/{path}` ว่า **ไม่มีโค้ดฝั่งใดเรียกเลย** (`grep -rn "api/storage"` ทั้ง frontend และ backend = ไม่พบ) — frontend ใช้ `/storage/{path}` ผ่าน symlink คนละเส้นทาง
+
+### ⚠️ สิ่งที่ยังไม่ได้ปิด และเหตุผล
+
+`GET /storage/{path}` ผ่าน symlink `backend/public/storage` **ยังคืน 200**
+
+ตอนขออนุมัติผมเสนอว่าจะลบ symlink ด้วย โดยระบุผลกระทบว่า "รูปลายเซ็นจะไม่แสดงในหน้าจอ"
+**ซึ่งประเมินไว้ต่ำเกินจริง** — ตรวจละเอียดก่อนลงมือแล้วพบว่ามีโค้ด **10+ จุด** อ่านไฟล์ผ่าน
+`public_path(str_replace('/storage/', 'storage/', $path))` ได้แก่:
+
+| ที่ | จุดที่ใช้ |
+|---|---|
+| `app/Http/Controllers/LeaveController.php` | บรรทัด 661, 679, 786, 804 — ฝังลายเซ็นผู้อนุมัติลง PDF ใบลา |
+| `app/Http/Controllers/Api/Saraban/DocumentController.php` | 143, 269 — ตราครุฑในหนังสือราชการ |
+| `resources/views/pdf/leave_hajj.blade.php` · `leave_spouse` · `leave_study` | ลายเซ็นผู้ลา |
+| `resources/views/pdf/official_travel.blade.php` · `attendance_report.blade.php` · `reports/attendance_*_preview.blade.php` | โลโก้/ตราครุฑ |
+
+การลบ symlink จะทำให้ **PDF ทุกชนิดฝังลายเซ็นและตราครุฑไม่ได้** ซึ่งเป็น regression ที่กว้างกว่า
+ที่ผมแจ้งไว้ตอนขออนุมัติ และมี test ครอบอยู่ (`LeaveExportTest`, `LeaveCardPdfTest`)
+
+**การแก้ที่ถูกต้อง** = ย้ายไฟล์ไป private + สร้าง endpoint ดาวน์โหลดที่ตรวจสิทธิ์ + แก้ทั้ง 10+ จุด
+ให้อ่านผ่าน `storage_path('app/public/...')` แทน — ซึ่งคือขอบเขตของ **LEGACY-02 §02-A** ที่วางแผน
+ไว้พร้อม test อยู่แล้ว ไม่ควรทำแบบเร่งด่วนโดยไม่มี test รองรับ
+
+**มาตรการชั่วคราวจนกว่าจะถึง LEGACY-02:** ปิด port forward ที่ router (ข้อ 1 ในตารางด้านล่าง)
+
+### 🔴 ยังต้องทำต่อ — `APP_KEY` ที่รั่วไปแล้วยังใช้ได้อยู่
+
+การลบ `info.php` หยุด**การรั่วครั้งใหม่** แต่ **ไม่ได้ทำให้กุญแจที่รั่วออกไปแล้วใช้ไม่ได้**
+ถ้ามีใครเคยเปิดหน้านั้นระหว่างที่เปิดอยู่ เขายังถอดรหัสข้อมูลได้
+
+ต้อง re-key ตามลำดับใน §1 — **ยังไม่ได้ทำ** เพราะเป็นงานหลายขั้นที่ต้องวางแผนและมี downtime
+
+---
+
+## 4. มาตรการหยุดเลือดที่เสนอ (สถานะ ณ 2026-08-12)
 
 เรียงตามผลลัพธ์ต่อความเสี่ยงต่อหน่วยเวลา
 
-| ลำดับ | มาตรการ | แตะโค้ดหรือไม่ | ย้อนกลับได้ | ผลต่อผู้ใช้ |
-|---|---|---|---|---|
-| **1** | **ตัดการเข้าถึงจากอินเทอร์เน็ตชั่วคราว** (ปิด port forward / firewall ที่ router) | ❌ ไม่ | ✅ ทันที | ระบบใช้ได้เฉพาะวงใน — **ผู้ใช้ต้องเป็นคนทำเอง ผมเข้าถึงอุปกรณ์เครือข่ายไม่ได้** |
-| **2** | ลบ `backend/public/info.php`, `test.php`, `test_db.php` | ลบไฟล์ (ไม่ใช่ business logic) | ✅ `git revert` | ไม่มี — เป็นไฟล์ debug ล้วน |
-| **3** | ลบ route `GET /fix-leaves` ใน `routes/web.php` | แก้ 1 ไฟล์ | ✅ | ไม่มี — มี artisan command ทำงานเดียวกันอยู่แล้ว |
-| **4** | ลบ route `GET /api/storage/{path}` + ลบ symlink `backend/public/storage` | แก้ 1 ไฟล์ + ลบ symlink | ✅ | **มี** — รูปลายเซ็นในหน้าจอ/PDF จะไม่แสดงจนกว่าจะทำ endpoint ที่ตรวจสิทธิ์ (งาน LEGACY-02) |
-| 5 | Re-key `APP_KEY` + หมุน secret ทั้งหมด + เพิกถอน token 9 รายการ | หลายขั้นตอน | ต้องมี backup | ผู้ใช้ต้อง login ใหม่ทุกคน |
+| ลำดับ | มาตรการ | สถานะ | ผลต่อผู้ใช้ |
+|---|---|---|---|
+| **1** | **ตัดการเข้าถึงจากอินเทอร์เน็ตชั่วคราว** (ปิด port forward / firewall ที่ router) | ⏳ **รอผู้ใช้ทำ** — ผมเข้าถึงอุปกรณ์เครือข่ายไม่ได้ · **ยังเป็นมาตรการที่ได้ผลที่สุด** เพราะปิด `/storage/{path}` ที่ยังเหลืออยู่ด้วย | ระบบใช้ได้เฉพาะวงใน |
+| **2** | ลบ `backend/public/info.php`, `test.php`, `test_db.php` | ✅ **ทำแล้ว** `f843b3c` | ไม่มี |
+| **3** | ลบ route `GET /fix-leaves` | ✅ **ทำแล้ว** `f843b3c` | ไม่มี |
+| **4a** | ลบ route `GET /api/storage/{path}` | ✅ **ทำแล้ว** `f843b3c` | ไม่มี (เป็น dead route) |
+| **4b** | ปิด `GET /storage/{path}` (symlink) | ⛔ **ไม่ทำในรอบนี้** — จะทำให้ PDF ฝังลายเซ็น/ตราครุฑไม่ได้ (10+ จุดอ่านผ่าน `public_path`) → เลื่อนไป LEGACY-02 §02-A พร้อม test | — |
+| **5** | Re-key `APP_KEY` + หมุน secret ทั้งหมด + เพิกถอน `personal_access_tokens` 9 รายการ | ⏳ **ยังไม่ทำ** — ต้องวางแผนและมี downtime · **จำเป็น เพราะกุญแจที่รั่วไปแล้วยังใช้ได้** | ทุกคนต้อง login ใหม่ |
 
 > ข้อ 2–4 อยู่ในแผน LEGACY-01/02 อยู่แล้ว (01-1, 01-2, 02-A5) — ไม่ใช่งานใหม่
 > แต่ **ควรทำทันทีแยกจากคิวของเฟส** เพราะเป็นการรั่วไหลที่กำลังเกิดขึ้นจริง
