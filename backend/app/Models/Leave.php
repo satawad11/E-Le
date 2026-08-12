@@ -17,6 +17,19 @@ class Leave extends Model
         return ['start_date' => 'date', 'end_date' => 'date', 'total_days' => 'float', 'paid_days' => 'float', 'unpaid_days' => 'float', 'reserved_days' => 'float', 'meta_data' => 'array', 'notified_supervisor_at' => 'datetime', 'submitted_at' => 'datetime', 'voided_at' => 'datetime'];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (Leave $leave): void {
+            $leave->document_template_version_id ??= DocumentTemplateVersion::query()
+                ->where('is_active', true)
+                ->whereHas('template', fn ($query) => $query->where('module', 'leave'))
+                ->whereDate('effective_from', '<=', today())
+                ->where(fn ($query) => $query->whereNull('effective_to')->orWhereDate('effective_to', '>=', today()))
+                ->orderBy('document_template_id')
+                ->value('id');
+        });
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -35,6 +48,11 @@ class Leave extends Model
     public function fiscalYear()
     {
         return $this->belongsTo(FiscalYear::class);
+    }
+
+    public function documentTemplateVersion()
+    {
+        return $this->belongsTo(DocumentTemplateVersion::class);
     }
 
     public function approvals()

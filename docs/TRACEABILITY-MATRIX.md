@@ -20,3 +20,4 @@
 | LEGACY-02-GENERAL | LEGACY-MIGRATION-PLAN 02-E | security headers, sandboxed template preview, escaped pagination, generic errors, export/download throttles | SecurityHeadersTest, RouteAuthorizationAuditTest, frontend build, nginx -t | Verified |
 | LEGACY-03-ORG-PER | LEGACY-MIGRATION-PLAN 03-1..03-5 | org_units, department map, users.org_unit_id, personnel_assignments, public UUIDs | CoreDataFoundationTest | Verified |
 | LEGACY-03-AUDIT | LEGACY-MIGRATION-PLAN 03-6..03-7 | central append-oriented audit_logs, legacy dual-write, user/attendance/role/permission/settings audit | CentralAuditLogTest + existing audit regressions | Verified |
+| LEGACY-03-TEMPLATE | LEGACY-MIGRATION-PLAN 03-8 | document_template_versions, effective dating, leaves version pin | DocumentTemplateVersionTest, LeaveExportTest | Verified |
