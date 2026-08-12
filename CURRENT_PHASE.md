@@ -8,7 +8,18 @@
 
 ## Current Phase
 
-`LEGACY-ASSESSMENT`
+`LEGACY-00 COMPLETE — รออนุมัติเริ่ม LEGACY-01`
+
+| เฟส | สถานะ |
+|---|---|
+| LEGACY-ASSESSMENT | ✅ เสร็จ · ผู้ใช้อนุมัติในหลักการ 2026-08-12 |
+| LEGACY-00 Freeze & Baseline | ✅ เสร็จ 2026-08-12 · ไม่มี FAIL · `docs/checkpoints/LEGACY-00-REPORT.md` |
+| LEGACY-01 Stabilization | ⛔ **ยังไม่อนุญาต** — รอคำตอบ D-1…D-4 และการอนุมัติ |
+
+**Architecture Decision (อนุมัติแล้ว 2026-08-12):** คงเทคโนโลยีเดิม Laravel + Vue 3 + MySQL 8 + Tailwind + Docker
+เอกสาร Target Architecture ตีความเป็น Architectural Principles และ Engineering Standards ไม่ใช่คำสั่งให้ rewrite stack
+
+**Baseline ปัจจุบัน:** commit `6139212` · tag `baseline/legacy-2026-08-12` (ยังไม่ push ขึ้น origin)
 
 ## Allowed Work
 

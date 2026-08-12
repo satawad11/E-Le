@@ -5,3 +5,10 @@
 node_modules/
 .DS_Store
 Thumbs.db
+
+# Database/storage dumps มีข้อมูลจริง (password hash, เลขบัตรประชาชนที่เข้ารหัส,
+# ลายเซ็น, ใบรับรองแพทย์) — ห้าม commit เข้า repo เด็ดขาด
+# เก็บไว้นอก repo หรือใน secure backup storage เท่านั้น
+docs/checkpoints/*/backups/
+*.sql.gz
+*.dump

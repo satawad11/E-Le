@@ -28,15 +28,17 @@
 5. ทุกข้อสรุปต้องอ้างอิงไฟล์, โมดูล, Route, API, Migration หรือ Table ที่ตรวจพบจริง
 6. ถ้าไม่แน่ใจ ให้ระบุ `UNKNOWN` แทนการเดา
 
-### 2.1 ข้อจำกัดของการตรวจรอบนี้ (ต้องอ่านก่อน)
+### 2.1 ข้อจำกัดของการตรวจรอบนี้ — **แก้ไขแล้วใน LEGACY-00**
 
-| ข้อจำกัด | ผลกระทบต่อความเชื่อถือได้ |
+> **อัปเดต 2026-08-12 (หลัง LEGACY-00):** ข้อจำกัดด้านล่างนี้ถูกปิดไปแล้ว โดยรันเครื่องมือจริงผ่าน Docker
+> container ที่ระบบใช้งานอยู่ (`eleave_backend` PHP 8.4.24, `eleave_db` MySQL 8.0.46)
+> ผลจริงบางส่วน **หักล้าง** ข้อสรุปในเอกสารรอบแรก — ดู `docs/checkpoints/LEGACY-00-REPORT.md`
+
+| ข้อจำกัดเดิม | สถานะหลัง LEGACY-00 |
 |---|---|
-| ไม่มี `php` และ `node` ใน PATH ของสภาพแวดล้อมที่ตรวจ | **ไม่ได้รัน** `php artisan test`, `php artisan migrate:status`, `php artisan route:list`, `npm run build` จริง — ผลใน §13 อ้างจาก `.phpunit.result.cache` เท่านั้น |
-| ไม่ได้เชื่อมต่อฐานข้อมูล MySQL จริง | โครงสร้างตารางอ่านจาก migration files ไม่ใช่จาก `information_schema` — อาจมี drift ระหว่าง migration กับ DB จริง (ดู DB-RISK-006) |
-| ไม่มี production environment ให้ตรวจ | ค่า `SESSION_SECURE_COOKIE`, TLS, backup จริง = `UNKNOWN` |
-
-> **สิ่งที่ต้องทำก่อนอนุมัติเอกสารนี้:** รัน `php artisan migrate:status`, `php artisan test`, และ `SHOW CREATE TABLE` บน DB production เพื่อยืนยัน §6 และ §13
+| ไม่มี `php`/`node` ใน PATH → ไม่ได้รัน test/build จริง | ✅ **ปิดแล้ว** — รันผ่าน container: test **86/86 ผ่าน**, `npm run build` exit 0 (ดู §13) |
+| ไม่ได้เชื่อมต่อ MySQL จริง → อาจมี schema drift | ✅ **ปิดแล้ว** — ตรวจ `information_schema` จริงและเทียบกับ schema ที่ migrate ใหม่จากศูนย์: **drift = 0** (DB-RISK-006 ถูกหักล้าง) |
+| ไม่มี production environment ให้ตรวจ | ⚠️ ยังจริงบางส่วน — TLS/`SESSION_SECURE_COOKIE` บน production จริง = `UNKNOWN` แต่พบว่า **ระบบยังไม่ได้ใช้งานจริง** (7 ผู้ใช้ทดสอบ, 0 หนังสือราชการ) |
 
 ---
 
@@ -169,8 +171,8 @@ LINE Messaging API, Telegram Bot API เท่านั้น — **ไม่ม
 | DB-RISK-003 | `approval_steps` | workflow เป็น global table เดียว (role_id, step_order) ไม่ผูกกับ department/personnel type/leave type และ **ไม่มี version** | HIGH | แก้ workflow แล้วกระทบใบลาที่กำลังเดินอยู่และประวัติย้อนหลัง | สร้าง workflow engine ใหม่ + pin version ที่ instance (LEGACY-05) |
 | DB-RISK-004 | `document_templates` | ไม่มี `version` / `effective_from` / `effective_to` และ `leaves` ไม่ pin template | HIGH | แก้เทมเพลตแล้วใบลาที่อนุมัติไปแล้วพิมพ์ออกมาเปลี่ยนรูป — ผิด `docs/14` และ ACCEPTANCE-CRITERIA | เพิ่มคอลัมน์ version/effective + `leaves.document_template_version_id` แบบ additive |
 | DB-RISK-005 | `attendances` | `unique(user_id, date)` 1 แถว/คน/วัน + ไม่มีตาราง raw event | HIGH | รับข้อมูลจากเครื่องสแกน (หลาย event/วัน) ไม่ได้; dedup/reconcile ทำไม่ได้ | เพิ่ม `attendance_raw_events` แยก แล้วให้ `attendances` เป็นผลลัพธ์ที่คำนวณ (LEGACY-08) |
-| DB-RISK-006 | migration ทั้งชุด | `2026_08_08_100000` ขึ้นต้นด้วย `if (Schema::hasTable('personnel_types')) return;` และมี migration ตามหลังชื่อ `..._resume_interrupted_leave_hardening` — ยอมรับตรง ๆ ว่าเคยมี DDL timeout กลางคัน | **CRITICAL** | schema จริงใน production **อาจไม่ตรงกับ migration** — ต้องตรวจก่อนทำอะไรทั้งสิ้น | รัน `migrate:status` + diff `information_schema` กับ schema ที่ migration ควรสร้าง (LEGACY-00) |
-| DB-RISK-007 | `leaves.status` / `leave_approvals.status` | ใช้ `enum(...)` ของ MySQL แต่โค้ดเพิ่มค่า `'Voided'` เข้าไป (`LeaveGovernanceController::void`) | HIGH | ถ้า enum ยังไม่ถูกขยาย MySQL จะปัด `Voided` เป็นค่าว่างหรือ error → **ข้อมูลสูญ** | ยืนยันด้วย `SHOW CREATE TABLE leaves` ทันที; แปลง enum → string + CHECK |
+| ~~DB-RISK-006~~ | ~~migration ทั้งชุด~~ | ~~schema จริงอาจไม่ตรงกับ migration~~ | ~~CRITICAL~~ **RESOLVED** | **ตรวจจริงแล้วใน LEGACY-00: drift = 0** — เทียบ DDL dump, MD5 ของทุกคอลัมน์, ทุก index และทุก FK ระหว่าง production กับ schema ที่ migrate ใหม่จากศูนย์ → **ตรงกันทั้งหมด** migration `resume_interrupted_leave_hardening` ทำงานถูกต้องสมบูรณ์ | ปิดประเด็นได้ · ข้อสังเกตที่ยังใช้: DDL บน `leaves`/`leave_approvals`/`leave_balances` ช้ามาก (15–60 วิ/คำสั่ง) จึงต้องประเมิน lock ล่วงหน้าทุกครั้ง — ดู `docs/checkpoints/legacy-00/schema-baseline.md` |
+| DB-RISK-007 | `leaves.status` | `enum('Draft','Pending','Approved','Rejected','Cancelled')` **ไม่มีค่า `'Voided'`** ทั้งใน DB จริงและใน migration แต่ `LeaveGovernanceController::void()` เขียนค่านี้ | **HIGH** (ปรับจาก CRITICAL) | **ยืนยันด้วยการทดลองจริงบนสำเนาที่ restore แล้ว: `ERROR 1265 Data truncated for column 'status'`** → ฟีเจอร์ void ใบลา **พังทั้งหมด (HTTP 500 ทุกครั้ง)** · แต่ **ไม่มีข้อมูลเสียหาย** เพราะ `STRICT_TRANS_TABLES` + `DB::transaction` ทำให้ rollback (fail-safe) · `status='Voided'` = 0 แถว | ไม่ใช่ drift แต่เป็น **code ↔ schema contract mismatch** · ทางเลือกแก้ 3 แบบพร้อม risk บันทึกไว้ใน `schema-baseline.md` §5 — **ต้องเขียน test ครอบ `void()` ก่อนแก้** |
 | DB-RISK-008 | test vs prod | test รัน SQLite in-memory, prod เป็น MySQL 8 | HIGH | migration ที่พังเฉพาะ MySQL (enum, DDL lock, index length) จะผ่าน CI แล้วไปพังจริง | เพิ่ม CI job รัน migration บน MySQL 8 |
 | DB-RISK-009 | `users.custom_permissions` (json) | มี direct permission ทั้งใน Spatie `model_has_permissions` และคอลัมน์ json นี้ | MEDIUM | สิทธิ์สองแหล่ง — ไม่รู้ว่าอันไหนชนะ | รวมเข้า Spatie ให้เหลือแหล่งเดียว |
 | DB-RISK-010 | audit tables 4 ชุด | `leave_audit_logs`, `leave_action_logs`, `saraban_audit_logs`, `personal_data_access_logs` แยกกัน และ **ไม่มี audit ของ users/roles/permissions/attendance/settings** | HIGH | ตรวจสอบย้อนหลังไม่ครบ; ผิด `docs/12-AUDIT-LOGGING.md` | สร้าง `audit_logs` กลาง แล้ว dual-write ก่อน cutover |
@@ -327,9 +329,17 @@ LINE Messaging API, Telegram Bot API เท่านั้น — **ไม่ม
 | Saraban tests | 1 test (`Saraban/DocumentTest::test_user_can_create_document`) สำหรับ 9 controller |
 | Migration tests | ไม่มี — และรันบน SQLite ไม่ใช่ MySQL (DB-RISK-008) |
 | Frontend tests / lint / typecheck | **ไม่มีทั้งหมด** — `frontend/package.json` มี scripts แค่ `dev`, `build`, `preview`; ไม่มี TypeScript |
-| ผลรันล่าสุด | **ไม่ได้รันในรอบนี้** (ไม่มี `php` ในสภาพแวดล้อม) — `backend/.phpunit.result.cache` (เขียนเมื่อ 2026-08-11 21:09) มี defect entries **42 รายการ** สถานะ 7/8 (ระดับ warning/failure) ครอบคลุม `AuthTest`, `LeaveTest`, `ApprovalTest`, `UserTest`, `LeaveExportTest`, `Saraban\DocumentTest` ฯลฯ |
+| **ผลรันจริง (LEGACY-00, 2026-08-12)** | **86 passed · 0 failed · 0 skipped · 256 assertions · 173s** บน PHP 8.4.24 / Laravel 13.19 / SQLite `:memory:` |
+| Frontend build จริง | `npm run build` **exit 0** ไม่มี error/warning |
 
-> ⚠️ **ต้องยืนยันก่อนอนุมัติ:** ถ้าผลนี้จริง แปลว่า **ประมาณครึ่งหนึ่งของ test suite ไม่ผ่านอยู่ ณ baseline** ซึ่งขัดกับ `AGENTS.md` ("ห้าม bypass tests") และทำให้ Phase LEGACY-00 ต้องมีงาน "ทำให้ test เขียวก่อน" เป็นอันดับแรก รัน `php artisan test` แล้วบันทึกผลจริงลงเอกสารนี้
+> 🔄 **แก้ข้อสรุปเดิม:** เอกสารรอบแรกอนุมานจาก `backend/.phpunit.result.cache` (defect entries 42 รายการ)
+> ว่า "ประมาณครึ่งหนึ่งของ suite ไม่ผ่าน" — **การรันจริงหักล้างข้อสรุปนี้ test ผ่านทั้งหมด 86/86**
+> ไฟล์แคชนั้นตกค้างจากสภาพแวดล้อมอื่น (PHP 8.2 บน host ซึ่งต่ำกว่าที่ Laravel 13 ต้องการ)
+> และการตีความรหัสสถานะ 7/8 ว่าเป็น failure นั้นไม่ถูกต้อง
+>
+> **ช่องว่างที่ยังเป็นจริงคือ *ขอบเขต* ของ test ไม่ใช่จำนวน** — test เขียว 100% แต่ไม่มี IDOR test เลย
+> จึงเป็นเหตุผลตรง ๆ ว่าทำไมช่องโหว่ CRITICAL 6 รายการยังอยู่ในระบบโดยไม่มีใครจับได้
+> และ `LeaveGovernanceController::void()` ที่พังมาตลอดก็ไม่มี test ครอบเช่นกัน
 
 ---
 
@@ -415,10 +425,13 @@ LINE Messaging API, Telegram Bot API เท่านั้น — **ไม่ม
 
 ## 16. Critical Findings (ต้องแก้ก่อนเพิ่ม Feature ใหม่)
 
+> 🔄 **อัปเดตหลัง LEGACY-00 (2026-08-12):** รายการที่ 1 และ 11 ถูกหักล้างด้วยหลักฐานจริงแล้ว (ดูหมายเหตุในตาราง)
+> รายการอื่นยังคงเป็นจริงทั้งหมด
+
 | # | Finding | อ้างอิง | Priority |
 |---|---|---|---|
-| 1 | Schema จริงอาจไม่ตรงกับ migration (มีร่องรอย DDL timeout กลางคัน) — **ต้องตรวจก่อนแตะอะไรทั้งสิ้น** | DB-RISK-006 | **P0** |
-| 2 | ระบบไม่มี backup ที่ทำงานจริง (`backup:run` ไม่มี package + ไม่มี scheduler) | §14 | **P0** |
+| ~~1~~ | ~~Schema จริงอาจไม่ตรงกับ migration~~ → **ปิดแล้ว: drift = 0** แทนที่ด้วย → *ฟีเจอร์ void ใบลาพังจาก enum ที่ไม่มีค่า `Voided`* | DB-RISK-007 | **P1** |
+| 2 | ระบบไม่มี backup ที่ทำงานจริง (`backup:run` ไม่มี package + ไม่มี scheduler) — LEGACY-00 ทำ backup แบบ manual ที่ restore ได้จริงแล้ว แต่ **ยังไม่มีระบบอัตโนมัติ** | §14 | **P0** |
 | 3 | ไฟล์ส่วนบุคคล (ลายเซ็น, เซลฟี่, ไฟล์แนบ) เปิดสาธารณะไม่ต้อง login | SEC-001 | **P0** |
 | 4 | ช่องทางอัปโหลดที่อาจนำไปสู่ RCE ผ่านนามสกุลไฟล์ที่ผู้ใช้ควบคุม | SEC-002 | **P0** |
 | 5 | IDOR — ดาวน์โหลดใบลาของผู้อื่นได้ทั้งระบบ | SEC-003 | **P0** |
@@ -427,7 +440,7 @@ LINE Messaging API, Telegram Bot API เท่านั้น — **ไม่ม
 | 8 | Secret รั่วในไฟล์ที่เข้าถึงได้จากเว็บ + endpoint เขียน DB โดยไม่ต้อง login | SEC-010, SEC-011 | **P0** |
 | 9 | ระบบ role สองชุดพร้อมกัน — สิทธิ์อาจผิดตัวและโค้ดอาจ crash | DB-RISK-002 | **P1** |
 | 10 | Notification/scheduled job ไม่ทำงานจริงเพราะไม่มี worker/scheduler (ใบลาอาจไม่แจ้งเตือน, carry-forward ไม่รัน) | §14 | **P1** |
-| 11 | ประมาณครึ่งหนึ่งของ test suite ไม่ผ่านที่ baseline (ต้องยืนยัน) | §13 | **P1** |
+| ~~11~~ | ~~ประมาณครึ่งหนึ่งของ test suite ไม่ผ่านที่ baseline~~ → **ปิดแล้ว: 86/86 ผ่าน** แทนที่ด้วย → *test ไม่ครอบคลุม authorization/IDOR เลย ทำให้ช่องโหว่ CRITICAL ลอดผ่าน* | §13, TEST-001 | **P0** |
 | 12 | ไม่มี org hierarchy → ทำ ABAC scope ไม่ได้ | DB-RISK-001 | **P1** |
 
 ---
@@ -482,15 +495,18 @@ LEGACY-06+ Time / Leave / Attendance integration / OT / Notification / Evaluatio
 
 ## 18. Open Questions (ต้องได้คำตอบจากผู้ใช้ก่อน Phase ถัดไป)
 
-| # | คำถาม | บล็อก Phase ไหน |
-|---|---|---|
-| 1 | เครื่องสแกนใบหน้า/ลายนิ้วมือที่ใช้อยู่คือยี่ห้อ/รุ่นอะไร และระบบผู้ผลิตให้ข้อมูลออกมาทางไหน (REST API / webhook / อ่าน DB ตรง / ไฟล์ CSV / SFTP)? | LEGACY-08 |
-| 2 | ระบบผู้ผลิตใช้อะไรระบุตัวบุคลากร (รหัสพนักงาน / เลขบัตรประชาชน / enrollment id) และจะ map กับ `users` ด้วยฟิลด์ไหน? | LEGACY-08 |
-| 3 | ระบบนี้ **ใช้งานจริงอยู่แล้วบน production หรือยัง** และมีข้อมูลจริงกี่ราย? (มีผลต่อความเข้มของ backup/rollback ทุก phase) | LEGACY-00 |
-| 4 | `docs/02-TECH-STACK.md` ระบุ Next.js + PostgreSQL แต่ระบบจริงเป็น Laravel + MySQL — **Target Architecture ต้องการให้เปลี่ยน stack จริงหรือไม่?** ถ้าใช่ นี่คือ rewrite ไม่ใช่ upgrade และขัดกับกฎข้อ 1-2 ของ `LEGACY-UPGRADE-PROMPT.md` | ทุก Phase |
-| 5 | โมดูลสารบรรณ (Saraban) ที่มีอยู่ — เปิดใช้งานจริงแล้วหรือยัง? มีเอกสารลับในระบบหรือไม่? (มีผลต่อความเร่งด่วนของ SEC-005/006) | LEGACY-02 |
-| 6 | running number ของใบลาและหนังสือ ใช้ปีงบประมาณ (1 ต.ค.) หรือปีปฏิทิน พ.ศ.? (โค้ดปัจจุบันใช้ **ปีงบประมาณ** ใน Saraban แต่ Leave ใช้ `periodYear` ตาม policy — อาจไม่ตรงกัน) | LEGACY-07 |
-| 7 | ต้องการให้ token session หมดอายุกี่นาที และยอมรับให้ผู้ใช้ต้อง login ใหม่บ่อยขึ้นได้หรือไม่? | LEGACY-02 |
+| # | คำถาม | สถานะ | บล็อก Phase ไหน |
+|---|---|---|---|
+| 1 | เครื่องสแกนใบหน้า/ลายนิ้วมือที่ใช้อยู่คือยี่ห้อ/รุ่นอะไร และระบบผู้ผลิตให้ข้อมูลออกมาทางไหน (REST API / webhook / อ่าน DB ตรง / ไฟล์ CSV / SFTP)? | ⬜ ยังไม่ได้คำตอบ | LEGACY-08 |
+| 2 | ระบบผู้ผลิตใช้อะไรระบุตัวบุคลากร (รหัสพนักงาน / เลขบัตรประชาชน / enrollment id) และจะ map กับ `users` ด้วยฟิลด์ไหน? | ⬜ ยังไม่ได้คำตอบ | LEGACY-08 |
+| 3 | ระบบนี้ใช้งานจริงบน production หรือยัง มีข้อมูลจริงกี่ราย? | ✅ **ตอบแล้วจากข้อมูลจริง (LEGACY-00): ยังไม่ได้ใช้งานจริง** — 7 ผู้ใช้ทดสอบ, 3 ใบลา (ถูกลบหมด), 1 รายการลงเวลา, 0 หนังสือราชการ · เป็นระบบ dev/pilot | — |
+| 4 | `docs/02-TECH-STACK.md` ระบุ Next.js + PostgreSQL แต่ระบบจริงเป็น Laravel + MySQL — ต้องการเปลี่ยน stack จริงหรือไม่? | ✅ **ผู้ใช้ตัดสินใจแล้ว (2026-08-12): คงเทคโนโลยีเดิม** Laravel + Vue 3 + MySQL 8 + Tailwind + Docker · เอกสาร Target Architecture ตีความเป็น Architectural Principles และ Engineering Standards ไม่ใช่คำสั่งให้ rewrite | — |
+| 5 | โมดูลสารบรรณเปิดใช้งานจริงแล้วหรือยัง มีเอกสารลับในระบบหรือไม่? | ✅ **ตอบแล้วจากข้อมูลจริง (LEGACY-00): ยังไม่เปิดใช้** — `saraban_documents` = 0 แถว, `saraban_document_types` = 0 แถว → **ไม่มีเอกสารลับในระบบ** SEC-005/006 จึงยังไม่เกิดความเสียหายจริง แต่ต้องแก้ก่อนเปิดใช้ | LEGACY-02 |
+| 6 | running number ของใบลาและหนังสือ ใช้ปีงบประมาณ (1 ต.ค.) หรือปีปฏิทิน พ.ศ.? (Saraban ใช้ **ปีงบประมาณ** แต่ Leave ใช้ `periodYear` ตาม policy — อาจไม่ตรงกัน) | ⬜ ยังไม่ได้คำตอบ | LEGACY-07 |
+| 7 | ต้องการให้ token หมดอายุกี่นาที และยอมรับให้ผู้ใช้ต้อง login ใหม่บ่อยขึ้นได้หรือไม่? | ⬜ ยังไม่ได้คำตอบ | LEGACY-02 |
+| 8 | **ใหม่:** ระบบเข้าถึงได้จากอินเทอร์เน็ตหรืออยู่ในวงแลนภายในเท่านั้น? (กำหนดความเร่งด่วนของ SEC-001) | ⬜ ยังไม่ได้คำตอบ | LEGACY-02 |
+| 9 | **ใหม่:** งานแจ้งเตือนที่ค้างในคิว 16 รายการ (ตั้งแต่ 2026-08-09) — เมื่อเปิด worker จะถูกส่งย้อนหลังทันที ต้องการให้ **ส่ง** หรือ **ล้างทิ้ง**? | ⬜ ยังไม่ได้คำตอบ | LEGACY-01 |
+| 10 | **ใหม่:** วิธีแก้ `leaves.status` ที่ไม่มีค่า `Voided` — (A) enum→varchar+CHECK *(แนะนำ)* (B) เพิ่มค่าใน enum (C) แก้โค้ดใช้ `Cancelled`+`voided_at` | ⬜ ยังไม่ได้คำตอบ | LEGACY-01 |
 
 ---
 

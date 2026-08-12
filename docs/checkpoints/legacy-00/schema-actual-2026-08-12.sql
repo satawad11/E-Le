@@ -1,0 +1,1117 @@
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+DROP TABLE IF EXISTS `approval_steps`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `approval_steps` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `role_id` bigint unsigned NOT NULL,
+  `step_order` int NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `approval_steps_role_id_foreign` (`role_id`),
+  CONSTRAINT `approval_steps_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `attendances`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `attendances` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `date` date NOT NULL,
+  `check_in_time` datetime DEFAULT NULL,
+  `check_in_image` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `check_in_location` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `check_out_time` datetime DEFAULT NULL,
+  `check_out_image` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `check_out_location` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `distance_from_college` decimal(10,2) DEFAULT NULL,
+  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Present',
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `ot_check_in_time` time DEFAULT NULL,
+  `ot_check_out_time` time DEFAULT NULL,
+  `late_minutes` int DEFAULT '0',
+  `early_leave_minutes` int DEFAULT '0',
+  `ot_minutes` int DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `attendances_user_id_date_unique` (`user_id`,`date`),
+  KEY `attendances_date_idx` (`date`),
+  KEY `attendances_user_date_idx` (`user_id`,`date`),
+  CONSTRAINT `attendances_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `cache`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `cache` (
+  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` mediumtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `expiration` bigint NOT NULL,
+  PRIMARY KEY (`key`),
+  KEY `cache_expiration_index` (`expiration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `cache_locks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `cache_locks` (
+  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `owner` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `expiration` bigint NOT NULL,
+  PRIMARY KEY (`key`),
+  KEY `cache_locks_expiration_index` (`expiration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `departments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `departments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `head_of_department_id` bigint unsigned DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  PRIMARY KEY (`id`),
+  KEY `departments_head_of_department_id_foreign` (`head_of_department_id`),
+  CONSTRAINT `departments_head_of_department_id_foreign` FOREIGN KEY (`head_of_department_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `document_templates`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `document_templates` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `module` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'leave',
+  `paper_size` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'A4',
+  `orientation` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'portrait',
+  `margin_top` decimal(4,1) NOT NULL DEFAULT '8.0',
+  `margin_bottom` decimal(4,1) NOT NULL DEFAULT '8.0',
+  `margin_left` decimal(4,1) NOT NULL DEFAULT '12.0',
+  `margin_right` decimal(4,1) NOT NULL DEFAULT '12.0',
+  `content_html` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `document_templates_code_unique` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `failed_jobs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `failed_jobs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `uuid` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `connection` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `queue` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `exception` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `failed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`),
+  KEY `failed_jobs_connection_queue_failed_at_index` (`connection`,`queue`,`failed_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `fiscal_years`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `fiscal_years` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `year` int NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `is_current` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `holidays`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `holidays` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `date` date NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `holidays_date_unique` (`date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `job_batches`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `job_batches` (
+  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `total_jobs` int NOT NULL,
+  `pending_jobs` int NOT NULL,
+  `failed_jobs` int NOT NULL,
+  `failed_job_ids` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `options` mediumtext COLLATE utf8mb4_unicode_ci,
+  `cancelled_at` int DEFAULT NULL,
+  `created_at` int NOT NULL,
+  `finished_at` int DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `jobs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `jobs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `queue` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `attempts` smallint unsigned NOT NULL,
+  `reserved_at` int unsigned DEFAULT NULL,
+  `available_at` int unsigned NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `jobs_queue_index` (`queue`)
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_action_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_action_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `leave_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `action` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `details` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `leave_action_logs_leave_id_foreign` (`leave_id`),
+  KEY `leave_action_logs_user_id_foreign` (`user_id`),
+  CONSTRAINT `leave_action_logs_leave_id_foreign` FOREIGN KEY (`leave_id`) REFERENCES `leaves` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `leave_action_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_adjustments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_adjustments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `leave_id` bigint unsigned NOT NULL,
+  `requested_by` bigint unsigned NOT NULL,
+  `approved_by` bigint unsigned DEFAULT NULL,
+  `cancel_from` date NOT NULL,
+  `cancel_to` date NOT NULL,
+  `days` decimal(7,2) NOT NULL,
+  `reason` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` enum('Pending','Approved','Rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Pending',
+  `decided_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `leave_adjustments_leave_id_foreign` (`leave_id`),
+  KEY `leave_adjustments_requested_by_foreign` (`requested_by`),
+  KEY `leave_adjustments_approved_by_foreign` (`approved_by`),
+  CONSTRAINT `leave_adjustments_approved_by_foreign` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `leave_adjustments_leave_id_foreign` FOREIGN KEY (`leave_id`) REFERENCES `leaves` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `leave_adjustments_requested_by_foreign` FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_approvals`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_approvals` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `leave_id` bigint unsigned NOT NULL,
+  `approver_id` bigint unsigned DEFAULT NULL,
+  `approver_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `approver_position` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `signature_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `level` int NOT NULL DEFAULT '1',
+  `status` enum('Pending','Approved','Rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Pending',
+  `comment` text COLLATE utf8mb4_unicode_ci,
+  `approved_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `step_order` int unsigned DEFAULT NULL,
+  `step_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `required_role_id` bigint unsigned DEFAULT NULL,
+  `delegated_from_user_id` bigint unsigned DEFAULT NULL,
+  `acted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `leave_approvals_leave_id_foreign` (`leave_id`),
+  KEY `leave_approvals_approver_id_foreign` (`approver_id`),
+  KEY `leave_approvals_required_role_id_foreign` (`required_role_id`),
+  KEY `leave_approvals_delegated_from_user_id_foreign` (`delegated_from_user_id`),
+  CONSTRAINT `leave_approvals_approver_id_foreign` FOREIGN KEY (`approver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `leave_approvals_delegated_from_user_id_foreign` FOREIGN KEY (`delegated_from_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `leave_approvals_leave_id_foreign` FOREIGN KEY (`leave_id`) REFERENCES `leaves` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `leave_approvals_required_role_id_foreign` FOREIGN KEY (`required_role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_audit_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_audit_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `leave_id` bigint unsigned DEFAULT NULL,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `action` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `before` json DEFAULT NULL,
+  `after` json DEFAULT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `leave_audit_logs_user_id_foreign` (`user_id`),
+  KEY `leave_audit_logs_leave_id_created_at_index` (`leave_id`,`created_at`),
+  CONSTRAINT `leave_audit_logs_leave_id_foreign` FOREIGN KEY (`leave_id`) REFERENCES `leaves` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `leave_audit_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_balances`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_balances` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `leave_type_id` bigint unsigned NOT NULL,
+  `year` int NOT NULL,
+  `quota` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `carried_forward` double NOT NULL DEFAULT '0',
+  `used` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `reserved` decimal(7,2) NOT NULL DEFAULT '0.00',
+  `carry_forward_days` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT 'Days accumulated from previous years',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `leave_policy_id` bigint unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `leave_balances_user_id_leave_type_id_year_unique` (`user_id`,`leave_type_id`,`year`),
+  UNIQUE KEY `leave_balance_unique_period` (`user_id`,`leave_type_id`,`year`),
+  KEY `leave_balances_leave_type_id_foreign` (`leave_type_id`),
+  KEY `leave_balances_leave_policy_id_foreign` (`leave_policy_id`),
+  CONSTRAINT `leave_balances_leave_policy_id_foreign` FOREIGN KEY (`leave_policy_id`) REFERENCES `leave_policies` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `leave_balances_leave_type_id_foreign` FOREIGN KEY (`leave_type_id`) REFERENCES `leave_types` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `leave_balances_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_document_sequences`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_document_sequences` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `prefix` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `year` smallint unsigned NOT NULL,
+  `last_number` bigint unsigned NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `leave_document_sequences_prefix_year_unique` (`prefix`,`year`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_evidences`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_evidences` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `leave_id` bigint unsigned NOT NULL,
+  `uploaded_by` bigint unsigned DEFAULT NULL,
+  `evidence_type` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `original_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `storage_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `purged_at` timestamp NULL DEFAULT NULL,
+  `mime_type` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_size` bigint unsigned NOT NULL,
+  `sha256` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `issued_date` date DEFAULT NULL,
+  `verification_status` enum('pending','verified','rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `verified_by` bigint unsigned DEFAULT NULL,
+  `verified_at` timestamp NULL DEFAULT NULL,
+  `verification_note` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `leave_evidences_uploaded_by_foreign` (`uploaded_by`),
+  KEY `leave_evidences_verified_by_foreign` (`verified_by`),
+  KEY `leave_evidences_leave_id_evidence_type_index` (`leave_id`,`evidence_type`),
+  CONSTRAINT `leave_evidences_leave_id_foreign` FOREIGN KEY (`leave_id`) REFERENCES `leaves` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `leave_evidences_uploaded_by_foreign` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `leave_evidences_verified_by_foreign` FOREIGN KEY (`verified_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_policies`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_policies` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `personnel_type_id` bigint unsigned NOT NULL,
+  `leave_type_id` bigint unsigned NOT NULL,
+  `effective_from` date NOT NULL,
+  `effective_to` date DEFAULT NULL,
+  `annual_quota` decimal(7,2) DEFAULT NULL,
+  `max_days_per_request` decimal(7,2) DEFAULT NULL,
+  `max_days_with_pay` decimal(7,2) DEFAULT NULL,
+  `minimum_service_days` int unsigned NOT NULL DEFAULT '0',
+  `notice_period_days` int unsigned NOT NULL DEFAULT '0',
+  `allow_past_dates` tinyint(1) NOT NULL DEFAULT '0',
+  `exclude_holidays` tinyint(1) NOT NULL DEFAULT '1',
+  `allow_half_day` tinyint(1) NOT NULL DEFAULT '1',
+  `requires_substitute` tinyint(1) NOT NULL DEFAULT '0',
+  `attachment_required_after_days` decimal(7,2) DEFAULT NULL,
+  `required_evidence_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_carry_forward` tinyint(1) NOT NULL DEFAULT '0',
+  `max_carry_forward` decimal(7,2) NOT NULL DEFAULT '0.00',
+  `max_accumulated` decimal(7,2) DEFAULT NULL,
+  `period_basis` enum('fiscal_year','calendar_year') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'fiscal_year',
+  `eligibility_rules` json DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `leave_policies_leave_type_id_foreign` (`leave_type_id`),
+  KEY `leave_policy_lookup` (`personnel_type_id`,`leave_type_id`,`effective_from`),
+  CONSTRAINT `leave_policies_leave_type_id_foreign` FOREIGN KEY (`leave_type_id`) REFERENCES `leave_types` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `leave_policies_personnel_type_id_foreign` FOREIGN KEY (`personnel_type_id`) REFERENCES `personnel_types` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leave_types`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leave_types` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code_prefix` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Leave code prefix (e.g. L01)',
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `counts_toward_promotion` tinyint(1) NOT NULL DEFAULT '1',
+  `max_days` int DEFAULT NULL,
+  `is_prorated` tinyint(1) NOT NULL DEFAULT '0',
+  `is_carry_forward` tinyint(1) NOT NULL DEFAULT '0',
+  `max_carry_forward` int DEFAULT NULL,
+  `requires_doc` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `exclude_holidays` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'If true, holidays and weekends are not counted as leave days',
+  `notice_period_days` int NOT NULL DEFAULT '0' COMMENT 'Number of days in advance required to request this leave',
+  `allow_past_dates` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'If true, can submit leave for past dates (e.g. sick leave)',
+  `require_attachment_after_days` int DEFAULT NULL COMMENT 'Require attachment if leave exceeds this many days',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `leaves`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leaves` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `document_number` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Permanent document number for the leave',
+  `verification_hash` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `content_hash` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `leave_type_id` bigint unsigned NOT NULL,
+  `leave_policy_id` bigint unsigned DEFAULT NULL,
+  `fiscal_year_id` bigint unsigned DEFAULT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `leave_period` enum('full_day','morning','afternoon') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'full_day' COMMENT 'Period of leave: full_day, morning, afternoon',
+  `total_days` decimal(5,2) NOT NULL,
+  `paid_days` decimal(7,2) NOT NULL DEFAULT '0.00',
+  `unpaid_days` decimal(7,2) NOT NULL DEFAULT '0.00',
+  `reserved_days` decimal(7,2) NOT NULL DEFAULT '0.00',
+  `reason` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `contact_address` text COLLATE utf8mb4_unicode_ci,
+  `attachment` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` enum('Draft','Pending','Approved','Rejected','Cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Draft',
+  `approval_level` int NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `substitute_id` bigint unsigned DEFAULT NULL,
+  `substitute_status` enum('Pending','Accepted','Rejected') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `substitute_reason` text COLLATE utf8mb4_unicode_ci,
+  `hr_verified_by` bigint unsigned DEFAULT NULL,
+  `hr_verified_at` timestamp NULL DEFAULT NULL,
+  `meta_data` json DEFAULT NULL,
+  `signature_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `cancellation_status` enum('None','Pending','Approved','Rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'None',
+  `cancellation_reason` text COLLATE utf8mb4_unicode_ci,
+  `cancellation_date` timestamp NULL DEFAULT NULL,
+  `notified_supervisor_at` timestamp NULL DEFAULT NULL,
+  `submitted_at` timestamp NULL DEFAULT NULL,
+  `voided_by` bigint unsigned DEFAULT NULL,
+  `voided_at` timestamp NULL DEFAULT NULL,
+  `void_reason` text COLLATE utf8mb4_unicode_ci,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `leaves_document_number_unique` (`document_number`),
+  UNIQUE KEY `leaves_verification_hash_unique` (`verification_hash`),
+  KEY `leaves_status_index` (`status`),
+  KEY `leaves_start_date_index` (`start_date`),
+  KEY `leaves_substitute_id_foreign` (`substitute_id`),
+  KEY `leaves_hr_verified_by_foreign` (`hr_verified_by`),
+  KEY `leaves_user_id_idx` (`user_id`),
+  KEY `leaves_leave_type_id_idx` (`leave_type_id`),
+  KEY `leaves_user_status_idx` (`user_id`,`status`),
+  KEY `leaves_end_date_idx` (`end_date`),
+  KEY `leaves_leave_policy_id_foreign` (`leave_policy_id`),
+  KEY `leaves_fiscal_year_id_foreign` (`fiscal_year_id`),
+  KEY `leaves_voided_by_foreign` (`voided_by`),
+  CONSTRAINT `leaves_fiscal_year_id_foreign` FOREIGN KEY (`fiscal_year_id`) REFERENCES `fiscal_years` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `leaves_hr_verified_by_foreign` FOREIGN KEY (`hr_verified_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `leaves_leave_policy_id_foreign` FOREIGN KEY (`leave_policy_id`) REFERENCES `leave_policies` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `leaves_leave_type_id_foreign` FOREIGN KEY (`leave_type_id`) REFERENCES `leave_types` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `leaves_substitute_id_foreign` FOREIGN KEY (`substitute_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `leaves_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `leaves_voided_by_foreign` FOREIGN KEY (`voided_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `menu_permissions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `menu_permissions` (
+  `menu_id` bigint unsigned NOT NULL,
+  `permission_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`menu_id`,`permission_id`),
+  KEY `menu_permissions_permission_id_foreign` (`permission_id`),
+  CONSTRAINT `menu_permissions_menu_id_foreign` FOREIGN KEY (`menu_id`) REFERENCES `menus` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `menu_permissions_permission_id_foreign` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `menus`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `menus` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title_th` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title_en` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `module` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'system',
+  `icon` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `route_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `route_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `component_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `parent_id` bigint unsigned DEFAULT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `is_external` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `menus_code_unique` (`code`),
+  KEY `menus_parent_id_foreign` (`parent_id`),
+  CONSTRAINT `menus_parent_id_foreign` FOREIGN KEY (`parent_id`) REFERENCES `menus` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `migrations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `migrations` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `batch` int NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=92 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `model_has_permissions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `model_has_permissions` (
+  `permission_id` bigint unsigned NOT NULL,
+  `model_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `model_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`permission_id`,`model_id`,`model_type`),
+  KEY `model_has_permissions_model_id_model_type_index` (`model_id`,`model_type`),
+  CONSTRAINT `model_has_permissions_permission_id_foreign` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `model_has_roles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `model_has_roles` (
+  `role_id` bigint unsigned NOT NULL,
+  `model_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `model_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`role_id`,`model_id`,`model_type`),
+  KEY `model_has_roles_model_id_model_type_index` (`model_id`,`model_type`),
+  CONSTRAINT `model_has_roles_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `notifications`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `notifications` (
+  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notifiable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notifiable_id` bigint unsigned NOT NULL,
+  `data` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `read_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `notifications_notifiable_type_notifiable_id_index` (`notifiable_type`,`notifiable_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `password_reset_tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `password_reset_tokens` (
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `permissions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `permissions` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `guard_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `permissions_name_guard_name_unique` (`name`,`guard_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `personal_access_tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `personal_access_tokens` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `tokenable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tokenable_id` bigint unsigned NOT NULL,
+  `name` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `abilities` text COLLATE utf8mb4_unicode_ci,
+  `last_used_at` timestamp NULL DEFAULT NULL,
+  `expires_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
+  KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`),
+  KEY `personal_access_tokens_expires_at_index` (`expires_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `personal_data_access_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `personal_data_access_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `actor_id` bigint unsigned NOT NULL,
+  `subject_id` bigint unsigned DEFAULT NULL,
+  `subject_count` int unsigned DEFAULT NULL,
+  `resource` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `purpose` varchar(160) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `personal_data_access_logs_subject_id_created_at_index` (`subject_id`,`created_at`),
+  KEY `personal_data_access_logs_actor_id_created_at_index` (`actor_id`,`created_at`),
+  CONSTRAINT `personal_data_access_logs_actor_id_foreign` FOREIGN KEY (`actor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `personal_data_access_logs_subject_id_foreign` FOREIGN KEY (`subject_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `personnel_types`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `personnel_types` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `personnel_types_code_unique` (`code`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `role_has_permissions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `role_has_permissions` (
+  `permission_id` bigint unsigned NOT NULL,
+  `role_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`permission_id`,`role_id`),
+  KEY `role_has_permissions_role_id_foreign` (`role_id`),
+  CONSTRAINT `role_has_permissions_permission_id_foreign` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `role_has_permissions_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `roles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `roles` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `guard_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `roles_name_guard_name_unique` (`name`,`guard_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_audit_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_audit_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `document_id` bigint unsigned DEFAULT NULL,
+  `action` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ip_address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `payload` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `saraban_audit_logs_user_id_foreign` (`user_id`),
+  KEY `saraban_audit_logs_document_id_foreign` (`document_id`),
+  CONSTRAINT `saraban_audit_logs_document_id_foreign` FOREIGN KEY (`document_id`) REFERENCES `saraban_documents` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `saraban_audit_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_attachments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_attachments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `document_id` bigint unsigned NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `type` enum('file','link') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'file',
+  `path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `mime_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `uploaded_by` bigint unsigned NOT NULL,
+  `ocr_text` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `saraban_document_attachments_document_id_foreign` (`document_id`),
+  KEY `saraban_document_attachments_uploaded_by_foreign` (`uploaded_by`),
+  CONSTRAINT `saraban_document_attachments_document_id_foreign` FOREIGN KEY (`document_id`) REFERENCES `saraban_documents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `saraban_document_attachments_uploaded_by_foreign` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_circular_recipients`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_circular_recipients` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `circular_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  `is_acknowledged` tinyint(1) NOT NULL DEFAULT '0',
+  `acknowledged_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `saraban_document_circular_recipients_circular_id_user_id_unique` (`circular_id`,`user_id`),
+  KEY `saraban_document_circular_recipients_user_id_foreign` (`user_id`),
+  CONSTRAINT `saraban_document_circular_recipients_circular_id_foreign` FOREIGN KEY (`circular_id`) REFERENCES `saraban_document_circulars` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `saraban_document_circular_recipients_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_circulars`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_circulars` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `document_id` bigint unsigned NOT NULL,
+  `sender_id` bigint unsigned NOT NULL,
+  `message` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `saraban_document_circulars_document_id_foreign` (`document_id`),
+  KEY `saraban_document_circulars_sender_id_foreign` (`sender_id`),
+  CONSTRAINT `saraban_document_circulars_document_id_foreign` FOREIGN KEY (`document_id`) REFERENCES `saraban_documents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `saraban_document_circulars_sender_id_foreign` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_incoming`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_incoming` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `document_id` bigint unsigned NOT NULL,
+  `receive_date` date NOT NULL,
+  `from_agency` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `receiver_id` bigint unsigned NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `saraban_document_incoming_document_id_foreign` (`document_id`),
+  KEY `saraban_document_incoming_receiver_id_foreign` (`receiver_id`),
+  CONSTRAINT `saraban_document_incoming_document_id_foreign` FOREIGN KEY (`document_id`) REFERENCES `saraban_documents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `saraban_document_incoming_receiver_id_foreign` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_outgoing`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_outgoing` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `document_id` bigint unsigned NOT NULL,
+  `dispatch_date` date NOT NULL,
+  `to_agency` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `dispatch_method` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `saraban_document_outgoing_document_id_foreign` (`document_id`),
+  CONSTRAINT `saraban_document_outgoing_document_id_foreign` FOREIGN KEY (`document_id`) REFERENCES `saraban_documents` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_receivers`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_receivers` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `document_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  `read_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `saraban_document_receivers_document_id_foreign` (`document_id`),
+  KEY `saraban_document_receivers_user_id_foreign` (`user_id`),
+  CONSTRAINT `saraban_document_receivers_document_id_foreign` FOREIGN KEY (`document_id`) REFERENCES `saraban_documents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `saraban_document_receivers_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_sequences`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_sequences` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `year_be` int NOT NULL,
+  `department_id` bigint unsigned NOT NULL,
+  `document_type_id` bigint unsigned NOT NULL,
+  `running_number` bigint unsigned NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `sequence_unique` (`year_be`,`department_id`,`document_type_id`),
+  KEY `saraban_document_sequences_department_id_foreign` (`department_id`),
+  KEY `saraban_document_sequences_document_type_id_foreign` (`document_type_id`),
+  CONSTRAINT `saraban_document_sequences_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `saraban_document_sequences_document_type_id_foreign` FOREIGN KEY (`document_type_id`) REFERENCES `saraban_document_types` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_signatures`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_signatures` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `document_id` bigint unsigned NOT NULL,
+  `signer_id` bigint unsigned NOT NULL,
+  `signature_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `signed_at` timestamp NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `saraban_document_signatures_signature_hash_unique` (`signature_hash`),
+  KEY `saraban_document_signatures_document_id_foreign` (`document_id`),
+  KEY `saraban_document_signatures_signer_id_foreign` (`signer_id`),
+  CONSTRAINT `saraban_document_signatures_document_id_foreign` FOREIGN KEY (`document_id`) REFERENCES `saraban_documents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `saraban_document_signatures_signer_id_foreign` FOREIGN KEY (`signer_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_types`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_types` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `color` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_user_states`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_user_states` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `document_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  `is_read` tinyint(1) NOT NULL DEFAULT '0',
+  `is_pinned` tinyint(1) NOT NULL DEFAULT '0',
+  `is_hidden` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `saraban_document_user_states_document_id_user_id_unique` (`document_id`,`user_id`),
+  KEY `saraban_document_user_states_user_id_foreign` (`user_id`),
+  CONSTRAINT `saraban_document_user_states_document_id_foreign` FOREIGN KEY (`document_id`) REFERENCES `saraban_documents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `saraban_document_user_states_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_workflow_steps`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_workflow_steps` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `document_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `action` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `comment` text COLLATE utf8mb4_unicode_ci,
+  `action_at` timestamp NOT NULL,
+  `step_order` int NOT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `saraban_document_workflow_steps_document_id_foreign` (`document_id`),
+  KEY `saraban_document_workflow_steps_user_id_foreign` (`user_id`),
+  CONSTRAINT `saraban_document_workflow_steps_document_id_foreign` FOREIGN KEY (`document_id`) REFERENCES `saraban_documents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `saraban_document_workflow_steps_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_document_workflow_templates`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_document_workflow_templates` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `steps_config` json NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `saraban_documents`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `saraban_documents` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `creation_mode` enum('physical','digital') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'physical',
+  `document_number` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `incoming_document_number` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `incoming_date` date DEFAULT NULL,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `document_date` date DEFAULT NULL,
+  `to` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reference` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `attachments_note` text COLLATE utf8mb4_unicode_ci,
+  `type_id` bigint unsigned NOT NULL,
+  `priority` enum('normal','urgent','very_urgent','most_urgent') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
+  `secrecy` enum('normal','secret','top_secret','most_secret') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
+  `status` enum('draft','pending_review','pending_approval','approved_pending_signature','signed','dispatched','archived') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
+  `allow_download` tinyint(1) NOT NULL DEFAULT '1',
+  `remark` text COLLATE utf8mb4_unicode_ci,
+  `content` longtext COLLATE utf8mb4_unicode_ci,
+  `template_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_by` bigint unsigned NOT NULL,
+  `department_id` bigint unsigned NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `saraban_documents_document_number_unique` (`document_number`),
+  KEY `saraban_documents_type_id_foreign` (`type_id`),
+  KEY `saraban_documents_created_by_foreign` (`created_by`),
+  KEY `saraban_documents_department_id_foreign` (`department_id`),
+  CONSTRAINT `saraban_documents_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `saraban_documents_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`),
+  CONSTRAINT `saraban_documents_type_id_foreign` FOREIGN KEY (`type_id`) REFERENCES `saraban_document_types` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `sessions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sessions` (
+  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8mb4_unicode_ci,
+  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_activity` int NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `sessions_user_id_index` (`user_id`),
+  KEY `sessions_last_activity_index` (`last_activity`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `setting_audit_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `setting_audit_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `changes` json NOT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `setting_audit_logs_user_id_foreign` (`user_id`),
+  CONSTRAINT `setting_audit_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `settings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `settings` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` text COLLATE utf8mb4_unicode_ci,
+  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'string',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `settings_key_unique` (`key`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `user_delegations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_delegations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `delegate_id` bigint unsigned NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_delegations_user_id_foreign` (`user_id`),
+  KEY `user_delegations_delegate_id_foreign` (`delegate_id`),
+  CONSTRAINT `user_delegations_delegate_id_foreign` FOREIGN KEY (`delegate_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `user_delegations_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `user_profiles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_profiles` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `id_card_number` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `id_card_number_hash` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `date_of_birth` date DEFAULT NULL,
+  `nationality` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ethnicity` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `passport_number` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `passport_issue_date` date DEFAULT NULL,
+  `passport_expiry_date` date DEFAULT NULL,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `first_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `last_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `middle_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `gender` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `first_name_en` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `last_name_en` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `religion` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `house_registration_number` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `house_number` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `moo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `soi` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `road` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `province` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `district` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sub_district` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `zipcode` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `fax` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `website` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `personnel_code` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `position` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `education_level` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `degree` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `start_date` date DEFAULT NULL,
+  `license_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `license_number` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `license_issue_date` date DEFAULT NULL,
+  `license_expiry_date` date DEFAULT NULL,
+  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ปฏิบัติหน้าที่',
+  `profile_photo_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `signature_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_profiles_user_id_foreign` (`user_id`),
+  KEY `user_profiles_id_card_number_hash_index` (`id_card_number_hash`),
+  CONSTRAINT `user_profiles_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `users` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `phone` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `telegram_chat_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Telegram Chat ID for notifications',
+  `line_user_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `notification_channel` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'both',
+  `email_verified_at` timestamp NULL DEFAULT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `work_start_time` time DEFAULT NULL,
+  `work_end_time` time DEFAULT NULL,
+  `department_id` bigint unsigned DEFAULT NULL,
+  `personnel_type_id` bigint unsigned DEFAULT NULL,
+  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `users_email_unique` (`email`),
+  KEY `users_department_id_foreign` (`department_id`),
+  KEY `users_personnel_type_id_foreign` (`personnel_type_id`),
+  CONSTRAINT `users_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `users_personnel_type_id_foreign` FOREIGN KEY (`personnel_type_id`) REFERENCES `personnel_types` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `work_calendar_exceptions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `work_calendar_exceptions` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `date` date NOT NULL,
+  `department_id` bigint unsigned DEFAULT NULL,
+  `day_type` enum('holiday','working_day') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `work_calendar_exceptions_date_department_id_unique` (`date`,`department_id`),
+  KEY `work_calendar_exceptions_department_id_foreign` (`department_id`),
+  CONSTRAINT `work_calendar_exceptions_department_id_foreign` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+

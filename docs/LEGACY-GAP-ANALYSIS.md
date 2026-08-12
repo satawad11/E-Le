@@ -51,7 +51,8 @@
 | CORE-AUDIT-001 | Audit | Audit ทุก mutation สำคัญ พร้อม actor/diff/IP/correlation | มี 4 ตารางแยกกัน: `leave_audit_logs` (มี before/after/ip/ua — ดี), `leave_action_logs`, `saraban_audit_logs`, `personal_data_access_logs` | **PARTIAL** | **ไม่มี audit** ในการแก้ผู้ใช้/บทบาท/สิทธิ์/การตั้งค่า/การลงเวลา; ไม่มี correlation ID; ไม่มี effective actor; ไม่มี append-only enforcement | ตรวจสอบย้อนหลังไม่ครบ — ผิด `docs/12` และ `AGENTS.md` | สร้าง `audit_logs` กลาง + dual-write จาก 4 ตารางเดิม + ครอบคลุม controller ที่ยังขาด | **P1** | SEC-016, DB-RISK-010, grep `audit` ใน `Admin/UserController`, `Admin/PermissionController`, `Api/RoleController`, `AttendanceController`, `SecureSettingController` = 0 hit |
 | CORE-MOD-001 | Module Registry | เพิ่ม module ใหม่ได้โดยไม่รื้อ Core (REQ-CORE-001) | `config/modules.php` + ตาราง `menus` + `MenuService` | **PARTIAL** | เป็น sidebar config ไม่ใช่ registry; ไม่มี version/dependencies/enabled flag/permissions declaration ตาม `docs/08` | เพิ่มโมดูลใหม่ต้องแก้โค้ดหลายจุด | ยกระดับเป็น `modules` table ตาม `docs/08-MODULE-STANDARDS.md` | P2 | `backend/config/modules.php`, `2026_08_07_000000_create_menus_tables.php`, `app/Services/MenuService.php` |
 | CORE-ID-001 | Database | UUID เป็น public identifier | auto-increment `id` ทุกตาราง ใช้ตรงใน URL | **MISSING** | ผิด `PROJECT_RULES` ข้อ 4; enumeration ง่าย | เดา id เอกสาร/ใบลาของผู้อื่นได้ (ทำให้ IDOR ร้ายแรงขึ้น) | เพิ่มคอลัมน์ `uuid` แบบ additive + backfill + สลับ route model binding + คง id ไว้เป็น internal | P2 | DB-RISK-012, `routes/api.php` ทั้งไฟล์ |
-| CORE-DB-001 | Database | Migration forward-only, ตรวจ lock/data risk | 91 migration; มี `down()` ที่ drop table; มีร่องรอย DDL timeout กลางคัน | **RISK** | schema จริงอาจไม่ตรง migration | รัน migration ต่อโดยไม่ยืนยัน = ข้อมูลเสียหาย | **บล็อกทุกงาน** จนกว่าจะ diff `information_schema` กับ migration | **P0** | DB-RISK-006, `2026_08_08_100000...php:11-14`, `2026_08_08_100050_resume_interrupted_leave_hardening.php` |
+| CORE-DB-001 | Database | Migration forward-only, ตรวจ lock/data risk | 91 migration `Ran` ครบ · **ยืนยันแล้วว่า migrate จากศูนย์บน MySQL 8 สำเร็จ (exit 0) และ schema ตรงกับ production 100%** · ยังมี `down()` ที่ drop table | **PASS** (จาก RISK) | ไม่มี drift · เหลือเพียงความเสี่ยงจาก `down()` และ DDL ที่ช้ามาก (15–60 วิ/ALTER บน `leaves`) | ต่ำ — แต่ทุก `ALTER` ในเฟสถัดไปต้องประเมิน lock ล่วงหน้า | ห้ามรัน `down()` บน production · ประเมินเวลา DDL ทุกครั้ง | P2 | `docs/checkpoints/legacy-00/schema-baseline.md` |
+| CORE-DB-003 | Database | ค่าที่โค้ดเขียนต้องอยู่ในขอบเขตที่ schema อนุญาต | `LeaveGovernanceController::void()` เขียน `status='Voided'` แต่ `leaves.status` enum ไม่มีค่านี้ | **RISK** | ฟีเจอร์ void ใบลาพัง 100% (ERROR 1265 → HTTP 500) | ไม่มีข้อมูลเสียหาย (fail-safe) แต่ฟีเจอร์กำกับดูแลใช้ไม่ได้ | เลือก 1 ใน 3 ทาง (enum→varchar+CHECK / เพิ่มค่าใน enum / แก้โค้ดใช้ `Cancelled`+`voided_at`) + เขียน test ครอบ `void()` ก่อนแก้ | **P1** | `docs/checkpoints/legacy-00/schema-baseline.md` §5 (ทดลองจริงบนสำเนา restore) |
 | CORE-DB-002 | Database | UTC storage / Asia/Bangkok display | เก็บ ค.ศ. ใน DB + แปลง พ.ศ. ที่ presentation ผ่าน `ThaiDateService` | **PASS** | — | — | รักษาไว้ | — | `app/Services/ThaiDateService.php`, `frontend/src/utils/ThaiDateFormatter.js` |
 | TIME-SCH-001 | Work Schedule | ตารางเวลารายบุคคล (REQ-ATT-001) | `users.work_start_time`/`work_end_time` + fallback `default_work_start_time` ใน settings | **PARTIAL** | เป็นค่าเดี่ยวต่อคน ไม่ใช่ตาราง; ไม่มี effective date; ไม่มีตารางรายวัน/กะ/วันหยุดรายบุคคล; **ไม่มี grace period** (สายทันทีที่เกิน 1 วินาที) | ผู้สอนที่มีตารางต่างกันในแต่ละวันใช้ไม่ได้ | สร้าง `work_schedules` + `work_schedule_assignments` แบบ effective-dated + grace period ใน policy | P2 | `2026_06_21_000001_add_work_hours_to_users_table.php`, `AttendanceController.php:80-86` |
 | TIME-CAL-001 | Calendar | ปฏิทิน/วันหยุด | `holidays` + `work_calendar_exceptions` (มี scope ตาม department) + ใช้ในการคำนวณวันลา | **PASS** | — | — | รักษาไว้ | — | `2026_06_20_180300_create_holidays_table.php`, `2026_08_09_000000_add_partial_leave_adjustments_and_scoped_calendar.php`, `LeaveService::calculateTotalDays` |
@@ -81,7 +82,7 @@
 | SEC-STD-003 | Security | Secret management | `.env` ignored ถูกต้อง แต่ credentials โผล่ใน `docker-compose.yml` และ `public/test_db.php`; `phpinfo()` เปิดอยู่ | **RISK** | — | credential รั่วจากเว็บโดยตรง | ลบไฟล์ + หมุนรหัส + secret manager | **P0** | SEC-010, `backend/public/info.php`, `backend/public/test_db.php` |
 | SEC-STD-004 | Security | Input validation | มี `$request->validate()` ทั่วถึงพอควร; แต่ `SanitizeInput` เป็น blacklist ที่แก้ข้อมูลผู้ใช้; `StoreLeaveRequest` เป็น scaffold ที่ `authorize()` คืน `false` และไม่มี rules | **PARTIAL** | สร้างความสับสน; ไฟล์ตาย | ข้อมูลผู้ใช้ถูกดัดแปลงโดยไม่ตั้งใจ | ถอด `SanitizeInput`, ทำ escape ที่ output, ลบ/เติม FormRequest ให้ครบ | P2 | SEC-013, `app/Http/Requests/StoreLeaveRequest.php` |
 | TEST-001 | Testing | Authorization + IDOR tests บังคับ | ไม่มี IDOR test เลย; ไม่มี role × scope × action matrix | **MISSING** | — | ช่องโหว่ CRITICAL 6 รายการไม่ถูกจับได้เลย | เขียน IDOR/authz test ก่อนเริ่ม LEGACY-02 (test นำการแก้) | **P0** | §13 ของ Assessment |
-| TEST-002 | Testing | Test ต้องผ่านก่อนผ่าน phase | `.phpunit.result.cache` มี defect 42 รายการ (ต้องยืนยันด้วยการรันจริง) | **RISK** | ไม่มีตาข่ายนิรภัยสำหรับ refactor | ผิด `AGENTS.md` ("ห้าม bypass tests") | ทำ test เขียวเป็นงานแรกของ LEGACY-01 | **P1** | `backend/.phpunit.result.cache` |
+| TEST-002 | Testing | Test ต้องผ่านก่อนผ่าน phase | **รันจริง 2026-08-12: 86 passed / 0 failed / 256 assertions** | **PASS** | — (ข้อสรุปเดิมที่ว่า "defect 42 รายการ" ถูกหักล้าง — เป็นแคชเก่าจากสภาพแวดล้อมอื่น) | — | ตัดงาน "ทำ test เขียว" ออกจาก LEGACY-01 · เปลี่ยนเป็นใส่ suite นี้เข้า CI และลบ `.phpunit.result.cache` ออกจาก repo | P2 | `docs/checkpoints/legacy-00/test-baseline.md` |
 | TEST-003 | Testing | Migration test บน engine เดียวกับ production | test = SQLite in-memory, prod = MySQL 8 | **RISK** | migration ที่พังเฉพาะ MySQL ผ่าน CI ได้ | ซ้ำรอย DDL timeout เดิม | เพิ่ม CI job รัน migration บน MySQL 8 | **P1** | DB-RISK-008, `backend/phpunit.xml` |
 | TEST-004 | Testing | Frontend lint/typecheck/test | ไม่มีเลย (scripts มีแค่ dev/build/preview) | **MISSING** | ไม่มี TypeScript ตาม `docs/02` | regression ฝั่ง UI ไม่ถูกจับ | เพิ่ม ESLint + Vitest; พิจารณา TS ทีละไฟล์ | P2 | `frontend/package.json` |
 | DEPLOY-001 | Deployment | Production-grade web server | `php artisan serve` (dev server) | **RISK** | single-threaded, ไม่มี TLS | ล่มง่าย, ไม่ปลอดภัย | ใช้ nginx + php-fpm (มี config อยู่แล้วแต่ไม่ได้ต่อ) | **P1** | `docker-compose.yml:47-52` |
@@ -159,18 +160,27 @@
 
 ## Top 10 Gaps ที่ต้องแก้ก่อนเพิ่มโมดูลใหม่
 
+> 🔄 **ปรับปรุงหลัง LEGACY-00 (2026-08-12)** — 2 รายการเดิมถูกปิดด้วยหลักฐานจริง จึงเลื่อนรายการอื่นขึ้นมาแทน
+
 | # | Gap | Requirement ID | Priority | เหตุผลที่ต้องมาก่อน |
 |---|---|---|---|---|
-| 1 | **Schema จริงยังไม่ได้ยืนยันว่าตรงกับ migration** (มีร่องรอย DDL timeout) | CORE-DB-001 | **P0** | ทุกแผนหลังจากนี้ตั้งอยู่บนสมมติฐานนี้ ถ้าผิดคือข้อมูลเสียหาย |
-| 2 | **ไม่มี backup ที่ทำงานจริง** (`spatie/laravel-backup` ไม่ได้ติดตั้ง + ไม่มี scheduler) | BACKUP-001/002 | **P0** | ห้ามแตะ schema ใด ๆ ก่อนกู้คืนได้จริง |
-| 3 | **ไฟล์ส่วนบุคคลเปิดสาธารณะ** (ลายเซ็น, ภาพใบหน้า, ไฟล์แนบสารบรรณ) | SEC-STD-001, ATT-003 | **P0** | ข้อมูลกำลังรั่วอยู่ ณ ขณะนี้ |
-| 4 | **ช่องอัปโหลดที่อาจนำไปสู่ RCE** (นามสกุลไฟล์จาก client) | ATT-004 | **P0** | ยึดเซิร์ฟเวอร์ได้ |
-| 5 | **IDOR ทั่วระบบ — ไม่มี Policy class เลย** (ใบลาผู้อื่น, เอกสารลับ, ลบเอกสาร) | CORE-AUTHZ-005, LEAVE-005, SARABAN-002/004 | **P0** | ละเมิดข้อมูลอ่อนไหวและทำลายทะเบียนหนังสือราชการได้ |
-| 6 | **E-signature ข้ามการยืนยันตัวตนได้ + verify คืน valid เสมอ** | SARABAN-003 | **P0** | ลายเซ็นไม่มีผลผูกพัน ทำให้ทั้งโมดูลสารบรรณใช้ไม่ได้ตามระเบียบ |
-| 7 | **Secret รั่วจากเว็บ + endpoint เขียน DB โดยไม่ต้อง login** | SEC-STD-003 | **P0** | credential รั่วและแก้ข้อมูลได้โดยไม่ยืนยันตัวตน |
+| 1 | **ไม่มี backup อัตโนมัติ** (`spatie/laravel-backup` ไม่ได้ติดตั้ง + ไม่มี scheduler) — LEGACY-00 ทำ manual backup ที่ restore ได้จริงแล้ว แต่ยังไม่มีระบบต่อเนื่อง | BACKUP-001/002 | **P0** | ห้ามแตะ schema ใด ๆ ก่อนมีการกู้คืนที่ทำงานสม่ำเสมอ |
+| 2 | **ไฟล์ส่วนบุคคลเปิดสาธารณะ** (ลายเซ็น 11 ไฟล์, ภาพใบหน้า, ไฟล์แนบ) | SEC-STD-001, ATT-003 | **P0** | ข้อมูลกำลังรั่วอยู่ ณ ขณะนี้ |
+| 3 | **ช่องอัปโหลดที่อาจนำไปสู่ RCE** (นามสกุลไฟล์จาก client) | ATT-004 | **P0** | ยึดเซิร์ฟเวอร์ได้ |
+| 4 | **IDOR ทั่วระบบ — ไม่มี Policy class เลย** (ใบลาผู้อื่น, เอกสารลับ, ลบเอกสาร) | CORE-AUTHZ-005, LEAVE-005, SARABAN-002/004 | **P0** | ละเมิดข้อมูลอ่อนไหวและทำลายทะเบียนหนังสือราชการได้ |
+| 5 | **E-signature ข้ามการยืนยันตัวตนได้ + verify คืน valid เสมอ** | SARABAN-003 | **P0** | ลายเซ็นไม่มีผลผูกพัน ทำให้ทั้งโมดูลสารบรรณใช้ไม่ได้ตามระเบียบ |
+| 6 | **Secret รั่วจากเว็บ + endpoint เขียน DB โดยไม่ต้อง login** | SEC-STD-003 | **P0** | credential รั่วและแก้ข้อมูลได้โดยไม่ยืนยันตัวตน |
+| 7 | **ไม่มี IDOR / authorization test เลย** — test เขียว 86/86 แต่ครอบไม่ถึงชั้นสิทธิ์ จึงปล่อยช่องโหว่ CRITICAL 6 รายการผ่านมาได้ | TEST-001 | **P0** | ถ้าไม่มี test ชุดนี้ก่อน การแก้ข้อ 2–6 จะไม่มีอะไรพิสูจน์ว่าแก้จริง |
 | 8 | **Role hard-code 31 จุด + role สองระบบซ้อนกัน** | CORE-AUTHZ-003, LEAVE-006 | **P1** | บล็อกงาน RBAC/ABAC ทั้งหมด และทำให้สิทธิ์ผิดตัวได้ตอนนี้ |
-| 9 | **ไม่มี queue worker / scheduler** → แจ้งเตือน, carry-forward, governance ไม่ทำงาน | NOTIFY-004, DEPLOY-003 | **P1** | ผู้ใช้เชื่อว่าระบบแจ้งเตือนแล้ว ทั้งที่ไม่ได้ส่ง |
-| 10 | **ไม่มี org hierarchy + ไม่มี test เขียวที่ baseline** | CORE-ORG-001, TEST-002 | **P1** | ORG บล็อก ABAC; test แดงทำให้ไม่มีตาข่ายนิรภัยสำหรับ refactor ทุกข้อข้างบน |
+| 9 | **ไม่มี queue worker / scheduler** → ยืนยันด้วยข้อมูลจริง: มีงานแจ้งเตือนค้าง 16 รายการตั้งแต่ 2026-08-09 | NOTIFY-004, DEPLOY-003 | **P1** | ผู้ใช้เชื่อว่าระบบแจ้งเตือนแล้ว ทั้งที่ไม่เคยส่ง |
+| 10 | **ไม่มี org hierarchy** + **ฟีเจอร์ void ใบลาพังจาก enum** | CORE-ORG-001, CORE-DB-003 | **P1** | ORG บล็อก ABAC ทั้งหมด; void พังทำให้กำกับดูแลใบลาย้อนหลังไม่ได้ |
+
+### รายการที่ถูกปิดหลัง LEGACY-00
+
+| Gap เดิม | ผลตรวจจริง |
+|---|---|
+| ~~Schema จริงอาจไม่ตรงกับ migration~~ (เคยเป็นอันดับ 1) | **drift = 0** — ยืนยันด้วย 3 วิธีอิสระ |
+| ~~ประมาณครึ่งหนึ่งของ test suite ไม่ผ่าน~~ | **86/86 ผ่าน** — ข้อสรุปเดิมมาจากแคชเก่าที่ตีความผิด |
 
 ---
 
