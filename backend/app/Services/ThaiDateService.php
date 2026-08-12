@@ -13,7 +13,8 @@ class ThaiDateService
     {
         $carbonDate = Carbon::parse($date);
         $thaiYear = $carbonDate->year + 543;
-        return $carbonDate->format('d/m/') . $thaiYear;
+
+        return $carbonDate->format('d/m/').$thaiYear;
     }
 
     /**
@@ -24,14 +25,14 @@ class ThaiDateService
         $carbonDate = Carbon::parse($date);
         $thaiYear = $carbonDate->year + 543;
         $day = $carbonDate->day;
-        
+
         $months = [
             1 => 'มกราคม', 2 => 'กุมภาพันธ์', 3 => 'มีนาคม', 4 => 'เมษายน',
             5 => 'พฤษภาคม', 6 => 'มิถุนายน', 7 => 'กรกฎาคม', 8 => 'สิงหาคม',
-            9 => 'กันยายน', 10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม'
+            9 => 'กันยายน', 10 => 'ตุลาคม', 11 => 'พฤศจิกายน', 12 => 'ธันวาคม',
         ];
         $month = $months[$carbonDate->month];
-        
+
         return "{$day} {$month} {$thaiYear}";
     }
 
@@ -49,8 +50,9 @@ class ThaiDateService
      */
     public function parseFromThaiSlash(string $thaiDate): string
     {
-        list($day, $month, $year) = explode('/', $thaiDate);
-        $gregorianYear = (int)$year - 543;
+        [$day, $month, $year] = explode('/', $thaiDate);
+        $gregorianYear = (int) $year - 543;
+
         return Carbon::createFromDate($gregorianYear, $month, $day)->format('Y-m-d');
     }
 }

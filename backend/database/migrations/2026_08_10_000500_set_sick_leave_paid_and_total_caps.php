@@ -15,7 +15,9 @@ return new class extends Migration
     public function up(): void
     {
         $sickTypeIds = DB::table('leave_types')->where('name', 'like', '%ป่วย%')->pluck('id');
-        if ($sickTypeIds->isEmpty()) return;
+        if ($sickTypeIds->isEmpty()) {
+            return;
+        }
 
         // เพดานรวม = สองเท่าของส่วนที่ได้รับเงินเดือน (60 + 60, 30 + 30, 15 + 15 ตามประเภทบุคลากร)
         DB::table('leave_policies')
@@ -33,7 +35,9 @@ return new class extends Migration
     public function down(): void
     {
         $sickTypeIds = DB::table('leave_types')->where('name', 'like', '%ป่วย%')->pluck('id');
-        if ($sickTypeIds->isEmpty()) return;
+        if ($sickTypeIds->isEmpty()) {
+            return;
+        }
 
         DB::table('leave_policies')
             ->whereIn('leave_type_id', $sickTypeIds)

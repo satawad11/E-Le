@@ -86,6 +86,7 @@ class SystemSettingsTest extends TestCase
         $role = Role::firstOrCreate(['name' => 'Super Admin'], ['guard_name' => 'web']);
         $user = User::factory()->create();
         $user->assignRole($role);
+
         return $user;
     }
 }

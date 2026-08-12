@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\FiscalYear;
 use App\Models\Leave;
 use App\Models\User;
-use App\Models\FiscalYear;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -43,7 +43,7 @@ class DashboardController extends Controller
             $fiscalYearLabel = $selectedFY->year;
         } else {
             // Fallback: use calendar year
-            $fallbackYear = $requestedYear ? (int)$requestedYear - 543 : date('Y');
+            $fallbackYear = $requestedYear ? (int) $requestedYear - 543 : date('Y');
             $baseQuery->whereYear('start_date', $fallbackYear);
             $fiscalYearLabel = $fallbackYear + 543;
         }
@@ -52,17 +52,17 @@ class DashboardController extends Controller
             'ผู้ดูแลระบบสูงสุด', 'Super Admin',
             'ผู้อำนวยการ', 'Director',
             'รองผู้อำนวยการ', 'Deputy Director',
-            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head'
+            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head',
         ]);
 
         if ($viewSelf) {
             $baseQuery->where('user_id', $user->id);
         } else {
-            if (!$canViewGlobalDashboard) {
+            if (! $canViewGlobalDashboard) {
                 if ($user->hasRole('หัวหน้าแผนกวิชา / หัวหน้าฝ่าย')) {
                     $deptId = $user->department_id ?? ($user->profile?->department_id ?? null);
                     if ($deptId) {
-                        $baseQuery->whereHas('user', fn($q) => $q->where('department_id', $deptId));
+                        $baseQuery->whereHas('user', fn ($q) => $q->where('department_id', $deptId));
                     } else {
                         $baseQuery->where('user_id', $user->id);
                     }
@@ -79,13 +79,13 @@ class DashboardController extends Controller
             ->pluck('count', 'status')
             ->toArray();
 
-        $pendingCount   = $statusCounts['Pending'] ?? 0;
-        $approvedCount  = $statusCounts['Approved'] ?? 0;
-        $rejectedCount  = $statusCounts['Rejected'] ?? 0;
-        $totalCount     = array_sum($statusCounts);
+        $pendingCount = $statusCounts['Pending'] ?? 0;
+        $approvedCount = $statusCounts['Approved'] ?? 0;
+        $rejectedCount = $statusCounts['Rejected'] ?? 0;
+        $totalCount = array_sum($statusCounts);
 
         // Monthly breakdown (approved leaves)
-        $year = $selectedFY ? Carbon::parse($selectedFY->start_date)->year : ($requestedYear ? (int)$requestedYear - 543 : date('Y'));
+        $year = $selectedFY ? Carbon::parse($selectedFY->start_date)->year : ($requestedYear ? (int) $requestedYear - 543 : date('Y'));
 
         $monthlyCounts = (clone $baseQuery)
             ->where('status', 'Approved')
@@ -112,8 +112,8 @@ class DashboardController extends Controller
             ->map(function ($item) {
                 return [
                     'type_name' => $item->type->name ?? '—',
-                    'count'     => $item->count,
-                    'days'      => $item->days,
+                    'count' => $item->count,
+                    'days' => $item->days,
                 ];
             });
 
@@ -121,13 +121,13 @@ class DashboardController extends Controller
         $allFiscalYears = FiscalYear::latestYear()->get(['id', 'year', 'name', 'is_current']);
 
         return response()->json([
-            'pending'      => $pendingCount,
-            'approved'     => $approvedCount,
-            'rejected'     => $rejectedCount,
-            'total'        => $totalCount,
-            'monthly'      => $monthly,
-            'by_type'      => $byTypeCounts,
-            'fiscal_year'  => $fiscalYearLabel,
+            'pending' => $pendingCount,
+            'approved' => $approvedCount,
+            'rejected' => $rejectedCount,
+            'total' => $totalCount,
+            'monthly' => $monthly,
+            'by_type' => $byTypeCounts,
+            'fiscal_year' => $fiscalYearLabel,
             'fiscal_years' => $allFiscalYears,
         ]);
     }

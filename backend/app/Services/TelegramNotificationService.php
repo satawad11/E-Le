@@ -16,7 +16,7 @@ class TelegramNotificationService
 
     public function sendMessage($chatId, $message)
     {
-        if (!$this->botToken || !$chatId) {
+        if (! $this->botToken || ! $chatId) {
             return false;
         }
 
@@ -29,7 +29,8 @@ class TelegramNotificationService
 
             return $response->successful();
         } catch (\Exception $e) {
-            \Log::error('Telegram notification error: ' . $e->getMessage());
+            \Log::error('Telegram notification error: '.$e->getMessage());
+
             return false;
         }
     }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -21,7 +22,7 @@ class RoleController extends Controller
             ->get();
 
         $roles->each(function ($role) {
-            $role->users_count = \Illuminate\Support\Facades\DB::table('model_has_roles')
+            $role->users_count = DB::table('model_has_roles')
                 ->where('role_id', $role->id)
                 ->count();
         });
@@ -82,7 +83,7 @@ class RoleController extends Controller
     public function update(Request $request, Role $role): JsonResponse
     {
         $request->validate([
-            'name' => 'required|string|max:100|unique:roles,name,' . $role->id,
+            'name' => 'required|string|max:100|unique:roles,name,'.$role->id,
             'description' => 'nullable|string|max:255',
             'permission_ids' => 'nullable|array',
             'permission_ids.*' => 'exists:permissions,id',

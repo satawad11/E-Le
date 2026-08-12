@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Department;
+use App\Models\Leave;
 use App\Models\LeaveBalance;
+use App\Models\LeaveEvidence;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\PersonnelType;
@@ -11,6 +13,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class PersonalDataProtectionTest extends TestCase
@@ -23,6 +26,7 @@ class PersonalDataProtectionTest extends TestCase
         $dept = Department::firstOrCreate(['name' => 'แผนกทดสอบ']);
         $user = User::factory()->create(['name' => $name, 'department_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
         $user->profile()->create(['position' => 'ครู', 'first_name' => 'สมชาย', 'last_name' => 'ใจดี', 'nationality' => 'ไทย']);
+
         return $user;
     }
 
@@ -84,7 +88,7 @@ class PersonalDataProtectionTest extends TestCase
 
         // ไม่มีพารามิเตอร์ให้ระบุคนอื่นได้ ต่อให้ส่ง user_id ไปก็ยังได้ข้อมูลตนเอง
         $payload = $this->actingAs($other)
-            ->getJson('/api/profile/personal-data?user_id=' . $owner->id)
+            ->getJson('/api/profile/personal-data?user_id='.$owner->id)
             ->assertOk()->json();
 
         $this->assertSame($other->email, $payload['account']['email']);
@@ -96,7 +100,7 @@ class PersonalDataProtectionTest extends TestCase
         $hr = $this->staff('เจ้าหน้าที่บุคลากร');
         $hr->givePermissionTo(Permission::findOrCreate('leave.report.view', 'web'));
 
-        $this->actingAs($hr)->getJson('/api/reports/leave-card?user_id=' . $subject->id)->assertOk();
+        $this->actingAs($hr)->getJson('/api/reports/leave-card?user_id='.$subject->id)->assertOk();
 
         $log = DB::table('personal_data_access_logs')->where('subject_id', $subject->id)->first();
         $this->assertNotNull($log);
@@ -119,7 +123,7 @@ class PersonalDataProtectionTest extends TestCase
         $hr = $this->staff('เจ้าหน้าที่บุคลากร');
         $hr->givePermissionTo(Permission::findOrCreate('leave.report.view', 'web'));
 
-        $this->actingAs($hr)->getJson('/api/reports/leave-card?user_id=' . $subject->id)->assertOk();
+        $this->actingAs($hr)->getJson('/api/reports/leave-card?user_id='.$subject->id)->assertOk();
 
         $history = $this->actingAs($subject)->getJson('/api/profile/personal-data')->assertOk()->json('access_history');
 
@@ -134,8 +138,8 @@ class PersonalDataProtectionTest extends TestCase
         $hr = $this->staff('เจ้าหน้าที่บุคลากร');
         $hr->givePermissionTo(Permission::findOrCreate('leave.report.view', 'web'));
 
-        $this->actingAs($hr)->getJson('/api/reports/leave-card?user_id=' . $subject->id)->assertOk();
-        $this->actingAs($hr)->getJson('/api/reports/leave-card?user_id=' . $other->id)->assertOk();
+        $this->actingAs($hr)->getJson('/api/reports/leave-card?user_id='.$subject->id)->assertOk();
+        $this->actingAs($hr)->getJson('/api/reports/leave-card?user_id='.$other->id)->assertOk();
 
         $page = $this->actingAs($subject)->getJson('/api/profile/access-history')->assertOk()->json();
 
@@ -149,7 +153,7 @@ class PersonalDataProtectionTest extends TestCase
     {
         $this->staff('บุคลากรหนึ่ง');
         $admin = $this->staff('ผู้ดูแลระบบ');
-        $admin->givePermissionTo(Permission::findOrCreate("view_users", "web"), Permission::findOrCreate("edit_users", "web"));
+        $admin->givePermissionTo(Permission::findOrCreate('view_users', 'web'), Permission::findOrCreate('edit_users', 'web'));
 
         $this->actingAs($admin)->getJson('/api/admin/users')->assertOk();
 
@@ -164,10 +168,10 @@ class PersonalDataProtectionTest extends TestCase
     {
         $subject = $this->staff('ผู้ถูกแก้ไขข้อมูล');
         $admin = $this->staff('ผู้ดูแลระบบ');
-        $admin->givePermissionTo(Permission::findOrCreate("view_users", "web"), Permission::findOrCreate("edit_users", "web"));
-        $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Employee', 'guard_name' => 'web']);
+        $admin->givePermissionTo(Permission::findOrCreate('view_users', 'web'), Permission::findOrCreate('edit_users', 'web'));
+        $role = Role::firstOrCreate(['name' => 'Employee', 'guard_name' => 'web']);
 
-        $this->actingAs($admin)->putJson('/api/admin/users/' . $subject->id, [
+        $this->actingAs($admin)->putJson('/api/admin/users/'.$subject->id, [
             'name' => 'ชื่อใหม่',
             'email' => $subject->email,
             'role_id' => $role->id,
@@ -209,12 +213,12 @@ class PersonalDataProtectionTest extends TestCase
             'quota' => 60, 'used' => 0, 'reserved' => 0, 'carried_forward' => 0, 'leave_policy_id' => $policy->id,
         ]);
 
-        $leave = \App\Models\Leave::create([
+        $leave = Leave::create([
             'user_id' => $user->id, 'leave_type_id' => $type->id,
             'start_date' => '2010-01-04', 'end_date' => '2010-01-05',
             'total_days' => 2, 'reason' => 'ทดสอบ', 'status' => 'Approved', 'approval_level' => 1,
         ]);
-        $evidence = \App\Models\LeaveEvidence::create([
+        $evidence = LeaveEvidence::create([
             'leave_id' => $leave->id, 'uploaded_by' => $user->id,
             'evidence_type' => 'medical_certificate', 'original_name' => 'cert.pdf',
             'storage_path' => 'private/leave-evidences/old.pdf', 'sha256' => str_repeat('a', 64),

@@ -11,6 +11,7 @@ class DocumentType extends Model
     use HasFactory;
 
     protected $table = 'saraban_document_types';
+
     protected $fillable = ['name', 'code', 'color'];
 
     public function sequences(): HasMany

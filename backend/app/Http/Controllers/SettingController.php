@@ -11,6 +11,7 @@ class SettingController extends Controller
     public function index()
     {
         $settings = Setting::all()->pluck('value', 'key');
+
         return response()->json($settings);
     }
 
@@ -40,10 +41,10 @@ class SettingController extends Controller
 
         if ($request->hasFile('logo')) {
             $file = $request->file('logo');
-            $filename = time() . '_' . $file->getClientOriginalName();
+            $filename = time().'_'.$file->getClientOriginalName();
             $path = $file->storeAs('logos', $filename, 'private_uploads');
-            
-            $url = '/storage/' . $path;
+
+            $url = '/storage/'.$path;
 
             Setting::updateOrCreate(
                 ['key' => 'organization_logo'],
@@ -55,7 +56,7 @@ class SettingController extends Controller
 
             return response()->json([
                 'message' => 'Logo uploaded successfully',
-                'url' => $url
+                'url' => $url,
             ]);
         }
 
@@ -70,10 +71,10 @@ class SettingController extends Controller
 
         if ($request->hasFile('logo')) {
             $file = $request->file('logo');
-            $filename = time() . '_garuda_' . $file->getClientOriginalName();
+            $filename = time().'_garuda_'.$file->getClientOriginalName();
             $path = $file->storeAs('logos', $filename, 'private_uploads');
-            
-            $url = '/storage/' . $path;
+
+            $url = '/storage/'.$path;
 
             Setting::updateOrCreate(
                 ['key' => 'saraban_garuda_logo'],
@@ -84,7 +85,7 @@ class SettingController extends Controller
 
             return response()->json([
                 'message' => 'Garuda Logo uploaded successfully',
-                'url' => $url
+                'url' => $url,
             ]);
         }
 

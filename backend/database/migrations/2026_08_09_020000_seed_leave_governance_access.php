@@ -17,7 +17,9 @@ return new class extends Migration
             ->each(fn ($role) => $role->givePermissionTo($permissions->values()));
 
         $admin = Menu::where('code', 'admin')->first();
-        if (!$admin) return;
+        if (! $admin) {
+            return;
+        }
 
         $items = [
             ['code' => 'admin.leave_policies', 'title_th' => 'นโยบายและสิทธิการลา', 'title_en' => 'Leave Policies', 'icon' => 'ClipboardList', 'route_name' => 'AdminLeavePolicies', 'route_path' => '/admin/leave-policies', 'sort_order' => 30, 'permission' => 'leave.policy.manage'],
@@ -25,7 +27,8 @@ return new class extends Migration
             ['code' => 'admin.leave_calendar', 'title_th' => 'ปฏิทินวันทำการ', 'title_en' => 'Work Calendar', 'icon' => 'CalendarCog', 'route_name' => 'AdminLeaveCalendar', 'route_path' => '/admin/leave-calendar', 'sort_order' => 32, 'permission' => 'leave.calendar.manage'],
         ];
         foreach ($items as $item) {
-            $permission = $item['permission']; unset($item['permission']);
+            $permission = $item['permission'];
+            unset($item['permission']);
             $menu = Menu::updateOrCreate(['code' => $item['code']], $item + ['module' => 'leave', 'parent_id' => $admin->id, 'is_active' => true, 'is_external' => false]);
             $menu->permissions()->sync([Permission::where('name', $permission)->value('id')]);
         }

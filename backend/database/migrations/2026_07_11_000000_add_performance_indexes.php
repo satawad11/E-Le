@@ -15,26 +15,26 @@ return new class extends Migration
     {
         // leaves table — indexes ที่ยังขาด (user_id, leave_type_id, composite, end_date)
         Schema::table('leaves', function (Blueprint $table) {
-            if (!Schema::hasIndex('leaves', 'leaves_user_id_idx')) {
+            if (! Schema::hasIndex('leaves', 'leaves_user_id_idx')) {
                 $table->index('user_id', 'leaves_user_id_idx');
             }
-            if (!Schema::hasIndex('leaves', 'leaves_leave_type_id_idx')) {
+            if (! Schema::hasIndex('leaves', 'leaves_leave_type_id_idx')) {
                 $table->index('leave_type_id', 'leaves_leave_type_id_idx');
             }
-            if (!Schema::hasIndex('leaves', 'leaves_user_status_idx')) {
+            if (! Schema::hasIndex('leaves', 'leaves_user_status_idx')) {
                 $table->index(['user_id', 'status'], 'leaves_user_status_idx');
             }
-            if (!Schema::hasIndex('leaves', 'leaves_end_date_idx')) {
+            if (! Schema::hasIndex('leaves', 'leaves_end_date_idx')) {
                 $table->index('end_date', 'leaves_end_date_idx');
             }
         });
 
         // attendances table — indexes ที่ยังขาด (date, composite user+date)
         Schema::table('attendances', function (Blueprint $table) {
-            if (!Schema::hasIndex('attendances', 'attendances_date_idx')) {
+            if (! Schema::hasIndex('attendances', 'attendances_date_idx')) {
                 $table->index('date', 'attendances_date_idx');
             }
-            if (!Schema::hasIndex('attendances', 'attendances_user_date_idx')) {
+            if (! Schema::hasIndex('attendances', 'attendances_user_date_idx')) {
                 $table->index(['user_id', 'date'], 'attendances_user_date_idx');
             }
         });

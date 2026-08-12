@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -74,7 +74,7 @@ class PermissionController extends Controller
             'success' => true,
             'message' => 'อัปเดตสิทธิ์การเข้าถึงเฉพาะบุคคลเรียบร้อยแล้ว',
             'direct_permissions' => $user->getDirectPermissions()->pluck('name')->toArray(),
-            'all_permissions'    => array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray())),
+            'all_permissions' => array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray())),
         ]);
     }
 

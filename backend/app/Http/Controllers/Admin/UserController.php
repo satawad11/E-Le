@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\User;
-use Spatie\Permission\Models\Role;
-use App\Models\Department;
-use App\Models\LeaveType;
+use App\Models\FiscalYear;
 use App\Models\LeaveBalance;
+use App\Models\LeavePolicy;
+use App\Models\LeaveType;
+use App\Models\PersonnelType;
+use App\Models\User;
+use App\Services\LeavePolicyService;
+use App\Services\PersonalDataAccessLogger;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -18,7 +22,7 @@ class UserController extends Controller
         $users = User::with(['roles', 'department', 'profile'])->orderBy('name', 'asc')->get();
 
         // คืนทะเบียนประวัติของบุคลากรทุกคน จึงถือเป็นการเข้าถึงข้อมูลส่วนบุคคลแบบรวม
-        app(\App\Services\PersonalDataAccessLogger::class)
+        app(PersonalDataAccessLogger::class)
             ->recordBulk($request, 'user_directory', $users->count(), 'เปิดหน้าจัดการผู้ใช้งาน (ทะเบียนประวัติบุคลากรทั้งหมด)');
 
         return response()->json($users);
@@ -27,6 +31,7 @@ class UserController extends Controller
     public function list(Request $request)
     {
         $users = User::select('id', 'name', 'department_id')->orderBy('name', 'asc')->get();
+
         return response()->json($users);
     }
 
@@ -46,10 +51,10 @@ class UserController extends Controller
 
         $profileData = $request->has('profile') ? (is_string($request->profile) ? json_decode($request->profile, true) : $request->profile) : [];
         $idCard = $profileData['id_card_number'] ?? null;
-        
+
         $password = $request->filled('password') ? $request->password : ($idCard ?: 'password');
 
-        $user = DB::transaction(function() use ($request, $profileData, $password) {
+        $user = DB::transaction(function () use ($request, $profileData, $password) {
             $role = Role::find($request->role_id);
 
             $user = User::create([
@@ -61,7 +66,7 @@ class UserController extends Controller
                 'telegram_chat_id' => $request->telegram_chat_id,
                 // ต้องมีประเภทบุคลากรเสมอ ไม่งั้นนโยบายสิทธิการลาจะหาไม่เจอ
                 'personnel_type_id' => $request->personnel_type_id
-                    ?: \App\Models\PersonnelType::where('code', 'civil_servant')->value('id'),
+                    ?: PersonnelType::where('code', 'civil_servant')->value('id'),
             ]);
 
             if ($role) {
@@ -79,18 +84,18 @@ class UserController extends Controller
 
             if ($request->hasFile('profile_photo')) {
                 $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
-                $profileData['profile_photo_path'] = '/storage/' . $path;
+                $profileData['profile_photo_path'] = '/storage/'.$path;
             }
             $user->profile()->create($profileData);
 
             // สร้างสิทธิ์ปีปัจจุบันจาก "นโยบายสิทธิการลา" ตามประเภทบุคลากร
             // (เดิมอ่านจาก leave_types.max_days ทำให้ได้ตัวเลขคนละชุดกับที่ระบบใช้ตัดสิทธิ์)
-            $policies = app(\App\Services\LeavePolicyService::class);
+            $policies = app(LeavePolicyService::class);
             $today = today();
-            $year = $policies->fiscalYearNumber(\App\Models\FiscalYear::current(), $today);
+            $year = $policies->fiscalYearNumber(FiscalYear::current(), $today);
 
             foreach (LeaveType::all() as $lt) {
-                $policy = \App\Models\LeavePolicy::where('personnel_type_id', $user->personnel_type_id)
+                $policy = LeavePolicy::where('personnel_type_id', $user->personnel_type_id)
                     ->where('leave_type_id', $lt->id)
                     ->where('is_active', true)
                     ->whereDate('effective_from', '<=', $today)
@@ -109,13 +114,13 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'สร้างผู้ใช้เรียบร้อยแล้ว',
-            'user' => $user->load('roles', 'department', 'profile')
+            'user' => $user->load('roles', 'department', 'profile'),
         ], 201);
     }
 
     public function show(Request $request, User $user)
     {
-        app(\App\Services\PersonalDataAccessLogger::class)
+        app(PersonalDataAccessLogger::class)
             ->record($request, $user->id, 'user_profile', 'เปิดดูทะเบียนประวัติบุคลากร');
 
         return response()->json($user->load('roles', 'department', 'profile'));
@@ -123,12 +128,12 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        app(\App\Services\PersonalDataAccessLogger::class)
+        app(PersonalDataAccessLogger::class)
             ->record($request, $user->id, 'user_profile_edit', 'แก้ไขทะเบียนประวัติบุคลากร');
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => 'nullable|string|min:6',
             'role_id' => 'required|exists:roles,id',
             'department_id' => 'required|exists:departments,id',
@@ -166,29 +171,30 @@ class UserController extends Controller
             $profileData = is_string($request->profile) ? json_decode($request->profile, true) : $request->profile;
             if ($request->hasFile('profile_photo')) {
                 $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
-                $profileData['profile_photo_path'] = '/storage/' . $path;
+                $profileData['profile_photo_path'] = '/storage/'.$path;
             }
             $user->profile()->updateOrCreate(
                 ['user_id' => $user->id],
                 $profileData
             );
-        } else if ($request->hasFile('profile_photo')) {
+        } elseif ($request->hasFile('profile_photo')) {
             $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
             $user->profile()->updateOrCreate(
                 ['user_id' => $user->id],
-                ['profile_photo_path' => '/storage/' . $path]
+                ['profile_photo_path' => '/storage/'.$path]
             );
         }
 
         return response()->json([
             'message' => 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว',
-            'user' => $user->load('roles', 'department', 'profile')
+            'user' => $user->load('roles', 'department', 'profile'),
         ]);
     }
 
     public function destroy(User $user)
     {
         $user->delete();
+
         return response()->json(['message' => 'ลบผู้ใช้เรียบร้อยแล้ว']);
     }
 }

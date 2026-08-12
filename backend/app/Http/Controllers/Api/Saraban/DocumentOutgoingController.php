@@ -16,7 +16,7 @@ class DocumentOutgoingController extends Controller
             'to_agency' => 'required|string|max:255',
             'dispatch_method' => 'nullable|string|max:255',
         ]);
-        
+
         $outgoing = DocumentOutgoing::create($data);
 
         return response()->json($outgoing, 201);

@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Department;
+use App\Models\FiscalYear;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\PersonnelType;
 use App\Models\User;
 use App\Services\LeavePolicyService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -61,7 +63,7 @@ class LeaveEntitlementRulesTest extends TestCase
             ['used' => 3]
         );
 
-        $start = now()->addWeek()->next(\Carbon\Carbon::MONDAY);
+        $start = now()->addWeek()->next(Carbon::MONDAY);
         $leave = $this->actingAs($user)->postJson('/api/leaves', [
             'leave_type_id' => $type->id,
             'start_date' => $start->toDateString(),
@@ -78,7 +80,7 @@ class LeaveEntitlementRulesTest extends TestCase
     {
         [$user, $type] = $this->makeScenario(['annual_quota' => 30, 'max_days_with_pay' => null]);
 
-        $start = now()->addWeek()->next(\Carbon\Carbon::MONDAY);
+        $start = now()->addWeek()->next(Carbon::MONDAY);
         $leave = $this->actingAs($user)->postJson('/api/leaves', [
             'leave_type_id' => $type->id,
             'start_date' => $start->toDateString(),
@@ -147,7 +149,7 @@ class LeaveEntitlementRulesTest extends TestCase
             ['used' => 0]
         );
 
-        $start = now()->addWeek()->next(\Carbon\Carbon::MONDAY);
+        $start = now()->addWeek()->next(Carbon::MONDAY);
         $this->actingAs($user)->postJson('/api/leaves', [
             'leave_type_id' => $type->id,
             'start_date' => $start->toDateString(),
@@ -156,7 +158,7 @@ class LeaveEntitlementRulesTest extends TestCase
         ])->assertCreated();
 
         $card = $this->actingAs($user)
-            ->getJson('/api/reports/leave-card?year=' . $this->currentFiscalYear())
+            ->getJson('/api/reports/leave-card?year='.$this->currentFiscalYear())
             ->assertOk()
             ->json();
 
@@ -175,14 +177,14 @@ class LeaveEntitlementRulesTest extends TestCase
         $other = User::factory()->create();
 
         $this->actingAs($other)
-            ->getJson('/api/reports/leave-card?user_id=' . $user->id)
+            ->getJson('/api/reports/leave-card?user_id='.$user->id)
             ->assertForbidden();
     }
 
     public function test_fiscal_year_number_converts_buddhist_year_from_fiscal_years_table(): void
     {
         $service = app(LeavePolicyService::class);
-        $fy = \App\Models\FiscalYear::create([
+        $fy = FiscalYear::create([
             'name' => 'ปีงบประมาณ 2569', 'year' => 2569,
             'start_date' => '2025-10-01', 'end_date' => '2026-09-30', 'is_current' => true,
         ]);

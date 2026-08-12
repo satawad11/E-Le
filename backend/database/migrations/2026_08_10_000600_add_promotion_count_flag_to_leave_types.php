@@ -25,7 +25,7 @@ return new class extends Migration
         foreach (DB::table('leave_types')->get() as $type) {
             // "ลาไปช่วยเหลือภริยาที่คลอดบุตร" ยังนับ — ยกเว้นเฉพาะการลาคลอดของผู้คลอดเอง
             $isPaternity = str_contains($type->name, 'ช่วยเหลือภริยา');
-            $excluded = !$isPaternity && collect($excludedKeywords)->contains(fn ($kw) => str_contains($type->name, $kw));
+            $excluded = ! $isPaternity && collect($excludedKeywords)->contains(fn ($kw) => str_contains($type->name, $kw));
 
             if ($excluded) {
                 DB::table('leave_types')->where('id', $type->id)->update(['counts_toward_promotion' => false]);

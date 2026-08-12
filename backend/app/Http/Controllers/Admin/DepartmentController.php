@@ -11,6 +11,7 @@ class DepartmentController extends Controller
     public function index()
     {
         $departments = Department::with('headOfDepartment.profile')->get();
+
         return response()->json($departments);
     }
 
@@ -19,7 +20,7 @@ class DepartmentController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'head_of_department_id' => 'nullable|exists:users,id',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
 
         $department = Department::create($validated);
@@ -27,7 +28,7 @@ class DepartmentController extends Controller
 
         return response()->json([
             'message' => 'Department created successfully',
-            'department' => $department
+            'department' => $department,
         ], 201);
     }
 
@@ -36,7 +37,7 @@ class DepartmentController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'head_of_department_id' => 'nullable|exists:users,id',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
 
         $department->update($validated);
@@ -44,23 +45,24 @@ class DepartmentController extends Controller
 
         return response()->json([
             'message' => 'Department updated successfully',
-            'department' => $department
+            'department' => $department,
         ]);
     }
 
     public function destroy(Department $department)
     {
         $department->delete();
+
         return response()->json(['message' => 'Department deleted successfully']);
     }
 
     public function toggleStatus(Department $department)
     {
-        $department->update(['is_active' => !$department->is_active]);
-        
+        $department->update(['is_active' => ! $department->is_active]);
+
         return response()->json([
             'message' => 'Department status updated successfully',
-            'is_active' => $department->is_active
+            'is_active' => $department->is_active,
         ]);
     }
 }

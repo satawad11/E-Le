@@ -69,8 +69,8 @@ class UserProfile extends Model
             if ($profile->isDirty('id_card_number')) {
                 // When accessing $profile->id_card_number, it gets decrypted automatically by the cast.
                 // If it's dirty, we update the hash.
-                $profile->id_card_number_hash = $profile->id_card_number 
-                    ? hash('sha256', $profile->id_card_number . config('app.key')) 
+                $profile->id_card_number_hash = $profile->id_card_number
+                    ? hash('sha256', $profile->id_card_number.config('app.key'))
                     : null;
             }
         });

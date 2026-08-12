@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
-use App\Models\User;
-use App\Models\Role;
 
 class AuthTest extends TestCase
 {
@@ -26,8 +26,8 @@ class AuthTest extends TestCase
         $user->assignRole('Employee');
 
         $response = $this->postJson('/api/login', [
-            'email'       => $user->email,
-            'password'    => 'password123',
+            'email' => $user->email,
+            'password' => 'password123',
         ]);
 
         $response->assertStatus(200)
@@ -42,8 +42,8 @@ class AuthTest extends TestCase
         $user->assignRole('Employee');
 
         $response = $this->postJson('/api/login', [
-            'email'       => $user->email,
-            'password'    => 'wrongpassword',
+            'email' => $user->email,
+            'password' => 'wrongpassword',
         ]);
 
         $response->assertStatus(422);

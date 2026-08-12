@@ -4,28 +4,42 @@ namespace App\Http\Controllers\Api\Saraban;
 
 use App\Http\Controllers\Controller;
 use App\Models\Saraban\Document;
+use App\Services\Saraban\AuditLogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
+    protected $auditLog;
+
+    public function __construct(AuditLogService $auditLog)
+    {
+        $this->auditLog = $auditLog;
+    }
+
     public function summary(Request $request)
     {
         // Monthly stats for current year
         $year = $request->input('year', date('Y'));
-        
+
+        // MONTH() is MySQL-only; SQLite (used by the test suite) needs strftime.
+        $monthExpr = DB::connection()->getDriverName() === 'sqlite'
+            ? "CAST(strftime('%m', created_at) AS INTEGER)"
+            : 'MONTH(created_at)';
+
         $monthlyData = Document::select(
-            DB::raw('MONTH(created_at) as month'),
+            DB::raw("{$monthExpr} as month"),
             DB::raw('COUNT(*) as count')
         )
-        ->whereYear('created_at', $year)
-        ->groupBy('month')
-        ->orderBy('month')
-        ->get();
+            ->whereYear('created_at', $year)
+            ->groupBy(DB::raw($monthExpr))
+            ->orderBy('month')
+            ->get();
 
         $monthly = array_fill(1, 12, 0);
         foreach ($monthlyData as $data) {
-            $monthly[$data->month] = $data->count;
+            $monthly[(int) $data->month] = $data->count;
         }
 
         // Stats by Priority
@@ -33,15 +47,15 @@ class ReportController extends Controller
             'priority',
             DB::raw('COUNT(*) as count')
         )
-        ->whereYear('created_at', $year)
-        ->groupBy('priority')
-        ->get();
+            ->whereYear('created_at', $year)
+            ->groupBy('priority')
+            ->get();
 
         $priorities = [
             'normal' => 0,
             'urgent' => 0,
             'very_urgent' => 0,
-            'most_urgent' => 0
+            'most_urgent' => 0,
         ];
         foreach ($priorityData as $data) {
             $priorities[$data->priority] = $data->count;
@@ -58,22 +72,26 @@ class ReportController extends Controller
             'year' => $year,
             'monthly' => array_values($monthly), // 0-indexed for chart.js
             'priorities' => $priorities,
-            'departments' => $deptData
+            'departments' => $deptData,
         ]);
     }
 
     public function exportCsv(Request $request)
     {
         $year = $request->input('year', date('Y'));
-        
-        $documents = Document::with(['type', 'creator', 'department'])
+
+        $documents = Document::with(['type', 'creator.profile', 'department'])
             ->whereYear('created_at', $year)
+            ->when(! Auth::user()->can('saraban.document.view_classified'),
+                fn ($q) => $q->where('secrecy', 'normal'))
             ->orderBy('created_at', 'desc')
             ->get();
 
+        $this->auditLog->log('report.exported', null, ['year' => $year, 'rows' => $documents->count()]);
+
         $filename = "saraban_report_{$year}.csv";
         $handle = fopen('php://temp', 'w+');
-        fputs($handle, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM for UTF-8 Excel
+        fwrite($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM for UTF-8 Excel
 
         // Headers
         fputcsv($handle, ['เลขที่เอกสาร', 'เรื่อง', 'วันที่สร้าง', 'ผู้สร้าง', 'ฝ่าย/แผนก', 'ความเร่งด่วน', 'สถานะ']);
@@ -83,10 +101,12 @@ class ReportController extends Controller
                 $doc->document_number,
                 $doc->title,
                 $doc->created_at->format('Y-m-d H:i:s'),
-                $doc->creator ? $doc->creator->first_name . ' ' . $doc->creator->last_name : '',
+                $doc->creator
+                    ? trim(trim(($doc->creator->profile?->first_name ?? '').' '.($doc->creator->profile?->last_name ?? '')) ?: $doc->creator->name)
+                    : '',
                 $doc->department ? $doc->department->name : '',
                 $this->translatePriority($doc->priority),
-                $this->translateStatus($doc->status)
+                $this->translateStatus($doc->status),
             ]);
         }
 
@@ -96,20 +116,23 @@ class ReportController extends Controller
 
         return response($csv)
             ->header('Content-Type', 'text/csv; charset=UTF-8')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+            ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
     }
 
-    private function translatePriority($priority) {
+    private function translatePriority($priority)
+    {
         $map = [
             'normal' => 'ปกติ',
             'urgent' => 'ด่วน',
             'very_urgent' => 'ด่วนมาก',
             'most_urgent' => 'ด่วนที่สุด',
         ];
+
         return $map[$priority] ?? $priority;
     }
 
-    private function translateStatus($status) {
+    private function translateStatus($status)
+    {
         $map = [
             'draft' => 'ฉบับร่าง',
             'pending_review' => 'รอดำเนินการ',
@@ -120,6 +143,7 @@ class ReportController extends Controller
             'rejected' => 'ไม่อนุมัติ',
             'cancelled' => 'ยกเลิก',
         ];
+
         return $map[$status] ?? $status;
     }
 }

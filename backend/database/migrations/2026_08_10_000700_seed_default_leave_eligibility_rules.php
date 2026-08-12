@@ -17,17 +17,21 @@ return new class extends Migration
     public function up(): void
     {
         $rulesByKeyword = [
-            'อุปสมบท'   => ['once_in_career' => true],
-            'ฮัจ'       => ['once_in_career' => true],
-            'คลอดบุตร'  => ['gender' => 'female'],
+            'อุปสมบท' => ['once_in_career' => true],
+            'ฮัจ' => ['once_in_career' => true],
+            'คลอดบุตร' => ['gender' => 'female'],
         ];
 
         foreach (DB::table('leave_types')->get() as $type) {
             // "ลาไปช่วยเหลือภริยาที่คลอดบุตร" เป็นสิทธิ์ของสามี ไม่ใช่ผู้คลอด จึงไม่จำกัดเพศหญิง
-            if (str_contains($type->name, 'ช่วยเหลือภริยา')) continue;
+            if (str_contains($type->name, 'ช่วยเหลือภริยา')) {
+                continue;
+            }
 
             foreach ($rulesByKeyword as $keyword => $rules) {
-                if (!str_contains($type->name, $keyword)) continue;
+                if (! str_contains($type->name, $keyword)) {
+                    continue;
+                }
 
                 DB::table('leave_policies')
                     ->where('leave_type_id', $type->id)

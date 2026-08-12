@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,11 +14,11 @@ use Spatie\Permission\Traits\HasRoles;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     protected function casts(): array
     {
-        return ['email_verified_at'=>'datetime','password'=>'hashed','is_active'=>'boolean','custom_permissions'=>'array','phone'=>'encrypted'];
+        return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean', 'custom_permissions' => 'array', 'phone' => 'encrypted'];
     }
 
     protected $appends = ['full_name_with_title', 'role', 'role_id'];
@@ -27,15 +26,47 @@ class User extends Authenticatable
     public function getFullNameWithTitleAttribute()
     {
         $title = $this->relationLoaded('profile') && $this->profile ? $this->profile->title : '';
-        return $title && !str_starts_with($this->name, $title) ? $title.$this->name : $this->name;
+
+        return $title && ! str_starts_with($this->name, $title) ? $title.$this->name : $this->name;
     }
 
-    public function department() { return $this->belongsTo(Department::class); }
-    public function personnelType() { return $this->belongsTo(PersonnelType::class); }
-    public function getRoleAttribute() { return $this->roles->first(); }
-    public function getRoleIdAttribute() { return $this->roles->first()?->id; }
-    public function profile() { return $this->hasOne(UserProfile::class); }
-    public function leaveBalances() { return $this->hasMany(LeaveBalance::class); }
-    public function leaves() { return $this->hasMany(Leave::class); }
-    public function attendances() { return $this->hasMany(Attendance::class); }
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function personnelType()
+    {
+        return $this->belongsTo(PersonnelType::class);
+    }
+
+    public function getRoleAttribute()
+    {
+        return $this->roles->first();
+    }
+
+    public function getRoleIdAttribute()
+    {
+        return $this->roles->first()?->id;
+    }
+
+    public function profile()
+    {
+        return $this->hasOne(UserProfile::class);
+    }
+
+    public function leaveBalances()
+    {
+        return $this->hasMany(LeaveBalance::class);
+    }
+
+    public function leaves()
+    {
+        return $this->hasMany(Leave::class);
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class);
+    }
 }

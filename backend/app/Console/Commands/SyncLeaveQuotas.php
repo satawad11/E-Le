@@ -13,6 +13,7 @@ use Illuminate\Console\Command;
 class SyncLeaveQuotas extends Command
 {
     protected $signature = 'leave:sync-quotas';
+
     protected $description = 'อัปเดตโควตาใน leave_balances ให้ตรงกับนโยบายสิทธิการลาที่เปิดใช้งานอยู่';
 
     public function handle(LeavePolicyService $policies): int
@@ -26,7 +27,9 @@ class SyncLeaveQuotas extends Command
             ->orderBy('id')
             ->each(function (LeavePolicy $policy) use ($policies, &$totalSynced, &$totalOver, &$rows) {
                 $result = $policies->syncBalances($policy);
-                if ($result['synced'] === 0) return;
+                if ($result['synced'] === 0) {
+                    return;
+                }
 
                 $rows[] = [
                     $policy->personnelType?->name ?? $policy->personnel_type_id,

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->foreignId('document_type_id')->constrained('saraban_document_types')->onDelete('cascade');
             $table->unsignedBigInteger('running_number')->default(0);
             $table->timestamps();
-            
+
             $table->unique(['year_be', 'department_id', 'document_type_id'], 'sequence_unique');
         });
     }

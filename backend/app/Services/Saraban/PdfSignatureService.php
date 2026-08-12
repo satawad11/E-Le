@@ -4,25 +4,22 @@ namespace App\Services\Saraban;
 
 use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;
-use setasign\Fpdi\PdfReader;
-use chillerlan\QRCode\QRCode;
-use chillerlan\QRCode\QROptions;
 
 class PdfSignatureService
 {
     /**
      * Stamp a signature onto a PDF file.
      *
-     * @param string $pdfPath Path to the original PDF in storage.
-     * @param string $signatureImagePath Path to the signature image.
-     * @param array $options Signature options like x, y, page, hash, signer_name, timestamp.
+     * @param  string  $pdfPath  Path to the original PDF in storage.
+     * @param  string|null  $signatureImagePath  Path to the signature image, or null for text-only endorsement.
+     * @param  array  $options  Signature options like x, y, page, hash, signer_name, timestamp.
      * @return string Path to the newly created stamped PDF.
      */
-    public function stampSignature(string $pdfPath, string $signatureImagePath, array $options): string
+    public function stampSignature(string $pdfPath, ?string $signatureImagePath, array $options): string
     {
         $disk = Storage::disk('private_uploads');
 
-        if (!$disk->exists($pdfPath)) {
+        if (! $disk->exists($pdfPath)) {
             throw new \Exception("PDF file not found at: {$pdfPath}");
         }
 
@@ -30,8 +27,8 @@ class PdfSignatureService
         $hasImage = $signatureImagePath && $disk->exists($signatureImagePath);
 
         $pdfFullPath = $disk->path($pdfPath);
-        
-        $pdf = new Fpdi();
+
+        $pdf = new Fpdi;
         $pageCount = $pdf->setSourceFile($pdfFullPath);
 
         $targetPage = $options['page'] ?? $pageCount; // default to last page if not provided
@@ -42,7 +39,7 @@ class PdfSignatureService
             $templateId = $pdf->importPage($pageNo);
             // Get size of the imported page
             $size = $pdf->getTemplateSize($templateId);
-            
+
             // Add a page with the same orientation and size
             $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
             $pdf->useTemplate($templateId);
@@ -67,7 +64,7 @@ class PdfSignatureService
                 }
                 $pdf->SetTextColor(0, 0, 0);
 
-                if (!empty($options['text'])) {
+                if (! empty($options['text'])) {
                     // For text mode endorsement
                     $textY = $y;
                     $lines = explode("\n", $options['text']);
@@ -82,13 +79,13 @@ class PdfSignatureService
 
                 $pdf->SetFont('Arial', '', 8);
                 $pdf->SetTextColor(100, 100, 100);
-                
+
                 $signerName = $options['signer_name'] ?? 'Unknown';
                 $timestamp = $options['timestamp'] ?? date('Y-m-d H:i:s');
                 $hash = $options['hash'] ?? '';
-                
+
                 // Truncate hash for display
-                $shortHash = substr($hash, 0, 16) . '...';
+                $shortHash = substr($hash, 0, 16).'...';
 
                 // Y offset for text
                 $textY = $hasImage ? $y + 15 : $y;
@@ -98,10 +95,10 @@ class PdfSignatureService
                 // but since we are using standard Arial, we might only be able to show ASCII or basic chars safely.
                 $nameText = mb_convert_encoding("Signed by: {$signerName}", 'CP874', 'UTF-8');
                 $pdf->Cell(40, 4, $nameText, 0, 1, 'C');
-                
+
                 $pdf->SetXY($x, $textY + 4);
                 $pdf->Cell(40, 4, $timestamp, 0, 1, 'C');
-                
+
                 if ($hash) {
                     $pdf->SetXY($x, $textY + 8);
                     $pdf->Cell(40, 4, "Ref: {$shortHash}", 0, 1, 'C');
@@ -110,12 +107,12 @@ class PdfSignatureService
         }
 
         // Save the new PDF
-        $filename = 'signed_' . basename($pdfPath);
+        $filename = 'signed_'.basename($pdfPath);
         $directory = dirname($pdfPath);
-        $newPdfPath = $directory . '/' . $filename;
-        
+        $newPdfPath = $directory.'/'.$filename;
+
         $newFullPath = $disk->path($newPdfPath);
-        
+
         // Output to file
         $pdf->Output('F', $newFullPath);
 

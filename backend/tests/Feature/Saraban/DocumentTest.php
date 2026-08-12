@@ -3,7 +3,6 @@
 namespace Tests\Feature\Saraban;
 
 use App\Models\Department;
-use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,7 +17,7 @@ class DocumentTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Setup base permissions
         Permission::firstOrCreate(['name' => 'saraban.document.create']);
         $role = Role::firstOrCreate(['name' => 'staff']);
@@ -29,12 +28,12 @@ class DocumentTest extends TestCase
 
         $this->department = Department::create([
             'name' => 'Test Department',
-            'status' => 'active'
+            'status' => 'active',
         ]);
 
         $this->type = DocumentType::create([
             'name' => 'หนังสือภายใน',
-            'code' => 'int'
+            'code' => 'int',
         ]);
     }
 

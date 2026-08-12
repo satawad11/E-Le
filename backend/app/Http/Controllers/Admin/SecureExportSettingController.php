@@ -17,13 +17,12 @@ class SecureExportSettingController extends Controller
         'margin_top', 'margin_bottom', 'margin_left', 'margin_right', 'document_number_out',
     ];
 
-    public function __construct(private readonly SystemSettingService $settings)
-    {
-    }
+    public function __construct(private readonly SystemSettingService $settings) {}
 
     public function index()
     {
         $values = $this->settings->adminValues();
+
         return response()->json([
             'institution_name' => $values['institution_name'] ?? '',
             'school_affiliation' => $values['school_affiliation'] ?? '',
@@ -50,6 +49,7 @@ class SecureExportSettingController extends Controller
         $rules = Arr::only(config('system_settings.rules', []), self::KEYS);
         $validated = $request->validate($rules);
         $this->settings->updateMany($validated, $request->user(), $request->ip(), $request->userAgent());
+
         return response()->json(['message' => 'บันทึกการตั้งค่าเอกสารเรียบร้อยแล้ว']);
     }
 
@@ -62,11 +62,12 @@ class SecureExportSettingController extends Controller
         $key = $request->type === 'garuda' ? 'saraban_garuda_logo' : 'organization_logo';
         $oldPath = $this->settings->runtimeValues()->get($key);
         $path = $request->file('logo')->store('settings', 'private_uploads');
-        $url = '/storage/' . $path;
+        $url = '/storage/'.$path;
         $this->settings->updateMany([$key => $url], $request->user(), $request->ip(), $request->userAgent());
         if ($oldPath && $oldPath !== $url && str_starts_with($oldPath, '/storage/')) {
             Storage::disk('private_uploads')->delete(substr($oldPath, strlen('/storage/')));
         }
+
         return response()->json(['message' => 'อัปโหลดตราสัญลักษณ์เรียบร้อยแล้ว', 'url' => $url]);
     }
 }

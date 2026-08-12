@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Schema;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class StandardRolesAndPermissionsSeeder extends Seeder
@@ -28,13 +28,13 @@ class StandardRolesAndPermissionsSeeder extends Seeder
             ],
             // === Attendance — แยกโมดูลออกจาก Leave ===
             'attendance' => [
-                'attendance.checkin'        => 'บันทึกเวลาเข้า-ออกงาน (Check-in / Check-out)',
-                'attendance.view_self'      => 'ดูประวัติการลงเวลาของตนเอง',
-                'attendance.view_all'       => 'ดูรายงานการลงเวลาของบุคลากรทั้งหมด',
-                'attendance.export'         => 'ส่งออกรายงานเวลาเข้า-ออกงาน',
-                'attendance.ot'             => 'บันทึกเวลาทำงานล่วงเวลา (OT)',
-                'attendance.ot_summary'     => 'ดูสรุปการทำงานล่วงเวลา (OT Summary)',
-                'attendance.record.create'  => 'สร้างการบันทึกเวลาปฏิบัติงาน',
+                'attendance.checkin' => 'บันทึกเวลาเข้า-ออกงาน (Check-in / Check-out)',
+                'attendance.view_self' => 'ดูประวัติการลงเวลาของตนเอง',
+                'attendance.view_all' => 'ดูรายงานการลงเวลาของบุคลากรทั้งหมด',
+                'attendance.export' => 'ส่งออกรายงานเวลาเข้า-ออกงาน',
+                'attendance.ot' => 'บันทึกเวลาทำงานล่วงเวลา (OT)',
+                'attendance.ot_summary' => 'ดูสรุปการทำงานล่วงเวลา (OT Summary)',
+                'attendance.record.create' => 'สร้างการบันทึกเวลาปฏิบัติงาน',
                 'attendance.record.view_my' => 'ดูประวัติการบันทึกเวลาปฏิบัติงานของตนเอง',
             ],
             'saraban' => [
@@ -101,7 +101,7 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                     'leave.approval.dept', 'leave.approval.final', 'leave.report.view',
                     'attendance.checkin', 'attendance.view_self', 'attendance.view_all', 'attendance.export', 'attendance.ot_summary',
                     'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast',
-                    'approve_leave', 'approve_leaves', 'view_all_attendances', 'export_reports'
+                    'approve_leave', 'approve_leaves', 'view_all_attendances', 'export_reports',
                 ],
             ],
 
@@ -113,7 +113,7 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                     'leave.approval.dept', 'leave.report.view',
                     'attendance.checkin', 'attendance.view_self', 'attendance.view_all', 'attendance.export', 'attendance.ot_summary',
                     'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign',
-                    'approve_leave', 'approve_leaves', 'view_all_attendances', 'export_reports'
+                    'approve_leave', 'approve_leaves', 'view_all_attendances', 'export_reports',
                 ],
             ],
 
@@ -125,7 +125,7 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                     'leave.approval.dept', 'leave.report.view',
                     'attendance.checkin', 'attendance.view_self',
                     'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign',
-                    'approve_leave', 'approve_leaves'
+                    'approve_leave', 'approve_leaves',
                 ],
             ],
 
@@ -136,7 +136,7 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                     'leave.request.create', 'leave.request.view_my', 'leave.request.cancel', 'leave.management.manage', 'leave.report.view',
                     'attendance.checkin', 'attendance.view_self', 'attendance.view_all', 'attendance.export', 'attendance.ot', 'attendance.ot_summary',
                     'system.user.view', 'system.user.manage',
-                    'view_users', 'edit_users', 'view_all_attendances', 'export_reports'
+                    'view_users', 'edit_users', 'view_all_attendances', 'export_reports',
                 ],
             ],
 
@@ -147,7 +147,7 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                     'leave.request.create', 'leave.request.view_my', 'leave.request.cancel',
                     'attendance.checkin', 'attendance.view_self', 'attendance.record.create', 'attendance.record.view_my',
                     'saraban.document.view', 'saraban.document.create', 'saraban.document.edit', 'saraban.document.delete',
-                    'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast', 'saraban.setting.manage'
+                    'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast', 'saraban.setting.manage',
                 ],
             ],
 
@@ -157,7 +157,7 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                 'permissions' => [
                     'leave.request.create', 'leave.request.view_my', 'leave.request.cancel',
                     'attendance.checkin', 'attendance.view_self', 'attendance.record.create', 'attendance.record.view_my',
-                    'saraban.document.view', 'saraban.document.create'
+                    'saraban.document.view', 'saraban.document.create',
                 ],
             ],
         ];

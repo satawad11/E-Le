@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\LeavePolicyService;
 use App\Services\PersonalDataAccessLogger;
 use App\Services\ThaiDateService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -44,7 +45,7 @@ class LeaveCardController extends Controller
         $target = User::with(['profile', 'department', 'personnelType'])->findOrFail($targetId);
 
         if ($viewer->hasRole('หัวหน้าแผนกวิชา / หัวหน้าฝ่าย')
-            && !$viewer->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'เจ้าหน้าที่บุคลากร (HR)'])) {
+            && ! $viewer->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'เจ้าหน้าที่บุคลากร (HR)'])) {
             $deptId = $viewer->department_id ?? ($viewer->profile?->department_id ?? null);
             abort_unless($deptId && $target->department_id === $deptId, 403, 'ดูได้เฉพาะบุคลากรในหน่วยงานของท่าน');
         }
@@ -59,7 +60,7 @@ class LeaveCardController extends Controller
     {
         $request->validate([
             'user_id' => 'nullable|exists:users,id',
-            'year'    => 'nullable|integer|min:2000|max:2100',
+            'year' => 'nullable|integer|min:2000|max:2100',
         ]);
 
         $user = $this->resolveTarget($request);
@@ -89,16 +90,16 @@ class LeaveCardController extends Controller
             $entitlement = (float) $balance->quota + (float) $balance->carried_forward;
 
             return [
-                'leave_type'     => $balance->type->name ?? '—',
-                'carried_forward'=> (float) $balance->carried_forward,
-                'quota'          => $unlimited ? null : $entitlement,
-                'paid_quota'     => $balance->policy?->max_days_with_pay !== null ? (float) $balance->policy->max_days_with_pay : null,
-                'times'          => $ofType->count(),
-                'used_days'      => (float) $ofType->sum('total_days'),
-                'paid_days'      => (float) $ofType->sum('paid_days'),
-                'unpaid_days'    => (float) $ofType->sum('unpaid_days'),
-                'pending_days'   => (float) $balance->reserved,
-                'remaining'      => $unlimited ? null : $entitlement - (float) $balance->used - (float) $balance->reserved,
+                'leave_type' => $balance->type->name ?? '—',
+                'carried_forward' => (float) $balance->carried_forward,
+                'quota' => $unlimited ? null : $entitlement,
+                'paid_quota' => $balance->policy?->max_days_with_pay !== null ? (float) $balance->policy->max_days_with_pay : null,
+                'times' => $ofType->count(),
+                'used_days' => (float) $ofType->sum('total_days'),
+                'paid_days' => (float) $ofType->sum('paid_days'),
+                'unpaid_days' => (float) $ofType->sum('unpaid_days'),
+                'pending_days' => (float) $balance->reserved,
+                'remaining' => $unlimited ? null : $entitlement - (float) $balance->used - (float) $balance->reserved,
             ];
         })->values();
 
@@ -108,29 +109,29 @@ class LeaveCardController extends Controller
             'period' => ['from' => $periodStart->toDateString(), 'to' => $periodEnd->toDateString()],
             // ผู้ใช้บางคนอาจยังไม่มี profile จึงต้องเข้าถึงแบบ null-safe ทุกจุด
             'user' => [
-                'name'           => trim(($user->profile?->title ?? '') . ($user->profile?->first_name ?? '') . ' ' . ($user->profile?->last_name ?? '')) ?: $user->name,
-                'position'       => $user->profile?->position ?? '—',
-                'department'     => $user->department?->name ?? '—',
+                'name' => trim(($user->profile?->title ?? '').($user->profile?->first_name ?? '').' '.($user->profile?->last_name ?? '')) ?: $user->name,
+                'position' => $user->profile?->position ?? '—',
+                'department' => $user->department?->name ?? '—',
                 'personnel_type' => $user->personnelType?->name ?? '—',
                 'personnel_code' => $user->profile?->personnel_code ?? '—',
-                'start_date'     => $user->profile?->start_date,
+                'start_date' => $user->profile?->start_date,
             ],
             'summary' => $summary,
             'totals' => [
-                'times'       => $approved->count(),
-                'used_days'   => (float) $approved->sum('total_days'),
-                'paid_days'   => (float) $approved->sum('paid_days'),
+                'times' => $approved->count(),
+                'used_days' => (float) $approved->sum('total_days'),
+                'paid_days' => (float) $approved->sum('paid_days'),
                 'unpaid_days' => (float) $approved->sum('unpaid_days'),
             ],
             'entries' => $leaves->map(fn (Leave $l) => [
                 'document_number' => $l->document_number,
-                'leave_type'      => $l->type->name ?? '—',
-                'start_date'      => $l->start_date?->toDateString(),
-                'end_date'        => $l->end_date?->toDateString(),
-                'total_days'      => (float) $l->total_days,
-                'paid_days'       => (float) $l->paid_days,
-                'unpaid_days'     => (float) $l->unpaid_days,
-                'status'          => $l->status,
+                'leave_type' => $l->type->name ?? '—',
+                'start_date' => $l->start_date?->toDateString(),
+                'end_date' => $l->end_date?->toDateString(),
+                'total_days' => (float) $l->total_days,
+                'paid_days' => (float) $l->paid_days,
+                'unpaid_days' => (float) $l->unpaid_days,
+                'status' => $l->status,
             ])->values(),
         ];
     }
@@ -144,7 +145,7 @@ class LeaveCardController extends Controller
     {
         $card = $this->build($request);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.leave_card', [
+        $pdf = Pdf::loadView('pdf.leave_card', [
             'card' => $card,
             'thaiDateService' => $thaiDateService,
         ])->setPaper('a4', 'portrait');

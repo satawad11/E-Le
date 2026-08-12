@@ -3,10 +3,10 @@
 namespace App\Services\Export;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class LeaveExcelService
 {
@@ -15,7 +15,7 @@ class LeaveExcelService
      */
     public function generateReportXlsx(array $leaves, string $title = 'รายงานสรุปสถิติการลา'): string
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('รายงานสถิติการลา');
 
@@ -67,14 +67,14 @@ class LeaveExcelService
         // Data Rows
         $row = 4;
         foreach ($leaves as $index => $leave) {
-            $sheet->setCellValue('A' . $row, $index + 1);
-            $sheet->setCellValue('B' . $row, $leave->user->name ?? '—');
-            $sheet->setCellValue('C' . $row, $leave->user->department->name ?? '—');
-            $sheet->setCellValue('D' . $row, $leave->type->name ?? '—');
-            $sheet->setCellValue('E' . $row, $leave->start_date);
-            $sheet->setCellValue('F' . $row, $leave->end_date);
-            $sheet->setCellValue('G' . $row, $leave->total_days);
-            $sheet->setCellValue('H' . $row, $leave->reason ?? '—');
+            $sheet->setCellValue('A'.$row, $index + 1);
+            $sheet->setCellValue('B'.$row, $leave->user->name ?? '—');
+            $sheet->setCellValue('C'.$row, $leave->user->department->name ?? '—');
+            $sheet->setCellValue('D'.$row, $leave->type->name ?? '—');
+            $sheet->setCellValue('E'.$row, $leave->start_date);
+            $sheet->setCellValue('F'.$row, $leave->end_date);
+            $sheet->setCellValue('G'.$row, $leave->total_days);
+            $sheet->setCellValue('H'.$row, $leave->reason ?? '—');
 
             // Alignment & Font
             $sheet->getStyle("A{$row}:H{$row}")->getFont()->setName('TH Sarabun New')->setSize(14);
@@ -88,10 +88,10 @@ class LeaveExcelService
         }
 
         // Total Row with SUM Formula
-        $sheet->setCellValue('A' . $row, 'รวมทั้งสิ้น');
+        $sheet->setCellValue('A'.$row, 'รวมทั้งสิ้น');
         $sheet->mergeCells("A{$row}:F{$row}");
-        $sheet->setCellValue('G' . $row, "=SUM(G4:G" . ($row - 1) . ")");
-        $sheet->setCellValue('H' . $row, 'วัน');
+        $sheet->setCellValue('G'.$row, '=SUM(G4:G'.($row - 1).')');
+        $sheet->setCellValue('H'.$row, 'วัน');
 
         $totalStyle = [
             'font' => ['bold' => true, 'name' => 'TH Sarabun New', 'size' => 14],
@@ -107,7 +107,7 @@ class LeaveExcelService
         }
 
         // Save to temp file
-        $tempFile = tempnam(sys_get_temp_dir(), 'report_xlsx_') . '.xlsx';
+        $tempFile = tempnam(sys_get_temp_dir(), 'report_xlsx_').'.xlsx';
         $writer = new Xlsx($spreadsheet);
         $writer->save($tempFile);
 

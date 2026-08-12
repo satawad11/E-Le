@@ -20,6 +20,7 @@ class PurgeExpiredLeaveEvidence extends Command
     protected $signature = 'pdpa:purge-leave-evidence
         {--years=10 : เก็บรักษาไว้กี่ปีนับจากวันที่อัปโหลด}
         {--force : ยืนยันการลบจริง (ค่าเริ่มต้นเป็นการแสดงผลอย่างเดียว)}';
+
     protected $description = 'ลบไฟล์หลักฐานประกอบการลาที่พ้นระยะเวลาเก็บรักษาตามหลัก PDPA';
 
     public function handle(): int
@@ -34,12 +35,15 @@ class PurgeExpiredLeaveEvidence extends Command
 
         if ($expired->isEmpty()) {
             $this->info("ไม่มีไฟล์หลักฐานที่เก่ากว่า {$years} ปี");
+
             return self::SUCCESS;
         }
 
         $deleted = 0;
         foreach ($expired as $evidence) {
-            if (!$force) continue;
+            if (! $force) {
+                continue;
+            }
 
             if (Storage::disk('local')->exists($evidence->storage_path)) {
                 Storage::disk('local')->delete($evidence->storage_path);
@@ -51,10 +55,10 @@ class PurgeExpiredLeaveEvidence extends Command
 
         $this->table(
             ['สถานะ', 'จำนวนไฟล์', 'เก่ากว่า'],
-            [[$force ? 'ลบแล้ว' : 'จะถูกลบ', $force ? $deleted : $expired->count(), $cutoff->format('d/m/') . ($cutoff->year + 543)]]
+            [[$force ? 'ลบแล้ว' : 'จะถูกลบ', $force ? $deleted : $expired->count(), $cutoff->format('d/m/').($cutoff->year + 543)]]
         );
 
-        if (!$force) {
+        if (! $force) {
             $this->line('สั่งเพิ่ม --force เพื่อลบจริง (ลบแล้วกู้คืนไม่ได้)');
         }
 

@@ -19,6 +19,7 @@ services:
       start_period: 5m
 
   backend:
+    image: e-le-backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -27,7 +28,7 @@ services:
     working_dir: /var/www/html
     volumes:
       - ./backend:/var/www/html
-      - /var/www/html/vendor
+      - backend_vendor:/var/www/html/vendor
     ports:
       - "8001:8000"
     environment:
@@ -36,6 +37,7 @@ services:
       - DB_DATABASE=eleave
       - DB_USERNAME=root
       - DB_PASSWORD=
+      - LOG_CHANNEL=structured
       - PHP_CLI_SERVER_WORKERS=4
     command: >
       bash -c "if [ ! -f vendor/autoload.php ]; then composer install --ignore-platform-reqs; fi;
@@ -46,6 +48,56 @@ services:
       db:
         condition: service_healthy
         restart: true
+
+  worker:
+    image: e-le-backend
+    container_name: eleave_worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+      - backend_vendor:/var/www/html/vendor
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=eleave
+      - DB_USERNAME=root
+      - DB_PASSWORD=
+      - LOG_CHANNEL=structured
+    command: >
+      bash -c "until [ -f vendor/autoload.php ]; do sleep 2; done;
+               exec php artisan queue:work --sleep=3 --tries=3 --timeout=120"
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      backend:
+        condition: service_started
+
+  scheduler:
+    image: e-le-backend
+    container_name: eleave_scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+      - backend_vendor:/var/www/html/vendor
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=eleave
+      - DB_USERNAME=root
+      - DB_PASSWORD=
+      - LOG_CHANNEL=structured
+    command: >
+      bash -c "until [ -f vendor/autoload.php ]; do sleep 2; done;
+               exec php artisan schedule:work"
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      backend:
+        condition: service_started
 
   frontend:
     build:
@@ -67,3 +119,4 @@ services:
 
 volumes:
   eleave_mysql_data:
+  backend_vendor:

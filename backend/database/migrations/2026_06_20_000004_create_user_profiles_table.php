@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('user_profiles', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            
+
             // ข้อมูลส่วนตัว
             $table->string('id_card_number')->nullable();
             $table->date('date_of_birth')->nullable();
@@ -31,7 +31,7 @@ return new class extends Migration
             $table->string('first_name_en')->nullable();
             $table->string('last_name_en')->nullable();
             $table->string('religion')->nullable();
-            
+
             // ข้อมูลที่อยู่
             $table->string('house_registration_number')->nullable();
             $table->string('house_number')->nullable();
@@ -44,7 +44,7 @@ return new class extends Migration
             $table->string('zipcode')->nullable();
             $table->string('fax')->nullable();
             $table->string('website')->nullable();
-            
+
             // ข้อมูลการจ้าง
             $table->string('personnel_code')->nullable();
             $table->string('position')->nullable();

@@ -18,6 +18,7 @@ class PromotionScreeningTest extends TestCase
     use RefreshDatabase;
 
     private int $fiscalYear;
+
     private Carbon $insideRoundOne;
 
     protected function setUp(): void
@@ -32,6 +33,7 @@ class PromotionScreeningTest extends TestCase
     {
         $hr = User::factory()->create();
         $hr->givePermissionTo(Permission::findOrCreate('leave.report.view', 'web'));
+
         return $hr;
     }
 
@@ -46,6 +48,7 @@ class PromotionScreeningTest extends TestCase
             'is_active' => true,
         ]);
         $user->profile()->create(['position' => 'ครู', 'start_date' => '2015-05-01']);
+
         return $user;
     }
 
@@ -62,7 +65,7 @@ class PromotionScreeningTest extends TestCase
 
     private function screen(User $hr, array $extra = [])
     {
-        return $this->actingAs($hr)->getJson('/api/reports/promotion-screening?' . http_build_query(array_merge([
+        return $this->actingAs($hr)->getJson('/api/reports/promotion-screening?'.http_build_query(array_merge([
             'year' => $this->fiscalYear, 'round' => 1,
         ], $extra)));
     }

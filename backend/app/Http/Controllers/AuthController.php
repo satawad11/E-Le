@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -12,7 +15,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'email' => ['required', 'string', function ($attribute, $value, $fail) {
-                if (!filter_var($value, FILTER_VALIDATE_EMAIL) && !preg_match('/^[0-9]{13}$/', $value)) {
+                if (! filter_var($value, FILTER_VALIDATE_EMAIL) && ! preg_match('/^[0-9]{13}$/', $value)) {
                     $fail('รูปแบบอีเมล หรือเลขประจำตัวประชาชน (13 หลัก) ไม่ถูกต้อง');
                 }
             }],
@@ -23,23 +26,23 @@ class AuthController extends Controller
         $user = null;
 
         if (filter_var($loginField, FILTER_VALIDATE_EMAIL)) {
-            $user = \App\Models\User::where('email', $loginField)->first();
+            $user = User::where('email', $loginField)->first();
         } else {
             // Check if it matches id_card_number in user_profiles
-            $idCardHash = hash('sha256', $loginField . config('app.key'));
-            $profile = \App\Models\UserProfile::where('id_card_number_hash', $idCardHash)->first();
+            $idCardHash = hash('sha256', $loginField.config('app.key'));
+            $profile = UserProfile::where('id_card_number_hash', $idCardHash)->first();
             if ($profile) {
                 $user = $profile->user;
             }
         }
 
-        if (!$user || !\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['ข้อมูลการเข้าสู่ระบบไม่ถูกต้อง'],
             ]);
         }
 
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             throw ValidationException::withMessages([
                 'email' => ['บัญชีผู้ใช้นี้ถูกระงับการใช้งาน'],
             ]);
@@ -85,7 +88,7 @@ class AuthController extends Controller
         $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
         $user->direct_permissions = array_values(array_unique($user->getDirectPermissions()->pluck('name')->toArray()));
         $user->role_names = array_values(array_unique($user->roles->pluck('name')->toArray()));
-        
+
         return response()->json($user);
     }
 }

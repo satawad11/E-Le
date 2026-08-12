@@ -49,7 +49,7 @@ class RekeyEncryptedDataCommand extends Command
             dryRun: $dryRun,
             // เลขบัตรมี hash ที่ผูกกับ APP_KEY ต้องคำนวณใหม่พร้อมกัน
             extraUpdates: fn (array $plain) => filled($plain['id_card_number'] ?? null)
-                ? ['id_card_number_hash' => hash('sha256', $plain['id_card_number'] . config('app.key'))]
+                ? ['id_card_number_hash' => hash('sha256', $plain['id_card_number'].config('app.key'))]
                 : [],
         );
 
@@ -162,7 +162,7 @@ class RekeyEncryptedDataCommand extends Command
 
             if (! $dryRun) {
                 DB::table('settings')->where('id', $row->id)->update([
-                    'value' => 'enc:' . Crypt::encryptString($value),
+                    'value' => 'enc:'.Crypt::encryptString($value),
                 ]);
             }
 

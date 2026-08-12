@@ -12,7 +12,7 @@ class DocumentIncoming extends Model
     use HasFactory;
 
     protected $table = 'saraban_document_incoming';
-    
+
     protected $fillable = [
         'document_id',
         'receive_date',

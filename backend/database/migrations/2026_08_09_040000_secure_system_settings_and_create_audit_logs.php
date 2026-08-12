@@ -22,9 +22,9 @@ return new class extends Migration
 
         $secretKeys = config('system_settings.secret_keys', []);
         DB::table('settings')->whereIn('key', $secretKeys)->orderBy('id')->each(function ($setting) {
-            if ($setting->value !== null && $setting->value !== '' && !Str::startsWith($setting->value, 'enc:')) {
+            if ($setting->value !== null && $setting->value !== '' && ! Str::startsWith($setting->value, 'enc:')) {
                 DB::table('settings')->where('id', $setting->id)->update([
-                    'value' => 'enc:' . Crypt::encryptString($setting->value),
+                    'value' => 'enc:'.Crypt::encryptString($setting->value),
                     'type' => 'secret',
                 ]);
             }

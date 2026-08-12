@@ -15,7 +15,7 @@ class DocumentIncomingController extends Controller
             'receive_date' => 'required|date',
             'from_agency' => 'required|string|max:255',
         ]);
-        
+
         $data['receiver_id'] = auth()->id();
         $incoming = DocumentIncoming::create($data);
 

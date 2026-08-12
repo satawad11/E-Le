@@ -2,10 +2,8 @@
 
 namespace App\Models;
 
-use Spatie\Permission\Models\Role as SpatieRole;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Spatie\Permission\Models\Role as SpatieRole;
 
 #[Fillable(['name', 'description', 'guard_name'])]
-class Role extends SpatieRole
-{
-}
+class Role extends SpatieRole {}

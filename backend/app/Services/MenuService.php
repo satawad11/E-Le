@@ -42,12 +42,12 @@ class MenuService
      */
     protected function formatMenuItem(Menu $menu, array $userPermissions, bool $isAdmin): ?array
     {
-        if (!$menu->is_active) {
+        if (! $menu->is_active) {
             return null;
         }
 
         // Check if user is authorized for this menu item
-        if (!$this->isAuthorized($menu, $userPermissions, $isAdmin)) {
+        if (! $this->isAuthorized($menu, $userPermissions, $isAdmin)) {
             return null;
         }
 

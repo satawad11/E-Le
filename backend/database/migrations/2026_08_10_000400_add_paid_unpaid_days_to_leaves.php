@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -20,8 +21,8 @@ return new class extends Migration
         });
 
         // ใบลาเดิมทั้งหมดถือว่าได้รับเงินเดือนเต็มจำนวน (ยังไม่เคยมีการบังคับเพดานนี้มาก่อน)
-        Schema::hasColumn('leaves', 'paid_days') && \Illuminate\Support\Facades\DB::table('leaves')
-            ->update(['paid_days' => \Illuminate\Support\Facades\DB::raw('total_days')]);
+        Schema::hasColumn('leaves', 'paid_days') && DB::table('leaves')
+            ->update(['paid_days' => DB::raw('total_days')]);
     }
 
     public function down(): void

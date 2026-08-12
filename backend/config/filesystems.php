@@ -54,6 +54,14 @@ return [
             'report' => false,
         ],
 
+        'backup' => [
+            'driver' => 'local',
+            'root' => storage_path('backups'),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => true,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

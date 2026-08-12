@@ -9,6 +9,8 @@ use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\PersonnelType;
 use App\Models\User;
+use App\Services\LeaveService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -43,7 +45,7 @@ class LeaveVerificationTest extends TestCase
 
     private function submitLeave(User $user, LeaveType $type): Leave
     {
-        $start = now()->addWeek()->next(\Carbon\Carbon::MONDAY);
+        $start = now()->addWeek()->next(Carbon::MONDAY);
         $id = $this->actingAs($user)->postJson('/api/leaves', [
             'leave_type_id' => $type->id,
             'start_date' => $start->toDateString(),
@@ -93,7 +95,7 @@ class LeaveVerificationTest extends TestCase
         [$user, $type] = $this->scenario();
         $leave = $this->submitLeave($user, $type);
 
-        app(\App\Services\LeaveService::class)->deductBalance($leave);
+        app(LeaveService::class)->deductBalance($leave);
         $leave->update(['status' => 'Approved']);
 
         $this->getJson("/api/leaves/verify/{$leave->verification_hash}")
@@ -112,7 +114,7 @@ class LeaveVerificationTest extends TestCase
 
     public function test_unknown_hash_returns_not_found(): void
     {
-        $this->getJson('/api/leaves/verify/' . str_repeat('x', 40))->assertNotFound();
+        $this->getJson('/api/leaves/verify/'.str_repeat('x', 40))->assertNotFound();
     }
 
     public function test_qrcode_endpoint_returns_svg(): void

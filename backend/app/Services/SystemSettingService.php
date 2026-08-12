@@ -4,9 +4,9 @@ namespace App\Services;
 
 use App\Models\Setting;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Collection;
 
 class SystemSettingService
 {
@@ -14,7 +14,7 @@ class SystemSettingService
     {
         $values = Setting::all()->mapWithKeys(fn (Setting $setting) => [$setting->key => $setting->value]);
         foreach (config('system_settings.aliases', []) as $canonical => $aliases) {
-            if (!$values->has($canonical)) {
+            if (! $values->has($canonical)) {
                 foreach ($aliases as $alias) {
                     if ($values->has($alias)) {
                         $values->put($canonical, $values->get($alias));
@@ -23,6 +23,7 @@ class SystemSettingService
                 }
             }
         }
+
         return $values;
     }
 
@@ -36,7 +37,7 @@ class SystemSettingService
         $values = $this->runtimeValues()->all();
 
         foreach (config('system_settings.secret_keys', []) as $key) {
-            $values[$key . '_configured'] = filled($values[$key] ?? null);
+            $values[$key.'_configured'] = filled($values[$key] ?? null);
             $values[$key] = null;
         }
 
@@ -92,10 +93,12 @@ class SystemSettingService
                     'updated_at' => now(),
                 ]);
             }
+
             return $changes;
         });
 
         Cache::forget('app_settings');
+
         return $changes;
     }
 
@@ -103,7 +106,7 @@ class SystemSettingService
     {
         abort_unless(in_array($key, config('system_settings.secret_keys', []), true), 404);
         $setting = Setting::where('key', $key)->first();
-        if (!$setting) {
+        if (! $setting) {
             return;
         }
         $setting->delete();

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\DocumentTemplate;
+use Illuminate\Http\Request;
 
 class DocumentTemplateController extends Controller
 {
@@ -21,7 +21,7 @@ class DocumentTemplateController extends Controller
 
         if ($request->filled('search')) {
             $query->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('code', 'like', "%{$request->search}%");
+                ->orWhere('code', 'like', "%{$request->search}%");
         }
 
         return response()->json($query->orderBy('module')->orderBy('id')->get());
@@ -33,23 +33,23 @@ class DocumentTemplateController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'code'          => 'required|string|max:100|unique:document_templates,code',
-            'name'          => 'required|string|max:255',
-            'module'        => 'required|string|max:50',
-            'paper_size'    => 'nullable|string|max:20',
-            'orientation'   => 'nullable|string|max:20',
-            'margin_top'    => 'nullable|numeric',
+            'code' => 'required|string|max:100|unique:document_templates,code',
+            'name' => 'required|string|max:255',
+            'module' => 'required|string|max:50',
+            'paper_size' => 'nullable|string|max:20',
+            'orientation' => 'nullable|string|max:20',
+            'margin_top' => 'nullable|numeric',
             'margin_bottom' => 'nullable|numeric',
-            'margin_left'   => 'nullable|numeric',
-            'margin_right'  => 'nullable|numeric',
-            'content_html'  => 'required|string',
-            'is_active'     => 'boolean',
+            'margin_left' => 'nullable|numeric',
+            'margin_right' => 'nullable|numeric',
+            'content_html' => 'required|string',
+            'is_active' => 'boolean',
         ]);
 
         $template = DocumentTemplate::create($data);
 
         return response()->json([
-            'message'  => 'สร้างแม่แบบเอกสารใหม่เรียบร้อยแล้ว',
+            'message' => 'สร้างแม่แบบเอกสารใหม่เรียบร้อยแล้ว',
             'template' => $template,
         ], 201);
     }
@@ -68,22 +68,22 @@ class DocumentTemplateController extends Controller
     public function update(Request $request, DocumentTemplate $template)
     {
         $data = $request->validate([
-            'name'          => 'required|string|max:255',
-            'module'        => 'required|string|max:50',
-            'paper_size'    => 'nullable|string|max:20',
-            'orientation'   => 'nullable|string|max:20',
-            'margin_top'    => 'nullable|numeric',
+            'name' => 'required|string|max:255',
+            'module' => 'required|string|max:50',
+            'paper_size' => 'nullable|string|max:20',
+            'orientation' => 'nullable|string|max:20',
+            'margin_top' => 'nullable|numeric',
             'margin_bottom' => 'nullable|numeric',
-            'margin_left'   => 'nullable|numeric',
-            'margin_right'  => 'nullable|numeric',
-            'content_html'  => 'required|string',
-            'is_active'     => 'boolean',
+            'margin_left' => 'nullable|numeric',
+            'margin_right' => 'nullable|numeric',
+            'content_html' => 'required|string',
+            'is_active' => 'boolean',
         ]);
 
         $template->update($data);
 
         return response()->json([
-            'message'  => 'ปรับปรุงแม่แบบเอกสารเรียบร้อยแล้ว',
+            'message' => 'ปรับปรุงแม่แบบเอกสารเรียบร้อยแล้ว',
             'template' => $template,
         ]);
     }

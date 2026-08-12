@@ -2,7 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Models\ApprovalStep;
+use App\Models\Department;
+use App\Models\LeaveBalance;
+use App\Models\LeaveType;
+use App\Models\Role;
 use App\Models\User;
+use Faker\Factory;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,23 +21,28 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([RolesAndPermissionsSeeder::class]);
-        
-        $itDept = \App\Models\Department::firstOrCreate(
+        $this->call([
+            RolesAndPermissionsSeeder::class,
+            SarabanPermissionSeeder::class,
+            SarabanDocumentTypeSeeder::class,
+            SarabanSettingSeeder::class,
+        ]);
+
+        $itDept = Department::firstOrCreate(
             ['name' => 'ฝ่ายสารสนเทศ'],
             ['description' => 'ฝ่ายเทคโนโลยีสารสนเทศ']
         );
-        $hrDept = \App\Models\Department::firstOrCreate(
+        $hrDept = Department::firstOrCreate(
             ['name' => 'ฝ่ายทรัพยากรบุคคล'],
             ['description' => 'ฝ่ายบริหารทรัพยากรบุคคล']
         );
 
-        $employeeRole = \App\Models\Role::firstOrCreate(['name' => 'Employee'], ['description' => 'ผู้ใช้งานทั่วไป']);
-        $hrHeadRole = \App\Models\Role::firstOrCreate(['name' => 'HR Head'], ['description' => 'หัวหน้าบุคลากร']);
-        $deputyRole = \App\Models\Role::firstOrCreate(['name' => 'Deputy Director'], ['description' => 'รองผู้อำนวยการ']);
-        $directorRole = \App\Models\Role::firstOrCreate(['name' => 'Director'], ['description' => 'ผู้อำนวยการ']);
-        $superAdminRole = \App\Models\Role::firstOrCreate(['name' => 'Super Admin'], ['description' => 'ผู้ดูแลระบบสูงสุด']);
-        $docOfficerRole = \App\Models\Role::firstOrCreate(['name' => 'Document Officer'], ['description' => 'เจ้าหน้าที่สารบัญ']);
+        $employeeRole = Role::firstOrCreate(['name' => 'Employee'], ['description' => 'ผู้ใช้งานทั่วไป']);
+        $hrHeadRole = Role::firstOrCreate(['name' => 'HR Head'], ['description' => 'หัวหน้าบุคลากร']);
+        $deputyRole = Role::firstOrCreate(['name' => 'Deputy Director'], ['description' => 'รองผู้อำนวยการ']);
+        $directorRole = Role::firstOrCreate(['name' => 'Director'], ['description' => 'ผู้อำนวยการ']);
+        $superAdminRole = Role::firstOrCreate(['name' => 'Super Admin'], ['description' => 'ผู้ดูแลระบบสูงสุด']);
+        $docOfficerRole = Role::firstOrCreate(['name' => 'Document Officer'], ['description' => 'เจ้าหน้าที่สารบัญ']);
 
         // Core Thai government leave types. The complete set is maintained by
         // NewLeaveTypesSeeder so fresh and existing installations stay aligned.
@@ -43,12 +54,12 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($leaveTypes as $type) {
-            \App\Models\LeaveType::firstOrCreate(['name' => $type['name']], ['description' => $type['description']]);
+            LeaveType::firstOrCreate(['name' => $type['name']], ['description' => $type['description']]);
         }
         $this->call([NewLeaveTypesSeeder::class]);
 
         // Create Users
-        $faker = \Faker\Factory::create('th_TH');
+        $faker = Factory::create('th_TH');
 
         $superAdmin = User::firstOrCreate(
             ['email' => 'superadmin@example.com'],
@@ -105,8 +116,8 @@ class DatabaseSeeder extends Seeder
         $userIds = [$superAdmin->id, $director->id, $deputy->id, $hrHead->id, $employee->id, $docOfficer->id];
 
         foreach ($userIds as $userId) {
-            foreach (\App\Models\LeaveType::all() as $lt) {
-                \App\Models\LeaveBalance::firstOrCreate(
+            foreach (LeaveType::all() as $lt) {
+                LeaveBalance::firstOrCreate(
                     ['user_id' => $userId, 'leave_type_id' => $lt->id, 'year' => $currentYear],
                     ['quota' => $quotas[$lt->name] ?? ($lt->max_days ?? 0), 'used' => 0]
                 );
@@ -114,15 +125,15 @@ class DatabaseSeeder extends Seeder
         }
 
         // Seed dynamic approval steps matching the default workflow
-        \App\Models\ApprovalStep::firstOrCreate(
+        ApprovalStep::firstOrCreate(
             ['step_order' => 1],
             ['role_id' => $hrHeadRole->id, 'name' => 'ตรวจสอบโดยหัวหน้าบุคลากร']
         );
-        \App\Models\ApprovalStep::firstOrCreate(
+        ApprovalStep::firstOrCreate(
             ['step_order' => 2],
             ['role_id' => $deputyRole->id, 'name' => 'พิจารณาโดยรองผู้อำนวยการ']
         );
-        \App\Models\ApprovalStep::firstOrCreate(
+        ApprovalStep::firstOrCreate(
             ['step_order' => 3],
             ['role_id' => $directorRole->id, 'name' => 'อนุมัติรอบสุดท้ายโดยผู้อำนวยการ']
         );
@@ -133,10 +144,10 @@ class DatabaseSeeder extends Seeder
         $user->phone = $faker->numerify('08########');
         $user->save();
 
-        if (!$user->profile) {
+        if (! $user->profile) {
             $user->profile()->create([
                 'id_card_number' => $idCard ?: $faker->numerify('1####000#####'),
-                'id_card_number_hash' => hash('sha256', ($idCard ?: $faker->numerify('1####000#####')) . config('app.key')),
+                'id_card_number_hash' => hash('sha256', ($idCard ?: $faker->numerify('1####000#####')).config('app.key')),
                 'date_of_birth' => $faker->date('Y-m-d', '-20 years'),
                 'nationality' => 'ไทย',
                 'ethnicity' => 'ไทย',

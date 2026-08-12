@@ -194,7 +194,7 @@ class MenuSeeder extends Seeder
                 $item
             );
 
-            if (!empty($rootPermissions)) {
+            if (! empty($rootPermissions)) {
                 $permIds = Permission::whereIn('name', $rootPermissions)->pluck('id');
                 $menu->permissions()->sync($permIds);
             }
@@ -209,7 +209,7 @@ class MenuSeeder extends Seeder
                     $childItem
                 );
 
-                if (!empty($childPermissions)) {
+                if (! empty($childPermissions)) {
                     $permIds = Permission::whereIn('name', $childPermissions)->pluck('id');
                     $childMenu->permissions()->sync($permIds);
                 }

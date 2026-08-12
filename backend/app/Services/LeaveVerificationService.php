@@ -33,7 +33,9 @@ class LeaveVerificationService
     /** ออกโทเคนตรวจสอบให้ใบลาที่ยังไม่มี แล้วคืนค่าโทเคน */
     public function ensureHash(Leave $leave): string
     {
-        if ($leave->verification_hash) return $leave->verification_hash;
+        if ($leave->verification_hash) {
+            return $leave->verification_hash;
+        }
 
         $leave->verification_hash = Str::random(40);
         $leave->save();
@@ -52,7 +54,7 @@ class LeaveVerificationService
     /** ชี้ไปหน้าเว็บฝั่ง frontend ตั้งค่าได้ด้วย FRONTEND_URL ไม่งั้นใช้ APP_URL */
     public function verificationUrl(string $hash): string
     {
-        return rtrim(env('FRONTEND_URL') ?: config('app.url'), '/') . '/verify-leave/' . $hash;
+        return rtrim(env('FRONTEND_URL') ?: config('app.url'), '/').'/verify-leave/'.$hash;
     }
 
     /**
@@ -62,10 +64,10 @@ class LeaveVerificationService
     private function render(string $hash, bool $asDataUri): string
     {
         $options = new QROptions([
-            'version'              => 5,
-            'outputInterface'      => QRMarkupSVG::class,
-            'eccLevel'             => EccLevel::M,
-            'outputBase64'         => $asDataUri,
+            'version' => 5,
+            'outputInterface' => QRMarkupSVG::class,
+            'eccLevel' => EccLevel::M,
+            'outputBase64' => $asDataUri,
             'svgUseFillAttributes' => false,
         ]);
 

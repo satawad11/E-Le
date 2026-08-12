@@ -13,6 +13,7 @@ class FiscalYearController extends Controller
     public function index()
     {
         $fiscalYears = FiscalYear::latestYear()->get();
+
         return response()->json($fiscalYears);
     }
 
@@ -22,22 +23,22 @@ class FiscalYearController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'       => 'required|string|max:255',
-            'year'       => 'required|integer|min:2500|max:2700',
+            'name' => 'required|string|max:255',
+            'year' => 'required|integer|min:2500|max:2700',
             'start_date' => 'required|date',
-            'end_date'   => 'required|date|after:start_date',
+            'end_date' => 'required|date|after:start_date',
             'is_current' => 'boolean',
         ]);
 
         // If this one is set as current, unset all others
-        if (!empty($data['is_current'])) {
+        if (! empty($data['is_current'])) {
             FiscalYear::where('is_current', true)->update(['is_current' => false]);
         }
 
         $fiscalYear = FiscalYear::create($data);
 
         return response()->json([
-            'message'     => 'เพิ่มปีงบประมาณเรียบร้อยแล้ว',
+            'message' => 'เพิ่มปีงบประมาณเรียบร้อยแล้ว',
             'fiscal_year' => $fiscalYear,
         ], 201);
     }
@@ -48,15 +49,15 @@ class FiscalYearController extends Controller
     public function update(Request $request, FiscalYear $fiscalYear)
     {
         $data = $request->validate([
-            'name'       => 'required|string|max:255',
-            'year'       => 'required|integer|min:2500|max:2700',
+            'name' => 'required|string|max:255',
+            'year' => 'required|integer|min:2500|max:2700',
             'start_date' => 'required|date',
-            'end_date'   => 'required|date|after:start_date',
+            'end_date' => 'required|date|after:start_date',
             'is_current' => 'boolean',
         ]);
 
         // If this one is set as current, unset all others
-        if (!empty($data['is_current'])) {
+        if (! empty($data['is_current'])) {
             FiscalYear::where('is_current', true)
                 ->where('id', '!=', $fiscalYear->id)
                 ->update(['is_current' => false]);
@@ -65,7 +66,7 @@ class FiscalYearController extends Controller
         $fiscalYear->update($data);
 
         return response()->json([
-            'message'     => 'อัปเดตปีงบประมาณเรียบร้อยแล้ว',
+            'message' => 'อัปเดตปีงบประมาณเรียบร้อยแล้ว',
             'fiscal_year' => $fiscalYear,
         ]);
     }
@@ -88,6 +89,7 @@ class FiscalYearController extends Controller
     public function current()
     {
         $current = FiscalYear::current();
+
         return response()->json($current);
     }
 }

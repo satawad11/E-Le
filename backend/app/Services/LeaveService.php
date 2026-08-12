@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ApprovalStep;
 use App\Models\Holiday;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
@@ -32,7 +33,9 @@ class LeaveService
     {
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate);
-        if (!$excludeHolidays) return (float) ($start->diffInDays($end) + 1);
+        if (! $excludeHolidays) {
+            return (float) ($start->diffInDays($end) + 1);
+        }
 
         $holidays = Holiday::where('is_active', true)
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
@@ -49,9 +52,12 @@ class LeaveService
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
             $key = $date->toDateString();
             $exception = $exceptions->get($key);
-            $isWorkingDay = $exception ? (bool) $exception->is_working_day : ($date->isWeekday() && !in_array($key, $holidays, true));
-            if ($isWorkingDay) $days++;
+            $isWorkingDay = $exception ? (bool) $exception->is_working_day : ($date->isWeekday() && ! in_array($key, $holidays, true));
+            if ($isWorkingDay) {
+                $days++;
+            }
         }
+
         return (float) $days;
     }
 
@@ -66,21 +72,31 @@ class LeaveService
             $days = $period === 'full_day'
                 ? $this->calculateTotalDays($start, $end, $policy->exclude_holidays, $user->department_id)
                 : 0.5;
-            if ($days <= 0) throw ValidationException::withMessages(['start_date' => 'ช่วงวันที่เลือกไม่มีวันทำการ']);
-            if ($period !== 'full_day' && !$start->isSameDay($end)) throw ValidationException::withMessages(['leave_period' => 'ลาครึ่งวันต้องเป็นวันเดียวกัน']);
-            if ($policy->requires_substitute && !($data['substitute_id'] ?? null)) throw ValidationException::withMessages(['substitute_id' => 'ต้องระบุผู้ปฏิบัติงานแทน']);
+            if ($days <= 0) {
+                throw ValidationException::withMessages(['start_date' => 'ช่วงวันที่เลือกไม่มีวันทำการ']);
+            }
+            if ($period !== 'full_day' && ! $start->isSameDay($end)) {
+                throw ValidationException::withMessages(['leave_period' => 'ลาครึ่งวันต้องเป็นวันเดียวกัน']);
+            }
+            if ($policy->requires_substitute && ! ($data['substitute_id'] ?? null)) {
+                throw ValidationException::withMessages(['substitute_id' => 'ต้องระบุผู้ปฏิบัติงานแทน']);
+            }
             $this->policies->assertEligible($user, $policy, $start, $end, $days, $period, (bool) $attachment);
             // เงื่อนไขเฉพาะประเภทลาตามระเบียบ เช่น ลาอุปสมบทได้ครั้งเดียวตลอดอายุราชการ
             $this->eligibilityRules->assert($user, $policy, $start);
 
             $overlap = Leave::where('user_id', $userId)->whereNotIn('status', ['Cancelled', 'Rejected', 'Voided'])
                 ->where('start_date', '<=', $end)->where('end_date', '>=', $start)->lockForUpdate()->exists();
-            if ($overlap) throw ValidationException::withMessages(['start_date' => 'มีใบลาในช่วงเวลานี้อยู่แล้ว']);
+            if ($overlap) {
+                throw ValidationException::withMessages(['start_date' => 'มีใบลาในช่วงเวลานี้อยู่แล้ว']);
+            }
 
             $balance = $this->policies->balance($user, $policy, $start);
             $balance = LeaveBalance::whereKey($balance->id)->lockForUpdate()->first();
             $available = (float) $balance->quota + (float) $balance->carried_forward - (float) $balance->used - (float) $balance->reserved;
-            if ($policy->annual_quota !== null && $available < $days) throw ValidationException::withMessages(['leave_type_id' => 'วันลาคงเหลือไม่เพียงพอ (รวมรายการรออนุมัติแล้ว)']);
+            if ($policy->annual_quota !== null && $available < $days) {
+                throw ValidationException::withMessages(['leave_type_id' => 'วันลาคงเหลือไม่เพียงพอ (รวมรายการรออนุมัติแล้ว)']);
+            }
 
             // แยกวันที่ได้รับเงินเดือน/ไม่ได้รับเงินเดือน ตามเพดาน max_days_with_pay ของนโยบาย
             [$paidDays, $unpaidDays] = $this->splitPaidDays($policy, $balance, $days);
@@ -108,19 +124,22 @@ class LeaveService
                 $balance->leave_policy_id = $policy->id;
                 $balance->save();
             }
-            if ($attachment) LeaveEvidence::create([
-                'leave_id' => $leave->id, 'uploaded_by' => $userId,
-                'evidence_type' => $policy->required_evidence_type ?: 'supporting_document',
-                'original_name' => $attachment->getClientOriginalName(), 'storage_path' => $path,
-                'mime_type' => $attachment->getMimeType(), 'file_size' => $attachment->getSize(),
-                'sha256' => hash_file('sha256', $attachment->getRealPath()),
-            ]);
-            foreach (\App\Models\ApprovalStep::with('role')->orderBy('step_order')->get() as $step) {
+            if ($attachment) {
+                LeaveEvidence::create([
+                    'leave_id' => $leave->id, 'uploaded_by' => $userId,
+                    'evidence_type' => $policy->required_evidence_type ?: 'supporting_document',
+                    'original_name' => $attachment->getClientOriginalName(), 'storage_path' => $path,
+                    'mime_type' => $attachment->getMimeType(), 'file_size' => $attachment->getSize(),
+                    'sha256' => hash_file('sha256', $attachment->getRealPath()),
+                ]);
+            }
+            foreach (ApprovalStep::with('role')->orderBy('step_order')->get() as $step) {
                 LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'step_order' => $step->step_order], [
                     'step_name' => $step->name, 'required_role_id' => $step->role_id, 'status' => 'Pending',
                 ]);
             }
             $this->audit->log($leave, 'created', null, $leave->toArray());
+
             return $leave;
         }, 5);
     }
@@ -134,7 +153,9 @@ class LeaveService
      */
     public function splitPaidDays(LeavePolicy $policy, ?LeaveBalance $balance, float $days): array
     {
-        if ($policy->max_days_with_pay === null) return [$days, 0.0];
+        if ($policy->max_days_with_pay === null) {
+            return [$days, 0.0];
+        }
 
         $alreadyTaken = $balance ? (float) $balance->used + (float) $balance->reserved : 0.0;
         $paidRemaining = max(0.0, (float) $policy->max_days_with_pay - $alreadyTaken);
@@ -146,14 +167,23 @@ class LeaveService
     public function deductBalance(Leave $leave): bool
     {
         return DB::transaction(function () use ($leave) {
-            $balance = $this->balanceFor($leave, true); if (!$balance) return false;
+            $balance = $this->balanceFor($leave, true);
+            if (! $balance) {
+                return false;
+            }
             $reserved = min((float) $balance->reserved, (float) $leave->reserved_days);
             $available = (float) $balance->quota + (float) $balance->carried_forward - (float) $balance->used - ((float) $balance->reserved - $reserved);
-            if ($available < $leave->total_days) return false;
-            $balance->reserved -= $reserved; $balance->used += (float) $leave->total_days; $balance->save();
-            $leave->reserved_days = 0; $leave->save();
+            if ($available < $leave->total_days) {
+                return false;
+            }
+            $balance->reserved -= $reserved;
+            $balance->used += (float) $leave->total_days;
+            $balance->save();
+            $leave->reserved_days = 0;
+            $leave->save();
             // ผนึกลายนิ้วมือเนื้อหาไว้ตอนอนุมัติ เพื่อให้ QR ตรวจการแก้ไขย้อนหลังได้
             $this->verification->seal($leave);
+
             return true;
         }, 5);
     }
@@ -161,16 +191,25 @@ class LeaveService
     public function restoreBalance(Leave $leave): void
     {
         DB::transaction(function () use ($leave) {
-            $balance = $this->balanceFor($leave, true); if (!$balance) return;
-            if ($leave->reserved_days > 0) $balance->reserved = max(0, (float) $balance->reserved - (float) $leave->reserved_days);
-            elseif ($leave->status === 'Approved') $balance->used = max(0, (float) $balance->used - (float) $leave->total_days);
-            $balance->save(); $leave->reserved_days = 0; $leave->save();
+            $balance = $this->balanceFor($leave, true);
+            if (! $balance) {
+                return;
+            }
+            if ($leave->reserved_days > 0) {
+                $balance->reserved = max(0, (float) $balance->reserved - (float) $leave->reserved_days);
+            } elseif ($leave->status === 'Approved') {
+                $balance->used = max(0, (float) $balance->used - (float) $leave->total_days);
+            }
+            $balance->save();
+            $leave->reserved_days = 0;
+            $leave->save();
         });
     }
 
     public function hasEnoughBalance(Leave $leave): bool
     {
         $balance = $this->balanceFor($leave, false);
+
         return $balance && ((float) $balance->quota + (float) $balance->carried_forward - (float) $balance->used - (float) $balance->reserved + (float) $leave->reserved_days) >= $leave->total_days;
     }
 
@@ -178,6 +217,7 @@ class LeaveService
     {
         $year = $this->policies->periodYearForLeave($leave);
         $query = LeaveBalance::where('user_id', $leave->user_id)->where('leave_type_id', $leave->leave_type_id)->where('year', $year);
+
         return $lock ? $query->lockForUpdate()->first() : $query->first();
     }
 }

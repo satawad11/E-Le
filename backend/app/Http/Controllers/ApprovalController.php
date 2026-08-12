@@ -2,16 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\ApprovalStep;
 use App\Models\Leave;
+use App\Models\LeaveActionLog;
 use App\Models\LeaveApproval;
+use App\Models\User;
+use App\Models\UserDelegation;
+use App\Notifications\LeaveStatusChanged;
 use App\Services\LeaveService;
+use App\Services\LineNotificationService;
 use App\Services\TelegramService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class ApprovalController extends Controller
 {
     protected LeaveService $leaveService;
+
     protected TelegramService $telegramService;
 
     public function __construct(LeaveService $leaveService, TelegramService $telegramService)
@@ -28,9 +36,9 @@ class ApprovalController extends Controller
 
         if ($isSuperAdmin) {
             $leaves = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name'])
-                ->where(function($query) {
+                ->where(function ($query) {
                     $query->where('status', 'Pending')
-                          ->orWhere('cancellation_status', 'Pending');
+                        ->orWhere('cancellation_status', 'Pending');
                 })
                 ->orderBy('created_at', 'asc')
                 ->get();
@@ -43,10 +51,10 @@ class ApprovalController extends Controller
             $userRoleIds = array_unique($userRoleIds);
 
             // Get user's approval steps
-            $userRoleSteps = \App\Models\ApprovalStep::whereIn('role_id', $userRoleIds)->pluck('step_order')->toArray();
+            $userRoleSteps = ApprovalStep::whereIn('role_id', $userRoleIds)->pluck('step_order')->toArray();
 
             // Check active delegations
-            $activeDelegations = \App\Models\UserDelegation::where('delegate_id', $user->id)
+            $activeDelegations = UserDelegation::where('delegate_id', $user->id)
                 ->where('is_active', true)
                 ->where('start_date', '<=', now())
                 ->where('end_date', '>=', now())
@@ -56,8 +64,10 @@ class ApprovalController extends Controller
             foreach ($activeDelegations as $delegation) {
                 if ($delegation->user) {
                     $delRoleIds = $delegation->user->roles->pluck('id')->toArray();
-                    if ($delegation->user->role_id) $delRoleIds[] = $delegation->user->role_id;
-                    $delegatorSteps = \App\Models\ApprovalStep::whereIn('role_id', array_unique($delRoleIds))->pluck('step_order')->toArray();
+                    if ($delegation->user->role_id) {
+                        $delRoleIds[] = $delegation->user->role_id;
+                    }
+                    $delegatorSteps = ApprovalStep::whereIn('role_id', array_unique($delRoleIds))->pluck('step_order')->toArray();
                     $userRoleSteps = array_unique(array_merge($userRoleSteps, $delegatorSteps));
                 }
             }
@@ -67,14 +77,14 @@ class ApprovalController extends Controller
             }
 
             $query = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name'])
-                ->where(function($q) {
+                ->where(function ($q) {
                     $q->where('status', 'Pending')
-                      ->orWhere('cancellation_status', 'Pending');
+                        ->orWhere('cancellation_status', 'Pending');
                 })
                 ->whereIn('approval_level', $userRoleSteps);
 
             // Department Scope Isolation: If Department Head (and not Director/SuperAdmin/HR), only show leaves from own department
-            if ($isDeptHead && !$user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'เจ้าหน้าที่บุคลากร (HR)'])) {
+            if ($isDeptHead && ! $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'เจ้าหน้าที่บุคลากร (HR)'])) {
                 $deptId = $user->department_id ?? ($user->profile->department_id ?? null);
                 if ($deptId) {
                     $query->whereHas('user', function ($q) use ($deptId) {
@@ -102,34 +112,36 @@ class ApprovalController extends Controller
         // Check if substitute has accepted assignment (if substitute is assigned)
         if ($leave->substitute_id && $leave->substitute_status !== 'Accepted') {
             return response()->json([
-                'message' => 'ไม่สามารถอนุมัติได้เนื่องจากผู้ปฏิบัติงานแทนยังไม่ได้ตอบรับการมอบหมายงาน'
+                'message' => 'ไม่สามารถอนุมัติได้เนื่องจากผู้ปฏิบัติงานแทนยังไม่ได้ตอบรับการมอบหมายงาน',
             ], 422);
         }
 
         // Check if user is authorized to approve this level
-        if (!$isSuperAdmin) {
-            $currentStep = \App\Models\ApprovalStep::where('step_order', $leave->approval_level)->first();
+        if (! $isSuperAdmin) {
+            $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
             $userRoleIds = $user->roles->pluck('id')->toArray();
-            if ($user->role_id) $userRoleIds[] = $user->role_id;
-            
+            if ($user->role_id) {
+                $userRoleIds[] = $user->role_id;
+            }
+
             $isAuthorized = false;
             if ($currentStep && in_array($currentStep->role_id, $userRoleIds)) {
                 $isAuthorized = true;
-            } else if ($currentStep) {
-                $isDelegate = \App\Models\UserDelegation::where('delegate_id', $user->id)
+            } elseif ($currentStep) {
+                $isDelegate = UserDelegation::where('delegate_id', $user->id)
                     ->where('is_active', true)
                     ->where('start_date', '<=', now())
                     ->where('end_date', '>=', now())
-                    ->whereHas('user', function($q) use ($currentStep) {
+                    ->whereHas('user', function ($q) use ($currentStep) {
                         $q->where('role_id', $currentStep->role_id)
-                          ->orWhereHas('roles', fn($rq) => $rq->where('roles.id', $currentStep->role_id));
+                            ->orWhereHas('roles', fn ($rq) => $rq->where('roles.id', $currentStep->role_id));
                     })->exists();
                 if ($isDelegate) {
                     $isAuthorized = true;
                 }
             }
 
-            if (!$isAuthorized) {
+            if (! $isAuthorized) {
                 return response()->json(['message' => 'ไม่มีสิทธิ์อนุมัติในระดับนี้'], 403);
             }
         }
@@ -145,76 +157,76 @@ class ApprovalController extends Controller
                     $type = strtolower($type[1]);
                     if (in_array($type, ['jpg', 'jpeg', 'png'])) {
                         $base64Image = base64_decode($base64Image);
-                        $fileName = 'signatures/' . uniqid() . '.' . $type;
-                        \Illuminate\Support\Facades\Storage::disk('private_uploads')->put($fileName, $base64Image);
-                        $signaturePath = '/storage/' . $fileName;
+                        $fileName = 'signatures/'.uniqid().'.'.$type;
+                        Storage::disk('private_uploads')->put($fileName, $base64Image);
+                        $signaturePath = '/storage/'.$fileName;
                     }
                 }
             }
 
             LeaveApproval::create([
-                'leave_id'          => $leave->id,
-                'approver_id'       => $user->id,
-                'approver_name'     => $user->full_name_with_title,
+                'leave_id' => $leave->id,
+                'approver_id' => $user->id,
+                'approver_name' => $user->full_name_with_title,
                 'approver_position' => $profile ? $profile->position : null,
-                'signature_path'    => $signaturePath,
-                'status'            => 'Approved',
-                'comment'           => $request->comment,
-                'approved_at'       => now(),
+                'signature_path' => $signaturePath,
+                'status' => 'Approved',
+                'comment' => $request->comment,
+                'approved_at' => now(),
             ]);
 
-            \App\Models\LeaveActionLog::create([
+            LeaveActionLog::create([
                 'leave_id' => $leave->id,
                 'user_id' => $user->id,
-                'action' => 'Step Approved (Level ' . $leave->approval_level . ')',
-                'details' => $request->has('comment') && $request->comment ? ['comment' => $request->comment] : null
+                'action' => 'Step Approved (Level '.$leave->approval_level.')',
+                'details' => $request->has('comment') && $request->comment ? ['comment' => $request->comment] : null,
             ]);
 
             // Check if there is a next step
             $nextStep = null;
-            if (!$isSuperAdmin) {
-                $nextStep = \App\Models\ApprovalStep::where('step_order', '>', $leave->approval_level)
+            if (! $isSuperAdmin) {
+                $nextStep = ApprovalStep::where('step_order', '>', $leave->approval_level)
                     ->orderBy('step_order', 'asc')
                     ->first();
             }
 
-            if (!$nextStep) {
+            if (! $nextStep) {
                 // Final level reached — check balance then deduct
-                if (!$this->leaveService->hasEnoughBalance($leave)) {
+                if (! $this->leaveService->hasEnoughBalance($leave)) {
                     throw new \Exception('วันลาคงเหลือไม่เพียงพอ');
                 }
                 $this->leaveService->deductBalance($leave);
                 $leave->status = 'Approved';
-                if ($isSuperAdmin && !$leave->hr_verified_at) {
+                if ($isSuperAdmin && ! $leave->hr_verified_at) {
                     $leave->hr_verified_at = now();
 
                     // Auto-fill signatures for all approval steps (HR, Deputy, Director)
-                    $steps = \App\Models\ApprovalStep::orderBy('step_order', 'asc')->get();
+                    $steps = ApprovalStep::orderBy('step_order', 'asc')->get();
                     foreach ($steps as $st) {
-                        $stepUser = \App\Models\User::where('role_id', $st->role_id)
-                            ->orWhereHas('roles', fn($rq) => $rq->where('roles.id', $st->role_id))
+                        $stepUser = User::where('role_id', $st->role_id)
+                            ->orWhereHas('roles', fn ($rq) => $rq->where('roles.id', $st->role_id))
                             ->first();
 
                         if ($stepUser) {
                             $stepProfile = $stepUser->profile;
-                            \App\Models\LeaveApproval::firstOrCreate([
-                                'leave_id'    => $leave->id,
+                            LeaveApproval::firstOrCreate([
+                                'leave_id' => $leave->id,
                                 'approver_id' => $stepUser->id,
                             ], [
-                                'approver_name'     => $stepUser->full_name_with_title ?? $stepUser->name,
+                                'approver_name' => $stepUser->full_name_with_title ?? $stepUser->name,
                                 'approver_position' => $stepProfile ? $stepProfile->position : null,
-                                'signature_path'    => $stepProfile ? $stepProfile->signature_path : null,
-                                'status'            => 'Approved',
-                                'comment'           => '-',
-                                'approved_at'       => now(),
+                                'signature_path' => $stepProfile ? $stepProfile->signature_path : null,
+                                'status' => 'Approved',
+                                'comment' => '-',
+                                'approved_at' => now(),
                             ]);
 
-                            \App\Models\LeaveActionLog::firstOrCreate([
+                            LeaveActionLog::firstOrCreate([
                                 'leave_id' => $leave->id,
-                                'action' => 'Auto-Approved Step (Level ' . $st->step_order . ')',
+                                'action' => 'Auto-Approved Step (Level '.$st->step_order.')',
                             ], [
                                 'user_id' => $user->id,
-                                'details' => ['reason' => 'Auto-approved by Super Admin']
+                                'details' => ['reason' => 'Auto-approved by Super Admin'],
                             ]);
                         }
                     }
@@ -228,19 +240,19 @@ class ApprovalController extends Controller
 
         // Notify user if fully approved
         if ($leave->status === 'Approved') {
-            $leave->user->notify(new \App\Notifications\LeaveStatusChanged($leave, 'Approved', $user->name));
+            $leave->user->notify(new LeaveStatusChanged($leave, 'Approved', $user->name));
             $startDateStr = $leave->start_date ? $leave->start_date->format('d/m/Y') : '';
             $endDateStr = $leave->end_date ? $leave->end_date->format('d/m/Y') : '';
             $msg = "✅ ใบลาของท่านได้รับการอนุมัติเรียบร้อยแล้ว\n"
-                 . "ประเภท: " . ($leave->type->name ?? 'การลา') . "\n"
-                 . "ตั้งแต่วันที่: {$startDateStr}\n"
-                 . "ถึงวันที่: {$endDateStr}";
+                 .'ประเภท: '.($leave->type->name ?? 'การลา')."\n"
+                 ."ตั้งแต่วันที่: {$startDateStr}\n"
+                 ."ถึงวันที่: {$endDateStr}";
 
             if ($leave->user->telegram_chat_id) {
                 $this->telegramService->sendMessage($leave->user->telegram_chat_id, $msg);
             }
-            
-            $lineService = new \App\Services\LineNotificationService();
+
+            $lineService = new LineNotificationService;
             $lineService->sendMessage($msg, $leave->user->line_user_id ?? null);
         }
 
@@ -258,29 +270,31 @@ class ApprovalController extends Controller
         }
 
         // Check if user is authorized to reject this level
-        if (!$isSuperAdmin) {
-            $currentStep = \App\Models\ApprovalStep::where('step_order', $leave->approval_level)->first();
+        if (! $isSuperAdmin) {
+            $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
             $userRoleIds = $user->roles->pluck('id')->toArray();
-            if ($user->role_id) $userRoleIds[] = $user->role_id;
+            if ($user->role_id) {
+                $userRoleIds[] = $user->role_id;
+            }
 
             $isAuthorized = false;
             if ($currentStep && in_array($currentStep->role_id, $userRoleIds)) {
                 $isAuthorized = true;
-            } else if ($currentStep) {
-                $isDelegate = \App\Models\UserDelegation::where('delegate_id', $user->id)
+            } elseif ($currentStep) {
+                $isDelegate = UserDelegation::where('delegate_id', $user->id)
                     ->where('is_active', true)
                     ->where('start_date', '<=', now())
                     ->where('end_date', '>=', now())
-                    ->whereHas('user', function($q) use ($currentStep) {
+                    ->whereHas('user', function ($q) use ($currentStep) {
                         $q->where('role_id', $currentStep->role_id)
-                          ->orWhereHas('roles', fn($rq) => $rq->where('roles.id', $currentStep->role_id));
+                            ->orWhereHas('roles', fn ($rq) => $rq->where('roles.id', $currentStep->role_id));
                     })->exists();
                 if ($isDelegate) {
                     $isAuthorized = true;
                 }
             }
 
-            if (!$isAuthorized) {
+            if (! $isAuthorized) {
                 return response()->json(['message' => 'ไม่มีสิทธิ์อนุมัติในระดับนี้'], 403);
             }
         }
@@ -296,40 +310,40 @@ class ApprovalController extends Controller
                     $type = strtolower($type[1]);
                     if (in_array($type, ['jpg', 'jpeg', 'png'])) {
                         $base64Image = base64_decode($base64Image);
-                        $fileName = 'signatures/' . uniqid() . '.' . $type;
-                        \Illuminate\Support\Facades\Storage::disk('private_uploads')->put($fileName, $base64Image);
-                        $signaturePath = '/storage/' . $fileName;
+                        $fileName = 'signatures/'.uniqid().'.'.$type;
+                        Storage::disk('private_uploads')->put($fileName, $base64Image);
+                        $signaturePath = '/storage/'.$fileName;
                     }
                 }
             }
 
             LeaveApproval::create([
-                'leave_id'          => $leave->id,
-                'approver_id'       => $user->id,
-                'approver_name'     => $user->full_name_with_title,
+                'leave_id' => $leave->id,
+                'approver_id' => $user->id,
+                'approver_name' => $user->full_name_with_title,
                 'approver_position' => $profile ? $profile->position : null,
-                'signature_path'    => $signaturePath,
-                'status'            => 'Rejected',
-                'comment'           => $request->comment,
-                'approved_at'       => now(),
+                'signature_path' => $signaturePath,
+                'status' => 'Rejected',
+                'comment' => $request->comment,
+                'approved_at' => now(),
             ]);
 
-            \App\Models\LeaveActionLog::create([
+            LeaveActionLog::create([
                 'leave_id' => $leave->id,
                 'user_id' => $user->id,
-                'action' => 'Step Rejected (Level ' . $leave->approval_level . ')',
-                'details' => $request->has('comment') && $request->comment ? ['comment' => $request->comment] : null
+                'action' => 'Step Rejected (Level '.$leave->approval_level.')',
+                'details' => $request->has('comment') && $request->comment ? ['comment' => $request->comment] : null,
             ]);
 
             $leave->status = 'Rejected';
             $leave->save();
         });
 
-        $leave->user->notify(new \App\Notifications\LeaveStatusChanged($leave, 'Rejected', $user->name));
+        $leave->user->notify(new LeaveStatusChanged($leave, 'Rejected', $user->name));
         if ($leave->user->telegram_chat_id) {
             $msg = "❌ ใบลาของท่านถูกปฏิเสธ\n";
             $msg .= "ประเภท: {$leave->type->name}\n";
-            $msg .= "เหตุผล: " . ($request->comment ?: 'ไม่มี');
+            $msg .= 'เหตุผล: '.($request->comment ?: 'ไม่มี');
             $this->telegramService->sendMessage($leave->user->telegram_chat_id, $msg);
         }
 

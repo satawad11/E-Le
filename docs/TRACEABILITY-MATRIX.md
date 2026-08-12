@@ -9,3 +9,7 @@
 | REQ-ATT-001 | TIME-01-WORK-SCHEDULE | TBD | TBD | Planned |
 | REQ-ATT-002 | ATT-02-DEVICE-INTEGRATION | TBD | TBD | Planned |
 | REQ-NOT-001 | NOTIFY-01-NOTIFICATION | TBD | TBD | Planned |
+| LEGACY-01-BACKUP | LEGACY-MIGRATION-PLAN 01-0 | Spatie backup, private disk, scheduler/worker | backup run + isolated restore drill | Verified |
+| LEGACY-01-CI | LEGACY-MIGRATION-PLAN 01-6 | `.github/workflows/ci.yml` | Pint, 130 tests, MySQL 8 fresh migration, Vite build | Verified |
+| LEGACY-01-OBS | LEGACY-MIGRATION-PLAN 01-7/01-8 | production guard, structured log, request context middleware | ProductionEnvironmentGuardTest, RequestContextTest | Verified |
+| LEGACY-01-LEAVE | LEGACY-MIGRATION-PLAN 01-9/01-10 | permission authorization, checked status varchar | LeaveTest, GovernmentLeaveGovernanceTest | Verified |

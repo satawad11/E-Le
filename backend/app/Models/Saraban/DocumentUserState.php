@@ -18,7 +18,7 @@ class DocumentUserState extends Model
         'user_id',
         'is_read',
         'is_pinned',
-        'is_hidden'
+        'is_hidden',
     ];
 
     protected $casts = [

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('menus')) {
+        if (! Schema::hasTable('menus')) {
             Schema::create('menus', function (Blueprint $table) {
                 $table->id();
                 $table->string('code', 100)->unique();
@@ -30,7 +30,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('menu_permissions')) {
+        if (! Schema::hasTable('menu_permissions')) {
             Schema::create('menu_permissions', function (Blueprint $table) {
                 $table->foreignId('menu_id')->constrained('menus')->cascadeOnDelete();
                 $table->foreignId('permission_id')->constrained('permissions')->cascadeOnDelete();

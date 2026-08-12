@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\UserDelegation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -30,24 +32,24 @@ class ProfileController extends Controller
         $user->telegram_chat_id = $request->telegram_chat_id;
         $user->line_user_id = $request->line_user_id;
         $user->notification_channel = $request->notification_channel ?? 'both';
-        
+
         if ($request->filled('password')) {
             $user->password = bcrypt($request->password);
         }
-        
+
         $user->save();
 
         if ($request->has('profile')) {
             $allowedProfileFields = [
-                'house_registration_number', 'house_number', 'moo', 'soi', 'road', 
+                'house_registration_number', 'house_number', 'moo', 'soi', 'road',
                 'province', 'district', 'sub_district', 'zipcode',
                 'fax', 'website',
                 // ไม่รับ 'religion'/'ethnicity' อีกต่อไป — ข้อมูลอ่อนไหวตาม ม.26 ที่ระบบไม่ได้ใช้
             ];
-            
+
             $profileData = is_string($request->profile) ? json_decode($request->profile, true) : $request->profile;
             $filteredData = [];
-            
+
             foreach ($allowedProfileFields as $field) {
                 if (isset($profileData[$field])) {
                     $filteredData[$field] = $profileData[$field];
@@ -56,27 +58,27 @@ class ProfileController extends Controller
 
             if ($request->hasFile('profile_photo')) {
                 $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
-                $filteredData['profile_photo_path'] = '/storage/' . $path;
+                $filteredData['profile_photo_path'] = '/storage/'.$path;
             }
 
             if ($request->hasFile('signature_file')) {
                 $path = $request->file('signature_file')->store('signatures', 'private_uploads');
-                $filteredData['signature_path'] = '/storage/' . $path;
-            } else if ($request->filled('signature_base64')) {
+                $filteredData['signature_path'] = '/storage/'.$path;
+            } elseif ($request->filled('signature_base64')) {
                 $base64 = $request->signature_base64;
                 if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
                     $base64 = substr($base64, strpos($base64, ',') + 1);
                     $type = strtolower($type[1]); // jpg, png, gif
                     $base64 = base64_decode($base64);
                     if ($base64 !== false) {
-                        $fileName = 'signatures/' . uniqid() . '.' . $type;
-                        \Illuminate\Support\Facades\Storage::disk('private_uploads')->put($fileName, $base64);
-                        $filteredData['signature_path'] = '/storage/' . $fileName;
+                        $fileName = 'signatures/'.uniqid().'.'.$type;
+                        Storage::disk('private_uploads')->put($fileName, $base64);
+                        $filteredData['signature_path'] = '/storage/'.$fileName;
                     }
                 }
             }
 
-            if (!empty($filteredData)) {
+            if (! empty($filteredData)) {
                 $user->profile()->updateOrCreate(
                     ['user_id' => $user->id],
                     $filteredData
@@ -86,26 +88,26 @@ class ProfileController extends Controller
             $filteredData = [];
             if ($request->hasFile('profile_photo')) {
                 $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
-                $filteredData['profile_photo_path'] = '/storage/' . $path;
+                $filteredData['profile_photo_path'] = '/storage/'.$path;
             }
             if ($request->hasFile('signature_file')) {
                 $path = $request->file('signature_file')->store('signatures', 'private_uploads');
-                $filteredData['signature_path'] = '/storage/' . $path;
-            } else if ($request->filled('signature_base64')) {
+                $filteredData['signature_path'] = '/storage/'.$path;
+            } elseif ($request->filled('signature_base64')) {
                 $base64 = $request->signature_base64;
                 if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
                     $base64 = substr($base64, strpos($base64, ',') + 1);
                     $type = strtolower($type[1]);
                     $base64 = base64_decode($base64);
                     if ($base64 !== false) {
-                        $fileName = 'signatures/' . uniqid() . '.' . $type;
-                        \Illuminate\Support\Facades\Storage::disk('private_uploads')->put($fileName, $base64);
-                        $filteredData['signature_path'] = '/storage/' . $fileName;
+                        $fileName = 'signatures/'.uniqid().'.'.$type;
+                        Storage::disk('private_uploads')->put($fileName, $base64);
+                        $filteredData['signature_path'] = '/storage/'.$fileName;
                     }
                 }
             }
 
-            if (!empty($filteredData)) {
+            if (! empty($filteredData)) {
                 $user->profile()->updateOrCreate(
                     ['user_id' => $user->id],
                     $filteredData
@@ -115,15 +117,16 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'อัปเดตข้อมูลส่วนตัวเรียบร้อยแล้ว',
-            'user' => $user->load('profile', 'department', 'roles')
+            'user' => $user->load('profile', 'department', 'roles'),
         ]);
     }
 
     public function getDelegation(Request $request)
     {
-        $delegations = \App\Models\UserDelegation::with('delegate:id,name')
+        $delegations = UserDelegation::with('delegate:id,name')
             ->where('user_id', $request->user()->id)
             ->get();
+
         return response()->json($delegations);
     }
 
@@ -133,21 +136,21 @@ class ProfileController extends Controller
             'delegate_id' => 'required|exists:users,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
 
-        $delegation = \App\Models\UserDelegation::updateOrCreate(
+        $delegation = UserDelegation::updateOrCreate(
             ['user_id' => $request->user()->id, 'delegate_id' => $request->delegate_id],
             [
                 'start_date' => $request->start_date,
                 'end_date' => $request->end_date,
-                'is_active' => $request->is_active ?? true
+                'is_active' => $request->is_active ?? true,
             ]
         );
 
         return response()->json([
             'message' => 'บันทึกการมอบหมายสำเร็จ',
-            'delegation' => $delegation->load('delegate:id,name')
+            'delegation' => $delegation->load('delegate:id,name'),
         ]);
     }
 }

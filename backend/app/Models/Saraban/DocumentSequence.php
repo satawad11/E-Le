@@ -12,6 +12,7 @@ class DocumentSequence extends Model
     use HasFactory;
 
     protected $table = 'saraban_document_sequences';
+
     protected $fillable = ['year_be', 'department_id', 'document_type_id', 'running_number'];
 
     public function department(): BelongsTo

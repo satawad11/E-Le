@@ -28,7 +28,7 @@ class StoredFile
             return null;
         }
 
-        $path = ltrim(Str::after('/' . ltrim($stored, '/'), '/storage/'), '/');
+        $path = ltrim(Str::after('/'.ltrim($stored, '/'), '/storage/'), '/');
 
         // กัน path traversal และ null byte
         if ($path === '' || str_contains($path, '..') || str_contains($path, "\0")) {

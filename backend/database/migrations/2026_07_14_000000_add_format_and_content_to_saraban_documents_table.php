@@ -9,13 +9,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('saraban_documents', function (Blueprint $table) {
-            if (!Schema::hasColumn('saraban_documents', 'creation_mode')) {
+            if (! Schema::hasColumn('saraban_documents', 'creation_mode')) {
                 $table->enum('creation_mode', ['physical', 'digital'])->default('physical')->after('id');
             }
-            if (!Schema::hasColumn('saraban_documents', 'content')) {
+            if (! Schema::hasColumn('saraban_documents', 'content')) {
                 $table->longText('content')->nullable()->after('remark');
             }
-            if (!Schema::hasColumn('saraban_documents', 'template_type')) {
+            if (! Schema::hasColumn('saraban_documents', 'template_type')) {
                 $table->string('template_type')->nullable()->after('content');
             }
         });

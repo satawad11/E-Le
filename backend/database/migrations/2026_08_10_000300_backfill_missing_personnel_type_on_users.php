@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         $defaultId = DB::table('personnel_types')->where('code', 'civil_servant')->value('id');
-        if (!$defaultId) return;
+        if (! $defaultId) {
+            return;
+        }
 
         DB::table('users')->whereNull('personnel_type_id')->update(['personnel_type_id' => $defaultId]);
     }

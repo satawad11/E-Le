@@ -25,6 +25,7 @@ class WorkCalendarController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
+
         return response()->json(WorkCalendarException::updateOrCreate(
             ['date' => $data['date'], 'department_id' => $data['department_id'] ?? null],
             $data
@@ -35,18 +36,21 @@ class WorkCalendarController extends Controller
     {
         $data = $this->validated($request, true);
         $calendarException->update($data);
+
         return $calendarException->fresh()->load('department:id,name');
     }
 
     public function destroy(WorkCalendarException $calendarException)
     {
         $calendarException->delete();
+
         return response()->noContent();
     }
 
     private function validated(Request $request, bool $partial = false): array
     {
         $sometimes = $partial ? 'sometimes' : 'required';
+
         return $request->validate([
             'date' => [$sometimes, 'date'],
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],

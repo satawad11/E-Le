@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Leave;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
 
 class FixLeaveDocumentNumbers extends Command
 {
@@ -33,7 +33,7 @@ class FixLeaveDocumentNumbers extends Command
         foreach ($leaves as $leave) {
             $prefix = $leave->type ? ($leave->type->code_prefix ?: 'L') : 'L';
             $yearMonth = Carbon::parse($leave->created_at)->format('Ym');
-            
+
             $lastLeave = Leave::where('document_number', 'like', "{$prefix}-{$yearMonth}-%")
                 ->orderBy('id', 'desc')
                 ->first();

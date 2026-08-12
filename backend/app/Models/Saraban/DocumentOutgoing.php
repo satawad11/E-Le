@@ -11,7 +11,7 @@ class DocumentOutgoing extends Model
     use HasFactory;
 
     protected $table = 'saraban_document_outgoing';
-    
+
     protected $fillable = [
         'document_id',
         'dispatch_date',

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Leave;
 use App\Services\LeaveVerificationService;
-use Illuminate\Http\Request;
 
 /**
  * ตรวจสอบใบลาที่พิมพ์ออกไปผ่าน QR — เปิดสาธารณะเช่นเดียวกับการตรวจสอบหนังสือของสารบรรณ
@@ -38,7 +37,7 @@ class LeaveVerificationController extends Controller
         return response()->json([
             'document_number' => $leave->document_number,
             'holder' => [
-                'name' => trim(($profile?->title ?? '') . ($profile?->first_name ?? '') . ' ' . ($profile?->last_name ?? '')) ?: $leave->user?->name,
+                'name' => trim(($profile?->title ?? '').($profile?->first_name ?? '').' '.($profile?->last_name ?? '')) ?: $leave->user?->name,
                 'position' => $profile?->position,
             ],
             'leave_type' => $leave->type?->name,
@@ -51,7 +50,7 @@ class LeaveVerificationController extends Controller
             'approvers' => $leave->approvals->where('status', 'Approved')
                 ->map(fn ($a) => ['name' => $a->approver_name, 'position' => $a->approver_position])->values(),
             // เอกสารถือว่าใช้อ้างอิงได้เมื่ออนุมัติแล้ว ยังไม่ถูกยกเลิก และเนื้อหาไม่ถูกแก้ไขภายหลัง
-            'is_valid' => $leave->status === 'Approved' && !$leave->trashed() && !$tampered,
+            'is_valid' => $leave->status === 'Approved' && ! $leave->trashed() && ! $tampered,
             'content_altered' => $tampered,
             'verified_at' => now()->toIso8601String(),
         ]);

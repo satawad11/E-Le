@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Department;
+use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\PersonnelType;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -48,7 +50,8 @@ class LeaveEligibilityRulesTest extends TestCase
 
     private function submit(User $user, LeaveType $type, int $weeksAhead = 1)
     {
-        $start = now()->addWeeks($weeksAhead)->next(\Carbon\Carbon::MONDAY);
+        $start = now()->addWeeks($weeksAhead)->next(Carbon::MONDAY);
+
         return $this->actingAs($user)->postJson('/api/leaves', [
             'leave_type_id' => $type->id,
             'start_date' => $start->toDateString(),
@@ -126,7 +129,7 @@ class LeaveEligibilityRulesTest extends TestCase
         [$user, $type] = $this->scenario(['once_in_career' => true]);
 
         $leaveId = $this->submit($user, $type, 1)->assertCreated()->json('leave.id');
-        \App\Models\Leave::whereKey($leaveId)->update(['status' => 'Rejected']);
+        Leave::whereKey($leaveId)->update(['status' => 'Rejected']);
 
         $this->submit($user, $type, 6)->assertCreated();
     }

@@ -59,6 +59,16 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            'dump' => [
+                'useSingleTransaction' => true,
+                // MySQL is reachable only inside the isolated Compose network;
+                // its self-signed CA is not trusted by the mysqldump client.
+                'skip_ssl' => true,
+                // The image currently provides a MariaDB client, whose compatible
+                // spelling is --skip-ssl rather than MySQL's --ssl-mode=DISABLED.
+                'ssl_flag' => 'skip-ssl',
+                'timeout' => 300,
+            ],
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

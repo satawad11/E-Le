@@ -3,8 +3,9 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
@@ -14,7 +15,7 @@ class RolesAndPermissionsSeeder extends Seeder
     public function run(): void
     {
         // Reset cached roles and permissions
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Create permissions
         $permissions = [
@@ -27,7 +28,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage_workflow_steps',
             'approve_leave',
             'view_all_attendances',
-            'export_reports'
+            'export_reports',
         ];
 
         foreach ($permissions as $permission) {
@@ -46,7 +47,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view_users',
             'approve_leave',
             'view_all_attendances',
-            'export_reports'
+            'export_reports',
         ]);
 
         // 3. Deputy Director
@@ -54,7 +55,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $deputyRole->syncPermissions([
             'approve_leave',
             'view_all_attendances',
-            'export_reports'
+            'export_reports',
         ]);
 
         // 4. Director
@@ -62,14 +63,14 @@ class RolesAndPermissionsSeeder extends Seeder
         $directorRole->syncPermissions([
             'approve_leave',
             'view_all_attendances',
-            'export_reports'
+            'export_reports',
         ]);
 
         // 5. Document Officer
         $docOfficerRole = Role::firstOrCreate(['name' => 'Document Officer', 'guard_name' => 'web']);
         $docOfficerRole->syncPermissions([
             'view_all_attendances',
-            'export_reports'
+            'export_reports',
         ]);
 
         // 6. Super Admin

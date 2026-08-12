@@ -14,10 +14,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            if (!Schema::hasColumn('users', 'line_user_id')) {
+            if (! Schema::hasColumn('users', 'line_user_id')) {
                 $table->string('line_user_id')->nullable()->after('telegram_chat_id');
             }
-            if (!Schema::hasColumn('users', 'notification_channel')) {
+            if (! Schema::hasColumn('users', 'notification_channel')) {
                 $table->string('notification_channel', 20)->default('both')->after('line_user_id');
             }
         });

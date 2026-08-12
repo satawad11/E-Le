@@ -10,8 +10,11 @@ class SarabanDocumentNotification extends Notification
     use Queueable;
 
     protected $documentId;
+
     protected $title;
+
     protected $message;
+
     protected $actionType;
 
     public function __construct($documentId, $title, $message, $actionType)
@@ -34,7 +37,7 @@ class SarabanDocumentNotification extends Notification
             'title' => $this->title,
             'message' => $this->message,
             'type' => $this->actionType,
-            'url' => "/saraban/{$this->documentId}"
+            'url' => "/saraban/{$this->documentId}",
         ];
     }
 }

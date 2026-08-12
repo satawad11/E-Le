@@ -7,15 +7,13 @@ use App\Services\SystemSettingService;
 use App\Services\TelegramService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class SecureSettingController extends Controller
 {
-    public function __construct(private readonly SystemSettingService $settings)
-    {
-    }
+    public function __construct(private readonly SystemSettingService $settings) {}
 
     public function index()
     {
@@ -33,14 +31,14 @@ class SecureSettingController extends Controller
         $unknown = array_diff(array_keys($request->all()), array_keys($rules));
         if ($unknown !== []) {
             throw ValidationException::withMessages([
-                'settings' => ['ไม่รองรับการตั้งค่า: ' . implode(', ', $unknown)],
+                'settings' => ['ไม่รองรับการตั้งค่า: '.implode(', ', $unknown)],
             ]);
         }
 
         $validated = $request->validate(Arr::only($rules, array_keys($request->all())));
         foreach (['saraban_incoming_number_format', 'saraban_outgoing_number_format'] as $formatKey) {
             if (filled($validated[$formatKey] ?? null)
-                && (!str_contains($validated[$formatKey], '{year}') || !str_contains($validated[$formatKey], '{running_number}'))) {
+                && (! str_contains($validated[$formatKey], '{year}') || ! str_contains($validated[$formatKey], '{running_number}'))) {
                 throw ValidationException::withMessages([
                     $formatKey => ['รูปแบบเลขหนังสือต้องมีตัวแปร {year} และ {running_number}'],
                 ]);
@@ -57,13 +55,14 @@ class SecureSettingController extends Controller
     public function clearSecret(Request $request, string $key)
     {
         $this->settings->clearSecret($key, $request->user(), $request->ip(), $request->userAgent());
+
         return response()->json(['message' => 'ล้างข้อมูลลับเรียบร้อยแล้ว']);
     }
 
     public function testNotification(Request $request, string $channel)
     {
         abort_unless(in_array($channel, ['line', 'telegram', 'email'], true), 404);
-        $message = 'ทดสอบการแจ้งเตือนจากระบบ E-Leave เวลา ' . now()->format('d/m/Y H:i:s');
+        $message = 'ทดสอบการแจ้งเตือนจากระบบ E-Leave เวลา '.now()->format('d/m/Y H:i:s');
 
         $sent = match ($channel) {
             'line' => app(LineNotificationService::class)->sendMessage($message),
@@ -72,7 +71,7 @@ class SecureSettingController extends Controller
             'email' => $this->sendTestEmail($request->user()->email, $message),
         };
 
-        if (!$sent) {
+        if (! $sent) {
             throw ValidationException::withMessages([
                 'channel' => ['ทดสอบไม่สำเร็จ กรุณาตรวจสอบค่าเชื่อมต่อและข้อมูลผู้รับของบัญชีผู้ดูแลระบบ'],
             ]);
@@ -91,6 +90,7 @@ class SecureSettingController extends Controller
         $oldPath = $this->settings->runtimeValues()->get('organization_logo');
         $this->settings->updateMany(['organization_logo' => null], $request->user(), $request->ip(), $request->userAgent());
         $this->deleteStoredAsset($oldPath);
+
         return response()->json(['message' => 'ลบโลโก้เรียบร้อยแล้ว']);
     }
 
@@ -104,7 +104,7 @@ class SecureSettingController extends Controller
         $request->validate(['logo' => 'required|image|mimes:jpeg,png,jpg|max:2048']);
         $oldPath = $this->settings->runtimeValues()->get($key);
         $path = $request->file('logo')->store($directory, 'private_uploads');
-        $url = '/storage/' . $path;
+        $url = '/storage/'.$path;
         $this->settings->updateMany([$key => $url], $request->user(), $request->ip(), $request->userAgent());
         $this->deleteStoredAsset($oldPath, $url);
 
@@ -113,7 +113,7 @@ class SecureSettingController extends Controller
 
     private function deleteStoredAsset(?string $url, ?string $except = null): void
     {
-        if (!$url || $url === $except || !str_starts_with($url, '/storage/')) {
+        if (! $url || $url === $except || ! str_starts_with($url, '/storage/')) {
             return;
         }
         Storage::disk('private_uploads')->delete(substr($url, strlen('/storage/')));
@@ -127,9 +127,11 @@ class SecureSettingController extends Controller
 
         try {
             Mail::raw($message, fn ($mail) => $mail->to($recipient)->subject('ทดสอบการแจ้งเตือน E-Leave'));
+
             return true;
         } catch (\Throwable $exception) {
             report($exception);
+
             return false;
         }
     }

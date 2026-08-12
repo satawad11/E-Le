@@ -11,7 +11,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::table('approval_steps')->exists()) return;
+        if (DB::table('approval_steps')->exists()) {
+            return;
+        }
 
         $defaults = [
             ['HR Head', 'ตรวจสอบโดยหัวหน้าบุคลากร'],
@@ -23,7 +25,9 @@ return new class extends Migration
         $order = 0;
         foreach ($defaults as [$roleName, $stepName]) {
             $roleId = DB::table('roles')->where('name', $roleName)->value('id');
-            if (!$roleId) continue;
+            if (! $roleId) {
+                continue;
+            }
             DB::table('approval_steps')->insert([
                 'role_id' => $roleId,
                 'step_order' => ++$order,

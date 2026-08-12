@@ -24,6 +24,7 @@ class CarryForwardLeaves extends Command
     protected $signature = 'app:carry-forward-leaves
         {--year= : ปีงบประมาณ (ค.ศ.) ที่ปิดรอบ เช่น 2026 หมายถึงทบจากปี 2026 ไป 2027}
         {--dry-run : แสดงผลที่จะเกิดขึ้นโดยไม่บันทึก}';
+
     protected $description = 'ทบวันลาคงเหลือของปีงบประมาณที่ปิดรอบ ไปเป็นวันสะสมของปีถัดไปตามนโยบายสิทธิการลา';
 
     public function handle(LeavePolicyService $policies): int
@@ -37,7 +38,7 @@ class CarryForwardLeaves extends Command
             : $policies->fiscalYearNumber($policies->fiscalYear(today()), today());
         $fromYear = $toYear - 1;
 
-        $this->info("ทบวันลาจากปีงบประมาณ " . ($fromYear + 543) . " ไปยังปี " . ($toYear + 543));
+        $this->info('ทบวันลาจากปีงบประมาณ '.($fromYear + 543).' ไปยังปี '.($toYear + 543));
 
         $carryPolicies = LeavePolicy::with(['leaveType'])
             ->where('is_active', true)
@@ -46,6 +47,7 @@ class CarryForwardLeaves extends Command
 
         if ($carryPolicies->isEmpty()) {
             $this->warn('ไม่มีนโยบายที่เปิดให้ทบวันลาข้ามปี');
+
             return self::SUCCESS;
         }
 
@@ -68,20 +70,28 @@ class CarryForwardLeaves extends Command
                     ->where('leave_type_id', $policy->leave_type_id)
                     ->where('year', $fromYear)
                     ->first();
-                if (!$previous) continue;
+                if (! $previous) {
+                    continue;
+                }
 
                 // ใบลาที่ยังค้างอนุมัติข้ามปีต้องไม่ถูกนับเป็นวันว่าง
                 $remaining = (float) $previous->quota + (float) $previous->carried_forward
                     - (float) $previous->used - (float) $previous->reserved;
-                if ($remaining <= 0) continue;
+                if ($remaining <= 0) {
+                    continue;
+                }
 
                 $carry = min($remaining, $cap);
-                if ($carry <= 0) continue;
+                if ($carry <= 0) {
+                    continue;
+                }
 
                 $rows[] = [$userId, $policy->leaveType?->name ?? $policy->leave_type_id, $remaining, $carry];
                 $count++;
 
-                if ($dryRun) continue;
+                if ($dryRun) {
+                    continue;
+                }
 
                 DB::transaction(function () use ($userId, $policy, $toYear, $carry) {
                     $next = LeaveBalance::firstOrNew([
@@ -89,7 +99,7 @@ class CarryForwardLeaves extends Command
                         'leave_type_id' => $policy->leave_type_id,
                         'year' => $toYear,
                     ]);
-                    if (!$next->exists) {
+                    if (! $next->exists) {
                         $next->quota = $policy->annual_quota ?? 0;
                         $next->used = 0;
                         $next->reserved = 0;

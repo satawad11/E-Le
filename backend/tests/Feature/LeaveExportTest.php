@@ -2,21 +2,23 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
-use App\Models\User;
-use App\Models\Role;
-use App\Models\LeaveType;
-use App\Models\LeaveBalance;
 use App\Models\Department;
 use App\Models\Leave;
+use App\Models\LeaveBalance;
+use App\Models\LeaveType;
+use App\Models\Role;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class LeaveExportTest extends TestCase
 {
     use RefreshDatabase;
 
     protected User $employee;
+
     protected LeaveType $leaveType;
+
     protected Leave $leave;
 
     protected function setUp(): void
@@ -32,26 +34,26 @@ class LeaveExportTest extends TestCase
         $this->employee->assignRole('Employee');
 
         $this->leaveType = LeaveType::create([
-            'name'     => 'ลาป่วย',
+            'name' => 'ลาป่วย',
             'max_days' => 30,
         ]);
 
         LeaveBalance::create([
-            'user_id'       => $this->employee->id,
+            'user_id' => $this->employee->id,
             'leave_type_id' => $this->leaveType->id,
-            'year'          => now()->year,
-            'quota'         => 30,
-            'used'          => 0,
+            'year' => now()->year,
+            'quota' => 30,
+            'used' => 0,
         ]);
 
         $this->leave = Leave::create([
-            'user_id'       => $this->employee->id,
+            'user_id' => $this->employee->id,
             'leave_type_id' => $this->leaveType->id,
-            'start_date'    => now()->addDays(5)->toDateString(),
-            'end_date'      => now()->addDays(6)->toDateString(),
-            'total_days'    => 2,
-            'reason'        => 'ทดสอบลาป่วย',
-            'status'        => 'Pending',
+            'start_date' => now()->addDays(5)->toDateString(),
+            'end_date' => now()->addDays(6)->toDateString(),
+            'total_days' => 2,
+            'reason' => 'ทดสอบลาป่วย',
+            'status' => 'Pending',
         ]);
     }
 

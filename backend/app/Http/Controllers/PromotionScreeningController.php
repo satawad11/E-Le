@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Leave;
 use App\Models\LeaveType;
 use App\Models\User;
+use App\Services\PersonalDataAccessLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -22,10 +23,12 @@ use Illuminate\Http\Request;
  */
 class PromotionScreeningController extends Controller
 {
-    public function __construct(private \App\Services\PersonalDataAccessLogger $accessLog) {}
+    public function __construct(private PersonalDataAccessLogger $accessLog) {}
 
     private const DEFAULT_MAX_LEAVE_DAYS = 23;
+
     private const DEFAULT_MAX_LATE_TIMES = 18;
+
     private const DEFAULT_MIN_SERVICE_MONTHS = 4;
 
     private function authorizeAccess(Request $request): void
@@ -50,12 +53,12 @@ class PromotionScreeningController extends Controller
         $this->authorizeAccess($request);
 
         $data = $request->validate([
-            'year'            => 'nullable|integer|min:2000|max:2100',
-            'round'           => 'nullable|integer|in:1,2',
-            'department_id'   => 'nullable|exists:departments,id',
+            'year' => 'nullable|integer|min:2000|max:2100',
+            'round' => 'nullable|integer|in:1,2',
+            'department_id' => 'nullable|exists:departments,id',
             'personnel_type_id' => 'nullable|exists:personnel_types,id',
-            'max_leave_days'  => 'nullable|numeric|min:0',
-            'max_late_times'  => 'nullable|integer|min:0',
+            'max_leave_days' => 'nullable|numeric|min:0',
+            'max_late_times' => 'nullable|integer|min:0',
             'min_service_months' => 'nullable|integer|min:0',
         ]);
 
@@ -107,41 +110,47 @@ class PromotionScreeningController extends Controller
             $serviceMonths = $effectiveStart->gt($to) ? 0 : $effectiveStart->diffInMonths($to);
 
             $flags = [];
-            if ($leaveDays > $maxLeaveDays) $flags[] = "ลาเกินเกณฑ์ ({$leaveDays} วัน)";
-            if ($lateTimes > $maxLateTimes) $flags[] = "มาสายเกินเกณฑ์ ({$lateTimes} ครั้ง)";
-            if ($serviceMonths < $minServiceMonths) $flags[] = "เวลาปฏิบัติราชการไม่ครบ ({$serviceMonths} เดือน)";
+            if ($leaveDays > $maxLeaveDays) {
+                $flags[] = "ลาเกินเกณฑ์ ({$leaveDays} วัน)";
+            }
+            if ($lateTimes > $maxLateTimes) {
+                $flags[] = "มาสายเกินเกณฑ์ ({$lateTimes} ครั้ง)";
+            }
+            if ($serviceMonths < $minServiceMonths) {
+                $flags[] = "เวลาปฏิบัติราชการไม่ครบ ({$serviceMonths} เดือน)";
+            }
 
             return [
-                'user_id'        => $user->id,
-                'name'           => $user->name,
-                'position'       => $user->profile?->position ?? '—',
-                'department'     => $user->department?->name ?? '—',
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'position' => $user->profile?->position ?? '—',
+                'department' => $user->department?->name ?? '—',
                 'personnel_type' => $user->personnelType?->name ?? '—',
-                'leave_times'    => $leaveTimes,
-                'leave_days'     => $leaveDays,
-                'excluded_days'  => (float) $excluded->sum('days'),
-                'late_times'     => $lateTimes,
-                'late_minutes'   => (int) ($late->minutes ?? 0),
+                'leave_times' => $leaveTimes,
+                'leave_days' => $leaveDays,
+                'excluded_days' => (float) $excluded->sum('days'),
+                'late_times' => $lateTimes,
+                'late_minutes' => (int) ($late->minutes ?? 0),
                 'service_months' => $serviceMonths,
-                'flags'          => $flags,
-                'passed'         => $flags === [],
+                'flags' => $flags,
+                'passed' => $flags === [],
             ];
         })->values();
 
         return [
-            'fiscal_year'    => $fiscalYear,
+            'fiscal_year' => $fiscalYear,
             'fiscal_year_th' => $fiscalYear + 543,
-            'round'          => $round,
-            'round_label'    => $roundLabel,
-            'period'         => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
-            'criteria'       => [
+            'round' => $round,
+            'round_label' => $roundLabel,
+            'period' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+            'criteria' => [
                 'max_leave_days' => $maxLeaveDays,
                 'max_late_times' => $maxLateTimes,
                 'min_service_months' => $minServiceMonths,
                 'excluded_leave_types' => LeaveType::where('counts_toward_promotion', false)->pluck('name'),
             ],
-            'totals'         => ['all' => $rows->count(), 'flagged' => $rows->where('passed', false)->count()],
-            'rows'           => $rows,
+            'totals' => ['all' => $rows->count(), 'flagged' => $rows->where('passed', false)->count()],
+            'rows' => $rows,
         ];
     }
 
@@ -174,7 +183,8 @@ class PromotionScreeningController extends Controller
         fclose($out);
 
         $filename = "promotion-screening-{$result['fiscal_year_th']}-r{$result['round']}.csv";
-        return response("\xEF\xBB\xBF" . $content, 200, [
+
+        return response("\xEF\xBB\xBF".$content, 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);

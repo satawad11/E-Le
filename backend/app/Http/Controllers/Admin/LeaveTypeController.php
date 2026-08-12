@@ -23,21 +23,21 @@ class LeaveTypeController extends Controller
     {
 
         $data = $request->validate([
-            'name'          => 'required|string|max:100|unique:leave_types,name',
-            'code_prefix'   => 'nullable|string|max:10|unique:leave_types,code_prefix',
-            'max_days'         => 'nullable|integer|min:1|max:3650',
-            'description'      => 'nullable|string|max:500',
-            'requires_doc'     => 'boolean',
+            'name' => 'required|string|max:100|unique:leave_types,name',
+            'code_prefix' => 'nullable|string|max:10|unique:leave_types,code_prefix',
+            'max_days' => 'nullable|integer|min:1|max:3650',
+            'description' => 'nullable|string|max:500',
+            'requires_doc' => 'boolean',
             'is_carry_forward' => 'boolean',
-            'max_carry_forward'=> 'nullable|integer|min:1|max:365',
-            'is_prorated'      => 'boolean',
+            'max_carry_forward' => 'nullable|integer|min:1|max:365',
+            'is_prorated' => 'boolean',
             'counts_toward_promotion' => 'boolean',
         ]);
 
         $leaveType = LeaveType::create($data);
 
         return response()->json([
-            'message'    => 'เพิ่มประเภทการลาเรียบร้อยแล้ว',
+            'message' => 'เพิ่มประเภทการลาเรียบร้อยแล้ว',
             'leave_type' => $leaveType,
         ], 201);
     }
@@ -49,21 +49,21 @@ class LeaveTypeController extends Controller
     {
 
         $data = $request->validate([
-            'name'         => "required|string|max:100|unique:leave_types,name,{$type->id}",
-            'code_prefix'  => "nullable|string|max:10|unique:leave_types,code_prefix,{$type->id}",
-            'max_days'         => 'nullable|integer|min:1|max:3650',
-            'description'      => 'nullable|string|max:500',
-            'requires_doc'     => 'boolean',
+            'name' => "required|string|max:100|unique:leave_types,name,{$type->id}",
+            'code_prefix' => "nullable|string|max:10|unique:leave_types,code_prefix,{$type->id}",
+            'max_days' => 'nullable|integer|min:1|max:3650',
+            'description' => 'nullable|string|max:500',
+            'requires_doc' => 'boolean',
             'is_carry_forward' => 'boolean',
-            'max_carry_forward'=> 'nullable|integer|min:1|max:365',
-            'is_prorated'      => 'boolean',
+            'max_carry_forward' => 'nullable|integer|min:1|max:365',
+            'is_prorated' => 'boolean',
             'counts_toward_promotion' => 'boolean',
         ]);
 
         $type->update($data);
 
         return response()->json([
-            'message'    => 'แก้ไขประเภทการลาเรียบร้อยแล้ว',
+            'message' => 'แก้ไขประเภทการลาเรียบร้อยแล้ว',
             'leave_type' => $type,
         ]);
     }
@@ -85,6 +85,4 @@ class LeaveTypeController extends Controller
 
         return response()->json(['message' => 'ลบประเภทการลาเรียบร้อยแล้ว']);
     }
-
-
 }

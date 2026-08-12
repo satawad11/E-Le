@@ -47,7 +47,10 @@ return new class extends Migration
                 $key = null;
                 foreach ($aliases as $candidate => $needles) {
                     foreach ($needles as $needle) {
-                        if (str_contains($leaveType->name, $needle)) { $key = $candidate; break 2; }
+                        if (str_contains($leaveType->name, $needle)) {
+                            $key = $candidate;
+                            break 2;
+                        }
                     }
                 }
 
@@ -64,7 +67,9 @@ return new class extends Migration
                     ->where('leave_type_id', $leaveType->id)
                     ->where('effective_from', self::EFFECTIVE_FROM)
                     ->exists();
-                if ($exists) continue;
+                if ($exists) {
+                    continue;
+                }
 
                 $rule = $defaults[$personnel->code][$key] ?? [null, false, null];
 
@@ -76,7 +81,7 @@ return new class extends Migration
                     'attachment_required_after_days' => $rule[2],
                     'required_evidence_type' => $rule[1] ? 'medical_certificate' : null,
                     'allow_past_dates' => $key === 'sick',
-                    'exclude_holidays' => !in_array($key, ['maternity', 'ordination', 'hajj', 'military', 'study', 'spouse'], true),
+                    'exclude_holidays' => ! in_array($key, ['maternity', 'ordination', 'hajj', 'military', 'study', 'spouse'], true),
                     'allow_half_day' => in_array($key, ['sick', 'personal', 'vacation'], true),
                     'is_carry_forward' => $key === 'vacation',
                     'max_carry_forward' => $personnel->code === 'government_employee' ? 5 : 20,

@@ -23,6 +23,7 @@ class LeaveRegisterReportTest extends TestCase
     {
         $hr = User::factory()->create();
         $hr->givePermissionTo(Permission::findOrCreate('leave.report.view', 'web'));
+
         return $hr;
     }
 
@@ -35,12 +36,14 @@ class LeaveRegisterReportTest extends TestCase
 
         $leave = Leave::create([
             'user_id' => $user->id, 'leave_type_id' => $type->id,
-            'document_number' => 'ลป.-2569-' . str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT),
+            'document_number' => 'ลป.-2569-'.str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT),
             'start_date' => '2026-08-10', 'end_date' => '2026-08-10',
             'total_days' => 1, 'reason' => 'ทดสอบ', 'status' => $status, 'approval_level' => 1,
         ]);
 
-        if ($deleted) $leave->delete();
+        if ($deleted) {
+            $leave->delete();
+        }
 
         return $leave;
     }

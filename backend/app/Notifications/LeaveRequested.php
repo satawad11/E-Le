@@ -2,11 +2,10 @@
 
 namespace App\Notifications;
 
+use App\Models\Leave;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use App\Models\Leave;
 
 class LeaveRequested extends Notification implements ShouldQueue
 {
@@ -41,7 +40,7 @@ class LeaveRequested extends Notification implements ShouldQueue
     {
         return [
             'leave_id' => $this->leave->id,
-            'message' => 'พนักงาน ' . $this->leave->user->name . ' ยื่นคำขอลา (' . ($this->leave->type->name ?? 'ลางาน') . ')',
+            'message' => 'พนักงาน '.$this->leave->user->name.' ยื่นคำขอลา ('.($this->leave->type->name ?? 'ลางาน').')',
             'start_date' => $this->leave->start_date->format('Y-m-d'),
             'end_date' => $this->leave->end_date->format('Y-m-d'),
         ];

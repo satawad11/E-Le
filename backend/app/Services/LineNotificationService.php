@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -20,7 +21,7 @@ class LineNotificationService
 
             if ($channelToken && $targetUserId) {
                 $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . $channelToken,
+                    'Authorization' => 'Bearer '.$channelToken,
                     'Content-Type' => 'application/json',
                 ])->post('https://api.line.me/v2/bot/message/push', [
                     'to' => $targetUserId,
@@ -37,7 +38,8 @@ class LineNotificationService
 
             return false;
         } catch (\Exception $e) {
-            Log::error('LINE Notification Exception: ' . $e->getMessage());
+            Log::error('LINE Notification Exception: '.$e->getMessage());
+
             return false;
         }
     }
@@ -47,14 +49,14 @@ class LineNotificationService
      */
     public function notifyLeaveCreated($leave, string $userName): void
     {
-        $startDateStr = \Carbon\Carbon::parse($leave->start_date)->addYears(543)->format('d/m/Y');
-        $endDateStr = \Carbon\Carbon::parse($leave->end_date)->addYears(543)->format('d/m/Y');
-        
+        $startDateStr = Carbon::parse($leave->start_date)->addYears(543)->format('d/m/Y');
+        $endDateStr = Carbon::parse($leave->end_date)->addYears(543)->format('d/m/Y');
+
         $msg = "\n🔔 [E-Leave] มีการยื่นใบลาใหม่\n"
-             . "ผู้ยื่น: {$userName}\n"
-             . "เลขที่: {$leave->document_number}\n"
-             . "วันที่: {$startDateStr} ถึง {$endDateStr} ({$leave->total_days} วัน)\n"
-             . "เหตุผล: {$leave->reason}";
+             ."ผู้ยื่น: {$userName}\n"
+             ."เลขที่: {$leave->document_number}\n"
+             ."วันที่: {$startDateStr} ถึง {$endDateStr} ({$leave->total_days} วัน)\n"
+             ."เหตุผล: {$leave->reason}";
 
         $this->sendMessage($msg);
     }
@@ -65,9 +67,9 @@ class LineNotificationService
     public function notifySarabanDocument($document, string $action): void
     {
         $msg = "\n📄 [e-Saraban] อัปเดตหนังสือราชการ ({$action})\n"
-             . "เลขที่หนังสือ: {$document->document_number}\n"
-             . "เรื่อง: {$document->title}\n"
-             . "สถานะ: {$document->status}";
+             ."เลขที่หนังสือ: {$document->document_number}\n"
+             ."เรื่อง: {$document->title}\n"
+             ."สถานะ: {$document->status}";
 
         $this->sendMessage($msg);
     }

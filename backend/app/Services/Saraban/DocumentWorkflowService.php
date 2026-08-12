@@ -3,13 +3,18 @@
 namespace App\Services\Saraban;
 
 use App\Models\Saraban\Document;
-use App\Models\Saraban\DocumentWorkflowStep;
 use App\Models\Saraban\DocumentSignature;
+use App\Models\Saraban\DocumentWorkflowStep;
 use App\Models\Setting;
+use App\Models\User;
+use App\Notifications\SarabanDocumentNotification;
+use chillerlan\QRCode\Common\EccLevel;
+use chillerlan\QRCode\Output\QRMarkupSVG;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
 class DocumentWorkflowService
@@ -24,7 +29,7 @@ class DocumentWorkflowService
             $lastStep = DocumentWorkflowStep::where('document_id', $document->id)
                 ->orderBy('step_order', 'desc')
                 ->first();
-                
+
             $stepOrder = $lastStep ? $lastStep->step_order + 1 : 1;
 
             // Record workflow step
@@ -51,16 +56,17 @@ class DocumentWorkflowService
     public function submitDocument(Document $document, int $userId, ?string $comment = null, ?string $ip = null)
     {
         $result = $this->transitionState($document, 'pending_review', $userId, 'submitted', $comment, $ip);
-        
-        // Notify Saraban Officers (example)
-        $officers = \App\Models\User::role('Saraban Officer')->get();
-        \Illuminate\Support\Facades\Notification::send($officers, new \App\Notifications\SarabanDocumentNotification(
+
+        // Notify the registrars. Selected by permission rather than by a role name
+        // string, because the role that holds it differs between installs.
+        $officers = User::permission('saraban.document.manage_types')->get();
+        Notification::send($officers, new SarabanDocumentNotification(
             $document->id,
             "เอกสารรอตรวจสอบ: {$document->title}",
             "เอกสาร {$document->document_number} ถูกส่งเพื่อรอการตรวจสอบ",
             'submitted'
         ));
-        
+
         return $result;
     }
 
@@ -71,16 +77,16 @@ class DocumentWorkflowService
     {
         $newState = $document->status === 'pending_review' ? 'pending_approval' : 'approved_pending_signature';
         $result = $this->transitionState($document, $newState, $userId, 'approved', $comment, $ip);
-        
+
         if ($document->creator) {
-            $document->creator->notify(new \App\Notifications\SarabanDocumentNotification(
+            $document->creator->notify(new SarabanDocumentNotification(
                 $document->id,
-                "เอกสารได้รับการอนุมัติ",
+                'เอกสารได้รับการอนุมัติ',
                 "เอกสาร {$document->title} ของคุณได้รับการอนุมัติแล้ว",
                 'approved'
             ));
         }
-        
+
         return $result;
     }
 
@@ -90,35 +96,37 @@ class DocumentWorkflowService
     public function rejectDocument(Document $document, int $userId, string $comment, ?string $ip = null)
     {
         $result = $this->transitionState($document, 'draft', $userId, 'rejected', $comment, $ip);
-        
+
         if ($document->creator) {
-            $document->creator->notify(new \App\Notifications\SarabanDocumentNotification(
+            $document->creator->notify(new SarabanDocumentNotification(
                 $document->id,
-                "เอกสารถูกตีกลับ",
+                'เอกสารถูกตีกลับ',
                 "เอกสาร {$document->title} ของคุณถูกตีกลับ: {$comment}",
                 'rejected'
             ));
         }
-        
+
         return $result;
     }
 
     /**
      * Sign a document electronically.
      */
-    public function signDocument(Document $document, \App\Models\User $user, ?string $password = null, ?string $ip = null, ?string $userAgent = null)
+    public function signDocument(Document $document, User $user, ?string $password = null, ?string $ip = null, ?string $userAgent = null, ?string $mode = null)
     {
         $requirePin = Setting::where('key', 'require_pin_for_signature')->first();
-        $isRequirePin = $requirePin && $requirePin->value === '1';
+        // Default to requiring the PIN when the setting row is absent, so a missing
+        // setting can never silently downgrade signing to no identity check at all.
+        $isRequirePin = $requirePin ? $requirePin->value === '1' : true;
 
         if ($isRequirePin) {
-            if (!$password || !Hash::check($password, $user->password)) {
+            if (! $password || ! Hash::check($password, $user->password)) {
                 throw new \Exception('รหัสผ่านไม่ถูกต้อง ไม่สามารถลงนามได้');
             }
         }
 
-        return DB::transaction(function () use ($document, $user, $ip, $userAgent) {
-            $hashString = $document->id . '-' . $user->id . '-' . now()->timestamp . '-' . Str::random(10);
+        return DB::transaction(function () use ($document, $user, $ip, $userAgent, $mode) {
+            $hashString = $document->id.'-'.$user->id.'-'.now()->timestamp.'-'.Str::random(10);
             $signatureHash = hash('sha256', $hashString);
 
             DocumentSignature::create([
@@ -127,6 +135,7 @@ class DocumentWorkflowService
                 'signature_hash' => $signatureHash,
                 'ip_address' => $ip,
                 'user_agent' => $userAgent,
+                'mode' => $mode ?: 'esignature',
                 'signed_at' => now(),
             ]);
 
@@ -144,15 +153,16 @@ class DocumentWorkflowService
     {
         // php-qrcode v6 เลิกใช้ค่าคงที่ OUTPUT_*/ECC_* แล้ว ต้องระบุ outputInterface แทน
         $options = new QROptions([
-            'version'         => 5,
-            'outputInterface' => \chillerlan\QRCode\Output\QRMarkupSVG::class,
-            'eccLevel'        => \chillerlan\QRCode\Common\EccLevel::L,
+            'version' => 5,
+            'outputInterface' => QRMarkupSVG::class,
+            'eccLevel' => EccLevel::L,
             // controller ส่งกลับเป็น image/svg+xml จึงต้องได้ SVG ดิบ ไม่ใช่ data URI
-            'outputBase64'    => false,
+            'outputBase64' => false,
             'svgUseFillAttributes' => false,
         ]);
 
         $qrcode = new QRCode($options);
+
         return $qrcode->render($verificationUrl);
     }
 }

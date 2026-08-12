@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['user_id', 'leave_type_id', 'year', 'quota', 'carried_forward', 'used', 'reserved', 'leave_policy_id'])]
 class LeaveBalance extends Model

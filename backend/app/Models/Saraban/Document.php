@@ -6,17 +6,18 @@ use App\Models\Department;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Document extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $table = 'saraban_documents';
-    
+
     protected $fillable = [
         'document_number',
         'title',
@@ -34,6 +35,9 @@ class Document extends Model
         'allow_download',
         'incoming_document_number',
         'incoming_date',
+        'creation_mode',
+        'content',
+        'template_type',
     ];
 
     public function type(): BelongsTo
@@ -71,11 +75,11 @@ class Document extends Model
         return $this->hasMany(AuditLog::class, 'document_id');
     }
 
-    public function receivers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function receivers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'saraban_document_receivers', 'document_id', 'user_id')
-                    ->withPivot('read_at')
-                    ->withTimestamps();
+            ->withPivot('read_at')
+            ->withTimestamps();
     }
 
     public function userStates(): HasMany

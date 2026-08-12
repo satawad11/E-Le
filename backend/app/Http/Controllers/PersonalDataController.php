@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attendance;
 use App\Models\Leave;
+use App\Models\LeaveEvidence;
+use App\Services\PersonalDataAccessLogger;
 use Illuminate\Http\Request;
 
 /**
@@ -13,7 +16,7 @@ use Illuminate\Http\Request;
  */
 class PersonalDataController extends Controller
 {
-    public function __construct(private \App\Services\PersonalDataAccessLogger $accessLog) {}
+    public function __construct(private PersonalDataAccessLogger $accessLog) {}
 
     /**
      * ประวัติว่าใครเปิดดูข้อมูลส่วนบุคคลของผู้ใช้ที่ล็อกอินอยู่บ้าง
@@ -37,15 +40,15 @@ class PersonalDataController extends Controller
             ->get();
 
         $leaves = $leaveRecords->map(fn (Leave $l) => [
-                'document_number' => $l->document_number,
-                'leave_type'      => $l->type?->name,
-                'start_date'      => $l->start_date?->toDateString(),
-                'end_date'        => $l->end_date?->toDateString(),
-                'total_days'      => (float) $l->total_days,
-                'reason'          => $l->reason,
-                'status'          => $l->status,
-                'submitted_at'    => $l->submitted_at?->toIso8601String(),
-            ]);
+            'document_number' => $l->document_number,
+            'leave_type' => $l->type?->name,
+            'start_date' => $l->start_date?->toDateString(),
+            'end_date' => $l->end_date?->toDateString(),
+            'total_days' => (float) $l->total_days,
+            'reason' => $l->reason,
+            'status' => $l->status,
+            'submitted_at' => $l->submitted_at?->toIso8601String(),
+        ]);
 
         $profile = $user->profile;
 
@@ -83,7 +86,7 @@ class PersonalDataController extends Controller
                 ]),
             ] : null,
             'leaves' => $leaves,
-            'attendance_records' => \App\Models\Attendance::where('user_id', $user->id)
+            'attendance_records' => Attendance::where('user_id', $user->id)
                 ->orderBy('date')
                 ->get(['date', 'check_in_time', 'check_out_time', 'status', 'late_minutes'])
                 ->map(fn ($a) => [
@@ -91,7 +94,7 @@ class PersonalDataController extends Controller
                     'check_out_time' => $a->check_out_time, 'status' => $a->status,
                     'late_minutes' => $a->late_minutes,
                 ]),
-            'leave_evidences' => \App\Models\LeaveEvidence::whereIn('leave_id', $leaveRecords->pluck('id'))
+            'leave_evidences' => LeaveEvidence::whereIn('leave_id', $leaveRecords->pluck('id'))
                 ->get(['leave_id', 'evidence_type', 'original_name', 'created_at', 'purged_at'])
                 ->map(fn ($e) => [
                     'leave_id' => $e->leave_id, 'evidence_type' => $e->evidence_type,
@@ -102,7 +105,7 @@ class PersonalDataController extends Controller
             'access_history' => $this->accessLog->historyFor($user),
         ];
 
-        $filename = 'personal-data-' . $user->id . '-' . now()->format('Ymd') . '.json';
+        $filename = 'personal-data-'.$user->id.'-'.now()->format('Ymd').'.json';
 
         return response()->json($payload, 200, [
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",

@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Seeder;
 
 class UpdateUserNamesSeeder extends Seeder
 {
@@ -47,23 +46,23 @@ class UpdateUserNamesSeeder extends Seeder
                 'title' => 'นางสาว',
                 'first_name' => 'สมหญิง',
                 'last_name' => 'รักเรียน',
-            ]
+            ],
         ];
 
         foreach ($users as $index => $user) {
             $nameData = $thaiNames[$index % count($thaiNames)];
-            $fullName = $nameData['first_name'] . ' ' . $nameData['last_name'];
-            
+            $fullName = $nameData['first_name'].' '.$nameData['last_name'];
+
             // Update user's name
             $user->update(['name' => $fullName]);
-            
+
             // Update or create user profile
             $user->profile()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
                     'title' => $nameData['title'],
                     'first_name' => $nameData['first_name'],
-                    'last_name' => $nameData['last_name']
+                    'last_name' => $nameData['last_name'],
                 ]
             );
         }

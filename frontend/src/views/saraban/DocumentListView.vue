@@ -259,6 +259,7 @@ import { useSarabanDocumentStore } from '../../stores/useSarabanDocumentStore'
 import { useAuthStore } from '../../stores/auth'
 import Swal from 'sweetalert2'
 import api from '../../axios'
+import { sarabanStatusConfig } from '../../utils/statusHelper'
 
 const store = useSarabanDocumentStore()
 const authStore = useAuthStore()
@@ -290,19 +291,7 @@ const secrecyLabel = (val) => {
   return map[val] || val
 }
 
-const statusConfig = (status) => {
-  const map = {
-    'draft': { label: 'ฉบับร่าง', class: 'bg-gray-100 text-gray-800 border-gray-200' },
-    'pending': { label: 'รอดำเนินการ', class: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-    'approved': { label: 'อนุมัติแล้ว', class: 'bg-green-100 text-green-800 border-green-200' },
-    'completed': { label: 'เสร็จสิ้น', class: 'bg-blue-100 text-blue-800 border-blue-200' },
-    'dispatched': { label: 'เสร็จสิ้น', class: 'bg-blue-100 text-blue-800 border-blue-200' },
-    'rejected': { label: 'ไม่อนุมัติ', class: 'bg-red-100 text-red-800 border-red-200' },
-    'cancelled': { label: 'ยกเลิก', class: 'bg-red-100 text-red-800 border-red-200' },
-    'published': { label: 'เผยแพร่', class: 'bg-indigo-100 text-indigo-800 border-indigo-200' }
-  }
-  return map[status?.toLowerCase()] || { label: status, class: 'bg-gray-100 text-gray-800 border-gray-200' }
-}
+const statusConfig = (status) => sarabanStatusConfig(status)
 
 // Pagination helper — แสดงเลขหน้าแบบ smart (ไม่ overflow เมื่อมีหลายหน้า)
 const pageNumbers = computed(() => {

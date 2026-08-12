@@ -24,6 +24,7 @@ export const useSarabanDocumentStore = defineStore('sarabanDocument', {
         if (filters.search) params.search = filters.search
         if (filters.tab && filters.tab !== 'all') params.tab = filters.tab
         if (filters.type_id) params.type_id = filters.type_id
+        if (filters.direction) params.direction = filters.direction
 
         const response = await api.get('/saraban/documents', { params })
         this.documents = response.data.data

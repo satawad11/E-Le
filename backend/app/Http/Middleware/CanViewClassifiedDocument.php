@@ -2,10 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Saraban\Document;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use App\Models\Saraban\Document;
 
 class CanViewClassifiedDocument
 {
@@ -13,11 +13,17 @@ class CanViewClassifiedDocument
     {
         $document = $request->route('document');
 
-        if ($document instanceof Document) {
-            if ($document->secrecy !== 'normal') {
-                if (!auth()->user()->hasRole('admin_saraban')) {
-                    abort(403, 'Unauthorized to view classified documents.');
-                }
+        // Some routes bind the raw id instead of the model.
+        if (! $document instanceof Document) {
+            $id = $request->route('id');
+            $document = $id ? Document::find($id) : null;
+        }
+
+        if ($document instanceof Document && $document->secrecy !== 'normal') {
+            $user = $request->user();
+
+            if (! $user || ! $user->can('saraban.document.view_classified')) {
+                abort(403, 'คุณไม่มีสิทธิ์เข้าถึงหนังสือชั้นความลับ');
             }
         }
 

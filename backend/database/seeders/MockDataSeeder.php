@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Department;
 use App\Models\Setting;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Seeder;
 
 class MockDataSeeder extends Seeder
 {

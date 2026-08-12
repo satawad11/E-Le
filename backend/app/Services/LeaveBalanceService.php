@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\FiscalYear;
 use App\Models\LeaveType;
 use App\Models\User;
-use App\Models\FiscalYear;
 use Carbon\Carbon;
 
 class LeaveBalanceService
@@ -16,7 +16,7 @@ class LeaveBalanceService
     public function calculateQuota(User $user, LeaveType $leaveType, FiscalYear $fiscalYear): float
     {
         // If not prorated, just return max_days
-        if (!$leaveType->is_prorated) {
+        if (! $leaveType->is_prorated) {
             return (float) $leaveType->max_days;
         }
 
@@ -25,7 +25,7 @@ class LeaveBalanceService
             $startDate = Carbon::parse($user->profile->start_date);
         }
 
-        if (!$startDate) {
+        if (! $startDate) {
             return (float) $leaveType->max_days;
         }
 
@@ -49,7 +49,7 @@ class LeaveBalanceService
         $daysWorked = $startDate->diffInDays($fyEnd) + 1;
 
         $prorated = ($daysWorked / $daysInYear) * $leaveType->max_days;
-        
+
         // Round to nearest 0.5 (half day)
         return floor($prorated * 2) / 2;
     }

@@ -36,7 +36,7 @@ class PurgeAndMigrateTo7StandardRolesSeeder extends Seeder
 
             if (str_contains($user->email, 'superadmin') || in_array('Super Admin', $currentRoleNames) || in_array('SuperAdmin', $currentRoleNames) || in_array('ผู้ดูแลระบบสูงสุด', $currentRoleNames)) {
                 $targetRole = 'ผู้ดูแลระบบสูงสุด';
-            } elseif ((str_contains($user->email, 'director') && !str_contains($user->email, 'deputy')) || in_array('Director', $currentRoleNames) || in_array('ผู้อำนวยการ', $currentRoleNames)) {
+            } elseif ((str_contains($user->email, 'director') && ! str_contains($user->email, 'deputy')) || in_array('Director', $currentRoleNames) || in_array('ผู้อำนวยการ', $currentRoleNames)) {
                 $targetRole = 'ผู้อำนวยการ';
             } elseif (str_contains($user->email, 'deputy') || in_array('Deputy Director', $currentRoleNames) || in_array('DeputyDirector', $currentRoleNames) || in_array('รองผู้อำนวยการ', $currentRoleNames)) {
                 $targetRole = 'รองผู้อำนวยการ';

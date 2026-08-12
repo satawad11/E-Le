@@ -20,10 +20,10 @@ return new class extends Migration
     {
         Schema::table('leave_types', function (Blueprint $table) {
             $table->dropColumn([
-                'exclude_holidays', 
-                'notice_period_days', 
-                'allow_past_dates', 
-                'require_attachment_after_days'
+                'exclude_holidays',
+                'notice_period_days',
+                'allow_past_dates',
+                'require_attachment_after_days',
             ]);
         });
     }

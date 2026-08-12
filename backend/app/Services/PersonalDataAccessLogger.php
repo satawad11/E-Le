@@ -16,7 +16,9 @@ class PersonalDataAccessLogger
     public function record(Request $request, int $subjectId, string $resource, ?string $purpose = null): void
     {
         $actor = $request->user();
-        if (!$actor || $actor->id === $subjectId) return;
+        if (! $actor || $actor->id === $subjectId) {
+            return;
+        }
 
         try {
             DB::table('personal_data_access_logs')->insert([
@@ -43,7 +45,9 @@ class PersonalDataAccessLogger
     public function recordBulk(Request $request, string $resource, int $subjectCount, ?string $purpose = null): void
     {
         $actor = $request->user();
-        if (!$actor) return;
+        if (! $actor) {
+            return;
+        }
 
         try {
             DB::table('personal_data_access_logs')->insert([

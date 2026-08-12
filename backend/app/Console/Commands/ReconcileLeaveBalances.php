@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 class ReconcileLeaveBalances extends Command
 {
     protected $signature = 'leave:reconcile-balances {--dry-run : แสดงผลที่จะแก้โดยไม่บันทึก} {--user= : จำกัดเฉพาะ user id}';
+
     protected $description = 'คำนวณวันลาที่ใช้ไป/ที่จองไว้ใหม่จากใบลาจริง แล้วแก้ยอดใน leave_balances ให้ตรง';
 
     public function handle(LeavePolicyService $policies): int
@@ -28,7 +29,7 @@ class ReconcileLeaveBalances extends Command
             ->when($this->option('user'), fn ($q, $id) => $q->where('user_id', $id))
             ->chunkById(500, function ($leaves) use (&$expected, $policies) {
                 foreach ($leaves as $leave) {
-                    $key = $leave->user_id . '|' . $leave->leave_type_id . '|' . $policies->periodYearForLeave($leave);
+                    $key = $leave->user_id.'|'.$leave->leave_type_id.'|'.$policies->periodYearForLeave($leave);
                     $expected[$key] ??= ['used' => 0.0, 'reserved' => 0.0];
                     if ($leave->status === 'Approved') {
                         $expected[$key]['used'] += (float) $leave->total_days;
@@ -45,7 +46,7 @@ class ReconcileLeaveBalances extends Command
             ->when($this->option('user'), fn ($q, $id) => $q->where('user_id', $id))
             ->chunkById(500, function ($balances) use ($expected, $dryRun, &$fixed, &$rows) {
                 foreach ($balances as $balance) {
-                    $key = $balance->user_id . '|' . $balance->leave_type_id . '|' . $balance->year;
+                    $key = $balance->user_id.'|'.$balance->leave_type_id.'|'.$balance->year;
                     $want = $expected[$key] ?? ['used' => 0.0, 'reserved' => 0.0];
 
                     if (abs((float) $balance->used - $want['used']) < 0.001
@@ -57,12 +58,12 @@ class ReconcileLeaveBalances extends Command
                         $balance->user_id,
                         $balance->type->name ?? $balance->leave_type_id,
                         $balance->year,
-                        (float) $balance->used . ' → ' . $want['used'],
-                        (float) $balance->reserved . ' → ' . $want['reserved'],
+                        (float) $balance->used.' → '.$want['used'],
+                        (float) $balance->reserved.' → '.$want['reserved'],
                     ];
                     $fixed++;
 
-                    if (!$dryRun) {
+                    if (! $dryRun) {
                         DB::transaction(function () use ($balance, $want) {
                             $locked = LeaveBalance::whereKey($balance->id)->lockForUpdate()->first();
                             $locked->used = $want['used'];

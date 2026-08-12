@@ -12,7 +12,7 @@ class DocumentAttachment extends Model
     use HasFactory;
 
     protected $table = 'saraban_document_attachments';
-    
+
     protected $fillable = [
         'document_id',
         'name',

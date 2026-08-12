@@ -3,18 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\ApprovalStep;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class WorkflowController extends Controller
 {
-
-
     public function index(Request $request)
     {
 
         $steps = ApprovalStep::with('role')->orderBy('step_order', 'asc')->get();
+
         return response()->json($steps);
     }
 
@@ -27,7 +26,7 @@ class WorkflowController extends Controller
             'steps.*.name' => 'required|string|max:255',
         ]);
 
-        $steps = DB::transaction(function() use ($request) {
+        $steps = DB::transaction(function () use ($request) {
             // Delete all existing steps
             ApprovalStep::query()->delete();
 
@@ -45,7 +44,7 @@ class WorkflowController extends Controller
 
         return response()->json([
             'message' => 'บันทึกลำดับการอนุมัติเรียบร้อยแล้ว',
-            'steps' => ApprovalStep::with('role')->orderBy('step_order', 'asc')->get()
+            'steps' => ApprovalStep::with('role')->orderBy('step_order', 'asc')->get(),
         ]);
     }
 }

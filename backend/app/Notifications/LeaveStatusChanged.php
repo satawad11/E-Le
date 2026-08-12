@@ -2,17 +2,19 @@
 
 namespace App\Notifications;
 
+use App\Models\Leave;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
-use App\Models\Leave;
 
 class LeaveStatusChanged extends Notification implements ShouldQueue
 {
     use Queueable;
 
     public $leave;
+
     public $status;
+
     public $actionBy;
 
     /**
@@ -30,7 +32,7 @@ class LeaveStatusChanged extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database']; 
+        return ['database'];
     }
 
     /**
@@ -40,7 +42,7 @@ class LeaveStatusChanged extends Notification implements ShouldQueue
     {
         return [
             'leave_id' => $this->leave->id,
-            'message' => 'ใบลาของคุณ (' . ($this->leave->type->name ?? 'ลางาน') . ') ได้รับการปรับสถานะเป็น ' . $this->status . ' โดย ' . $this->actionBy,
+            'message' => 'ใบลาของคุณ ('.($this->leave->type->name ?? 'ลางาน').') ได้รับการปรับสถานะเป็น '.$this->status.' โดย '.$this->actionBy,
             'status' => $this->status,
         ];
     }

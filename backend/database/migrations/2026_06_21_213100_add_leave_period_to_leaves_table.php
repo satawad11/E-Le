@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::table('leaves', function (Blueprint $table) {
             $table->enum('leave_period', ['full_day', 'morning', 'afternoon'])
-                  ->default('full_day')
-                  ->after('end_date')
-                  ->comment('Period of leave: full_day, morning, afternoon');
+                ->default('full_day')
+                ->after('end_date')
+                ->comment('Period of leave: full_day, morning, afternoon');
         });
     }
 

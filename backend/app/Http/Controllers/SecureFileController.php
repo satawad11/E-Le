@@ -20,7 +20,7 @@ class SecureFileController extends Controller
 {
     public function show(Request $request, string $path)
     {
-        $relative = StoredFile::relative('/storage/' . ltrim($path, '/'));
+        $relative = StoredFile::relative('/storage/'.ltrim($path, '/'));
 
         abort_if($relative === null, 404);
 

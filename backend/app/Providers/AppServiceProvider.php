@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Saraban\Document;
+use App\Policies\Saraban\DocumentPolicy;
 use App\Services\SystemSettingService;
+use App\Support\ProductionEnvironmentGuard;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -22,11 +25,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Implicitly grant "SuperAdmin", "Super Admin", and "ผู้ดูแลระบบสูงสุด" roles all permissions
+        ProductionEnvironmentGuard::validate(
+            (string) config('app.env'),
+            (bool) config('app.debug'),
+        );
+
+        Gate::policy(Document::class, DocumentPolicy::class);
+
+        // Super Admin bypasses every ability check.
         Gate::before(function ($user, $ability) {
-            if ($user->hasRole('Super Admin') || $user->hasRole('SuperAdmin') || $user->hasRole('ผู้ดูแลระบบสูงสุด')) {
-                return true;
-            }
+            return $user->hasRole(['Super Admin', 'SuperAdmin']) ? true : null;
         });
 
         try {

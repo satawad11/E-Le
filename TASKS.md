@@ -48,12 +48,26 @@
 - [x] บันทึก test baseline / schema baseline / rowcount baseline
 - [x] บันทึก known issues (K-01 ถึง K-09 ใน `docs/KNOWN-LIMITATIONS.md`)
 - [x] สร้าง `docs/checkpoints/LEGACY-00-REPORT.md`
-- [ ] **รอการตัดสินใจ D-1 ถึง D-4 และอนุมัติให้เริ่ม LEGACY-01** ← สถานะปัจจุบัน: หยุดแล้ว
+- [x] **ได้รับการตัดสินใจ D-1 ถึง D-4 และอนุมัติให้เริ่ม LEGACY-01**
+
+## LEGACY-01 — STABILIZATION ⚠️ ดำเนินการแล้ว 2026-08-12 (มี operational gate ค้าง)
+
+รายงาน: `docs/checkpoints/LEGACY-01-REPORT.md`
+
+- [x] ลบ public/debug/test artifacts และยืนยันว่า `/fix-leaves` ไม่มี implementation
+- [x] Automated backup + restore drill + worker/scheduler
+- [x] CI: Pint, backend tests, fresh MySQL 8 migration, frontend build
+- [x] Production debug guard, structured JSON log และ `X-Request-ID`
+- [x] แก้ LeaveController null role และเปลี่ยนเป็น permission-based authorization
+- [x] เปลี่ยน `leaves.status` เป็น checked varchar รองรับ `Voided`
+- [x] เติมเมนูที่หายด้วย idempotent seeder
+- [ ] หมุน MySQL credential จริงและย้าย application ออกจาก root — รอ secret จาก deployment operator
+- [ ] ปีงบประมาณ/วันหยุด/แม่แบบเอกสาร — รอข้อมูลที่องค์กรรับรอง ห้ามสร้างข้อมูลสมมติ
 
 ## AFTER LEGACY ASSESSMENT APPROVAL
 
 - [x] LEGACY-00 Freeze & Baseline
-- [ ] LEGACY-01 Stabilization
+- [ ] LEGACY-01 Stabilization — implementation/test ผ่าน; ยังมี operational gate ตาม report
 - [ ] LEGACY-02 Security Hardening
 - [ ] LEGACY-03 Core Data Foundation
 - [ ] LEGACY-04 RBAC + ABAC

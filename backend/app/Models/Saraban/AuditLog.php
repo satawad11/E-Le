@@ -12,7 +12,7 @@ class AuditLog extends Model
     use HasFactory;
 
     protected $table = 'saraban_audit_logs';
-    
+
     protected $fillable = [
         'user_id',
         'document_id',
