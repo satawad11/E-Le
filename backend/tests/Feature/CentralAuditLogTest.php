@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Attendance;
+use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveAuditLog;
@@ -45,5 +46,7 @@ class CentralAuditLogTest extends TestCase
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'user.created', 'resource_type' => 'user', 'resource_id' => (string) $user->id]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'attendance.updated', 'resource_type' => 'attendance', 'resource_id' => (string) $attendance->id]);
+        $userAudit = AuditLog::where('action', 'user.created')->where('resource_id', (string) $user->id)->firstOrFail();
+        $this->assertArrayNotHasKey('password', $userAudit->after);
     }
 }

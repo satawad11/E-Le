@@ -45,9 +45,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Document::class, DocumentPolicy::class);
         Gate::policy(Leave::class, LeavePolicy::class);
 
-        User::created(fn (User $user) => app(AuditLogger::class)->log('user.created', 'user', $user->id, null, $user->getAttributes()));
-        User::updated(fn (User $user) => app(AuditLogger::class)->log('user.updated', 'user', $user->id, $user->getOriginal(), $user->getAttributes()));
-        User::deleted(fn (User $user) => app(AuditLogger::class)->log('user.deleted', 'user', $user->id, $user->getOriginal()));
+        User::created(fn (User $user) => app(AuditLogger::class)->log('user.created', 'user', $user->id, null, $user->attributesToArray()));
+        User::updated(fn (User $user) => app(AuditLogger::class)->log('user.updated', 'user', $user->id, collect($user->getOriginal())->except(['password', 'remember_token'])->all(), $user->attributesToArray()));
+        User::deleted(fn (User $user) => app(AuditLogger::class)->log('user.deleted', 'user', $user->id, collect($user->getOriginal())->except(['password', 'remember_token'])->all()));
         Attendance::created(fn (Attendance $attendance) => app(AuditLogger::class)->log('attendance.created', 'attendance', $attendance->id, null, $attendance->getAttributes()));
         Attendance::updated(fn (Attendance $attendance) => app(AuditLogger::class)->log('attendance.updated', 'attendance', $attendance->id, $attendance->getOriginal(), $attendance->getAttributes()));
         Attendance::deleted(fn (Attendance $attendance) => app(AuditLogger::class)->log('attendance.deleted', 'attendance', $attendance->id, $attendance->getOriginal()));
