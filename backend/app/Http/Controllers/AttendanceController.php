@@ -14,7 +14,6 @@ use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Sanctum\PersonalAccessToken;
 
 class AttendanceController extends Controller
 {
@@ -780,11 +779,8 @@ class AttendanceController extends Controller
     public function previewSummary(Request $request)
     {
         // This method is called from frontend via window.open, token is in query string
-        $token = $request->query('token');
-        $user = PersonalAccessToken::findToken($token)?->tokenable;
-        if (! $user) {
-            abort(401, 'Unauthorized');
-        }
+        // SEC-009: ยืนยันตัวตนที่ route ผ่าน auth:sanctum แล้ว ไม่รับ token ทาง query string อีก
+        $user = $request->user();
 
         $settings = Setting::pluck('value', 'key');
 
@@ -808,10 +804,7 @@ class AttendanceController extends Controller
 
     public function exportSummaryPdf(Request $request, ThaiDateService $thaiDateService)
     {
-        $token = $request->query('token');
-        if (! $token || ! PersonalAccessToken::findToken($token)?->tokenable) {
-            abort(401, 'Unauthorized');
-        }
+        // SEC-009: ยืนยันตัวตนที่ route ผ่าน auth:sanctum แล้ว ไม่รับ token ทาง query string อีก
 
         $settings = Setting::pluck('value', 'key');
         $export = true;
@@ -840,10 +833,7 @@ class AttendanceController extends Controller
 
     public function exportSummaryWord(Request $request, ThaiDateService $thaiDateService)
     {
-        $token = $request->query('token');
-        if (! $token || ! PersonalAccessToken::findToken($token)?->tokenable) {
-            abort(401, 'Unauthorized');
-        }
+        // SEC-009: ยืนยันตัวตนที่ route ผ่าน auth:sanctum แล้ว ไม่รับ token ทาง query string อีก
 
         $settings = Setting::pluck('value', 'key');
         $export = true;
@@ -1043,11 +1033,8 @@ class AttendanceController extends Controller
 
     public function previewOTSummary(Request $request)
     {
-        $token = $request->query('token');
-        $user = PersonalAccessToken::findToken($token)?->tokenable;
-        if (! $user) {
-            abort(401, 'Unauthorized');
-        }
+        // SEC-009: ยืนยันตัวตนที่ route ผ่าน auth:sanctum แล้ว ไม่รับ token ทาง query string อีก
+        $user = $request->user();
 
         $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'department_id' => $request->query('department_id')]);
         $data = $this->getOTSummaryData($request);
@@ -1069,11 +1056,8 @@ class AttendanceController extends Controller
 
     public function exportOTSummaryPdf(Request $request, ThaiDateService $thaiDateService)
     {
-        $token = $request->query('token');
-        $user = PersonalAccessToken::findToken($token)?->tokenable;
-        if (! $user) {
-            abort(401, 'Unauthorized');
-        }
+        // SEC-009: ยืนยันตัวตนที่ route ผ่าน auth:sanctum แล้ว ไม่รับ token ทาง query string อีก
+        $user = $request->user();
 
         $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'department_id' => $request->query('department_id')]);
         $data = $this->getOTSummaryData($request);
@@ -1096,11 +1080,8 @@ class AttendanceController extends Controller
 
     public function exportOTSummaryWord(Request $request, ThaiDateService $thaiDateService)
     {
-        $token = $request->query('token');
-        $user = PersonalAccessToken::findToken($token)?->tokenable;
-        if (! $user) {
-            abort(401, 'Unauthorized');
-        }
+        // SEC-009: ยืนยันตัวตนที่ route ผ่าน auth:sanctum แล้ว ไม่รับ token ทาง query string อีก
+        $user = $request->user();
 
         $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'department_id' => $request->query('department_id')]);
         $data = $this->getOTSummaryData($request);
@@ -1129,11 +1110,8 @@ class AttendanceController extends Controller
 
     public function exportOTSummaryExcel(Request $request, ThaiDateService $thaiDateService)
     {
-        $token = $request->query('token');
-        $user = PersonalAccessToken::findToken($token)?->tokenable;
-        if (! $user) {
-            abort(401, 'Unauthorized');
-        }
+        // SEC-009: ยืนยันตัวตนที่ route ผ่าน auth:sanctum แล้ว ไม่รับ token ทาง query string อีก
+        $user = $request->user();
 
         $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'department_id' => $request->query('department_id')]);
         $data = $this->getOTSummaryData($request);

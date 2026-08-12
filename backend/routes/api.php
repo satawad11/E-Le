@@ -291,15 +291,32 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
 });
 
-// We put preview and exports outside sanctum group so window.open works with ?token= query param
-Route::get('/admin/attendances/summary/preview', [AttendanceController::class, 'previewSummary']);
-Route::get('/admin/attendances/summary/export/pdf', [AttendanceController::class, 'exportSummaryPdf']);
-Route::get('/admin/attendances/summary/export/word', [AttendanceController::class, 'exportSummaryWord']);
+/*
+ * SEC-009 — รายงานสรุปการลงเวลาและ OT ของทั้งองค์กร
+ *
+ * เดิม 7 endpoint นี้อยู่ **นอก** กลุ่ม auth:sanctum โดยตั้งใจ เพื่อให้หน้าเว็บ
+ * เรียกผ่าน window.open พร้อมแนบ Sanctum token ทาง query string ได้
+ * ผลคือ token ไปโผล่ใน access log / referrer / browser history และ controller
+ * ตรวจเพียงว่า token ใช้ได้ ไม่ได้ตรวจ permission เลย — ผู้ใช้ที่ล็อกอินคนใดก็ได้
+ * จึง export ข้อมูลลงเวลาของทุกคนในองค์กรออกไปได้
+ *
+ * ย้ายเข้ามาอยู่หลัง authentication แล้วเมื่อ 2026-08-12 และให้หน้าเว็บดาวน์โหลด
+ * แบบ authenticated request (blob) แทน window.open
+ */
+Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+    Route::middleware('can:attendance.view_all')->group(function () {
+        Route::get('/admin/attendances/summary/preview', [AttendanceController::class, 'previewSummary']);
+        Route::get('/admin/attendances/summary/export/pdf', [AttendanceController::class, 'exportSummaryPdf']);
+        Route::get('/admin/attendances/summary/export/word', [AttendanceController::class, 'exportSummaryWord']);
+    });
 
-Route::get('/admin/attendances/ot-summary/preview', [AttendanceController::class, 'previewOTSummary']);
-Route::get('/admin/attendances/ot-summary/export/pdf', [AttendanceController::class, 'exportOTSummaryPdf']);
-Route::get('/admin/attendances/ot-summary/export/word', [AttendanceController::class, 'exportOTSummaryWord']);
-Route::get('/admin/attendances/ot-summary/export/excel', [AttendanceController::class, 'exportOTSummaryExcel']);
+    Route::middleware('can:attendance.ot_summary')->group(function () {
+        Route::get('/admin/attendances/ot-summary/preview', [AttendanceController::class, 'previewOTSummary']);
+        Route::get('/admin/attendances/ot-summary/export/pdf', [AttendanceController::class, 'exportOTSummaryPdf']);
+        Route::get('/admin/attendances/ot-summary/export/word', [AttendanceController::class, 'exportOTSummaryWord']);
+        Route::get('/admin/attendances/ot-summary/export/excel', [AttendanceController::class, 'exportOTSummaryExcel']);
+    });
+});
 
 // เดิมมี route `GET /api/storage/{path}` ที่เสิร์ฟไฟล์ใน storage/app/public
 // โดยไม่ต้องยืนยันตัวตน — ถอดออกแล้วเมื่อ 2026-08-12 (SEC-001)

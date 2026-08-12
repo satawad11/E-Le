@@ -160,8 +160,11 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import api from '../../axios'
+import { useAlertStore } from '../../stores/alert'
+import { openAuthenticatedReport, reportErrorMessage } from '../../utils/secureFile'
 
 const authStore = useAuthStore()
+const alertStore = useAlertStore()
 
 const loading = ref(false)
 const errorMessage = ref('')
@@ -262,26 +265,20 @@ const fetchRecords = async () => {
   }
 }
 
-const previewReport = () => {
-  const params = new URLSearchParams(filters.value).toString()
-  const token = localStorage.getItem('token')
-  const url = `${api.defaults.baseURL}/admin/attendances/summary/preview?${params}&token=${token}`
-  window.open(url, '_blank')
+// SEC-009 — เดิมแนบ Sanctum token ทาง query string แล้วเปิดด้วย window.open
+// ทำให้ token ไปโผล่ใน access log และ browser history
+// ตอนนี้ดึงผ่าน axios ที่แนบ Authorization header ให้แล้ว
+const runReport = async (path) => {
+  try {
+    await openAuthenticatedReport(path, filters.value)
+  } catch (error) {
+    alertStore.error(reportErrorMessage(error))
+  }
 }
 
-const exportPdf = () => {
-  const params = new URLSearchParams(filters.value).toString()
-  const token = localStorage.getItem('token')
-  const url = `${api.defaults.baseURL}/admin/attendances/summary/export/pdf?${params}&token=${token}`
-  window.open(url, '_blank')
-}
-
-const exportWord = () => {
-  const params = new URLSearchParams(filters.value).toString()
-  const token = localStorage.getItem('token')
-  const url = `${api.defaults.baseURL}/admin/attendances/summary/export/word?${params}&token=${token}`
-  window.open(url, '_blank')
-}
+const previewReport = () => runReport('/admin/attendances/summary/preview')
+const exportPdf = () => runReport('/admin/attendances/summary/export/pdf')
+const exportWord = () => runReport('/admin/attendances/summary/export/word')
 
 onMounted(async () => {
   await Promise.all([

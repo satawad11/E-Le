@@ -514,6 +514,9 @@ class LeaveController extends Controller
      */
     public function hrVerify(Request $request, Leave $leave)
     {
+        // SEC-004 — เดิมไม่มีการตรวจสิทธิ์เลย ผู้ใช้ทั่วไปรับรองสถิติของใครก็ได้
+        $this->authorize('hrVerify', $leave);
+
         $leave->hr_verified_by = $request->user()->id;
         $leave->hr_verified_at = now();
         $leave->save();
@@ -638,6 +641,9 @@ class LeaveController extends Controller
      */
     public function exportPdf(Request $request, Leave $leave, ThaiDateService $thaiDateService)
     {
+        // SEC-003 — เอกสารมีเหตุผลการลา ที่อยู่ติดต่อ และลายเซ็นของผู้ลาอยู่ในนั้น
+        $this->authorize('view', $leave);
+
         $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
 
         $lastLeave = Leave::where('user_id', $leave->user_id)
@@ -765,6 +771,9 @@ class LeaveController extends Controller
      */
     public function exportWord(Request $request, Leave $leave, ThaiDateService $thaiDateService)
     {
+        // SEC-003 — เช่นเดียวกับ exportPdf
+        $this->authorize('view', $leave);
+
         $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
 
         $lastLeave = Leave::where('user_id', $leave->user_id)

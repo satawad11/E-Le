@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Leave;
 use App\Models\Saraban\Document;
+use App\Policies\LeavePolicy;
 use App\Policies\Saraban\DocumentPolicy;
 use App\Services\SystemSettingService;
 use App\Support\ProductionEnvironmentGuard;
@@ -31,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Gate::policy(Document::class, DocumentPolicy::class);
+        Gate::policy(Leave::class, LeavePolicy::class);
 
         // Super Admin bypasses every ability check.
         Gate::before(function ($user, $ability) {
