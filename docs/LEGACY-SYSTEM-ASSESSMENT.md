@@ -225,6 +225,7 @@ LINE Messaging API, Telegram Bot API เท่านั้น — **ไม่ม
 
 | ID | Severity | Finding | Evidence | Recommended Action |
 |---|---|---|---|---|
+| **SEC-020** | **CRITICAL (สูงสุด)** | **`APP_KEY` รั่วผ่าน `GET /info.php`** — หน้า `phpinfo()` แสดงค่า `APP_KEY` แบบ `base64:` เต็มรูปแบบ พร้อม `DB_PASSWORD`, `DB_USERNAME`, `MAIL_PASSWORD` · เพราะ `php artisan serve` boot Laravel (โหลด `.env` เข้า `$_ENV`) แล้วเสิร์ฟ `public/*.php` ในโปรเซสเดียวกัน · **ยืนยันด้วย HTTP จริง 2026-08-12: HTTP 200, 88,033 bytes, ไม่ต้อง login และเข้าถึงได้จากอินเทอร์เน็ต** | `backend/public/info.php`, `docs/checkpoints/legacy-00/D4-EXPOSURE-VERIFICATION.md` §1 | **ปิดการเข้าถึงทันที** แล้วจึง re-key: ถอดรหัสด้วยกุญแจเดิม → เข้ารหัสใหม่ → หมุน `APP_KEY` → หมุน DB/LINE/Telegram/mail secret → เพิกถอน `personal_access_tokens` 9 รายการ · **ห้ามหมุน `APP_KEY` เฉย ๆ** จะทำให้ `id_card_number`, `passport_number`, `phone` และ settings secret ถอดรหัสไม่ได้ถาวร |
 | SEC-001 | **CRITICAL** | ไฟล์ใน `storage/app/public` เปิดสาธารณะทั้งหมด ไม่ต้อง login — รวม **ลายเซ็นบุคลากร**, **ภาพเซลฟี่ลงเวลา**, ไฟล์แนบสารบรรณ | `routes/api.php:263-273` (`GET /api/storage/{path}` อยู่นอก `auth:sanctum`) + `docker/nginx/default.conf:14-18` (`location /storage` alias ตรง) + `LeaveController.php:270` และ `ProfileController.php:63,73` เขียนลายเซ็นลง disk `public` + `AttendanceController.php:69` เขียนเซลฟี่ลง disk `public` | ย้ายทุกไฟล์บุคคลไป disk `local` (private) + endpoint ดาวน์โหลดที่ตรวจสิทธิ์; ลบ route `/api/storage/{path}`; ลบ `location /storage` ใน nginx |
 | SEC-002 | **CRITICAL** | Remote Code Execution ที่เป็นไปได้: `AttendanceController::checkIn` รับ base64 แล้วเอา **นามสกุลไฟล์จาก MIME ที่ผู้ใช้ส่งมา** ไปเขียนลง public storage โดยไม่มี whitelist — ส่ง `data:image/php;base64,...` จะได้ไฟล์ `.php`; nginx `location ~ \.php$` (regex) ชนะ `location /storage` (prefix) จึงส่งไป FastCGI ผ่าน symlink `public/storage` | `AttendanceController.php:63-73` (ไม่มี `in_array($image_type, [...])` — ต่างจาก `LeaveController.php:267` ที่มี whitelist), `backend/public/storage -> /var/www/html/storage/app/public`, `docker/nginx/default.conf:20-28` | whitelist นามสกุล + ตรวจ MIME จริงด้วย `finfo` + เก็บ private + ตั้ง `location ^~ /storage` และปิดการรัน PHP ในโฟลเดอร์อัปโหลด |
 | SEC-003 | **CRITICAL** | IDOR — ดาวน์โหลดใบลาของ **ใครก็ได้**: `GET /api/leaves/{leave}/pdf` และ `/word` ไม่มีการตรวจ ownership หรือ permission ใด ๆ ทั้งสิ้น (PDF มีชื่อ-สกุล, ตำแหน่ง, เหตุผลการลาป่วย, ที่อยู่ติดต่อ, ลายเซ็น) | `routes/api.php:64-65` (อยู่ใน group ที่มีแค่ `auth:sanctum`), `LeaveController::exportPdf:623` และ `exportWord:748` — ทั้งสองเมธอดเริ่มด้วย `$leave->load(...)` ทันที ไม่มี authorize | เพิ่ม Policy `LeavePolicy::view` + `$this->authorize('view', $leave)` และเขียน IDOR test |
@@ -245,7 +246,15 @@ LINE Messaging API, Telegram Bot API เท่านั้น — **ไม่ม
 | SEC-018 | LOW | ไม่มี CSRF protection เพราะเป็น token-based ล้วน — ยอมรับได้ แต่ `sanctum.stateful` ยังเปิดอยู่ ต้องยืนยันว่าไม่มี cookie-auth path | `config/sanctum.php:19,35` | ยืนยันแล้วปิดสิ่งที่ไม่ใช้ |
 | SEC-019 | LOW | ไม่มี rate limit เฉพาะจุดอ่อนไหว (export, ดาวน์โหลดเอกสาร) — มีแค่ throttle รวม 60/min | `routes/api.php:35` | เพิ่ม throttle รายกลุ่ม |
 
-> **สรุปความรุนแรง:** CRITICAL 6, HIGH 6, MEDIUM 5, LOW 2
+> **สรุปความรุนแรง:** CRITICAL 7, HIGH 6, MEDIUM 5, LOW 2
+>
+> 🔴 **อัปเดต 2026-08-12 — ผู้ใช้ยืนยันว่าระบบเข้าถึงได้จากอินเทอร์เน็ต**
+> ยิง HTTP จริงแบบไม่ยืนยันตัวตนแล้วยืนยันว่าเปิดเผยจริง 6 endpoint: `/info.php` (200),
+> `/test_db.php` (200), `/test.php` (200), `/fix-leaves` (200), `/api/storage/{path}` (200 — ลายเซ็น 5,093 bytes),
+> `/storage/{path}` (200 — เส้นทางที่สองผ่าน symlink)
+> ส่วน `/api/leaves/{id}/pdf` และ `/api/saraban/documents/{id}` คืน **401** → SEC-003/SEC-005
+> ต้องมีบัญชีในระบบก่อน (ตรงกับที่ประเมินไว้)
+> รายละเอียดเต็ม: `docs/checkpoints/legacy-00/D4-EXPOSURE-VERIFICATION.md`
 
 ---
 
