@@ -40,6 +40,9 @@ services:
       - DB_PASSWORD=${DB_APP_PASSWORD:?ต้องตั้งค่าใน .env}
       - LOG_CHANNEL=structured
       - PHP_CLI_SERVER_WORKERS=4
+      - SESSION_ENCRYPT=${SESSION_ENCRYPT:-true}
+      - SESSION_SECURE_COOKIE=${SESSION_SECURE_COOKIE:-true}
+      - SANCTUM_EXPIRATION=${SANCTUM_EXPIRATION:-480}
     command: >
       bash -c "if [ ! -f vendor/autoload.php ]; then composer install --ignore-platform-reqs; fi;
                php artisan migrate --force &&

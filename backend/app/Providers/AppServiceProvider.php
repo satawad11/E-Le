@@ -8,6 +8,7 @@ use App\Policies\LeavePolicy;
 use App\Policies\Saraban\DocumentPolicy;
 use App\Services\SystemSettingService;
 use App\Support\ProductionEnvironmentGuard;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -27,6 +28,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        ResetPassword::createUrlUsing(function (object $notifiable, string $token): string {
+            return rtrim((string) config('app.frontend_url'), '/')
+                .'/reset-password?token='.urlencode($token)
+                .'&email='.urlencode((string) $notifiable->getEmailForPasswordReset());
+        });
+
         ProductionEnvironmentGuard::validate(
             (string) config('app.env'),
             (bool) config('app.debug'),

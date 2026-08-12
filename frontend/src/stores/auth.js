@@ -16,6 +16,7 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     token: localStorage.getItem('token') || null,
+    tokenExpiresAt: Number(localStorage.getItem('token_expires_at')) || null,
   }),
   getters: {
     isAuthenticated: (state) => !!state.token,
@@ -158,6 +159,8 @@ export const useAuthStore = defineStore('auth', {
         this.token = response.data.access_token;
         this.user = response.data.user;
         localStorage.setItem('token', this.token);
+        this.tokenExpiresAt = Date.now() + (response.data.expires_in * 1000);
+        localStorage.setItem('token_expires_at', String(this.tokenExpiresAt));
         return true;
       } catch (error) {
         console.error('Login failed', error);
@@ -166,6 +169,9 @@ export const useAuthStore = defineStore('auth', {
     },
     async fetchUser({ force = false } = {}) {
       if (!this.token) return;
+      if (this.tokenExpiresAt && this.tokenExpiresAt - Date.now() < 30 * 60 * 1000) {
+        await this.refreshToken();
+      }
       if (this.user && !force) return this.user;
       if (fetchUserPromise) return fetchUserPromise;
 
@@ -189,6 +195,8 @@ export const useAuthStore = defineStore('auth', {
       this.user = null;
       this.token = null;
       localStorage.removeItem('token');
+      localStorage.removeItem('token_expires_at');
+      this.tokenExpiresAt = null;
 
       useLeaveStore().reset();
 
@@ -199,6 +207,13 @@ export const useAuthStore = defineStore('auth', {
       if (token) {
         api.post('/logout').catch(() => {});
       }
+    },
+    async refreshToken() {
+      const response = await api.post('/refresh-token');
+      this.token = response.data.access_token;
+      this.tokenExpiresAt = Date.now() + (response.data.expires_in * 1000);
+      localStorage.setItem('token', this.token);
+      localStorage.setItem('token_expires_at', String(this.tokenExpiresAt));
     }
   }
 });

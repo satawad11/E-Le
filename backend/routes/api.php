@@ -46,10 +46,13 @@ Route::middleware('throttle:60,1')->group(function () {
     });
 });
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/refresh-token', [AuthController::class, 'refresh'])->middleware('throttle:10,1');
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/users/list', [UserController::class, 'list']);
     Route::get('/profile', [ProfileController::class, 'show']);

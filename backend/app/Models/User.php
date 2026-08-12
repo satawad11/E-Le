@@ -23,6 +23,15 @@ class User extends Authenticatable
 
     protected $appends = ['full_name_with_title', 'role', 'role_id'];
 
+    protected static function booted(): void
+    {
+        static::updated(function (User $user) {
+            if ($user->wasChanged('password') || ($user->wasChanged('is_active') && ! $user->is_active)) {
+                $user->tokens()->delete();
+            }
+        });
+    }
+
     public function getFullNameWithTitleAttribute()
     {
         $title = $this->relationLoaded('profile') && $this->profile ? $this->profile->title : '';

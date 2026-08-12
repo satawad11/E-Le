@@ -72,7 +72,7 @@
 - [ ] LEGACY-02 Security Hardening
   - [x] LEGACY-02A File Security — private storage, MIME/size validation, UUID filenames, resource authorization, nginx deny
   - [x] LEGACY-02B Authorization & IDOR — SEC-003, SEC-004, SEC-009 ผ่านจาก commit ก่อนหน้า
-  - [ ] LEGACY-02C Authentication & Session
+  - [x] LEGACY-02C Authentication & Session — lockout, token expiry/rotation, revoke, password reset, secure production session defaults
   - [ ] LEGACY-02D E-Signature Integrity
   - [ ] LEGACY-02E General Hardening
 - [ ] LEGACY-03 Core Data Foundation

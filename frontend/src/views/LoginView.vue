@@ -105,6 +105,12 @@
             </div>
           </div>
 
+          <div class="text-right -mt-2">
+            <RouterLink to="/forgot-password" class="text-sm font-medium text-indigo-600 hover:text-indigo-700">
+              ลืมรหัสผ่าน?
+            </RouterLink>
+          </div>
+
           <!-- Submit button -->
           <button
             type="submit"

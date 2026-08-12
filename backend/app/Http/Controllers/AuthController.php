@@ -7,6 +7,9 @@ use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -23,6 +26,14 @@ class AuthController extends Controller
         ]);
 
         $loginField = $request->email;
+        $lockKey = 'login-account:'.hash('sha256', mb_strtolower(trim($loginField)));
+
+        if (RateLimiter::tooManyAttempts($lockKey, 5)) {
+            return response()->json([
+                'message' => 'บัญชีถูกล็อกชั่วคราว กรุณาลองใหม่ในภายหลัง',
+                'retry_after' => RateLimiter::availableIn($lockKey),
+            ], 429);
+        }
         $user = null;
 
         if (filter_var($loginField, FILTER_VALIDATE_EMAIL)) {
@@ -37,6 +48,7 @@ class AuthController extends Controller
         }
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
+            RateLimiter::hit($lockKey, 900);
             throw ValidationException::withMessages([
                 'email' => ['ข้อมูลการเข้าสู่ระบบไม่ถูกต้อง'],
             ]);
@@ -48,8 +60,11 @@ class AuthController extends Controller
             ]);
         }
 
+        RateLimiter::clear($lockKey);
+
         Auth::login($user);
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $expiration = (int) config('sanctum.expiration', 480);
+        $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;
 
         $user->load('department', 'profile');
         $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
@@ -59,6 +74,7 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
+            'expires_in' => $expiration * 60,
             'user' => $user,
         ]);
     }
@@ -80,6 +96,59 @@ class AuthController extends Controller
         }
 
         return response()->json(['message' => 'Logged out successfully']);
+    }
+
+    public function refresh(Request $request)
+    {
+        $user = $request->user();
+        $accessToken = $user->currentAccessToken();
+
+        if ($accessToken && method_exists($accessToken, 'delete')) {
+            $accessToken->delete();
+        }
+
+        $expiration = (int) config('sanctum.expiration', 480);
+        $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;
+
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'expires_in' => $expiration * 60,
+        ]);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+        Password::sendResetLink($request->only('email'));
+
+        // Always return the same response to prevent account enumeration.
+        return response()->json(['message' => 'หากพบบัญชี ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ให้ทางอีเมล']);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $data = $request->validate([
+            'token' => 'required|string',
+            'email' => 'required|email',
+            'password' => 'required|string|min:12|confirmed',
+        ]);
+
+        $status = Password::reset(
+            $data,
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            throw ValidationException::withMessages(['email' => ['ลิงก์ตั้งรหัสผ่านไม่ถูกต้องหรือหมดอายุ']]);
+        }
+
+        return response()->json(['message' => 'ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว']);
     }
 
     public function user(Request $request)

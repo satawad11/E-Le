@@ -22,7 +22,7 @@ class ProfileController extends Controller
             'telegram_chat_id' => 'nullable|string|max:255',
             'line_user_id' => 'nullable|string|max:255',
             'notification_channel' => 'nullable|string|in:line,telegram,both,none',
-            'password' => 'nullable|string|min:6',
+            'password' => 'nullable|string|min:12',
             'profile' => 'nullable|array',
             'signature_file' => 'nullable|image|max:2048',
             'signature_base64' => 'nullable|string',

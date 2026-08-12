@@ -40,7 +40,7 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'nullable|string|min:6',
+            'password' => 'required|string|min:12',
             'role_id' => 'required|exists:roles,id',
             'department_id' => 'required|exists:departments,id',
             'telegram_chat_id' => 'nullable|string|max:255',
@@ -52,7 +52,7 @@ class UserController extends Controller
         $profileData = $request->has('profile') ? (is_string($request->profile) ? json_decode($request->profile, true) : $request->profile) : [];
         $idCard = $profileData['id_card_number'] ?? null;
 
-        $password = $request->filled('password') ? $request->password : ($idCard ?: 'password');
+        $password = $request->password;
 
         $user = DB::transaction(function () use ($request, $profileData, $password) {
             $role = Role::find($request->role_id);
@@ -134,7 +134,7 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
-            'password' => 'nullable|string|min:6',
+            'password' => 'nullable|string|min:12',
             'role_id' => 'required|exists:roles,id',
             'department_id' => 'required|exists:departments,id',
             'telegram_chat_id' => 'nullable|string|max:255',
@@ -196,5 +196,16 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'ลบผู้ใช้เรียบร้อยแล้ว']);
+    }
+
+    public function toggleStatus(User $user)
+    {
+        $user->is_active = ! $user->is_active;
+        $user->save();
+
+        return response()->json([
+            'message' => $user->is_active ? 'เปิดใช้งานผู้ใช้แล้ว' : 'ระงับการใช้งานผู้ใช้แล้ว',
+            'user' => $user->fresh(),
+        ]);
     }
 }

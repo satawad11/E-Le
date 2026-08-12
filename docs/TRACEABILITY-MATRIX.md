@@ -15,3 +15,4 @@
 | LEGACY-01-LEAVE | LEGACY-MIGRATION-PLAN 01-9/01-10 | permission authorization, checked status varchar | LeaveTest, GovernmentLeaveGovernanceTest | Verified |
 | LEGACY-01-REFDATA | LEGACY-MIGRATION-PLAN 01-11 | FiscalYearSeeder, ThaiGovernmentHoliday2569Seeder, DocumentTemplateSeeder | BaselineReferenceDataSeederTest | Verified |
 | LEGACY-02-FILES | LEGACY-MIGRATION-PLAN 02-A | private_uploads, SecureFileAccessService, nginx storage deny, attendance MIME validation | SecureFileAuthorizationTest, AttendanceImageSecurityTest | Verified |
+| LEGACY-02-AUTH | LEGACY-MIGRATION-PLAN 02-C | account lockout, Sanctum expiry/rotation/revocation, reset flow, production session defaults | AuthenticationHardeningTest, AuthTest, frontend build | Verified |

@@ -1,5 +1,9 @@
 # DECISION LOG
 
+## ADR-005 Access token lifetime and rotation
+
+กำหนด access token เริ่มต้น 480 นาทีผ่าน `SANCTUM_EXPIRATION` และหมุน token เดิมเมื่อ refresh โดย revoke token ทั้งหมดเมื่อเปลี่ยนรหัสผ่านหรือระงับบัญชี ค่า production บังคับ session encryption และ secure cookie ผ่าน Docker environment defaults ส่วนสภาพแวดล้อม local ปรับค่าได้ใน `.env`
+
 ## ADR-004 Leave status uses checked varchar
 
 เลือกเปลี่ยน `leaves.status` จาก MySQL ENUM เป็น `VARCHAR(20)` พร้อม CHECK constraint เพื่อเพิ่ม `Voided` แบบ forward-only โดยไม่แก้ migration เก่าและไม่ทำลายประวัติเอกสารที่ void แล้ว
