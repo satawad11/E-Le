@@ -3,6 +3,10 @@
 ## Unreleased
 - Initial documentation pack created.
 
+### LEGACY-02 Security Hardening
+
+- ปิด LEGACY-02A: ตรวจ MIME/ขนาดภาพลงเวลาจาก bytes จริง, ใช้ UUID, บังคับ resource authorization สำหรับ private files และปิด `/storage` ที่ nginx
+
 ### LEGACY-01 Stabilization
 
 - เพิ่ม automated backup พร้อม restore drill, queue worker และ scheduler

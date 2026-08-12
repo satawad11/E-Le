@@ -14,3 +14,4 @@
 | LEGACY-01-OBS | LEGACY-MIGRATION-PLAN 01-7/01-8 | production guard, structured log, request context middleware | ProductionEnvironmentGuardTest, RequestContextTest | Verified |
 | LEGACY-01-LEAVE | LEGACY-MIGRATION-PLAN 01-9/01-10 | permission authorization, checked status varchar | LeaveTest, GovernmentLeaveGovernanceTest | Verified |
 | LEGACY-01-REFDATA | LEGACY-MIGRATION-PLAN 01-11 | FiscalYearSeeder, ThaiGovernmentHoliday2569Seeder, DocumentTemplateSeeder | BaselineReferenceDataSeederTest | Verified |
+| LEGACY-02-FILES | LEGACY-MIGRATION-PLAN 02-A | private_uploads, SecureFileAccessService, nginx storage deny, attendance MIME validation | SecureFileAuthorizationTest, AttendanceImageSecurityTest | Verified |

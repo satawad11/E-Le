@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\SecureFileAccessService;
 use App\Support\StoredFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -12,13 +13,12 @@ use Illuminate\Support\Facades\Storage;
  * แทนที่ route เดิม GET /api/storage/{path} และ symlink public/storage
  * ที่เปิดให้ทุกคนบนอินเทอร์เน็ตเข้าถึงลายเซ็นและภาพใบหน้าบุคลากรได้ (SEC-001)
  *
- * ข้อจำกัดที่ยังเหลือ (งาน LEGACY-02): ยังไม่มี ABAC scope รายไฟล์
- * ผู้ใช้ที่ล็อกอินแล้วยังเปิดไฟล์ของผู้อื่นได้ถ้ารู้ path
- * ต้องเพิ่ม Policy ต่อ resource เมื่อทำ LEGACY-02 §02-B
+ * บังคับ authorization จาก resource ที่อ้างถึง path นั้น และ deny by default
+ * หากไฟล์ไม่ได้ผูกกับทรัพยากรที่ผู้ใช้มีสิทธิ์
  */
 class SecureFileController extends Controller
 {
-    public function show(Request $request, string $path)
+    public function show(Request $request, string $path, SecureFileAccessService $access)
     {
         $relative = StoredFile::relative('/storage/'.ltrim($path, '/'));
 
@@ -27,6 +27,7 @@ class SecureFileController extends Controller
         $disk = Storage::disk(StoredFile::DISK);
 
         abort_unless($disk->exists($relative), 404);
+        abort_unless($access->canView($request->user(), $relative), 403);
 
         return $disk->response($relative, null, [
             'Cache-Control' => 'private, no-store',

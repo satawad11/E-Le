@@ -14,6 +14,8 @@ use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceController extends Controller
 {
@@ -25,7 +27,7 @@ class AttendanceController extends Controller
         $request->validate([
             'location' => 'nullable|string', // Format: "latitude,longitude"
             'notes' => 'nullable|string',
-            'image' => 'nullable|string', // base64
+            'image' => 'nullable|string|max:7000000', // base64 data URL, decoded size checked below
         ]);
 
         $user = auth()->user();
@@ -68,15 +70,7 @@ class AttendanceController extends Controller
 
         $imagePath = null;
         if ($request->image) {
-            $image_parts = explode(';base64,', $request->image);
-            if (count($image_parts) >= 2) {
-                $image_type_aux = explode('image/', $image_parts[0]);
-                $image_type = $image_type_aux[1] ?? 'png';
-                $image_base64 = base64_decode($image_parts[1]);
-                $fileName = 'checkin_'.$user->id.'_'.time().'.'.$image_type;
-                Storage::disk('private_uploads')->put('attendances/'.$fileName, $image_base64);
-                $imagePath = '/storage/attendances/'.$fileName;
-            }
+            $imagePath = $this->storeAttendanceImage($request->image);
         }
 
         // Determine start time and late minutes
@@ -133,7 +127,7 @@ class AttendanceController extends Controller
         $request->validate([
             'location' => 'nullable|string', // Format: "latitude,longitude"
             'notes' => 'nullable|string',
-            'image' => 'nullable|string', // base64
+            'image' => 'nullable|string|max:7000000', // base64 data URL, decoded size checked below
         ]);
 
         $user = auth()->user();
@@ -184,15 +178,7 @@ class AttendanceController extends Controller
 
         $imagePath = null;
         if ($request->image) {
-            $image_parts = explode(';base64,', $request->image);
-            if (count($image_parts) >= 2) {
-                $image_type_aux = explode('image/', $image_parts[0]);
-                $image_type = $image_type_aux[1] ?? 'png';
-                $image_base64 = base64_decode($image_parts[1]);
-                $fileName = 'checkout_'.$user->id.'_'.time().'.'.$image_type;
-                Storage::disk('private_uploads')->put('attendances/'.$fileName, $image_base64);
-                $imagePath = '/storage/attendances/'.$fileName;
-            }
+            $imagePath = $this->storeAttendanceImage($request->image);
         }
 
         // Determine early leave minutes
@@ -958,6 +944,45 @@ class AttendanceController extends Controller
         } catch (\Exception $e) {
             Log::error('LINE API Error: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Validate a selfie from its decoded bytes, never from the client-supplied extension/MIME.
+     */
+    private function storeAttendanceImage(string $dataUrl): string
+    {
+        if (! preg_match('#^data:[^;,]+;base64,(.+)$#s', $dataUrl, $matches)) {
+            throw ValidationException::withMessages([
+                'image' => 'รูปแบบไฟล์ภาพไม่ถูกต้อง',
+            ]);
+        }
+
+        $contents = base64_decode($matches[1], true);
+
+        if ($contents === false || strlen($contents) > 5 * 1024 * 1024) {
+            throw ValidationException::withMessages([
+                'image' => 'ไฟล์ภาพต้องมีขนาดไม่เกิน 5 MB',
+            ]);
+        }
+
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($contents);
+        $extension = match ($mime) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => null,
+        };
+
+        if ($extension === null) {
+            throw ValidationException::withMessages([
+                'image' => 'อนุญาตเฉพาะไฟล์ภาพ JPEG, PNG หรือ WebP',
+            ]);
+        }
+
+        $relative = 'attendances/'.Str::uuid().'.'.$extension;
+        Storage::disk('private_uploads')->put($relative, $contents);
+
+        return '/storage/'.$relative;
     }
 
     private function getOTSummaryData(Request $request)
