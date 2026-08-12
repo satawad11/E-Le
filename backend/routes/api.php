@@ -253,21 +253,14 @@ Route::get('/admin/attendances/ot-summary/export/pdf', [\App\Http\Controllers\At
 Route::get('/admin/attendances/ot-summary/export/word', [\App\Http\Controllers\AttendanceController::class, 'exportOTSummaryWord']);
 Route::get('/admin/attendances/ot-summary/export/excel', [\App\Http\Controllers\AttendanceController::class, 'exportOTSummaryExcel']);
 
-// Public file access for attachments
-Route::middleware('throttle:300,1')->get('/storage/{path}', function ($path) {
-    // Prevent directory traversal attacks
-    $path = str_replace(['..', '\\', '%00'], '', $path);
-    $fullPath = storage_path('app/public/' . ltrim($path, '/'));
-    
-    // Verify realpath to ensure it's still inside the public directory
-    $realPublicPath = realpath(storage_path('app/public'));
-    $realFullPath = realpath($fullPath);
-    
-    if ($realFullPath && file_exists($realFullPath) && strpos($realFullPath, $realPublicPath) === 0) {
-        return response()->file($realFullPath);
-    }
-    abort(404);
-})->where('path', '.*');
+// เดิมมี route `GET /api/storage/{path}` ที่เสิร์ฟไฟล์ใน storage/app/public
+// โดยไม่ต้องยืนยันตัวตน — ถอดออกแล้วเมื่อ 2026-08-12 (SEC-001)
+//
+// ตรวจแล้วว่าไม่มีโค้ดฝั่งใดเรียก route นี้: frontend ใช้ `/storage/{path}` ผ่าน
+// symlink `public/storage` และฝั่ง PDF อ่านไฟล์ตรงจาก public_path() ไม่ผ่าน HTTP
+//
+// ช่องทางดาวน์โหลดที่ตรวจสอบสิทธิ์จะถูกสร้างใน LEGACY-02 §02-A
+// แพทเทิร์นอ้างอิงที่ทำถูกอยู่แล้ว: LeaveEvidenceController::download()
 
 
 
