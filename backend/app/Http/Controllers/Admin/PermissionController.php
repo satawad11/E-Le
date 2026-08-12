@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -66,9 +67,11 @@ class PermissionController extends Controller
         ]);
 
         $permissions = $request->input('direct_permissions', []);
+        $before = $user->getDirectPermissions()->pluck('name')->all();
 
         // Spatie syncPermissions บันทึกลง pivot table อัตโนมัติ ไม่ต้องบันทึกใน users table
         $user->syncPermissions($permissions);
+        app(AuditLogger::class)->log('user.permissions_updated', 'user', $user->id, ['direct_permissions' => $before], ['direct_permissions' => $permissions]);
 
         return response()->json([
             'success' => true,

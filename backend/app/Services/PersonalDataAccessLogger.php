@@ -30,6 +30,7 @@ class PersonalDataAccessLogger
                 'user_agent' => substr((string) $request->userAgent(), 0, 255),
                 'created_at' => now(),
             ]);
+            app(AuditLogger::class)->log('personal_data.accessed', 'user', $subjectId, null, ['resource' => $resource], $purpose);
         } catch (\Throwable $e) {
             // การบันทึกล้มเหลวต้องไม่ทำให้ผู้ใช้ทำงานไม่ได้ แต่ต้องเห็นใน log ของระบบ
             Log::warning('บันทึกการเข้าถึงข้อมูลส่วนบุคคลไม่สำเร็จ', [
@@ -60,6 +61,7 @@ class PersonalDataAccessLogger
                 'user_agent' => substr((string) $request->userAgent(), 0, 255),
                 'created_at' => now(),
             ]);
+            app(AuditLogger::class)->log('personal_data.bulk_accessed', 'user_collection', null, null, ['resource' => $resource, 'subject_count' => $subjectCount], $purpose);
         } catch (\Throwable $e) {
             Log::warning('บันทึกการเข้าถึงข้อมูลส่วนบุคคลแบบรวมไม่สำเร็จ', [
                 'resource' => $resource, 'error' => $e->getMessage(),

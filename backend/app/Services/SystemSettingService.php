@@ -92,6 +92,7 @@ class SystemSettingService
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                app(AuditLogger::class)->log('settings.updated', 'settings', null, null, $changes);
             }
 
             return $changes;
@@ -118,6 +119,7 @@ class SystemSettingService
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        app(AuditLogger::class)->log('settings.secret_cleared', 'settings', $key, ['configured' => true], ['configured' => false]);
         Cache::forget('app_settings');
     }
 

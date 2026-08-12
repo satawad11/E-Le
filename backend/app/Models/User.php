@@ -38,7 +38,6 @@ class User extends Authenticatable
         static::saved(function (User $user): void {
             if ($user->wasRecentlyCreated || $user->wasChanged(['department_id', 'personnel_type_id'])) {
                 $current = PersonnelAssignment::where('user_id', $user->id)->whereNull('effective_to')->first();
-                $position = $user->profile?->position;
                 if ($current && ($current->org_unit_id !== $user->org_unit_id || $current->personnel_type_id !== $user->personnel_type_id)) {
                     $current->update(['effective_to' => now()->subDay()->toDateString()]);
                     $current = null;
@@ -49,8 +48,8 @@ class User extends Authenticatable
                         'user_id' => $user->id,
                         'org_unit_id' => $user->org_unit_id,
                         'personnel_type_id' => $user->personnel_type_id,
-                        'position' => $position,
-                        'effective_from' => $user->profile?->start_date?->toDateString() ?: now()->toDateString(),
+                        'position' => null,
+                        'effective_from' => now()->toDateString(),
                     ]);
                 }
             }

@@ -3,6 +3,7 @@
 namespace App\Models\Saraban;
 
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,6 +26,11 @@ class AuditLog extends Model
     protected $casts = [
         'payload' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(fn (AuditLog $log) => app(AuditLogger::class)->log('saraban.'.$log->action, 'saraban_document', $log->document_id, null, $log->payload));
+    }
 
     public function user(): BelongsTo
     {

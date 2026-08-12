@@ -2,10 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\Attendance;
 use App\Models\Leave;
 use App\Models\Saraban\Document;
+use App\Models\User;
 use App\Policies\LeavePolicy;
 use App\Policies\Saraban\DocumentPolicy;
+use App\Services\AuditLogger;
 use App\Services\SystemSettingService;
 use App\Support\ProductionEnvironmentGuard;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -41,6 +44,13 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(Document::class, DocumentPolicy::class);
         Gate::policy(Leave::class, LeavePolicy::class);
+
+        User::created(fn (User $user) => app(AuditLogger::class)->log('user.created', 'user', $user->id, null, $user->getAttributes()));
+        User::updated(fn (User $user) => app(AuditLogger::class)->log('user.updated', 'user', $user->id, $user->getOriginal(), $user->getAttributes()));
+        User::deleted(fn (User $user) => app(AuditLogger::class)->log('user.deleted', 'user', $user->id, $user->getOriginal()));
+        Attendance::created(fn (Attendance $attendance) => app(AuditLogger::class)->log('attendance.created', 'attendance', $attendance->id, null, $attendance->getAttributes()));
+        Attendance::updated(fn (Attendance $attendance) => app(AuditLogger::class)->log('attendance.updated', 'attendance', $attendance->id, $attendance->getOriginal(), $attendance->getAttributes()));
+        Attendance::deleted(fn (Attendance $attendance) => app(AuditLogger::class)->log('attendance.deleted', 'attendance', $attendance->id, $attendance->getOriginal()));
 
         // Super Admin bypasses every ability check.
         Gate::before(function ($user, $ability) {

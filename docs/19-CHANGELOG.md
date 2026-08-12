@@ -6,6 +6,7 @@
 ### LEGACY-03 Core Data Foundation
 
 - เพิ่ม organization hierarchy, department mapping, users.org_unit_id, effective-dated personnel assignments และ UUID สำหรับ public resources แบบ additive พร้อม backfill/dual-write
+- เพิ่ม central append-oriented audit log และ dual-write จาก Leave, Saraban, PDPA, settings พร้อม audit mutation ของ user, attendance, role และ permission
 
 ### LEGACY-02 Security Hardening
 

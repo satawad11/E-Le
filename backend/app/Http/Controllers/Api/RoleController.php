@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -67,6 +68,7 @@ class RoleController extends Controller
         if ($request->has('permission_ids')) {
             $role->permissions()->sync($request->input('permission_ids', []));
         }
+        app(AuditLogger::class)->log('role.created', 'role', $role->id, null, $role->load('permissions')->toArray());
 
         Cache::flush();
 
@@ -82,6 +84,7 @@ class RoleController extends Controller
      */
     public function update(Request $request, Role $role): JsonResponse
     {
+        $before = $role->load('permissions')->toArray();
         $request->validate([
             'name' => 'required|string|max:100|unique:roles,name,'.$role->id,
             'description' => 'nullable|string|max:255',
@@ -105,6 +108,7 @@ class RoleController extends Controller
         if ($request->has('permission_ids')) {
             $role->permissions()->sync($request->input('permission_ids', []));
         }
+        app(AuditLogger::class)->log('role.updated', 'role', $role->id, $before, $role->load('permissions')->toArray());
 
         Cache::flush();
 
@@ -135,7 +139,9 @@ class RoleController extends Controller
             ], 422);
         }
 
+        $before = $role->load('permissions')->toArray();
         $role->delete();
+        app(AuditLogger::class)->log('role.deleted', 'role', $role->id, $before);
         Cache::flush();
 
         return response()->json([
