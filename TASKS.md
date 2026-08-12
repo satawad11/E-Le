@@ -75,7 +75,7 @@
   - [x] LEGACY-02C Authentication & Session — lockout, token expiry/rotation, revoke, password reset, secure production session defaults
   - [x] LEGACY-02D E-Signature Integrity — password ทุก mode, assigned signer, sealed content hash, public throttle
   - [x] LEGACY-02E General Hardening — security headers, safe HTML rendering, generic errors, export/download throttles, route audit
-- [ ] LEGACY-03 Core Data Foundation
+- [x] LEGACY-03 Core Data Foundation — full regression 204 tests / 506 assertions ผ่าน
   - [x] LEGACY-03A Organization, Personnel & UUID foundation (03-1 ถึง 03-5)
   - [x] LEGACY-03B Central audit dual-write (03-6 ถึง 03-7)
   - [x] LEGACY-03C Document template version foundation (03-8)

@@ -5,6 +5,8 @@
 
 ### LEGACY-03 Core Data Foundation
 
+- ปิด LEGACY-03 ครบ 03-1 ถึง 03-9 (03-9 ทำไว้ใน LEGACY-01); full regression ผ่าน 204 tests / 506 assertions, Pint 316 files, Composer audit 0 advisory และ frontend build 879 modules
+
 - เพิ่ม organization hierarchy, department mapping, users.org_unit_id, effective-dated personnel assignments และ UUID สำหรับ public resources แบบ additive พร้อม backfill/dual-write
 - เพิ่ม central append-oriented audit log และ dual-write จาก Leave, Saraban, PDPA, settings พร้อม audit mutation ของ user, attendance, role และ permission
 - เพิ่ม document template versions แบบ effective-dated และ pin version บนใบลา โดยไม่ overwrite version เดิม
