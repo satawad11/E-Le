@@ -16,3 +16,4 @@
 | LEGACY-01-REFDATA | LEGACY-MIGRATION-PLAN 01-11 | FiscalYearSeeder, ThaiGovernmentHoliday2569Seeder, DocumentTemplateSeeder | BaselineReferenceDataSeederTest | Verified |
 | LEGACY-02-FILES | LEGACY-MIGRATION-PLAN 02-A | private_uploads, SecureFileAccessService, nginx storage deny, attendance MIME validation | SecureFileAuthorizationTest, AttendanceImageSecurityTest | Verified |
 | LEGACY-02-AUTH | LEGACY-MIGRATION-PLAN 02-C | account lockout, Sanctum expiry/rotation/revocation, reset flow, production session defaults | AuthenticationHardeningTest, AuthTest, frontend build | Verified |
+| LEGACY-02-SIGN | LEGACY-MIGRATION-PLAN 02-D | mandatory password confirmation, assigned signer policy, sealed document hash, verify throttle | Saraban SignatureTest | Verified |

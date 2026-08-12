@@ -98,7 +98,10 @@ class DocumentPolicy
 
     public function sign(User $user, Document $document): bool
     {
-        return $user->can('saraban.document.sign') && $this->view($user, $document);
+        return $user->can('saraban.document.sign')
+            && $document->status === 'approved_pending_signature'
+            && $document->receivers()->where('users.id', $user->id)->exists()
+            && $this->view($user, $document);
     }
 
     public function circulate(User $user, Document $document): bool

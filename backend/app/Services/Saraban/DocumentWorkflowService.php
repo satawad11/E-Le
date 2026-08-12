@@ -5,7 +5,6 @@ namespace App\Services\Saraban;
 use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentSignature;
 use App\Models\Saraban\DocumentWorkflowStep;
-use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\SarabanDocumentNotification;
 use chillerlan\QRCode\Common\EccLevel;
@@ -114,15 +113,8 @@ class DocumentWorkflowService
      */
     public function signDocument(Document $document, User $user, ?string $password = null, ?string $ip = null, ?string $userAgent = null, ?string $mode = null)
     {
-        $requirePin = Setting::where('key', 'require_pin_for_signature')->first();
-        // Default to requiring the PIN when the setting row is absent, so a missing
-        // setting can never silently downgrade signing to no identity check at all.
-        $isRequirePin = $requirePin ? $requirePin->value === '1' : true;
-
-        if ($isRequirePin) {
-            if (! $password || ! Hash::check($password, $user->password)) {
-                throw new \Exception('รหัสผ่านไม่ถูกต้อง ไม่สามารถลงนามได้');
-            }
+        if (! $password || ! Hash::check($password, $user->password)) {
+            throw new \Exception('รหัสผ่านไม่ถูกต้อง ไม่สามารถลงนามได้');
         }
 
         return DB::transaction(function () use ($document, $user, $ip, $userAgent, $mode) {
@@ -133,6 +125,7 @@ class DocumentWorkflowService
                 'document_id' => $document->id,
                 'signer_id' => $user->id,
                 'signature_hash' => $signatureHash,
+                'document_hash' => $this->documentContentHash($document),
                 'ip_address' => $ip,
                 'user_agent' => $userAgent,
                 'mode' => $mode ?: 'esignature',
@@ -144,6 +137,21 @@ class DocumentWorkflowService
 
             return $signatureHash;
         });
+    }
+
+    public function documentContentHash(Document $document): string
+    {
+        $fields = [
+            'document_number', 'title', 'type_id', 'priority', 'secrecy',
+            'created_by', 'department_id', 'document_date', 'to', 'reference',
+            'attachments_note', 'remark', 'incoming_document_number', 'incoming_date',
+            'creation_mode', 'content', 'template_type',
+        ];
+
+        return hash('sha256', json_encode(
+            collect($fields)->mapWithKeys(fn (string $field) => [$field => $document->getAttribute($field)])->all(),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        ));
     }
 
     /**

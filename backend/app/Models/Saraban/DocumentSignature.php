@@ -16,6 +16,7 @@ class DocumentSignature extends Model
         'document_id',
         'signer_id',
         'signature_hash',
+        'document_hash',
         'ip_address',
         'user_agent',
         'mode',

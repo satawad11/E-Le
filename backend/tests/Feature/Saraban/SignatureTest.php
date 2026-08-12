@@ -104,6 +104,45 @@ class SignatureTest extends SarabanTestCase
             ->assertStatus(400);
     }
 
+    public function test_signing_requires_a_password_even_when_legacy_setting_is_disabled(): void
+    {
+        Setting::where('key', 'require_pin_for_signature')->update(['value' => '0']);
+        $document = $this->makeDocument(['status' => 'approved_pending_signature']);
+
+        $this->actingAs($this->approver)
+            ->postJson("/api/saraban/documents/{$document->id}/sign", ['mode' => 'draw'])
+            ->assertStatus(400);
+    }
+
+    public function test_signer_must_be_assigned_to_the_document(): void
+    {
+        $document = $this->makeDocument(['status' => 'approved_pending_signature']);
+        $document->receivers()->detach($this->approver->id);
+
+        $this->actingAs($this->approver)
+            ->postJson("/api/saraban/documents/{$document->id}/sign", [
+                'mode' => 'esignature',
+                'password' => 'password',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_verify_detects_document_content_tampering(): void
+    {
+        $document = $this->makeDocument(['status' => 'approved_pending_signature']);
+        $hash = $this->actingAs($this->approver)
+            ->postJson("/api/saraban/documents/{$document->id}/sign", [
+                'mode' => 'esignature',
+                'password' => 'password',
+            ])->json('hash');
+
+        $document->forceFill(['title' => 'Tampered title'])->saveQuietly();
+
+        $this->getJson("/api/saraban/verify/{$hash}")
+            ->assertOk()
+            ->assertJsonPath('is_valid', false);
+    }
+
     public function test_user_without_sign_permission_cannot_sign(): void
     {
         $document = $this->makeDocument(['status' => 'approved_pending_signature']);
@@ -123,6 +162,7 @@ class SignatureTest extends SarabanTestCase
             'secrecy' => 'secret',
             'title' => 'ความลับราชการ',
         ]);
+        $document->receivers()->syncWithoutDetaching([$this->registrar->id]);
 
         $hash = $this->actingAs($this->registrar)
             ->postJson("/api/saraban/documents/{$document->id}/sign", [

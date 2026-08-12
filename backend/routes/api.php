@@ -36,8 +36,8 @@ Route::middleware('throttle:60,1')->group(function () {
     });
 
     // Public Saraban verify routes
-    Route::get('/saraban/verify/{hash}', [SignatureController::class, 'verify']);
-    Route::get('/saraban/verify/{hash}/qrcode', [SignatureController::class, 'getQrCode']);
+    Route::get('/saraban/verify/{hash}', [SignatureController::class, 'verify'])->middleware('throttle:30,1');
+    Route::get('/saraban/verify/{hash}/qrcode', [SignatureController::class, 'getQrCode'])->middleware('throttle:30,1');
 
     // ตรวจสอบใบลาจาก QR บนเอกสารที่พิมพ์ออกไป — จำกัดอัตราเพื่อกันการสุ่มโทเคน
     Route::middleware('throttle:30,1')->group(function () {

@@ -113,7 +113,9 @@ class SignatureController extends Controller
         // A signature is only valid while the document it belongs to still exists
         // and has not been rolled back out of a signed state.
         $isValid = ! $document->trashed()
-            && in_array($document->status, ['signed', 'dispatched', 'archived'], true);
+            && in_array($document->status, ['signed', 'dispatched', 'archived'], true)
+            && is_string($signature->document_hash)
+            && hash_equals($signature->document_hash, $this->workflowService->documentContentHash($document));
 
         $isClassified = $document->secrecy !== 'normal';
 

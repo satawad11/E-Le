@@ -7,6 +7,7 @@
 
 - ปิด LEGACY-02A: ตรวจ MIME/ขนาดภาพลงเวลาจาก bytes จริง, ใช้ UUID, บังคับ resource authorization สำหรับ private files และปิด `/storage` ที่ nginx
 - ปิด LEGACY-02C: เพิ่ม account lockout, token expiry/refresh rotation, revoke token เมื่อระงับบัญชีหรือเปลี่ยนรหัสผ่าน, password reset ที่ไม่เปิดเผยบัญชี และ production session defaults ที่ปลอดภัย
+- ปิด LEGACY-02D: บังคับรหัสผ่านทุกโหมดลงนาม, จำกัดผู้ลงนามตามผู้รับมอบหมาย, ผนึก document hash เพื่อตรวจ tampering และ throttle public verification
 
 ### LEGACY-01 Stabilization
 

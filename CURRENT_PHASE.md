@@ -15,7 +15,7 @@
 | LEGACY-ASSESSMENT | ✅ เสร็จ · ผู้ใช้อนุมัติในหลักการ 2026-08-12 |
 | LEGACY-00 Freeze & Baseline | ✅ เสร็จ 2026-08-12 · ไม่มี FAIL · `docs/checkpoints/LEGACY-00-REPORT.md` |
 | LEGACY-01 Stabilization | ✅ เสร็จ 2026-08-13 |
-| LEGACY-02 Security Hardening | 🟡 กำลังดำเนินการ · 02-A, 02-B และ 02-C ผ่าน |
+| LEGACY-02 Security Hardening | 🟡 กำลังดำเนินการ · 02-A ถึง 02-D ผ่าน |
 
 **Architecture Decision (อนุมัติแล้ว 2026-08-12):** คงเทคโนโลยีเดิม Laravel + Vue 3 + MySQL 8 + Tailwind + Docker
 เอกสาร Target Architecture ตีความเป็น Architectural Principles และ Engineering Standards ไม่ใช่คำสั่งให้ rewrite stack
