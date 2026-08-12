@@ -90,7 +90,9 @@ class SignatureController extends Controller
 
             return response()->json(['message' => 'Document signed successfully.', 'hash' => $hash]);
         } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 400);
+            report($e);
+
+            return response()->json(['message' => 'ไม่สามารถลงนามเอกสารได้ กรุณาตรวจสอบรหัสผ่านและสถานะเอกสาร'], 400);
         }
     }
 

@@ -323,8 +323,9 @@ class DocumentController extends Controller
             return response()->json($document->load(['attachments', 'receivers']), 201);
         } catch (\Exception $e) {
             DB::rollBack();
+            report($e);
 
-            return response()->json(['message' => 'Failed to create document: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'ไม่สามารถสร้างเอกสารได้ กรุณาลองใหม่หรือติดต่อผู้ดูแลระบบ'], 500);
         }
     }
 
@@ -462,8 +463,9 @@ class DocumentController extends Controller
             return response()->json($document->load(['attachments', 'receivers']), 200);
         } catch (\Exception $e) {
             DB::rollBack();
+            report($e);
 
-            return response()->json(['message' => 'Failed to update document: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'ไม่สามารถแก้ไขเอกสารได้ กรุณาลองใหม่หรือติดต่อผู้ดูแลระบบ'], 500);
         }
     }
 

@@ -144,9 +144,9 @@
           <button v-for="link in records.links" :key="link.label"
                   @click="link.url && fetchRecords(getPage(link.url))"
                   :disabled="!link.url"
-                  v-html="link.label"
                   class="px-3 py-1 text-sm rounded-md transition-colors"
                   :class="link.active ? 'bg-[#800000] text-white' : (link.url ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'text-gray-400 cursor-not-allowed')">
+            {{ paginationLabel(link.label) }}
           </button>
         </div>
       </div>
@@ -161,6 +161,7 @@ import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
 import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 
 const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
+const paginationLabel = label => ({ '&laquo; Previous': 'ก่อนหน้า', 'Next &raquo;': 'ถัดไป' }[label] || String(label).replace(/<[^>]*>/g, ''))
 
 const today = new Date()
 const localDateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0')

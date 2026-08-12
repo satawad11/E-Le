@@ -148,7 +148,12 @@
           <button @click="previewTpl = null" class="px-3 py-1 bg-white rounded-lg text-sm font-bold shadow-sm">✕ ปิด</button>
         </div>
         <!-- Simulated A4 Paper -->
-        <div class="bg-white mx-auto shadow-xl p-8 overflow-y-auto flex-1 w-full max-w-[210mm] min-h-[297mm] rounded-sm font-sarabun text-black" v-html="previewTpl.content_html"></div>
+        <iframe
+          :srcdoc="previewTpl.content_html"
+          sandbox=""
+          title="ตัวอย่างแม่แบบเอกสาร"
+          class="bg-white mx-auto shadow-xl flex-1 w-full max-w-[210mm] min-h-[297mm] rounded-sm"
+        ></iframe>
       </div>
     </div>
   </div>
