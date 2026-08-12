@@ -13,3 +13,4 @@
 | LEGACY-01-CI | LEGACY-MIGRATION-PLAN 01-6 | `.github/workflows/ci.yml` | Pint, 130 tests, MySQL 8 fresh migration, Vite build | Verified |
 | LEGACY-01-OBS | LEGACY-MIGRATION-PLAN 01-7/01-8 | production guard, structured log, request context middleware | ProductionEnvironmentGuardTest, RequestContextTest | Verified |
 | LEGACY-01-LEAVE | LEGACY-MIGRATION-PLAN 01-9/01-10 | permission authorization, checked status varchar | LeaveTest, GovernmentLeaveGovernanceTest | Verified |
+| LEGACY-01-REFDATA | LEGACY-MIGRATION-PLAN 01-11 | FiscalYearSeeder, ThaiGovernmentHoliday2569Seeder, DocumentTemplateSeeder | BaselineReferenceDataSeederTest | Verified |

@@ -12,6 +12,10 @@
 - เปลี่ยน `leaves.status` จาก ENUM เป็น `VARCHAR(20)` + CHECK เพื่อรองรับ `Voided`
 - ลบ debug/test artifacts และอัปเดต Dompdf เป็น 3.1.6 เพื่อปิด security advisories
 - เติมเมนู core 15 รายการด้วย idempotent seeder
+- ปิด GATE-01 เมื่อ 2026-08-13: ใช้บัญชี `eleave_app` แบบจำกัดสิทธิ์, ตั้ง root password, ลบ remote root และยืนยัน backup หลัง restart
+- เติมปีงบประมาณ 2567–2571 แบบ idempotent โดยกำหนดปี 2569 เป็นปีปัจจุบัน
+- เติมวันหยุดราชการทั่วประเทศปี 2569 จำนวน 20 วัน (ไม่รวมวันหยุดเฉพาะ กทม. 16 ต.ค.) และลงทะเบียนแม่แบบใบลาใช้งานจริง 5 แบบจากเอกสารอ้างอิง
+- แก้ Pint style issues 5 รายการใน 5 ไฟล์
 
 ## 2026-08-12 — Legacy Modernization Pack
 

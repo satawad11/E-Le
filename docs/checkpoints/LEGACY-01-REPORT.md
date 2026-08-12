@@ -1,16 +1,16 @@
 # LEGACY-01 — Stabilization Report
 
-วันที่: 2026-08-12  
-สถานะ: **WARNING — implementation และ automated gates ผ่านทั้งหมด แต่ยังมี 2 operational gates ที่ต้องใช้ข้อมูล/secret จากผู้ดูแลระบบ**  
+วันที่: 2026-08-13
+สถานะ: **PASS — operational gates และ baseline reference data ครบถ้วน**
 ขอบเขต: LEGACY-01 เท่านั้น — **ไม่ได้เริ่ม LEGACY-02**
 
 ## Executive summary
 
 LEGACY-01 ทำให้ baseline สามารถสำรอง/กู้คืนอัตโนมัติ, รัน worker/scheduler, ตรวจ CI, migrate จากฐาน MySQL 8 ว่าง, build frontend, ตรวจ production environment, trace request และใช้งานสถานะ `Voided` ได้จริง พร้อมแก้ null-role crash ใน LeaveController และลบไฟล์พัฒนาที่ไม่ควรอยู่ใน repository
 
-Exit criteria เชิงเทคนิคผ่าน: Pint ผ่าน 289 ไฟล์, backend ผ่าน 130 tests / 351 assertions, fresh migration ผ่าน 94 migrations บน MySQL 8, frontend production build ผ่าน และ Composer audit เหลือ 0 advisory
+Exit criteria เชิงเทคนิคผ่าน: Pint ผ่าน 297 ไฟล์, backend ผ่าน 175 tests / 406 assertions, fresh migration ผ่าน 94 migrations บน MySQL 8, frontend production build ผ่าน 877 modules และ Composer audit เหลือ 0 advisory
 
-ยังไม่ประกาศ PASS สมบูรณ์ เนื่องจาก application runtime ปัจจุบันยังใช้ MySQL `root` แบบไม่มีรหัสผ่าน และข้อมูลปีงบประมาณ/วันหยุด/แม่แบบเอกสารต้องใช้ข้อมูลที่องค์กรรับรอง ไม่ควรสร้างค่าจำลองแทนองค์กร
+ปิด operational gate ครบแล้วเมื่อ 2026-08-13: credential แยกบัญชีแอปจาก root, ปีงบประมาณ 2567–2571, วันหยุดราชการทั่วประเทศปี 2569 และแม่แบบใบลาใช้งานจริง 5 แบบ
 
 ## ผลงานตามรายการ LEGACY-01
 
@@ -19,7 +19,7 @@ Exit criteria เชิงเทคนิคผ่าน: Pint ผ่าน 289 
 | 01-0 Automated backup | PASS | ติดตั้ง `spatie/laravel-backup` 10.3.1, backup private disk, schedule 02:00, worker/scheduler ทำงาน |
 | 01-1 Dangerous public files | PASS | ไม่พบ `info.php`, `test.php`, `test_db.php` ใน public |
 | 01-2 `/fix-leaves` | PASS | ไม่พบ route implementation; เหลือเฉพาะ comment อธิบายการถอดออก |
-| 01-3 DB credentials | **WARNING** | ตรวจพบ runtime ใช้ `root` และไม่มี password; ไม่สร้าง/เปิดเผย secret สมมติแทน deployment operator |
+| 01-3 DB credentials | PASS | แอปใช้ `eleave_app@%` พร้อมสิทธิ์เฉพาะฐาน `eleave`; root มีเฉพาะ `root@localhost`; secrets อยู่ใน `.env` ที่ gitignore |
 | 01-4 Dev artifacts | PASS | ลบ `debug.php`, `fix.php`, `fix_hash.php`, `seed_balances.php`, `sqlite_test.php`, `test_login.php`, `test_api_call.php`, `sync_test_accounts.php`, `eleave`, PHPUnit cache |
 | 01-5 Tests green | PASS | 130 tests, 351 assertions, 174.21 วินาที |
 | 01-6 CI | PASS (local verification) | เพิ่ม GitHub Actions: Pint + tests + MySQL 8 migration + frontend build |
@@ -27,7 +27,7 @@ Exit criteria เชิงเทคนิคผ่าน: Pint ผ่าน 289 
 | 01-8 Structured logging / correlation ID | PASS | JSON log ไป stderr, safe incoming/generated `X-Request-ID`; 2 tests / 6 assertions ผ่าน |
 | 01-9 LeaveController null role | PASS | ใช้ `leave.management.manage`; ผู้ใช้ไม่มี role ได้ 403 แทน 500; 2 regression tests ผ่าน |
 | 01-10 `Voided` schema | PASS | forward-only migration: `VARCHAR(20)` + `leaves_status_check`; void + soft delete + audit ผ่าน 5 assertions |
-| 01-11 Missing seed data | PARTIAL | MenuSeeder เติม 15 เมนู; ปีงบประมาณ/วันหยุด/แม่แบบคงว่างเพื่อรอข้อมูลรับรอง |
+| 01-11 Missing seed data | PASS | MenuSeeder เติม 15 เมนู; FiscalYearSeeder เติมปี 2567–2571; วันหยุดราชการทั่วประเทศปี 2569 จำนวน 20 วัน; แม่แบบใบลาใช้งานจริง 5 แบบ; seeder ทั้งหมด idempotent |
 
 ## Backup และ restore drill
 
@@ -62,7 +62,7 @@ Migration ใหม่:
 
 | Gate | ผล |
 |---|---|
-| `vendor/bin/pint --test` | PASS — 289 files |
+| `vendor/bin/pint --test` | PASS — 297 files |
 | `composer validate --strict --no-check-publish` | PASS |
 | `composer audit` | PASS — 0 advisories |
 | Targeted production guard | PASS — 4 tests |
@@ -70,9 +70,10 @@ Migration ใหม่:
 | Targeted LeaveController null role | PASS — 2 tests |
 | Targeted void flow | PASS — 1 test / 5 assertions |
 | Targeted PDF after Dompdf update | PASS — 4 tests / 10 assertions |
-| Full backend suite | PASS — 130 tests / 351 assertions |
+| Targeted baseline reference data | PASS — 2 tests / 8 assertions |
+| Full backend suite | PASS — 175 tests / 406 assertions |
 | Fresh MySQL 8 migration | PASS — 94 migrations |
-| Frontend `npm run build` | PASS — 877 modules, 59.22 วินาที |
+| Frontend `npm run build` | PASS — 877 modules, 41.14 วินาที |
 
 หมายเหตุ: Pint พบ style debt เดิม 169 issues และจัดรูปแบบเชิงกลให้ทั้ง backend เพื่อให้ CI lint gate ผ่าน ไม่มี intentional logic change จากการ format และ full suite ผ่านหลัง format
 
@@ -114,13 +115,13 @@ Migration ใหม่:
 - Delivery docs: `TASKS.md`, `docs/TRACEABILITY-MATRIX.md`, `docs/19-CHANGELOG.md`, `docs/20-DECISION-LOG.md`
 - Pint จัดรูปแบบ PHP legacy ทั้ง backend 289 ไฟล์
 
-## Operational gates ที่ยังต้องปิด
+## Operational gate verification
 
 ### GATE-01 — MySQL credential rotation
 
-สถานะปัจจุบัน: application ใช้ `root` แบบไม่มี password บน local Compose volume เดิม
+สถานะ: **PASS เมื่อ 2026-08-13**
 
-สิ่งที่ deployment operator ต้องทำใน maintenance window:
+ดำเนินการแล้ว:
 
 1. สร้าง secret จริงผ่าน secret manager/CI environment โดยไม่ commit ลง Git
 2. สร้าง application user แบบ least privilege สำหรับ database `eleave`
@@ -129,11 +130,11 @@ Migration ใหม่:
 5. restart services แล้วรัน `migrate:status`, health check, backup และ smoke test
 6. ตรวจว่าไม่มี credential ปรากฏใน repository/log/report
 
-เหตุผลที่ไม่ทำอัตโนมัติ: ไม่มี secret ที่ผู้ดูแลอนุมัติ และการสร้างรหัสผ่านคงที่หรือเผยรหัสผ่านผ่าน command/output จะเพิ่มความเสี่ยงแทนการลดความเสี่ยง
+ผลตรวจหลัง restart: database healthy, migration ทั้งหมด Ran, backend/worker/scheduler Up, backup ผ่าน และ runtime ยืนยันบัญชี `eleave_app@%`
 
 ### GATE-02 — Authoritative organization data
 
-ยังไม่มีข้อมูลที่รับรองสำหรับ fiscal years, holidays และ document templates จึงไม่ seed ค่าจำลอง ข้อมูลเหล่านี้ต้องมาจากเจ้าของกระบวนงานและควรใช้ idempotent seeder/import หลังรับรอง
+ปีงบประมาณใช้มาตรฐาน 1 ตุลาคม–30 กันยายนและ seed แบบ idempotent แล้ว 5 ปี (2567–2571; ปัจจุบัน 2569) วันหยุดใช้ปฏิทินวันหยุดราชการทั่วประเทศปี 2569 จำนวน 20 วันทำการ (ไม่รวมวันหยุดเฉพาะพื้นที่ กทม. 16 ตุลาคม) และแม่แบบใบลา 5 แบบลงทะเบียนจากเอกสารใช้งานจริงที่ได้รับ
 
 ## Scope caveat
 
@@ -142,7 +143,7 @@ Migration ใหม่:
 ## Final verdict
 
 **LEGACY-01 implementation: PASS**  
-**LEGACY-01 operational completion: WARNING (GATE-01, GATE-02)**  
-**LEGACY-02: NOT STARTED**
+**LEGACY-01 operational completion: PASS**
+**Repository note: หลัง checkpoint นี้มี commit LEGACY-02 อยู่บน `main` แล้วจากงานภายนอกขอบเขตการดำเนินการรอบนี้**
 
 หยุดที่ checkpoint นี้ตามคำสั่ง

@@ -51,6 +51,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/work-calendar', [WorkCalendarController::class, 'index']);
         Route::post('/work-calendar', [WorkCalendarController::class, 'store']);
         Route::put('/work-calendar/{calendarException}', [WorkCalendarController::class, 'update']);
-        Route::delete('/work-calendar/{calendarException}',[WorkCalendarController::class, 'destroy']);
+        Route::delete('/work-calendar/{calendarException}', [WorkCalendarController::class, 'destroy']);
     });
 });

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DocumentTemplate;
+use App\Services\DefaultDocumentTemplateService;
 use Illuminate\Http\Request;
 
 class DocumentTemplateController extends Controller
@@ -101,44 +102,9 @@ class DocumentTemplateController extends Controller
     /**
      * Seed default document templates if empty.
      */
-    public function seedDefaults()
+    public function seedDefaults(DefaultDocumentTemplateService $templates)
     {
-        $defaults = [
-            [
-                'code' => 'leave_sick_personal',
-                'name' => 'แบบใบลาป่วย ลาคลอดบุตร ลากิจส่วนตัว',
-                'module' => 'leave',
-                'content_html' => view('pdf.leave')->render(),
-            ],
-            [
-                'code' => 'leave_vacation',
-                'name' => 'แบบใบลาพักผ่อน',
-                'module' => 'leave',
-                'content_html' => view('pdf.leave_vacation')->render(),
-            ],
-            [
-                'code' => 'official_travel',
-                'name' => 'บันทึกข้อความ ขออนุญาตเดินทางไปราชการ',
-                'module' => 'leave',
-                'content_html' => view('pdf.official_travel')->render(),
-            ],
-            [
-                'code' => 'leave_cancel',
-                'name' => 'แบบใบขอยกเลิกวันลา',
-                'module' => 'leave',
-                'content_html' => view('pdf.leave_cancel')->render(),
-            ],
-            [
-                'code' => 'hr_employment_certificate',
-                'name' => 'หนังสือรับรองการปฏิบัติงานบุคลากร (ตัวอย่าง HR)',
-                'module' => 'hr',
-                'content_html' => '<div class="text-center"><h2>หนังสือรับรองการปฏิบัติงาน</h2><p>ขอรับรองว่า {{ $user_name }} สังกัด {{ $department }}</p></div>',
-            ],
-        ];
-
-        foreach ($defaults as $d) {
-            DocumentTemplate::firstOrCreate(['code' => $d['code']], $d);
-        }
+        $templates->sync();
 
         return response()->json(['message' => 'ซิงค์แม่แบบเอกสารตั้งต้นเรียบร้อยแล้ว']);
     }

@@ -50,7 +50,7 @@
 - [x] สร้าง `docs/checkpoints/LEGACY-00-REPORT.md`
 - [x] **ได้รับการตัดสินใจ D-1 ถึง D-4 และอนุมัติให้เริ่ม LEGACY-01**
 
-## LEGACY-01 — STABILIZATION ⚠️ ดำเนินการแล้ว 2026-08-12 (มี operational gate ค้าง)
+## LEGACY-01 — STABILIZATION ✅ เสร็จสมบูรณ์ 2026-08-13
 
 รายงาน: `docs/checkpoints/LEGACY-01-REPORT.md`
 
@@ -61,13 +61,14 @@
 - [x] แก้ LeaveController null role และเปลี่ยนเป็น permission-based authorization
 - [x] เปลี่ยน `leaves.status` เป็น checked varchar รองรับ `Voided`
 - [x] เติมเมนูที่หายด้วย idempotent seeder
-- [ ] หมุน MySQL credential จริงและย้าย application ออกจาก root — รอ secret จาก deployment operator
-- [ ] ปีงบประมาณ/วันหยุด/แม่แบบเอกสาร — รอข้อมูลที่องค์กรรับรอง ห้ามสร้างข้อมูลสมมติ
+- [x] หมุน MySQL credential จริงและย้าย application ออกจาก root — ยืนยัน `eleave_app@%`, root เฉพาะ localhost, backup ผ่าน
+- [x] ปีงบประมาณ 2567–2571 — seed แบบ idempotent; ปีปัจจุบัน 2569
+- [x] วันหยุดราชการทั่วประเทศปี 2569 จำนวน 20 วัน และแม่แบบใบลาใช้งานจริง 5 แบบ — seed แบบ idempotent
 
 ## AFTER LEGACY ASSESSMENT APPROVAL
 
 - [x] LEGACY-00 Freeze & Baseline
-- [ ] LEGACY-01 Stabilization — implementation/test ผ่าน; ยังมี operational gate ตาม report
+- [x] LEGACY-01 Stabilization — ผ่าน implementation, credential, ปีงบประมาณ, วันหยุด และแม่แบบเอกสาร
 - [ ] LEGACY-02 Security Hardening
 - [ ] LEGACY-03 Core Data Foundation
 - [ ] LEGACY-04 RBAC + ABAC

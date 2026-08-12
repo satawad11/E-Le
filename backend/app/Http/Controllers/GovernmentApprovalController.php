@@ -87,7 +87,7 @@ class GovernmentApprovalController extends Controller
             $this->notify($leave, 'Approved', $r->user()->name);
         }
 
-return response()->json(['message' => 'อนุมัติเรียบร้อย', 'status' => $leave->status]);
+        return response()->json(['message' => 'อนุมัติเรียบร้อย', 'status' => $leave->status]);
     }
 
     public function reject(Request $r, Leave $leave)
@@ -105,7 +105,7 @@ return response()->json(['message' => 'อนุมัติเรียบร�
             LeaveAuditLog::create(['leave_id' => $locked->id, 'user_id' => $r->user()->id, 'action' => 'approval_rejected', 'after' => ['step' => $step->step_order, 'comment' => $data['comment']], 'ip_address' => $r->ip(), 'user_agent' => $r->userAgent()]);
         }, 5);
         $leave->refresh();
-        $this->notify($leave,'Rejected',$r->user()->name);
+        $this->notify($leave, 'Rejected', $r->user()->name);
 
         return response()->json(['message' => 'ปฏิเสธใบลาเรียบร้อย']);
     }

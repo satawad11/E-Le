@@ -49,7 +49,7 @@ class LeavePolicyService
             return $y > 2400 ? $y - 543 : $y;
         }
 
-return $date->month >= 10 ? $date->year + 1 : $date->year;
+        return $date->month >= 10 ? $date->year + 1 : $date->year;
     }
 
     public function periodYear(LeavePolicy $policy, Carbon $date): int

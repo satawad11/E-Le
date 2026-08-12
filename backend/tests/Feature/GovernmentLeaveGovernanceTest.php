@@ -94,6 +94,6 @@ class GovernmentLeaveGovernanceTest extends TestCase
         $voided = Leave::withTrashed()->findOrFail($leave['id']);
         $this->assertSame('Voided', $voided->status);
         $this->assertNotNull($voided->deleted_at);
-        $this->assertDatabaseHas('leave_audit_logs',['leave_id' => $leave['id'], 'action' => 'voided']);
+        $this->assertDatabaseHas('leave_audit_logs', ['leave_id' => $leave['id'], 'action' => 'voided']);
     }
 }
