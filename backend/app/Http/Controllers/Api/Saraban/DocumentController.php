@@ -140,7 +140,7 @@ class DocumentController extends Controller
                 $logoUrl = $settings['saraban_garuda_logo'] ?? '';
                 $logoHtml = '';
                 if ($logoUrl) {
-                    $absoluteLogoPath = public_path(str_replace('/storage/', 'storage/', $logoUrl));
+                    $absoluteLogoPath = \App\Support\StoredFile::path($logoUrl);
                     if (file_exists($absoluteLogoPath)) {
                         $logoData = base64_encode(file_get_contents($absoluteLogoPath));
                         $logoHtml = '<div style="text-align: center; margin-bottom: 20px;"><img src="data:image/png;base64,' . $logoData . '" width="60" /></div>';
@@ -167,7 +167,7 @@ class DocumentController extends Controller
                 $filename = 'edoc_' . time() . '.pdf';
                 $path = 'saraban/attachments/' . $filename;
                 
-                Storage::disk('public')->put($path, $pdf->output());
+                Storage::disk('private_uploads')->put($path, $pdf->output());
                 
                 $document->attachments()->create([
                     'name' => 'เอกสารอิเล็กทรอนิกส์.pdf',
@@ -178,7 +178,7 @@ class DocumentController extends Controller
                 ]);
             } else if ($request->hasFile('files')) {
                 foreach ($request->file('files') as $file) {
-                    $path = $file->store('saraban/attachments', 'public');
+                    $path = $file->store('saraban/attachments', 'private_uploads');
                     $document->attachments()->create([
                         'name' => $file->getClientOriginalName(),
                         'type' => 'file',
@@ -257,7 +257,7 @@ class DocumentController extends Controller
                 // Delete previous generated e-docs if exist
                 $oldDocs = $document->attachments()->where('name', 'เอกสารอิเล็กทรอนิกส์.pdf')->get();
                 foreach ($oldDocs as $oldDoc) {
-                    Storage::disk('public')->delete($oldDoc->path);
+                    Storage::disk('private_uploads')->delete($oldDoc->path);
                     $oldDoc->delete();
                 }
 
@@ -266,7 +266,7 @@ class DocumentController extends Controller
                 $logoUrl = $settings['saraban_garuda_logo'] ?? '';
                 $logoHtml = '';
                 if ($logoUrl) {
-                    $absoluteLogoPath = public_path(str_replace('/storage/', 'storage/', $logoUrl));
+                    $absoluteLogoPath = \App\Support\StoredFile::path($logoUrl);
                     if (file_exists($absoluteLogoPath)) {
                         $logoData = base64_encode(file_get_contents($absoluteLogoPath));
                         $logoHtml = '<div style="text-align: center; margin-bottom: 20px;"><img src="data:image/png;base64,' . $logoData . '" width="60" /></div>';
@@ -292,7 +292,7 @@ class DocumentController extends Controller
                 
                 $filename = 'edoc_' . time() . '.pdf';
                 $path = 'saraban/attachments/' . $filename;
-                Storage::disk('public')->put($path, $pdf->output());
+                Storage::disk('private_uploads')->put($path, $pdf->output());
                 
                 $document->attachments()->create([
                     'name' => 'เอกสารอิเล็กทรอนิกส์.pdf',
@@ -303,7 +303,7 @@ class DocumentController extends Controller
                 ]);
             } else if ($request->hasFile('files')) {
                 foreach ($request->file('files') as $file) {
-                    $path = $file->store('saraban/attachments', 'public');
+                    $path = $file->store('saraban/attachments', 'private_uploads');
                     $document->attachments()->create([
                         'name' => $file->getClientOriginalName(),
                         'type' => 'file',

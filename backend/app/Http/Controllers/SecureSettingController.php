@@ -103,7 +103,7 @@ class SecureSettingController extends Controller
     {
         $request->validate(['logo' => 'required|image|mimes:jpeg,png,jpg|max:2048']);
         $oldPath = $this->settings->runtimeValues()->get($key);
-        $path = $request->file('logo')->store($directory, 'public');
+        $path = $request->file('logo')->store($directory, 'private_uploads');
         $url = '/storage/' . $path;
         $this->settings->updateMany([$key => $url], $request->user(), $request->ip(), $request->userAgent());
         $this->deleteStoredAsset($oldPath, $url);
@@ -116,7 +116,7 @@ class SecureSettingController extends Controller
         if (!$url || $url === $except || !str_starts_with($url, '/storage/')) {
             return;
         }
-        Storage::disk('public')->delete(substr($url, strlen('/storage/')));
+        Storage::disk('private_uploads')->delete(substr($url, strlen('/storage/')));
     }
 
     private function sendTestEmail(?string $recipient, string $message): bool

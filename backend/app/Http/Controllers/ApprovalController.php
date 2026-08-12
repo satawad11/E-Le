@@ -146,7 +146,7 @@ class ApprovalController extends Controller
                     if (in_array($type, ['jpg', 'jpeg', 'png'])) {
                         $base64Image = base64_decode($base64Image);
                         $fileName = 'signatures/' . uniqid() . '.' . $type;
-                        \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, $base64Image);
+                        \Illuminate\Support\Facades\Storage::disk('private_uploads')->put($fileName, $base64Image);
                         $signaturePath = '/storage/' . $fileName;
                     }
                 }
@@ -297,7 +297,7 @@ class ApprovalController extends Controller
                     if (in_array($type, ['jpg', 'jpeg', 'png'])) {
                         $base64Image = base64_decode($base64Image);
                         $fileName = 'signatures/' . uniqid() . '.' . $type;
-                        \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, $base64Image);
+                        \Illuminate\Support\Facades\Storage::disk('private_uploads')->put($fileName, $base64Image);
                         $signaturePath = '/storage/' . $fileName;
                     }
                 }

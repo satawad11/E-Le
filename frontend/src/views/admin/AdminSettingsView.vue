@@ -73,7 +73,7 @@
                   <button type="button" @click="deleteLogo" :disabled="isDeletingLogo || !settings.organization_logo" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 disabled:opacity-50">{{ isDeletingLogo ? 'กำลังลบ...' : 'ลบรูปภาพ' }}</button>
                 </div>
                 <div class="mt-4 flex justify-center">
-                  <img v-if="settings.organization_logo" :src="settings.organization_logo" alt="Logo" class="w-32 h-32 object-contain" />
+                  <img v-if="settings.organization_logo" v-secure-src="settings.organization_logo" alt="Logo" class="w-32 h-32 object-contain" />
                   <div v-else class="w-32 h-32 bg-gray-100 flex items-center justify-center rounded-full text-gray-400">ไม่มีรูปภาพ</div>
                 </div>
               </div>

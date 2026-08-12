@@ -162,7 +162,7 @@
               <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center mb-4 relative">
                 <div class="w-32 h-32 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-4 overflow-hidden border-4 border-white shadow cursor-pointer group" @click="$refs.imageInput.click()">
                   <img v-if="imagePreview" :src="imagePreview" class="w-full h-full object-cover" />
-                  <img v-else-if="form.profile.profile_photo_path" :src="form.profile.profile_photo_path" class="w-full h-full object-cover" />
+                  <img v-else-if="form.profile.profile_photo_path" v-secure-src="form.profile.profile_photo_path" class="w-full h-full object-cover" />
                   <svg v-else class="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
                   
                   <div class="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full w-32 h-32 mx-auto border-4 border-transparent mt-4">

@@ -41,7 +41,7 @@ class SettingController extends Controller
         if ($request->hasFile('logo')) {
             $file = $request->file('logo');
             $filename = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('logos', $filename, 'public');
+            $path = $file->storeAs('logos', $filename, 'private_uploads');
             
             $url = '/storage/' . $path;
 
@@ -71,7 +71,7 @@ class SettingController extends Controller
         if ($request->hasFile('logo')) {
             $file = $request->file('logo');
             $filename = time() . '_garuda_' . $file->getClientOriginalName();
-            $path = $file->storeAs('logos', $filename, 'public');
+            $path = $file->storeAs('logos', $filename, 'private_uploads');
             
             $url = '/storage/' . $path;
 

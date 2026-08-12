@@ -98,7 +98,7 @@
     @endif
 
     @php
-        $logoPath = isset($settings['organization_logo']) && $settings['organization_logo'] ? public_path(str_replace('/storage/', 'storage/', $settings['organization_logo'])) : null;
+        $logoPath = isset($settings['organization_logo']) && $settings['organization_logo'] ? \App\Support\StoredFile::path($settings['organization_logo']) : null;
         $collegeName = $settings['institution_name'] ?? 'วิทยาลัย................';
         
         // Chunk records into pages of 15-20 depending on space

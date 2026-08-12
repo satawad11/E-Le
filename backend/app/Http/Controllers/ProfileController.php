@@ -55,12 +55,12 @@ class ProfileController extends Controller
             }
 
             if ($request->hasFile('profile_photo')) {
-                $path = $request->file('profile_photo')->store('profile_photos', 'public');
+                $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
                 $filteredData['profile_photo_path'] = '/storage/' . $path;
             }
 
             if ($request->hasFile('signature_file')) {
-                $path = $request->file('signature_file')->store('signatures', 'public');
+                $path = $request->file('signature_file')->store('signatures', 'private_uploads');
                 $filteredData['signature_path'] = '/storage/' . $path;
             } else if ($request->filled('signature_base64')) {
                 $base64 = $request->signature_base64;
@@ -70,7 +70,7 @@ class ProfileController extends Controller
                     $base64 = base64_decode($base64);
                     if ($base64 !== false) {
                         $fileName = 'signatures/' . uniqid() . '.' . $type;
-                        \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, $base64);
+                        \Illuminate\Support\Facades\Storage::disk('private_uploads')->put($fileName, $base64);
                         $filteredData['signature_path'] = '/storage/' . $fileName;
                     }
                 }
@@ -85,11 +85,11 @@ class ProfileController extends Controller
         } else {
             $filteredData = [];
             if ($request->hasFile('profile_photo')) {
-                $path = $request->file('profile_photo')->store('profile_photos', 'public');
+                $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
                 $filteredData['profile_photo_path'] = '/storage/' . $path;
             }
             if ($request->hasFile('signature_file')) {
-                $path = $request->file('signature_file')->store('signatures', 'public');
+                $path = $request->file('signature_file')->store('signatures', 'private_uploads');
                 $filteredData['signature_path'] = '/storage/' . $path;
             } else if ($request->filled('signature_base64')) {
                 $base64 = $request->signature_base64;
@@ -99,7 +99,7 @@ class ProfileController extends Controller
                     $base64 = base64_decode($base64);
                     if ($base64 !== false) {
                         $fileName = 'signatures/' . uniqid() . '.' . $type;
-                        \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, $base64);
+                        \Illuminate\Support\Facades\Storage::disk('private_uploads')->put($fileName, $base64);
                         $filteredData['signature_path'] = '/storage/' . $fileName;
                     }
                 }

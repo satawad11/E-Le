@@ -98,7 +98,7 @@
     @endif
 
     @php
-        $logoPath = isset($settings['organization_logo']) && $settings['organization_logo'] ? public_path(str_replace('/storage/', 'storage/', $settings['organization_logo'])) : null;
+        $logoPath = isset($settings['organization_logo']) && $settings['organization_logo'] ? \App\Support\StoredFile::path($settings['organization_logo']) : null;
         $collegeName = $settings['institution_name'] ?? 'วิทยาลัย................';
         $thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
         $monthName = $thaiMonths[(int)$month] ?? '';

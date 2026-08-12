@@ -36,7 +36,7 @@
           <div class="w-full md:w-1/3 flex flex-col items-center">
             <div class="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center mb-4 overflow-hidden border-4 border-white shadow cursor-pointer group relative" @click="$refs.imageInput.click()">
               <img v-if="imagePreview" :src="imagePreview" class="w-full h-full object-cover" />
-              <img v-else-if="form.profile.profile_photo_path" :src="getImageUrl(form.profile.profile_photo_path)" class="w-full h-full object-cover" />
+              <img v-else-if="form.profile.profile_photo_path" v-secure-src="form.profile.profile_photo_path" class="w-full h-full object-cover" />
               <svg v-else class="w-20 h-20 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
               
               <div class="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -147,7 +147,7 @@
               <p class="text-sm font-medium text-gray-700 mb-3">อัปโหลดไฟล์ลายเซ็น (แนะนำ .png โปร่งใส)</p>
               <div class="w-full bg-white border border-gray-200 rounded-lg h-24 flex items-center justify-center mb-3">
                 <img v-if="sigPreview" :src="sigPreview" class="max-h-full max-w-full object-contain p-1" />
-                <img v-else-if="form.profile.signature_path" :src="getImageUrl(form.profile.signature_path)" class="max-h-full max-w-full object-contain p-1" />
+                <img v-else-if="form.profile.signature_path" v-secure-src="form.profile.signature_path" class="max-h-full max-w-full object-contain p-1" />
                 <span v-else class="text-gray-400 text-sm">ยังไม่มีลายเซ็น</span>
               </div>
               <input type="file" ref="sigInput" @change="onSigFileSelected" accept="image/png, image/jpeg, image/jpg" class="text-xs w-full text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100" />

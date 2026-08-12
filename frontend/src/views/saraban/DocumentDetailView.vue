@@ -122,7 +122,7 @@
               <a :href="att.path" target="_blank" class="text-sm text-blue-600 hover:underline font-medium">เปิดลิงก์ →</a>
             </div>
             <div v-else-if="document.allow_download" class="ml-3">
-              <a :href="'/storage/' + att.path" target="_blank" download class="text-sm text-[#800000] hover:underline font-medium">ดาวน์โหลด ↓</a>
+              <a href="#" @click.prevent="openSecureFile(att.path)" class="text-sm text-[#800000] hover:underline font-medium">ดาวน์โหลด ↓</a>
             </div>
             <div v-else class="ml-3">
               <span class="text-sm text-gray-400 cursor-not-allowed" title="ไม่อนุญาตให้ดาวน์โหลด">🔒 ไม่อนุญาต</span>
@@ -356,6 +356,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../../axios'
+import { openSecureFile } from '../../utils/secureFile'
 import { useSarabanDocumentStore } from '../../stores/useSarabanDocumentStore'
 import { useAuthStore } from '../../stores/auth'
 

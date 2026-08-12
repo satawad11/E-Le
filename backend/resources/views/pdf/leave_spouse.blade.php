@@ -189,7 +189,7 @@
             <td width="60%">
                 @php
                     $sigPath = $leave->signature_path ?: ($leave->user->profile ? $leave->user->profile->signature_path : null);
-                    $userSig = $sigPath ? public_path(str_replace('/storage/', 'storage/', $sigPath)) : null;
+                    $userSig = $sigPath ? \App\Support\StoredFile::path($sigPath) : null;
                 @endphp
                 <table class="layout">
                     <tr>

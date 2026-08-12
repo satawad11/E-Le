@@ -279,7 +279,7 @@
               </div>
               <div class="md:w-2/3 flex flex-col items-center">
                 <div v-if="sigType === 'profile'" class="w-full max-w-xs h-24 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
-                  <img v-if="authStore.user?.profile?.signature_path" :src="getImageUrl(authStore.user.profile.signature_path)" class="max-h-full object-contain p-2" />
+                  <img v-if="authStore.user?.profile?.signature_path" v-secure-src="authStore.user.profile.signature_path" class="max-h-full object-contain p-2" />
                   <span v-else class="text-gray-400 text-sm">ไม่พบลายเซ็นในโปรไฟล์</span>
                 </div>
                 <div v-else class="w-full flex flex-col items-center">

@@ -78,7 +78,7 @@ class UserController extends Controller
             }
 
             if ($request->hasFile('profile_photo')) {
-                $path = $request->file('profile_photo')->store('profile_photos', 'public');
+                $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
                 $profileData['profile_photo_path'] = '/storage/' . $path;
             }
             $user->profile()->create($profileData);
@@ -165,7 +165,7 @@ class UserController extends Controller
         if ($request->has('profile')) {
             $profileData = is_string($request->profile) ? json_decode($request->profile, true) : $request->profile;
             if ($request->hasFile('profile_photo')) {
-                $path = $request->file('profile_photo')->store('profile_photos', 'public');
+                $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
                 $profileData['profile_photo_path'] = '/storage/' . $path;
             }
             $user->profile()->updateOrCreate(
@@ -173,7 +173,7 @@ class UserController extends Controller
                 $profileData
             );
         } else if ($request->hasFile('profile_photo')) {
-            $path = $request->file('profile_photo')->store('profile_photos', 'public');
+            $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
             $user->profile()->updateOrCreate(
                 ['user_id' => $user->id],
                 ['profile_photo_path' => '/storage/' . $path]

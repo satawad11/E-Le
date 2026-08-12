@@ -64,7 +64,7 @@ class SignatureController extends Controller
                     @list($type, $file_data) = explode(';', $base64Image);
                     @list(, $file_data) = explode(',', $file_data);
                     $imageName = 'signatures/temp_' . time() . '_' . Str::random(10) . '.png';
-                    \Illuminate\Support\Facades\Storage::disk('public')->put($imageName, base64_decode($file_data));
+                    \Illuminate\Support\Facades\Storage::disk('private_uploads')->put($imageName, base64_decode($file_data));
                     $signatureImage = $imageName;
                 } else if ($mode === 'text' && $request->has('text')) {
                     $signatureImage = null; // No image, just text

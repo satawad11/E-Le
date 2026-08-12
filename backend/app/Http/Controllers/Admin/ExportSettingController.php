@@ -79,7 +79,7 @@ class ExportSettingController extends Controller
             'logo' => 'required|image|mimes:png,jpg,jpeg,svg|max:4096',
         ]);
 
-        $path = $request->file('logo')->store('settings', 'public');
+        $path = $request->file('logo')->store('settings', 'private_uploads');
         $url = '/storage/' . $path;
 
         $key = $request->type === 'garuda' ? 'garuda_logo_url' : 'school_logo_url';

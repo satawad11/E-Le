@@ -229,6 +229,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     Route::get('/fiscal-year/current',                    [\App\Http\Controllers\FiscalYearController::class, 'current']);
 
+    // ดาวน์โหลดไฟล์อัปโหลด — ต้องยืนยันตัวตน (แทน /api/storage/{path} เดิมที่เปิดสาธารณะ)
+    Route::get('/files/{path}', [\App\Http\Controllers\SecureFileController::class, 'show'])
+        ->where('path', '.*');
+
     // Notifications
     Route::get('/notifications',                          [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::post('/notifications/mark-all-read',           [\App\Http\Controllers\NotificationController::class, 'markAllAsRead']);

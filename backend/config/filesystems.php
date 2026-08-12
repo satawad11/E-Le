@@ -38,6 +38,22 @@ return [
             'report' => false,
         ],
 
+        /*
+         * เดิมไฟล์อัปโหลดทั้งหมด (ลายเซ็น รูปโปรไฟล์ ภาพลงเวลา ไฟล์แนบสารบรรณ)
+         * อยู่บน disk 'public' ซึ่งเข้าถึงได้จากอินเทอร์เน็ตโดยไม่ต้องยืนยันตัวตน
+         * ผ่าน symlink public/storage — ย้ายมา disk นี้แล้วเมื่อ 2026-08-12 (SEC-001)
+         *
+         * ค่าที่เก็บใน DB ยังเป็น "/storage/<relative>" เหมือนเดิมทุกประการ
+         * จึงไม่ต้อง backfill ฐานข้อมูล — ใช้ App\Support\StoredFile แปลงเป็น path จริง
+         */
+        'private_uploads' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/uploads'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

@@ -20,7 +20,7 @@ class PdfSignatureService
      */
     public function stampSignature(string $pdfPath, string $signatureImagePath, array $options): string
     {
-        $disk = Storage::disk('public');
+        $disk = Storage::disk('private_uploads');
 
         if (!$disk->exists($pdfPath)) {
             throw new \Exception("PDF file not found at: {$pdfPath}");

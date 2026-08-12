@@ -160,7 +160,7 @@
             <span>🦅</span> ตราครุฑมาตรฐาน (Garuda Logo)
           </h3>
           <div class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
-            <img v-if="form.saraban_garuda_logo" :src="form.saraban_garuda_logo" alt="Garuda Logo" class="h-24 object-contain mb-3">
+            <img v-if="form.saraban_garuda_logo" v-secure-src="form.saraban_garuda_logo" alt="Garuda Logo" class="h-24 object-contain mb-3">
             <div v-else class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 mb-3">ตราครุฑ</div>
             <label class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 shadow-sm cursor-pointer">
               <span>อัปโหลดตราครุฑใหม่</span>
@@ -176,7 +176,7 @@
             <span>🏫</span> ตราสัญลักษณ์สถานศึกษา
           </h3>
           <div class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
-            <img v-if="form.organization_logo" :src="form.organization_logo" alt="School Logo" class="h-24 object-contain mb-3">
+            <img v-if="form.organization_logo" v-secure-src="form.organization_logo" alt="School Logo" class="h-24 object-contain mb-3">
             <div v-else class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 mb-3">ตราโรงเรียน</div>
             <label class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 shadow-sm cursor-pointer">
               <span>อัปโหลดตราสถานศึกษา</span>

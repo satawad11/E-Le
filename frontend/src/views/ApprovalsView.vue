@@ -91,7 +91,7 @@
                   {{ leave.cancellation_reason }}
                 </div>
                 <div v-if="leave.attachment" class="mt-2">
-                  <a :href="attachmentUrl(leave.attachment)" target="_blank" class="text-xs text-[#800000] hover:underline flex items-center gap-1">
+                  <a href="#" @click.prevent="openSecureFile(leave.attachment)" class="text-xs text-[#800000] hover:underline flex items-center gap-1">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                     ดูเอกสารแนบ
                   </a>
@@ -170,7 +170,7 @@
             
             <div class="flex justify-center">
               <div v-if="sigType === 'profile'" class="w-full h-20 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
-                <img v-if="authStore.user?.profile?.signature_path" :src="getImageUrl(authStore.user.profile.signature_path)" class="max-h-full object-contain p-1" />
+                <img v-if="authStore.user?.profile?.signature_path" v-secure-src="authStore.user.profile.signature_path" class="max-h-full object-contain p-1" />
                 <span v-else class="text-gray-400 text-xs">ไม่พบลายเซ็นในโปรไฟล์</span>
               </div>
               <div v-else class="w-full flex flex-col items-center">
@@ -225,6 +225,7 @@ import { useAuthStore } from '../stores/auth'
 import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
 import { useAlertStore } from '../stores/alert'
 import api from '../axios'
+import { openSecureFile } from '../utils/secureFile'
 
 const leaveStore = useLeaveStore()
 const authStore = useAuthStore()

@@ -61,11 +61,11 @@ class SecureExportSettingController extends Controller
         ]);
         $key = $request->type === 'garuda' ? 'saraban_garuda_logo' : 'organization_logo';
         $oldPath = $this->settings->runtimeValues()->get($key);
-        $path = $request->file('logo')->store('settings', 'public');
+        $path = $request->file('logo')->store('settings', 'private_uploads');
         $url = '/storage/' . $path;
         $this->settings->updateMany([$key => $url], $request->user(), $request->ip(), $request->userAgent());
         if ($oldPath && $oldPath !== $url && str_starts_with($oldPath, '/storage/')) {
-            Storage::disk('public')->delete(substr($oldPath, strlen('/storage/')));
+            Storage::disk('private_uploads')->delete(substr($oldPath, strlen('/storage/')));
         }
         return response()->json(['message' => 'อัปโหลดตราสัญลักษณ์เรียบร้อยแล้ว', 'url' => $url]);
     }

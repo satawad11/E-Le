@@ -267,7 +267,7 @@ class LeaveController extends Controller
                 if (in_array($type, ['jpg', 'jpeg', 'png'])) {
                     $base64Image = base64_decode($base64Image);
                     $fileName = 'signatures/' . uniqid() . '.' . $type;
-                    \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, $base64Image);
+                    \Illuminate\Support\Facades\Storage::disk('private_uploads')->put($fileName, $base64Image);
                     $signaturePath = '/storage/' . $fileName;
                 }
             }
@@ -658,7 +658,7 @@ class LeaveController extends Controller
                 $approverBlocks[] = [
                     'name' => $cancelLog->user->full_name_with_title ?? $cancelLog->user->name,
                     'date' => \Carbon\Carbon::parse($cancelLog->created_at),
-                    'signature' => $cancelLog->user->profile && $cancelLog->user->profile->signature_path ? public_path(str_replace('/storage/', 'storage/', $cancelLog->user->profile->signature_path)) : null,
+                    'signature' => $cancelLog->user->profile && $cancelLog->user->profile->signature_path ? \App\Support\StoredFile::path($cancelLog->user->profile->signature_path) : null,
                     'comment' => $cancelLog->details['comment'] ?? null,
                     'status' => $status,
                     'position' => $cancelLog->user->profile->position ?? ($step->role->description ?? $step->name),
@@ -676,7 +676,7 @@ class LeaveController extends Controller
             $approverBlocks[] = [
                 'name' => $approval ? ($approval->approver_name ?: $approval->approver->name) : $defaultName,
                 'date' => $approval ? \Carbon\Carbon::parse($approval->updated_at) : null,
-                'signature' => $approval && $approval->signature_path ? public_path(str_replace('/storage/', 'storage/', $approval->signature_path)) : null,
+                'signature' => $approval && $approval->signature_path ? \App\Support\StoredFile::path($approval->signature_path) : null,
                 'comment' => $approval ? $approval->comment : null,
                 'status' => $approval ? $approval->status : null,
                 'position' => $positionTitle,
@@ -783,7 +783,7 @@ class LeaveController extends Controller
                 $approverBlocks[] = [
                     'name' => $cancelLog->user->full_name_with_title ?? $cancelLog->user->name,
                     'date' => \Carbon\Carbon::parse($cancelLog->created_at),
-                    'signature' => $cancelLog->user->profile && $cancelLog->user->profile->signature_path ? public_path(str_replace('/storage/', 'storage/', $cancelLog->user->profile->signature_path)) : null,
+                    'signature' => $cancelLog->user->profile && $cancelLog->user->profile->signature_path ? \App\Support\StoredFile::path($cancelLog->user->profile->signature_path) : null,
                     'comment' => $cancelLog->details['comment'] ?? null,
                     'status' => $status,
                     'position' => $cancelLog->user->profile->position ?? ($step->role->description ?? $step->name),
@@ -801,7 +801,7 @@ class LeaveController extends Controller
             $approverBlocks[] = [
                 'name' => $approval ? ($approval->approver_name ?: $approval->approver->name) : $defaultName,
                 'date' => $approval ? \Carbon\Carbon::parse($approval->updated_at) : null,
-                'signature' => $approval && $approval->signature_path ? public_path(str_replace('/storage/', 'storage/', $approval->signature_path)) : null,
+                'signature' => $approval && $approval->signature_path ? \App\Support\StoredFile::path($approval->signature_path) : null,
                 'comment' => $approval ? $approval->comment : null,
                 'status' => $approval ? $approval->status : null,
                 'position' => $positionTitle,

@@ -62,8 +62,8 @@
     <table class="layout">
         <tr>
             <td width="15%" style="vertical-align: top;">
-                @if(!empty($settings['garuda_logo_url']) && file_exists(public_path(str_replace('/storage/', 'storage/', $settings['garuda_logo_url']))))
-                    <img src="{{ public_path(str_replace('/storage/', 'storage/', $settings['garuda_logo_url'])) }}" style="width: 2.8cm; height: auto;">
+                @if(!empty($settings['garuda_logo_url']) && file_exists(\App\Support\StoredFile::path($settings['garuda_logo_url'])))
+                    <img src="{{ \App\Support\StoredFile::path($settings['garuda_logo_url']) }}" style="width: 2.8cm; height: auto;">
                 @else
                     <img src="{{ public_path('images/garuda.png') }}" style="width: 2.8cm; height: auto;">
                 @endif

@@ -67,7 +67,7 @@ class AttendanceController extends Controller
                 $image_type = $image_type_aux[1] ?? 'png';
                 $image_base64 = base64_decode($image_parts[1]);
                 $fileName = 'checkin_' . $user->id . '_' . time() . '.' . $image_type;
-                \Illuminate\Support\Facades\Storage::disk('public')->put('attendances/' . $fileName, $image_base64);
+                \Illuminate\Support\Facades\Storage::disk('private_uploads')->put('attendances/' . $fileName, $image_base64);
                 $imagePath = '/storage/attendances/' . $fileName;
             }
         }
@@ -183,7 +183,7 @@ class AttendanceController extends Controller
                 $image_type = $image_type_aux[1] ?? 'png';
                 $image_base64 = base64_decode($image_parts[1]);
                 $fileName = 'checkout_' . $user->id . '_' . time() . '.' . $image_type;
-                \Illuminate\Support\Facades\Storage::disk('public')->put('attendances/' . $fileName, $image_base64);
+                \Illuminate\Support\Facades\Storage::disk('private_uploads')->put('attendances/' . $fileName, $image_base64);
                 $imagePath = '/storage/attendances/' . $fileName;
             }
         }
