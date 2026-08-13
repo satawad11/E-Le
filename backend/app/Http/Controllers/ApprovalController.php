@@ -47,12 +47,15 @@ class ApprovalController extends Controller
                 ->orderBy('created_at', 'asc')
                 ->get();
         } else {
-            // Get user's own role IDs (both Spatie roles and legacy role_id)
-            $userRoleIds = $user->roles->pluck('id')->toArray();
-            if ($user->role_id) {
-                $userRoleIds[] = $user->role_id;
-            }
-            $userRoleIds = array_unique($userRoleIds);
+            /*
+             * LEGACY-04 (04-7): เดิมรวม `users.role_id` (คนละ namespace กับ Spatie)
+             * เข้ากับ role id ของ Spatie ซึ่งเป็นต้นเหตุ DB-RISK-002
+             *
+             * ปัจจุบันคอลัมน์นั้นถูกลบไปแล้วใน LEGACY-03 และ `role_id` กลายเป็น
+             * accessor ที่คืน `roles->first()->id` จึงซ้ำกับบรรทัดข้างล่างพอดี
+             * ตัดออกได้โดยผลลัพธ์ไม่เปลี่ยน
+             */
+            $userRoleIds = $user->roles->pluck('id')->unique()->values()->all();
 
             // Get user's approval steps
             $userRoleSteps = ApprovalStep::whereIn('role_id', $userRoleIds)->pluck('step_order')->toArray();
@@ -67,11 +70,9 @@ class ApprovalController extends Controller
 
             foreach ($activeDelegations as $delegation) {
                 if ($delegation->user) {
-                    $delRoleIds = $delegation->user->roles->pluck('id')->toArray();
-                    if ($delegation->user->role_id) {
-                        $delRoleIds[] = $delegation->user->role_id;
-                    }
-                    $delegatorSteps = ApprovalStep::whereIn('role_id', array_unique($delRoleIds))->pluck('step_order')->toArray();
+                    // LEGACY-04 (04-7): เช่นเดียวกัน — role_id เป็น accessor ของ Spatie แล้ว
+                    $delRoleIds = $delegation->user->roles->pluck('id')->unique()->values()->all();
+                    $delegatorSteps = ApprovalStep::whereIn('role_id', $delRoleIds)->pluck('step_order')->toArray();
                     $userRoleSteps = array_unique(array_merge($userRoleSteps, $delegatorSteps));
                 }
             }
@@ -120,10 +121,8 @@ class ApprovalController extends Controller
         // Check if user is authorized to approve this level
         if (! $isSuperAdmin) {
             $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
-            $userRoleIds = $user->roles->pluck('id')->toArray();
-            if ($user->role_id) {
-                $userRoleIds[] = $user->role_id;
-            }
+            // LEGACY-04 (04-7): role_id เป็น accessor ของ Spatie แล้ว จึงซ้ำกับบรรทัดนี้
+            $userRoleIds = $user->roles->pluck('id')->unique()->values()->all();
 
             $isAuthorized = false;
             if ($currentStep && in_array($currentStep->role_id, $userRoleIds)) {
@@ -275,10 +274,8 @@ class ApprovalController extends Controller
         // Check if user is authorized to reject this level
         if (! $isSuperAdmin) {
             $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
-            $userRoleIds = $user->roles->pluck('id')->toArray();
-            if ($user->role_id) {
-                $userRoleIds[] = $user->role_id;
-            }
+            // LEGACY-04 (04-7): role_id เป็น accessor ของ Spatie แล้ว จึงซ้ำกับบรรทัดนี้
+            $userRoleIds = $user->roles->pluck('id')->unique()->values()->all();
 
             $isAuthorized = false;
             if ($currentStep && in_array($currentStep->role_id, $userRoleIds)) {

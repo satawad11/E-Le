@@ -434,10 +434,9 @@ class LeaveController extends Controller
 
         if (! $isSuperAdmin) {
             $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
-            $userRoleIds = $user->roles->pluck('id')->toArray();
-            if ($user->role_id) {
-                $userRoleIds[] = $user->role_id;
-            }
+            // LEGACY-04 (04-7): `users.role_id` ถูกลบไปแล้วใน LEGACY-03 และกลายเป็น
+            // accessor ที่คืน roles->first()->id จึงซ้ำกับบรรทัดนี้พอดี (DB-RISK-002)
+            $userRoleIds = $user->roles->pluck('id')->unique()->values()->all();
 
             if (! $currentStep || ! in_array($currentStep->role_id, $userRoleIds)) {
                 return response()->json(['message' => 'ไม่มีสิทธิ์อนุมัติในระดับนี้'], 403);
@@ -489,10 +488,9 @@ class LeaveController extends Controller
 
         if (! $isSuperAdmin) {
             $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
-            $userRoleIds = $user->roles->pluck('id')->toArray();
-            if ($user->role_id) {
-                $userRoleIds[] = $user->role_id;
-            }
+            // LEGACY-04 (04-7): `users.role_id` ถูกลบไปแล้วใน LEGACY-03 และกลายเป็น
+            // accessor ที่คืน roles->first()->id จึงซ้ำกับบรรทัดนี้พอดี (DB-RISK-002)
+            $userRoleIds = $user->roles->pluck('id')->unique()->values()->all();
 
             if (! $currentStep || ! in_array($currentStep->role_id, $userRoleIds)) {
                 return response()->json(['message' => 'ไม่มีสิทธิ์ปฏิเสธในระดับนี้'], 403);

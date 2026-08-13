@@ -76,9 +76,13 @@ class UserController extends Controller
             if ($request->has('custom_permissions')) {
                 $perms = is_string($request->custom_permissions) ? json_decode($request->custom_permissions, true) : $request->custom_permissions;
                 if (is_array($perms)) {
+                    /*
+                     * LEGACY-04 (04-6): syncPermissions() บันทึกลง pivot ของ Spatie แล้ว
+                     * เดิมยังเขียนซ้ำลงคอลัมน์ `users.custom_permissions` ซึ่งเป็นแหล่งสิทธิ์
+                     * ที่สอง (DB-RISK-009) และคอลัมน์นั้นถูกลบไปแล้วใน LEGACY-03
+                     * การเขียนต่อจึงทำให้การกำหนดสิทธิ์รายบุคคลพังทั้งฟีเจอร์
+                     */
                     $user->syncPermissions($perms);
-                    $user->custom_permissions = $perms;
-                    $user->save();
                 }
             }
 
@@ -160,8 +164,8 @@ class UserController extends Controller
         if ($request->has('custom_permissions')) {
             $perms = is_string($request->custom_permissions) ? json_decode($request->custom_permissions, true) : $request->custom_permissions;
             if (is_array($perms)) {
+                // LEGACY-04 (04-6): แหล่งสิทธิ์รายบุคคลมีที่เดียวคือ Spatie
                 $user->syncPermissions($perms);
-                $user->custom_permissions = $perms;
             }
         }
 

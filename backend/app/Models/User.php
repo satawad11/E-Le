@@ -12,7 +12,9 @@ use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'phone', 'telegram_chat_id', 'line_user_id', 'notification_channel', 'password', 'is_active', 'department_id', 'personnel_type_id', 'custom_permissions', 'work_start_time', 'work_end_time'])]
+// LEGACY-04 (04-6): ถอด `custom_permissions` ออกแล้ว — คอลัมน์ถูกลบไปใน LEGACY-03
+// และสิทธิ์รายบุคคลต้องมีแหล่งเดียวคือ pivot ของ Spatie (DB-RISK-009)
+#[Fillable(['name', 'email', 'phone', 'telegram_chat_id', 'line_user_id', 'notification_channel', 'password', 'is_active', 'department_id', 'personnel_type_id', 'work_start_time', 'work_end_time'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -20,7 +22,7 @@ class User extends Authenticatable
 
     protected function casts(): array
     {
-        return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean', 'custom_permissions' => 'array', 'phone' => 'encrypted'];
+        return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean', 'phone' => 'encrypted'];
     }
 
     protected $appends = ['full_name_with_title', 'role', 'role_id'];
