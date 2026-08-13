@@ -171,12 +171,9 @@ class LeaveController extends Controller
         $query = Leave::with(['user.profile', 'user.department', 'type'])
             ->whereIn('status', ['Approved', 'Pending']);
 
-        $isGlobalViewer = $user->hasAnyRole([
-            'ผู้ดูแลระบบสูงสุด', 'Super Admin',
-            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head',
-            'ผู้อำนวยการ', 'Director',
-            'รองผู้อำนวยการ', 'Deputy Director',
-        ]) || $user->can('attendance.view_all');
+        // LEGACY-04 (04-4): บทบาทที่เคยระบุด้วยชื่อ ล้วนถือ attendance.view_all อยู่แล้ว
+        // การเช็ค permission อย่างเดียวจึงให้ผลเท่าชุดเดิมทุกประการ
+        $isGlobalViewer = $user->can('attendance.view_all');
 
         if (! $isGlobalViewer) {
             $departmentId = $user->department_id ?? ($user->profile->department_id ?? null);
@@ -368,10 +365,18 @@ class LeaveController extends Controller
     public function cancel(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $isAdminOrHR = $user->hasAnyRole([
-            'ผู้ดูแลระบบสูงสุด', 'Super Admin',
-            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head',
-        ]) || $user->can('leave.management.manage');
+        /*
+         * LEGACY-04 (04-4): เดิมชุดผู้มีสิทธิ์ยกเลิกใบลาของผู้อื่นคือ
+         * {Super Admin, HR Head} โดย HR Head ผ่านด้วย **ชื่อ role เท่านั้น**
+         * เพราะยังไม่มีใครถือ `leave.management.manage` จริง
+         *
+         * `system.user.view` เป็นสิทธิ์ที่ HR Head ถืออยู่และ Director/Deputy/
+         * Document Officer ไม่ได้ถือ จึงให้ชุดผู้มีสิทธิ์เท่าเดิมพอดี
+         *
+         * ยอมรับว่าชื่อสิทธิ์ไม่สื่อความหมายกับการยกเลิกใบลา — ควรตั้ง permission
+         * เฉพาะทาง (เช่น leave.request.cancel_any) ตอนจัดระเบียบ permission ชุดใหญ่
+         */
+        $isAdminOrHR = $user->can('leave.management.manage') || $user->can('system.user.view');
 
         // Only the owner or Admin/HR can cancel
         if ($leave->user_id !== $user->id && ! $isAdminOrHR) {
@@ -423,7 +428,9 @@ class LeaveController extends Controller
     public function approveCancellation(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $isSuperAdmin = $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin']);
+        // LEGACY-04 (04-4): Super Admin ยังผ่านทาง Gate::before
+        // และยังไม่มีผู้ใช้รายอื่นถือสิทธิ์นี้ พฤติกรรมจึงเท่าเดิม
+        $isSuperAdmin = $user->can('leave.management.manage');
 
         if (! $isSuperAdmin) {
             $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
@@ -476,7 +483,9 @@ class LeaveController extends Controller
     public function rejectCancellation(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $isSuperAdmin = $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin']);
+        // LEGACY-04 (04-4): Super Admin ยังผ่านทาง Gate::before
+        // และยังไม่มีผู้ใช้รายอื่นถือสิทธิ์นี้ พฤติกรรมจึงเท่าเดิม
+        $isSuperAdmin = $user->can('leave.management.manage');
 
         if (! $isSuperAdmin) {
             $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
