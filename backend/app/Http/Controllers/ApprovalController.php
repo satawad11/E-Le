@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\UserDelegation;
 use App\Notifications\LeaveStatusChanged;
 use App\Services\LeaveService;
+use App\Services\LeaveVisibility;
 use App\Services\LineNotificationService;
 use App\Services\TelegramService;
 use Illuminate\Http\Request;
@@ -28,13 +29,16 @@ class ApprovalController extends Controller
         $this->telegramService = $telegramService;
     }
 
-    public function pending(Request $request)
+    public function pending(Request $request, LeaveVisibility $visibility)
     {
         $user = $request->user();
-        $isSuperAdmin = $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin']);
-        $isDeptHead = $user->hasRole('หัวหน้าแผนกวิชา / หัวหน้าฝ่าย');
 
-        if ($isSuperAdmin) {
+        // LEGACY-04 (04-4): เดิมเช็คชื่อ role ตรง ๆ
+        // Super Admin ยังผ่านได้เหมือนเดิมผ่าน Gate::before และปัจจุบันยังไม่มี
+        // ผู้ใช้รายอื่นถือสิทธิ์นี้ พฤติกรรมจึงเท่าเดิมทุกประการ
+        $canManageAll = $user->can('leave.management.manage');
+
+        if ($canManageAll) {
             $leaves = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name'])
                 ->where(function ($query) {
                     $query->where('status', 'Pending')
@@ -83,15 +87,10 @@ class ApprovalController extends Controller
                 })
                 ->whereIn('approval_level', $userRoleSteps);
 
-            // Department Scope Isolation: If Department Head (and not Director/SuperAdmin/HR), only show leaves from own department
-            if ($isDeptHead && ! $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'เจ้าหน้าที่บุคลากร (HR)'])) {
-                $deptId = $user->department_id ?? ($user->profile->department_id ?? null);
-                if ($deptId) {
-                    $query->whereHas('user', function ($q) use ($deptId) {
-                        $q->where('department_id', $deptId);
-                    });
-                }
-            }
+            // LEGACY-04 (04-4): เดิมหรี่ขอบเขตด้วยชื่อ role `หัวหน้าแผนกวิชา / หัวหน้าฝ่าย`
+            // ซึ่งไม่มีอยู่จริงในฐานข้อมูล ตรรกะนี้จึงไม่เคยทำงาน
+            // ตอนนี้ใช้ permission_scopes ค่าเริ่มต้น ORGANIZATION จึงให้ผลเท่าเดิม
+            $query = $visibility->applyScope($query, $user);
 
             $leaves = $query->orderBy('created_at', 'asc')->get();
         }
@@ -102,7 +101,9 @@ class ApprovalController extends Controller
     public function approve(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $isSuperAdmin = $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin']);
+        // LEGACY-04 (04-4): เลิกเช็คชื่อ role — Super Admin ยังผ่านทาง Gate::before
+        // และยังไม่มีผู้ใช้รายอื่นถือสิทธิ์นี้ พฤติกรรมจึงเท่าเดิม
+        $isSuperAdmin = $user->can('leave.management.manage');
 
         // Only pending leaves can be approved
         if ($leave->status !== 'Pending') {
@@ -262,7 +263,9 @@ class ApprovalController extends Controller
     public function reject(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $isSuperAdmin = $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin']);
+        // LEGACY-04 (04-4): เลิกเช็คชื่อ role — Super Admin ยังผ่านทาง Gate::before
+        // และยังไม่มีผู้ใช้รายอื่นถือสิทธิ์นี้ พฤติกรรมจึงเท่าเดิม
+        $isSuperAdmin = $user->can('leave.management.manage');
 
         // Only pending leaves can be rejected
         if ($leave->status !== 'Pending') {

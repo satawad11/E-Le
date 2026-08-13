@@ -6,6 +6,8 @@ use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\User;
 use App\Services\LeavePolicyService;
+use App\Services\LeaveVisibility;
+use App\Services\OrgScopeResolver;
 use App\Services\PersonalDataAccessLogger;
 use App\Services\ThaiDateService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -44,11 +46,21 @@ class LeaveCardController extends Controller
 
         $target = User::with(['profile', 'department', 'personnelType'])->findOrFail($targetId);
 
-        if ($viewer->hasRole('หัวหน้าแผนกวิชา / หัวหน้าฝ่าย')
-            && ! $viewer->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'เจ้าหน้าที่บุคลากร (HR)'])) {
-            $deptId = $viewer->department_id ?? ($viewer->profile?->department_id ?? null);
-            abort_unless($deptId && $target->department_id === $deptId, 403, 'ดูได้เฉพาะบุคลากรในหน่วยงานของท่าน');
-        }
+        // LEGACY-04 (04-4): เดิมจำกัดขอบเขตด้วยชื่อ role `หัวหน้าแผนกวิชา / หัวหน้าฝ่าย`
+        // ซึ่งไม่มีอยู่จริงในฐานข้อมูล เงื่อนไขนี้จึงไม่เคยทำงาน
+        // ตอนนี้ถามจาก permission_scopes — ค่าเริ่มต้น ORGANIZATION จึงให้ผลเท่าเดิม
+        $scopes = app(OrgScopeResolver::class);
+
+        abort_unless(
+            $scopes->canSeeOrgUnit(
+                $viewer,
+                LeaveVisibility::SCOPE_ABILITY,
+                $scopes->homeOrgUnitId($target),
+                OrgScopeResolver::ORGANIZATION,
+            ),
+            403,
+            'ดูได้เฉพาะบุคลากรในหน่วยงานของท่าน'
+        );
 
         $this->accessLog->record($request, $target->id, 'leave_card', 'เปิดดูบัตรลาของบุคลากร');
 

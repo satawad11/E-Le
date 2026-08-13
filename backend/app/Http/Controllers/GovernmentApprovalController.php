@@ -52,7 +52,8 @@ class GovernmentApprovalController extends Controller
 
     private function authorizeStep(Request $r, LeaveApproval $step): ?int
     {
-        if ($r->user()->hasAnyRole(['Super Admin', 'SuperAdmin']) || $r->user()->can('leave.management.manage')) {
+        // LEGACY-04 (04-4): เลิกเช็คชื่อ role — Super Admin ยังผ่านทาง Gate::before
+        if ($r->user()->can('leave.management.manage')) {
             return null;
         }if ($r->user()->roles->contains('id', $step->required_role_id)) {
             return null;
