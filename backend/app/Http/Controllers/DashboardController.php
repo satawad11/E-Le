@@ -48,28 +48,25 @@ class DashboardController extends Controller
             $fiscalYearLabel = $fallbackYear + 543;
         }
 
-        $canViewGlobalDashboard = $user->hasAnyRole([
-            'ผู้ดูแลระบบสูงสุด', 'Super Admin',
-            'ผู้อำนวยการ', 'Director',
-            'รองผู้อำนวยการ', 'Deputy Director',
-            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head',
-        ]);
+        /*
+         * LEGACY-04 (04-4): เดิมตัดสินจากชื่อ role ล้วน (Director / Deputy Director /
+         * HR Head / Super Admin) โดยไม่มี permission สำรองเลย
+         *
+         * `leave.approval.dept` คือสิทธิ์ที่ทั้งสามบทบาทถืออยู่พอดี และ
+         * Document Officer **ไม่ได้ถือ** จึงให้ผลเท่าชุดเดิมทุกประการ
+         * (ถ้าใช้ `leave.report.view` แทน Document Officer จะได้แดชบอร์ดรวมเพิ่มขึ้นมา
+         * ซึ่งเป็นการให้สิทธิ์ใหม่ — มีเทสต์ล็อกไว้)
+         *
+         * ชื่อสิทธิ์ยังไม่สื่อความหมายนัก ควรทบทวนตอนจัดระเบียบ permission ชุดใหญ่
+         */
+        $canViewGlobalDashboard = $user->can('leave.approval.dept');
 
         if ($viewSelf) {
             $baseQuery->where('user_id', $user->id);
-        } else {
-            if (! $canViewGlobalDashboard) {
-                if ($user->hasRole('หัวหน้าแผนกวิชา / หัวหน้าฝ่าย')) {
-                    $deptId = $user->department_id ?? ($user->profile?->department_id ?? null);
-                    if ($deptId) {
-                        $baseQuery->whereHas('user', fn ($q) => $q->where('department_id', $deptId));
-                    } else {
-                        $baseQuery->where('user_id', $user->id);
-                    }
-                } else {
-                    $baseQuery->where('user_id', $user->id);
-                }
-            }
+        } elseif (! $canViewGlobalDashboard) {
+            // เดิมมีสาขาสำหรับ role `หัวหน้าแผนกวิชา / หัวหน้าฝ่าย` ที่ไม่มีอยู่จริง
+            // จึงตกมาที่ "เห็นเฉพาะของตนเอง" เสมอ — คงพฤติกรรมนั้นไว้
+            $baseQuery->where('user_id', $user->id);
         }
 
         // Count by status

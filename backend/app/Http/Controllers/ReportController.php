@@ -6,6 +6,7 @@ use App\Models\Leave;
 use App\Models\LeaveType;
 use App\Models\User;
 use App\Services\Export\LeaveExcelService;
+use App\Services\LeaveVisibility;
 use App\Services\ThaiDateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -56,13 +57,12 @@ class ReportController extends Controller
         }
 
         $user = $request->user();
-        $canViewAllReports = $user->hasAnyRole([
-            'ผู้ดูแลระบบสูงสุด', 'Super Admin',
-            'ผู้อำนวยการ', 'Director',
-            'รองผู้อำนวยการ', 'Deputy Director',
-            'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย', 'Head of Department',
-            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head',
-        ]) || $user->can('leave.report.view');
+        /*
+         * LEGACY-04 (04-4): บทบาทที่โค้ดเดิมระบุด้วยชื่อ (Director / Deputy / HR Head)
+         * ล้วนถือ `leave.report.view` อยู่แล้ว การเช็ค permission อย่างเดียวจึงให้ผล
+         * เท่าชุดเดิมทุกประการ
+         */
+        $canViewAllReports = $user->can('leave.report.view');
 
         if (! $canViewAllReports) {
             $query->where('user_id', $user->id);
@@ -70,14 +70,9 @@ class ReportController extends Controller
             return $query;
         }
 
-        // หัวหน้าแผนก/ฝ่ายเห็นได้เฉพาะหน่วยงานตนเอง
-        if ($user->hasRole('หัวหน้าแผนกวิชา / หัวหน้าฝ่าย')
-            && ! $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'เจ้าหน้าที่บุคลากร (HR)'])) {
-            $deptId = $user->department_id ?? ($user->profile->department_id ?? null);
-            if ($deptId) {
-                $query->whereHas('user', fn ($q) => $q->where('department_id', $deptId));
-            }
-        }
+        // เดิมหรี่ขอบเขตด้วยชื่อ role `หัวหน้าแผนกวิชา / หัวหน้าฝ่าย` ที่ไม่มีอยู่จริง
+        // ตอนนี้ใช้ permission_scopes ค่าเริ่มต้น ORGANIZATION จึงให้ผลเท่าเดิม
+        $query = app(LeaveVisibility::class)->applyScope($query, $user);
 
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
@@ -167,7 +162,8 @@ class ReportController extends Controller
         $selectedUserName = null;
         if ($request->filled('user_id')) {
             $selectedUserName = User::find($request->user_id)?->name;
-        } elseif (! $user->can('leave.report.view') && ! $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'รองผู้อำนวยการ', 'Deputy Director', 'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย', 'Head of Department', 'เจ้าหน้าที่บุคลากร (HR)', 'HR Head'])) {
+            // LEGACY-04 (04-4): บทบาทที่เคยระบุด้วยชื่อ ล้วนถือ leave.report.view อยู่แล้ว
+        } elseif (! $user->can('leave.report.view')) {
             $selectedUserName = $user->name;
         }
 
