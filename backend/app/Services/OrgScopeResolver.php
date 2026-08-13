@@ -19,8 +19,16 @@ use Illuminate\Support\Facades\DB;
  *   ASSIGNED      เห็นเฉพาะที่ได้รับมอบหมายเป็นรายกรณี (ผู้เรียกตัดสินเอง)
  *   CUSTOM        เห็นเฉพาะหน่วยงานที่ระบุไว้ใน permission_scopes.org_unit_id
  *
- * **สำคัญ:** ถ้าไม่มีแถวใน `permission_scopes` จะถือว่าเป็น UNIT ซึ่งให้ผล
- * เหมือนโค้ดเดิมทุกประการ การเพิ่มตารางนี้จึงไม่เปลี่ยนพฤติกรรมจนกว่าจะใส่ข้อมูล
+ * **สำคัญ:** ถ้าไม่มีแถวใน `permission_scopes` จะใช้ค่า `$default` ที่ผู้เรียกกำหนด
+ * ซึ่งต้องเลือกให้ผลเท่ากับพฤติกรรมเดิมของจุดนั้น ๆ เสมอ
+ *
+ *   - การตรวจสิทธิ์รายรายการ (Policy)  ใช้ UNIT         — เดิมเทียบ department ตรง ๆ
+ *   - การแสดงรายการ/รายงาน            ใช้ ORGANIZATION — เดิมไม่เคยถูกจำกัดเลย
+ *     เพราะ role "หัวหน้าแผนกวิชา / หัวหน้าฝ่าย" ที่โค้ดเดิมใช้หรี่ขอบเขต
+ *     **ไม่มีอยู่จริงในฐานข้อมูล** ตรรกะนั้นจึงไม่เคยทำงาน
+ *
+ * ผู้ดูแลจึงหรี่ขอบเขตให้รายคนได้ภายหลังด้วยการเพิ่มแถวใน `permission_scopes`
+ * โดยไม่ต้องแก้โค้ด
  */
 class OrgScopeResolver
 {
@@ -43,10 +51,10 @@ class OrgScopeResolver
      *
      * @return array{scope: string, org_unit_id: ?int}
      */
-    public function resolve(User $user, string $ability): array
+    public function resolve(User $user, string $ability, string $default = self::UNIT): array
     {
         return $this->evaluator->scopeFor($user, $ability)
-            ?? ['scope' => self::UNIT, 'org_unit_id' => null];
+            ?? ['scope' => $default, 'org_unit_id' => null];
     }
 
     /**
@@ -56,9 +64,9 @@ class OrgScopeResolver
      *
      * @return array<int,int>|null
      */
-    public function visibleOrgUnitIds(User $user, string $ability): ?array
+    public function visibleOrgUnitIds(User $user, string $ability, string $default = self::UNIT): ?array
     {
-        $resolved = $this->resolve($user, $ability);
+        $resolved = $this->resolve($user, $ability, $default);
         $home = $this->homeOrgUnitId($user);
 
         return match ($resolved['scope']) {
@@ -73,9 +81,9 @@ class OrgScopeResolver
     /**
      * ผู้ใช้คนนี้มองเห็นหน่วยงานนี้ได้หรือไม่
      */
-    public function canSeeOrgUnit(User $user, string $ability, ?int $orgUnitId): bool
+    public function canSeeOrgUnit(User $user, string $ability, ?int $orgUnitId, string $default = self::UNIT): bool
     {
-        $visible = $this->visibleOrgUnitIds($user, $ability);
+        $visible = $this->visibleOrgUnitIds($user, $ability, $default);
 
         if ($visible === null) {
             return true;

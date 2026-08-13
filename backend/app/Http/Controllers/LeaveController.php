@@ -15,6 +15,7 @@ use App\Services\Export\LeaveWordService;
 use App\Services\LeavePolicyService;
 use App\Services\LeaveService;
 use App\Services\LeaveVerificationService;
+use App\Services\LeaveVisibility;
 use App\Services\TelegramNotificationService;
 use App\Services\ThaiDateService;
 use App\Support\StoredFile;
@@ -36,17 +37,13 @@ class LeaveController extends Controller
         $this->policies = $policies;
     }
 
-    public function index(Request $request)
+    public function index(Request $request, LeaveVisibility $visibility)
     {
         $user = $request->user();
 
-        $canViewAll = $user->hasAnyRole([
-            'ผู้ดูแลระบบสูงสุด', 'Super Admin',
-            'ผู้อำนวยการ', 'Director',
-            'รองผู้อำนวยการ', 'Deputy Director',
-            'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย', 'Head of Department',
-            'เจ้าหน้าที่บุคลากร (HR)', 'HR Head',
-        ]) || $user->can('leave.management.manage') || $user->can('leave.report.view') || $user->can('leave.approval.dept');
+        // LEGACY-04 (04-4): เดิมตัดสินจากรายชื่อ role ที่ hard-code ไว้
+        // ซึ่งหลายชื่อไม่มีอยู่จริงในฐานข้อมูล ตอนนี้ถามจาก permission ล้วน
+        $canViewAll = $visibility->canSeeOthers($user);
 
         $perPage = min((int) ($request->input('per_page', 100)), 500);
 
@@ -54,13 +51,10 @@ class LeaveController extends Controller
             $query = Leave::with(['user:id,name,department_id', 'user.department', 'type:id,name', 'approvals.approver:id,name', 'actionLogs.user:id,name'])
                 ->orderBy('created_at', 'desc');
 
-            // If Department Head, filter by department unless user requested specific user
-            if ($user->hasRole('หัวหน้าแผนกวิชา / หัวหน้าฝ่าย') && ! $user->hasAnyRole(['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'ผู้อำนวยการ', 'Director', 'เจ้าหน้าที่บุคลากร (HR)'])) {
-                $deptId = $user->department_id ?? $user->profile?->department_id;
-                if ($deptId) {
-                    $query->whereHas('user', fn ($q) => $q->where('department_id', $deptId));
-                }
-            }
+            // LEGACY-04 (04-4): เดิมหรี่ขอบเขตด้วยชื่อ role `หัวหน้าแผนกวิชา / หัวหน้าฝ่าย`
+            // ซึ่งไม่มีอยู่จริง ตรรกะจึงไม่เคยทำงาน — ตอนนี้ใช้ permission_scopes
+            // ค่าเริ่มต้นคือ ORGANIZATION จึงให้ผลเท่าเดิม และผู้ดูแลหรี่รายคนได้เอง
+            $query = $visibility->applyScope($query, $user);
 
             // กรองตาม fiscal_year ถ้าส่งมา เพื่อลดข้อมูล
             if ($request->fiscal_year) {
