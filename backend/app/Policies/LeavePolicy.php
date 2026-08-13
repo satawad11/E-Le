@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Leave;
 use App\Models\User;
+use App\Services\OrgScopeResolver;
 
 /**
  * สิทธิ์การเข้าถึงใบลารายฉบับ (SEC-003 / SEC-004)
@@ -98,17 +99,36 @@ class LeavePolicy
     }
 
     /**
-     * เทียบหน่วยงานของผู้ใช้กับหน่วยงานของเจ้าของใบลา
+     * เจ้าของใบลาอยู่ในขอบเขตหน่วยงานที่ผู้ใช้ดูแลหรือไม่
      *
-     * รองรับทั้งกรณีที่เก็บ department ไว้บน users และบน user_profiles
-     * ตามที่โค้ดเดิมทำอยู่ — ถ้าฝั่งใดฝั่งหนึ่งไม่มีข้อมูล ให้ถือว่าไม่อยู่ใน scope
+     * LEGACY-04 (04-3): เดิมเทียบ `department_id` ตรง ๆ ซึ่งเห็นได้แค่ระดับเดียว
+     * ตอนนี้ถามผ่าน OrgScopeResolver ที่ไต่ต้นไม้ `org_units` ได้
+     *
+     * ค่าเริ่มต้นเมื่อไม่ได้กำหนดขอบเขตไว้คือ UNIT ซึ่งให้ผลเท่ากับโค้ดเดิม
+     * ผู้ดูแลจึงขยายเป็น DESCENDANTS ให้บางคนได้ภายหลังโดยไม่ต้องแก้โค้ด
+     *
+     * ถ้ายังไม่มีข้อมูล org_unit (เช่นข้อมูลเก่าที่ยัง backfill ไม่ถึง)
+     * จะถอยไปเทียบ `department_id` แบบเดิมเพื่อไม่ให้ผู้ใช้เสียสิทธิ์
      */
     private function sharesDepartmentWith(User $user, Leave $leave): bool
     {
-        $viewerDepartment = $user->department_id ?? $user->profile?->department_id;
-
         $owner = $leave->relationLoaded('user') ? $leave->user : $leave->user()->first();
-        $ownerDepartment = $owner?->department_id ?? $owner?->profile?->department_id;
+
+        if ($owner === null) {
+            return false;
+        }
+
+        $resolver = app(OrgScopeResolver::class);
+        $ownerOrgUnit = $resolver->homeOrgUnitId($owner);
+        $viewerOrgUnit = $resolver->homeOrgUnitId($user);
+
+        if ($ownerOrgUnit !== null && $viewerOrgUnit !== null) {
+            return $resolver->canSeeOrgUnit($user, self::DEPARTMENT_SCOPED, $ownerOrgUnit);
+        }
+
+        // ข้อมูลยังไม่มี org_unit — ใช้วิธีเดิม
+        $viewerDepartment = $user->department_id ?? $user->profile?->department_id;
+        $ownerDepartment = $owner->department_id ?? $owner->profile?->department_id;
 
         return $viewerDepartment !== null
             && $ownerDepartment !== null
