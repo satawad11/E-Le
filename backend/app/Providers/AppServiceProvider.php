@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Policies\LeavePolicy;
 use App\Policies\Saraban\DocumentPolicy;
 use App\Services\AuditLogger;
+use App\Services\PermissionEvaluator;
 use App\Services\SystemSettingService;
 use App\Support\ProductionEnvironmentGuard;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -52,9 +53,34 @@ class AppServiceProvider extends ServiceProvider
         Attendance::updated(fn (Attendance $attendance) => app(AuditLogger::class)->log('attendance.updated', 'attendance', $attendance->id, $attendance->getOriginal(), $attendance->getAttributes()));
         Attendance::deleted(fn (Attendance $attendance) => app(AuditLogger::class)->log('attendance.deleted', 'attendance', $attendance->id, $attendance->getOriginal()));
 
-        // Super Admin bypasses every ability check.
+        /*
+         * LEGACY-04 (04-2 / 04-5) — ลำดับ: explicit deny > allow > default deny
+         *
+         * เดิม Super Admin ผ่านทุก ability โดยไม่มีทางปฏิเสธได้เลย
+         * ตอนนี้ explicit deny ชนะแม้กระทั่ง Super Admin
+         *
+         * ตัว evaluator ยังเทียบชื่อ permission ข้ามรุ่นให้ด้วย (ชื่อเก่า <-> canonical)
+         * ซึ่งจำเป็น เพราะฐานข้อมูลจริงยังถือชื่อเก่าอยู่ ขณะที่โค้ดเช็คชื่อ canonical
+         *
+         * คืน null เมื่อไม่ตัดสิน เพื่อให้ Policy/Gate ปกติทำงานต่อ
+         */
         Gate::before(function ($user, $ability) {
-            return $user->hasRole(['Super Admin', 'SuperAdmin']) ? true : null;
+            if (! config('authorization.use_new_engine')) {
+                return $user->hasRole(['Super Admin', 'SuperAdmin']) ? true : null;
+            }
+
+            $evaluator = app(PermissionEvaluator::class);
+
+            if ($user instanceof User && $evaluator->isDenied($user, $ability)) {
+                return false;
+            }
+
+            if ($user->hasRole(['Super Admin', 'SuperAdmin'])) {
+                return true;
+            }
+
+            // ให้ผ่านเฉพาะเมื่อถือชื่อที่เทียบเท่ากันอยู่ มิฉะนั้นปล่อยให้ Gate เดิมตัดสิน
+            return ($user instanceof User && $evaluator->allows($user, $ability)) ? true : null;
         });
 
         try {
