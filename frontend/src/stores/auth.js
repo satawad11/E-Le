@@ -12,6 +12,16 @@ const getPermissionNames = (state) => {
   return list.map(p => typeof p === 'string' ? p : p?.name).filter(Boolean);
 };
 
+/**
+ * ผู้ดูแลระบบสูงสุด — จุดเดียวในไฟล์นี้ที่ยังตัดสินจากชื่อ role
+ *
+ * ตรงกับ Gate::before ฝั่ง backend ที่ให้ Super Admin ผ่านทุก ability
+ * เก็บไว้เป็น bootstrap identity เพราะถ้าผูกกับ permission จะเกิดปัญหา
+ * ไก่กับไข่ตอนตั้งค่าระบบครั้งแรก
+ */
+const isSuperAdminUser = (state) =>
+  Boolean(state.user?.role_names?.some(r => ['Super Admin', 'SuperAdmin'].includes(r)));
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
@@ -24,62 +34,83 @@ export const useAuthStore = defineStore('auth', {
     // Role name helper (returns first role or empty)
     roleName: (state) => state.user?.role_names?.[0] || state.user?.role?.name || '',
 
-    // Individual role checks for 7 Standard Roles
-    isSuperAdmin: (state) => state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin'].includes(r)),
-    isDirector:   (state) => state.user?.role_names?.some(r => ['ผู้อำนวยการ', 'Director'].includes(r)),
-    isDeputy:     (state) => state.user?.role_names?.some(r => ['รองผู้อำนวยการ', 'Deputy Director', 'Deputy'].includes(r)),
-    isDeptHead:   (state) => state.user?.role_names?.some(r => ['หัวหน้าแผนกวิชา / หัวหน้าฝ่าย', 'HeadOfDepartment'].includes(r)),
-    isHRHead:     (state) => state.user?.role_names?.some(r => ['เจ้าหน้าที่บุคลากร (HR)', 'HR Head', 'HROfficer'].includes(r)),
-    isSarabanOfficer: (state) => state.user?.role_names?.some(r => ['เจ้าหน้าที่สารบรรณกลาง', 'Saraban Officer', 'SarabanOfficer', 'Document Officer'].includes(r)),
-    isEmployee:   (state) => state.user?.role_names?.some(r => ['บุคลากร / ครู / เจ้าหน้าที่', 'Employee'].includes(r)),
+    /*
+     * LEGACY-04 (04-8) — เลิกตัดสินสิทธิ์จาก "ชื่อ role"
+     *
+     * ชื่อ role ในระบบนี้ผู้ดูแลแก้ได้จากหน้าจอ และที่ผ่านมาชื่อในโค้ดกับชื่อที่มีจริง
+     * ในฐานข้อมูลก็ไม่ตรงกันอยู่แล้ว (เช่น `หัวหน้าแผนกวิชา / หัวหน้าฝ่าย` ไม่มีอยู่จริง)
+     * ตัวตัดสินจึงเปลี่ยนมาใช้ permission ที่ backend ส่งมาแทน
+     *
+     * หมายเหตุ: ฝั่งหน้าเว็บเป็นเพียง UX ไม่ใช่การควบคุมสิทธิ์ — backend บังคับเสมอ
+     *
+     * ถอด getter ที่ไม่มีใครเรียกออกแล้ว: isDirector, isDeputy, isDeptHead, isEmployee
+     */
 
-    // Can approve leaves (Director, Deputy, DeptHead, HRHead, SuperAdmin)
+    /**
+     * ผู้ดูแลระบบสูงสุด — คงการเช็คชื่อ role ไว้จุดเดียวโดยตั้งใจ
+     * เพราะเป็น bootstrap identity เหมือนฝั่ง backend (Gate::before)
+     * ถ้าผูกกับ permission จะเกิดปัญหาไก่กับไข่ตอนตั้งค่าระบบครั้งแรก
+     */
+    isSuperAdmin: (state) => isSuperAdminUser(state),
+
+    /**
+     * เจ้าหน้าที่สารบรรณ — ยังเช็คชื่อ role อยู่
+     *
+     * เพราะบทบาท `Document Officer` ที่มีจริงในระบบ **ไม่ได้ถือ permission
+     * saraban.* เลยสักตัว** จึงยังหา permission ที่ให้ผลเท่ากันไม่ได้
+     * รอการตัดสินใจว่า Document Officer ควรถือสิทธิ์สารบรรณหรือไม่
+     * (คำถามเดียวกับที่ค้างอยู่ฝั่ง backend — DocumentController / DocumentPolicy)
+     */
+    isSarabanOfficer: (state) => state.user?.role_names?.some(r => ['เจ้าหน้าที่สารบรรณกลาง', 'Saraban Officer', 'SarabanOfficer', 'Document Officer'].includes(r)),
+
+    /** ผู้มีสิทธิ์อนุมัติใบลา — เดิมคือ SuperAdmin/Director/Deputy/HR Head ซึ่งล้วนถือสิทธิ์นี้ */
+    isHRHead: (state) => {
+      const perms = getPermissionNames(state);
+      return perms.includes('system.user.view') || perms.includes('view_users');
+    },
+
     isManager: (state) => {
       const perms = getPermissionNames(state);
-      return state.user?.role_names?.some(r => [
-        'ผู้ดูแลระบบสูงสุด', 'ผู้อำนวยการ', 'รองผู้อำนวยการ', 'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย', 'เจ้าหน้าที่บุคลากร (HR)',
-        'Super Admin', 'SuperAdmin', 'Director', 'Deputy Director', 'Deputy', 'HR Head', 'HRHead', 'HeadOfDepartment'
-      ].includes(r)) || perms.includes('approve_leaves') || perms.includes('leave.approval.dept');
+      return perms.includes('leave.approval.dept')
+        || perms.includes('approve_leave')
+        || perms.includes('approve_leaves');
     },
 
-    // Can access admin settings (SuperAdmin only)
+    /** เข้าหน้าตั้งค่าระบบได้ — เดิมคือ Super Admin เท่านั้น */
     isAdmin: (state) => {
-      return state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin'].includes(r));
-    },
-
-    // Can access user management (Admin and HR)
-    isUserManager: (state) => {
-      if (state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin', 'เจ้าหน้าที่บุคลากร (HR)', 'HR Head'].includes(r))) return true;
       const perms = getPermissionNames(state);
-      return perms.includes('view_users') || perms.includes('edit_users') || perms.includes('system.user.manage');
+      return perms.includes('system.setting.manage') || perms.includes('manage_settings');
     },
 
-    // Check specific custom permission with alias resolution (SuperAdmin bypasses all)
+    /** เข้าหน้าจัดการผู้ใช้ได้ — เดิมคือ Super Admin กับ HR Head */
+    isUserManager: (state) => {
+      const perms = getPermissionNames(state);
+      return perms.includes('view_users')
+        || perms.includes('system.user.view')
+        || perms.includes('edit_users')
+        || perms.includes('system.user.manage');
+    },
+
+    /**
+     * ตรวจสิทธิ์รายตัว
+     *
+     * LEGACY-04 (04-8): ถอดตาราง alias 11 ชุดออกแล้ว
+     *
+     * ตารางนั้นมีไว้ชดเชยกรณีที่โค้ดเช็คชื่อ canonical แต่ผู้ใช้ถือชื่อรุ่นเก่า
+     * ตอนนี้ 04-1 ทำให้ทุก role ถือ **ทั้งชื่อเก่าและชื่อ canonical** พร้อมกัน
+     * การเทียบชื่อตรง ๆ จึงให้ผลเท่าเดิม (ตรวจแล้วกับชื่อทุกตัวที่หน้าเว็บใช้จริง)
+     *
+     * ยังคงให้ Super Admin ผ่านทุกข้อ เพื่อให้ตรงกับ Gate::before ฝั่ง backend
+     */
     hasPermission: (state) => (permissionName) => {
-      if (state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin'].includes(r))) return true;
-      const userPerms = getPermissionNames(state);
+      if (isSuperAdminUser(state)) return true;
 
-      const aliases = {
-        'view_all_attendances': ['view_all_attendances', 'attendance.view_all', 'attendance.report.view_all'],
-        'attendance.view_all': ['view_all_attendances', 'attendance.view_all', 'attendance.report.view_all'],
-        'attendance.checkin': ['attendance.checkin', 'attendance.record.create'],
-        'attendance.view_self': ['attendance.view_self', 'attendance.record.view_my'],
-        'view_users': ['view_users', 'system.user.view', 'system.user.manage'],
-        'edit_users': ['edit_users', 'system.user.manage', 'admin.users.manage_permissions', 'system.role.manage', 'system.menu.manage'],
-        'approve_leave': ['approve_leave', 'approve_leaves', 'leave.approval.dept', 'leave.approval.final', 'leave.management.manage', 'leave.hr_verify'],
-        'manage_departments': ['manage_departments', 'system.setting.manage'],
-        'manage_workflow_steps': ['manage_workflow_steps', 'saraban.config.manage', 'system.setting.manage'],
-        'manage_leave_types': ['manage_leave_types', 'system.setting.manage'],
-        'manage_settings': ['manage_settings', 'system.setting.manage', 'saraban.setting.manage'],
-      };
-
-      const matchKeys = aliases[permissionName] || [permissionName];
-      return matchKeys.some(key => userPerms.includes(key));
+      return getPermissionNames(state).includes(permissionName);
     },
 
     // Check if user has ANY of the specified permissions
     hasAnyPermission: (state) => (permissionsArray = []) => {
-      if (state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin'].includes(r))) return true;
+      if (isSuperAdminUser(state)) return true;
       if (!Array.isArray(permissionsArray) || permissionsArray.length === 0) return false;
       const perms = getPermissionNames(state);
       return permissionsArray.some(p => perms.includes(p));
@@ -87,7 +118,7 @@ export const useAuthStore = defineStore('auth', {
 
     // Check if user has ALL of the specified permissions
     hasAllPermissions: (state) => (permissionsArray = []) => {
-      if (state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin'].includes(r))) return true;
+      if (isSuperAdminUser(state)) return true;
       if (!Array.isArray(permissionsArray) || permissionsArray.length === 0) return false;
       const perms = getPermissionNames(state);
       return permissionsArray.every(p => perms.includes(p));
@@ -102,31 +133,31 @@ export const useAuthStore = defineStore('auth', {
     // === Attendance Module Shortcuts ===
     // ผู้ที่สามารถลงเวลาเข้า-ออกได้ (check-in / check-out)
     canCheckIn: (state) => {
-      if (state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin'].includes(r))) return true;
+      if (isSuperAdminUser(state)) return true;
       const perms = getPermissionNames(state);
       return perms.some(p => ['attendance.checkin', 'attendance.record.create'].includes(p));
     },
     // ผู้ที่ดูประวัติการลงเวลาตนเองได้
     canViewSelfAttendance: (state) => {
-      if (state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin'].includes(r))) return true;
+      if (isSuperAdminUser(state)) return true;
       const perms = getPermissionNames(state);
       return perms.some(p => ['attendance.view_self', 'attendance.record.view_my'].includes(p));
     },
     // ดูรายงานการลงเวลาทั้งหมด (สำหรับ Admin/HR)
     canViewAllAttendance: (state) => {
-      if (state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin'].includes(r))) return true;
+      if (isSuperAdminUser(state)) return true;
       const perms = getPermissionNames(state);
       return perms.some(p => ['attendance.view_all', 'view_all_attendances', 'attendance.report.view_all'].includes(p));
     },
     // ดู/บันทึก OT
     canManageOT: (state) => {
-      if (state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin'].includes(r))) return true;
+      if (isSuperAdminUser(state)) return true;
       const perms = getPermissionNames(state);
       return perms.some(p => ['attendance.ot', 'attendance.ot_summary', 'attendance.summary.export'].includes(p));
     },
     // ใช้โมดูล attendance (ใช้แสดง/ซ่อนเมนูหลัก)
     hasAttendanceAccess: (state) => {
-      if (state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin'].includes(r))) return true;
+      if (isSuperAdminUser(state)) return true;
       const attendancePerms = [
         'attendance.checkin', 'attendance.view_self', 'attendance.view_all',
         'attendance.ot', 'attendance.ot_summary', 'attendance.export',
@@ -138,7 +169,7 @@ export const useAuthStore = defineStore('auth', {
 
     // Check if user has any admin menu permission
     hasAnyAdminMenu: (state) => {
-      if (state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin', 'เจ้าหน้าที่บุคลากร (HR)'].includes(r))) return true;
+      if (isSuperAdminUser(state)) return true;
       const adminPerms = ['view_users', 'edit_users', 'manage_departments', 'manage_leave_types', 'manage_settings', 'attendance.view_all', 'view_all_attendances', 'system.user.view', 'system.role.manage', 'system.menu.manage'];
       const perms = getPermissionNames(state);
       return perms.some(p => adminPerms.includes(p));
@@ -146,7 +177,7 @@ export const useAuthStore = defineStore('auth', {
 
     // Check if user has any settings menu permission
     hasAnySettingsMenu: (state) => {
-      if (state.user?.role_names?.some(r => ['ผู้ดูแลระบบสูงสุด', 'Super Admin', 'SuperAdmin'].includes(r))) return true;
+      if (isSuperAdminUser(state)) return true;
       const settingsPerms = ['manage_departments', 'manage_workflow_steps', 'manage_leave_types', 'manage_settings', 'system.setting.manage', 'system.menu.manage'];
       const perms = getPermissionNames(state);
       return perms.some(p => settingsPerms.includes(p));
