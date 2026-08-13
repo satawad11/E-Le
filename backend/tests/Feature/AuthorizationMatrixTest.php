@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\SarabanPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -67,12 +69,6 @@ class AuthorizationMatrixTest extends TestCase
         return array_values(array_unique($names));
     }
 
-    /**
-     * ทุก permission ที่ route บังคับใช้ ต้องมีอยู่จริงในชุดที่ seeder สร้าง
-     *
-     * ถ้าข้อนี้ล้ม แปลว่ามี endpoint ที่ไม่มีใครเข้าถึงได้เลยนอกจาก Super Admin
-     * ซึ่งคือ regression แบบเดียวกับที่เกิดใน LEGACY-02B
-     */
     /**
      * ช่องว่างที่ค้นพบแล้วและยังรอการตัดสินใจของเจ้าของระบบ
      *
@@ -142,7 +138,7 @@ class AuthorizationMatrixTest extends TestCase
     public function test_role_names_still_referenced_in_code_actually_exist(): void
     {
         $referenced = ['Super Admin'];   // จุดเดียวที่ยังคงไว้โดยตั้งใจ (bootstrap identity)
-        $existing = \Spatie\Permission\Models\Role::pluck('name')->all();
+        $existing = Role::pluck('name')->all();
 
         foreach ($referenced as $role) {
             $this->assertContains(
@@ -160,7 +156,7 @@ class AuthorizationMatrixTest extends TestCase
     {
         $catalogue = Permission::pluck('name')->all();
 
-        foreach (\Illuminate\Support\Facades\DB::table('permission_aliases')->get() as $alias) {
+        foreach (DB::table('permission_aliases')->get() as $alias) {
             $this->assertContains(
                 $alias->canonical_name,
                 $catalogue,

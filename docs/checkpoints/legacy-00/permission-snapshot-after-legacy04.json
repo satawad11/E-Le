@@ -1,0 +1,123 @@
+{
+    "1": {
+        "email": "admin@eleave.local",
+        "roles": [
+            "Super Admin"
+        ],
+        "granted": [
+            "approve_leave",
+            "attendance.view_all",
+            "delete_users",
+            "edit_users",
+            "export_reports",
+            "leave.approval.dept",
+            "leave.approval.hr",
+            "leave.audit.view",
+            "leave.calendar.manage",
+            "leave.evidence.verify",
+            "leave.policy.manage",
+            "leave.report.view",
+            "manage_departments",
+            "manage_leave_types",
+            "manage_settings",
+            "manage_workflow_steps",
+            "system.setting.manage",
+            "system.user.manage",
+            "system.user.view",
+            "view_all_attendances",
+            "view_users"
+        ]
+    },
+    "2": {
+        "email": "superadmin@example.com",
+        "roles": [
+            "Super Admin"
+        ],
+        "granted": [
+            "approve_leave",
+            "attendance.view_all",
+            "delete_users",
+            "edit_users",
+            "export_reports",
+            "leave.approval.dept",
+            "leave.approval.hr",
+            "leave.audit.view",
+            "leave.calendar.manage",
+            "leave.evidence.verify",
+            "leave.policy.manage",
+            "leave.report.view",
+            "manage_departments",
+            "manage_leave_types",
+            "manage_settings",
+            "manage_workflow_steps",
+            "system.setting.manage",
+            "system.user.manage",
+            "system.user.view",
+            "view_all_attendances",
+            "view_users"
+        ]
+    },
+    "3": {
+        "email": "director@example.com",
+        "roles": [
+            "Director"
+        ],
+        "granted": [
+            "approve_leave",
+            "attendance.view_all",
+            "export_reports",
+            "leave.approval.dept",
+            "leave.report.view",
+            "view_all_attendances"
+        ]
+    },
+    "4": {
+        "email": "deputy@example.com",
+        "roles": [
+            "Deputy Director"
+        ],
+        "granted": [
+            "approve_leave",
+            "attendance.view_all",
+            "export_reports",
+            "leave.approval.dept",
+            "leave.report.view",
+            "view_all_attendances"
+        ]
+    },
+    "5": {
+        "email": "hrhead@example.com",
+        "roles": [
+            "HR Head"
+        ],
+        "granted": [
+            "approve_leave",
+            "attendance.view_all",
+            "export_reports",
+            "leave.approval.dept",
+            "leave.report.view",
+            "system.user.view",
+            "view_all_attendances",
+            "view_users"
+        ]
+    },
+    "6": {
+        "email": "employee@example.com",
+        "roles": [
+            "Employee"
+        ],
+        "granted": []
+    },
+    "7": {
+        "email": "doc@example.com",
+        "roles": [
+            "Document Officer"
+        ],
+        "granted": [
+            "attendance.view_all",
+            "export_reports",
+            "leave.report.view",
+            "view_all_attendances"
+        ]
+    }
+}

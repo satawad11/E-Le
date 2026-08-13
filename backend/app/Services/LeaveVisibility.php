@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Leave;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -63,7 +64,7 @@ class LeaveVisibility
      *
      * ผู้ดูแลหรี่ให้รายคนได้ด้วยการเพิ่มแถวใน `permission_scopes`
      *
-     * @param  Builder<\App\Models\Leave>  $query
+     * @param  Builder<Leave>  $query
      */
     public function applyScope(Builder $query, User $user): Builder
     {
