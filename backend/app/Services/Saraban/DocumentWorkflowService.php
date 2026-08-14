@@ -7,12 +7,14 @@ use App\Models\Saraban\DocumentSignature;
 use App\Models\Saraban\DocumentWorkflowStep;
 use App\Models\User;
 use App\Notifications\SarabanDocumentNotification;
+use App\Services\Workflow\SarabanWorkflowProvisioner;
 use chillerlan\QRCode\Common\EccLevel;
 use chillerlan\QRCode\Output\QRMarkupSVG;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
@@ -23,7 +25,7 @@ class DocumentWorkflowService
      */
     public function transitionState(Document $document, string $newState, int $userId, string $action, ?string $comment = null, ?string $ip = null)
     {
-        return DB::transaction(function () use ($document, $newState, $userId, $action, $comment, $ip) {
+        $result = DB::transaction(function () use ($document, $newState, $userId, $action, $comment, $ip) {
             // Get current max step order
             $lastStep = DocumentWorkflowStep::where('document_id', $document->id)
                 ->orderBy('step_order', 'desc')
@@ -47,6 +49,29 @@ class DocumentWorkflowService
 
             return $document;
         });
+
+        /*
+         * CORE-WF-002 — ผูกเอกสารเข้ากับ workflow version ที่ pin ไว้
+         *
+         * `saraban_document_workflow_steps` ยังเป็นประวัติจริงและตรรกะด้านบน
+         * ยังเป็นผู้ตัดสินสถานะทั้งหมด ส่วนนี้เพียงขยับ instance ให้ตรงกัน
+         * เพื่อให้การแก้สายงานภายหลังไม่ย้อนไปเปลี่ยนเอกสารที่กำลังเดินอยู่
+         *
+         * ห่อ try/catch ไว้เพราะการผูก workflow ต้องไม่ทำให้การรับ-ส่งหนังสือล้ม
+         */
+        if (config('workflow.saraban_pinning', true)) {
+            try {
+                app(SarabanWorkflowProvisioner::class)->syncState($document, $newState, $userId, $comment);
+            } catch (\Throwable $exception) {
+                Log::warning('ผูก workflow ของหนังสือราชการไม่สำเร็จ', [
+                    'document_id' => $document->id,
+                    'status' => $newState,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return $result;
     }
 
     /**

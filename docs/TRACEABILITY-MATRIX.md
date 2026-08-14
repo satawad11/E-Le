@@ -35,3 +35,10 @@
 | LEGACY-05-DELEGATION | งานหลัก 4 | DelegationResolver + workflow_delegations mirror จาก user_delegations | WorkflowEngineTest (delegate/expired) | Verified |
 | LEGACY-05-AUDIT | งานหลัก 6 | workflow_actions append-only + central audit dual-write | WorkflowEngineTest (audit completeness) | Verified |
 | LEGACY-05-READONLY | LEGACY-MIGRATION-PLAN 05-7 | approval_steps / leave_approvals คงไว้เป็น read-only | LeaveWorkflowShadowParityTest, WorkflowAuthorizationTest | Verified |
+| CORE-CP-P0 | CORE CHECKPOINT | P0 gaps 16/16 ปิดครบ | 49 test class · composer audit สะอาด | Verified |
+| CORE-CP-P1 | CORE CHECKPOINT | P1 gaps 18/18 ปิดครบ | ดู 3 แถวล่าง | Verified |
+| CORE-CP-DEPLOY | DEPLOY-001 / DEPLOY-004 | nginx + php-fpm เป็นทางเข้าเดียว · Dockerfile ชุดเดียว · `docker/nginx/default.conf` ใช้งานจริง | ตรวจ HTTP จริง: `/api/ping` 200, `/storage` 404, backend ไม่เปิดพอร์ต | Verified |
+| CORE-CP-SARABAN-WF | CORE-WF-002 | เอกสารสารบรรณ pin `workflow_version_id` ผ่าน SarabanWorkflowProvisioner | SarabanWorkflowPinningTest | Verified |
+| CORE-CP-SARABAN-AUTHZ | CORE-WF-002 (ต้นทาง) | ผอ./รอง ผอ. ได้ `saraban.document.approve` / `.sign` โดยไม่ได้สิทธิ์ลบ/เอกสารลับ/ตั้งค่า | OperationalPermissionMatrixTest | Verified |
+| CORE-CP-BACKUP | CORE CHECKPOINT | backup อัตโนมัติ + restore drill 73 ตาราง mismatch 0 | `restore-verification-core-checkpoint.txt` | Verified |
+| CORE-CP-RECON | CORE CHECKPOINT | data reconciliation 55 → 73 ตาราง อธิบายได้ครบ | `rowcount-baseline-2026-08-12T22.txt` เทียบปัจจุบัน | Verified |

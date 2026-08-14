@@ -3,6 +3,18 @@
 ## Unreleased
 - Initial documentation pack created.
 
+### CORE CHECKPOINT (2026-08-14)
+
+- ตรวจ CORE CHECKPOINT ครบทุกเงื่อนไข — ผล **PASS**: P0 = 0 (16/16) · P1 = 0 (18/18) · **เจ้าของระบบอนุมัติเมื่อ 2026-08-14**
+- ปิด `DEPLOY-001` — เพิ่ม service `nginx` เป็นทางเข้าเดียว, backend เปลี่ยนเป็น `php-fpm` และไม่เปิดพอร์ตออกนอก เลิกใช้ `php artisan serve`
+- ปิด `DEPLOY-004` — ลบ `/Dockerfile` + `/docker-entrypoint.sh` ที่ซ้ำซ้อน เหลือชุดเดียว และ `docker/nginx/default.conf` ถูกใช้งานจริงแล้ว (กฎ `/storage` → 404 เคยเป็น dead code)
+- ปิด `CORE-WF-002` — ให้ ผอ./รอง ผอ. มีสิทธิ์กลั่นกรองและลงนามหนังสือราชการ แล้วเปิด workflow version pinning ให้เอกสารทุกฉบับ pin `workflow_version_id` ของตัวเอง
+- ยืนยัน migration จากฐานข้อมูลว่างบน MySQL 8 ครบทั้ง 103 migration (TEST-003)
+- full regression 332 tests / 871 assertions · Pint 362 files · frontend build ผ่าน · `composer audit` ไม่พบช่องโหว่
+- ซ้อม backup + restore drill ใหม่บน schema ปัจจุบัน — 73 ตาราง ตรงกันทั้งหมด
+- data reconciliation เทียบ baseline LEGACY-00 — 55 → 73 ตาราง อธิบายได้ครบ ไม่มีตารางใดมีแถวลดลง
+- **ไม่เริ่ม LEGACY-06 และไม่ทำ Workflow Cutover** ตามเงื่อนไขที่ยังไม่ผ่าน
+
 ### LEGACY-05 Workflow Engine
 
 - ปิด LEGACY-05 (05-1 ถึง 05-3, 05-5 ถึง 05-7); full regression ผ่าน 320 tests / 832 assertions, Pint 359 files และ frontend build

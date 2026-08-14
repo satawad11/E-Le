@@ -84,16 +84,36 @@ class OperationalPermissionSeeder extends Seeder
          * อยู่แล้ว จึงเห็นข้อมูลการลงเวลาทั้งองค์กรได้ตั้งแต่ต้น — สรุป OT
          * ไม่ใช่ข้อมูลชั้นใหม่สำหรับกลุ่มนี้
          */
+        /*
+         * ผู้บริหารเป็นผู้กลั่นกรองและลงนามหนังสือราชการ
+         *
+         * CORE CHECKPOINT (2026-08-14): LEGACY-04 ปิดงานโดยยังไม่ให้สิทธิ์ชุดนี้
+         * เพราะการตัดสินใจตอนนั้นครอบคลุมเฉพาะ Document Officer ผลคือหนังสือ
+         * ราชการอนุมัติได้เฉพาะ Super Admin และโมดูลสารบรรณใช้งานจริงไม่ได้
+         * เจ้าของระบบอนุมัติให้เติมเมื่อ 2026-08-14
+         *
+         * `view` จำเป็นเพราะ DocumentPolicy::approve() เรียก view() ก่อนเสมอ
+         * และ view() ยังจำกัดให้เห็นเฉพาะเอกสารที่ตนเกี่ยวข้องอยู่ดี
+         * ส่วนเอกสารชั้นความลับยังต้องมี `view_classified` แยกต่างหากเหมือนเดิม
+         */
         'Director' => [
             'attendance.checkin',
             'attendance.view_self',
             'attendance.ot_summary',
+            'saraban.document.view',
+            'saraban.document.approve',
+            'saraban.document.sign',
+            'saraban.document.report',
         ],
 
         'Deputy Director' => [
             'attendance.checkin',
             'attendance.view_self',
             'attendance.ot_summary',
+            'saraban.document.view',
+            'saraban.document.approve',
+            'saraban.document.sign',
+            'saraban.document.report',
         ],
 
         /*

@@ -97,7 +97,18 @@
   - [x] LEGACY-05E เตรียม Saraban เข้า engine เดียวกัน (draft · ไม่แตะสิทธิ์) (05-5)
   - [x] LEGACY-05F delegation / acting approver + audit ครบ (05-6 บางส่วน)
   - [x] LEGACY-05G `approval_steps` / `leave_approvals` คงไว้เป็น read-only (05-7)
-- [ ] CORE CHECKPOINT
+- [x] CORE CHECKPOINT — ✅ **PASS · อนุมัติแล้ว 2026-08-14** · `CORE_CHECKPOINT_REPORT.md`
+  - [x] P0 gaps = 0 (16/16)
+  - [x] P1 gaps = 0 (18/18) — รอบแรกเหลือ 3 · แก้ครบแล้ว
+    - [x] `DEPLOY-001` — nginx + php-fpm เป็นทางเข้าเดียว เลิกใช้ `artisan serve`
+    - [x] `DEPLOY-004` — เหลือ Dockerfile ชุดเดียว · `docker/nginx/default.conf` ถูกใช้งานจริง
+    - [x] `CORE-WF-002` — Saraban pin `workflow_version_id` + ผู้บริหารได้สิทธิ์อนุมัติ/ลงนาม
+  - [x] Authorization matrix + IDOR ผ่าน
+  - [x] Backup + restore drill สำเร็จ (73 ตาราง · mismatch 0)
+  - [x] Data reconciliation ผ่าน (55 → 73 ตาราง อธิบายได้ครบ)
+  - [x] migrate จากฐานว่างบน MySQL 8 ครบ 103 migration
+  - [x] TRACEABILITY-MATRIX อัปเดตครบ
+  - [x] ได้รับอนุมัติรายงานจากเจ้าของระบบ
 - [ ] TIME Foundation
 - [ ] Leave Modernization
 - [ ] Attendance Integration

@@ -35,4 +35,19 @@ return [
 
     'engine_is_source_of_truth' => (bool) env('WORKFLOW_ENGINE_SOURCE_OF_TRUTH', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Saraban workflow version pinning (CORE-WF-002)
+    |--------------------------------------------------------------------------
+    |
+    | ผูกหนังสือราชการแต่ละฉบับเข้ากับ workflow version ที่ pin ไว้ เพื่อให้การแก้
+    | สายงานภายหลังไม่ย้อนไปเปลี่ยนความหมายของเอกสารที่กำลังเดินอยู่
+    |
+    | `DocumentWorkflowService` ยังเป็นผู้ตัดสินสถานะจริงทั้งหมด — ส่วนนี้เพียง
+    | ขยับ instance ให้ตรงกัน ปิดได้ทันทีถ้าสร้างภาระโดยไม่ต้อง revert โค้ด
+    |
+    */
+
+    'saraban_pinning' => (bool) env('WORKFLOW_SARABAN_PINNING', true),
+
 ];

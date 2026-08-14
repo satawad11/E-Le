@@ -145,6 +145,43 @@ class OperationalPermissionMatrixTest extends TestCase
     }
 
     /**
+     * CORE CHECKPOINT — ผู้บริหารต้องกลั่นกรองและลงนามหนังสือราชการได้
+     *
+     * เดิม `saraban.document.approve` / `.sign` เป็นของ Super Admin เท่านั้น
+     * สายงานหนังสือราชการจึงเดินไม่ครบ และเป็นเหตุให้ CORE-WF-002 ปิดไม่ได้
+     */
+    public function test_executives_can_screen_and_sign_official_documents(): void
+    {
+        foreach (['Director', 'Deputy Director'] as $role) {
+            $user = $this->userWithRole($role);
+
+            foreach (['saraban.document.view', 'saraban.document.approve', 'saraban.document.sign'] as $ability) {
+                $this->assertTrue($user->can($ability), "role `{$role}` ต้องมีสิทธิ์ `{$ability}`");
+            }
+        }
+    }
+
+    /**
+     * แต่การให้สิทธิ์อนุมัติต้องไม่พาสิทธิ์อันตรายติดมาด้วย
+     */
+    public function test_executives_still_do_not_get_the_dangerous_saraban_powers(): void
+    {
+        foreach (['Director', 'Deputy Director'] as $role) {
+            $user = $this->userWithRole($role);
+
+            foreach ([
+                'saraban.document.delete',
+                'saraban.document.view_classified',
+                'saraban.document.manage_types',
+                'saraban.setting.manage',
+                'saraban.document.register',
+            ] as $ability) {
+                $this->assertFalse($user->can($ability), "role `{$role}` ต้องไม่ได้สิทธิ์ `{$ability}`");
+            }
+        }
+    }
+
+    /**
      * Decision 2 — Document Officer คือเจ้าหน้าที่สารบรรณ และทำงานได้จริง
      */
     public function test_document_officer_can_actually_run_the_register(): void
