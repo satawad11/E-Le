@@ -21,3 +21,17 @@
 | LEGACY-03-ORG-PER | LEGACY-MIGRATION-PLAN 03-1..03-5 | org_units, department map, users.org_unit_id, personnel_assignments, public UUIDs | CoreDataFoundationTest | Verified |
 | LEGACY-03-AUDIT | LEGACY-MIGRATION-PLAN 03-6..03-7 | central append-oriented audit_logs, legacy dual-write, user/attendance/role/permission/settings audit | CentralAuditLogTest + existing audit regressions | Verified |
 | LEGACY-03-TEMPLATE | LEGACY-MIGRATION-PLAN 03-8 | document_template_versions, effective dating, leaves version pin | DocumentTemplateVersionTest, LeaveExportTest | Verified |
+| LEGACY-04-AUTHZ | LEGACY-MIGRATION-PLAN 04-1..04-3, 04-5 | permission_aliases, permission_denies, permission_scopes, PermissionEvaluator, OrgScopeResolver | PermissionEvaluatorTest, OrgScopeResolverTest | Verified |
+| LEGACY-04-PERMS | Decision 1 (2026-08-14) | OperationalPermissionSeeder + migration 2026_08_14_100000 — permission 7 ตัวที่ route บังคับใช้ พร้อมการแจกตามหน้าที่ | OperationalPermissionMatrixTest, AuthorizationMatrixTest | Verified |
+| LEGACY-04-SARABAN | Decision 2 (2026-08-14) | `saraban.document.register` แทน hasRole ใน DocumentPolicy/DocumentController/DocumentWorkflowService และหน้าเว็บ | SarabanTestCase suite (39 tests), OperationalPermissionMatrixTest | Verified |
+| LEGACY-04-MANAGER | Decision 3 (2026-08-14) | org_unit_managers แบบ effective-dated + OrgScopeResolver::managedOrgUnitIds() | OrgScopeResolverTest | Verified |
+| LEGACY-04-SCOPE | Decision 4 (2026-08-14) | ขอบเขต Director/Deputy/Manager ตาม ADR-007 ผ่าน permission_scopes + org_unit_managers | OrgScopeResolverTest | Verified |
+| LEGACY-04-LEASTPRIV | Security Rule (2026-08-14) | แยก admin.users.manage_permissions / system.menu.manage และ /api/saraban/settings | PrivilegeEscalationGuardTest | Verified |
+| LEGACY-05-SCHEMA | LEGACY-MIGRATION-PLAN 05-1, docs/07 | workflow_definitions/versions/steps/transitions/instances/tasks/actions/delegations + shadow comparisons | WorkflowEngineTest | Verified |
+| LEGACY-05-LEAVE-V1 | LEGACY-MIGRATION-PLAN 05-2 | LeaveWorkflowProvisioner แปลง approval_steps เป็น Leave Workflow v1 พร้อม version pinning | WorkflowEngineTest (version pinning) | Verified |
+| LEGACY-05-SHADOW | LEGACY-MIGRATION-PLAN 05-3 | LeaveWorkflowShadow + workflow:shadow-replay / shadow-report บน GovernmentApprovalController | LeaveWorkflowShadowParityTest | Verified |
+| LEGACY-05-CUTOVER | LEGACY-MIGRATION-PLAN 05-4 | config workflow.engine_is_source_of_truth (ยังไม่เปิด และยังไม่มีโค้ดอ่าน) | — | Deferred |
+| LEGACY-05-SARABAN | LEGACY-MIGRATION-PLAN 05-5 | SarabanWorkflowProvisioner (draft เท่านั้น ไม่แตะสิทธิ์) | WorkflowAuthorizationTest | Prepared |
+| LEGACY-05-DELEGATION | งานหลัก 4 | DelegationResolver + workflow_delegations mirror จาก user_delegations | WorkflowEngineTest (delegate/expired) | Verified |
+| LEGACY-05-AUDIT | งานหลัก 6 | workflow_actions append-only + central audit dual-write | WorkflowEngineTest (audit completeness) | Verified |
+| LEGACY-05-READONLY | LEGACY-MIGRATION-PLAN 05-7 | approval_steps / leave_approvals คงไว้เป็น read-only | LeaveWorkflowShadowParityTest, WorkflowAuthorizationTest | Verified |

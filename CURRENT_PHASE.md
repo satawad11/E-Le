@@ -8,7 +8,12 @@
 
 ## Current Phase
 
-`LEGACY-03 CORE DATA FOUNDATION — COMPLETE`
+`LEGACY-05 WORKFLOW ENGINE — COMPLETE (SHADOW MODE · ยังไม่ CUTOVER)`
+
+> หยุดรอคำสั่งก่อนเริ่ม LEGACY-06 Time Foundation
+>
+> Workflow engine เดินคู่ขนานอยู่ ตรรกะเดิมยังเป็น source of truth
+> การ cutover (05-4) เป็นขั้นตอนแยกที่ต้องได้รับอนุมัติ — ดู `docs/checkpoints/LEGACY-05-REPORT.md` ข้อ 11
 
 | เฟส | สถานะ |
 |---|---|
@@ -17,6 +22,8 @@
 | LEGACY-01 Stabilization | ✅ เสร็จ 2026-08-13 |
 | LEGACY-02 Security Hardening | ✅ เสร็จ 2026-08-13 · 195 tests / 485 assertions · `docs/checkpoints/LEGACY-02-REPORT.md` |
 | LEGACY-03 Core Data Foundation | ✅ เสร็จ 2026-08-13 · 204 tests / 506 assertions · `docs/checkpoints/LEGACY-03-REPORT.md` |
+| LEGACY-04 RBAC + ABAC | ✅ เสร็จ 2026-08-14 · 268 tests / 693 assertions · `docs/checkpoints/LEGACY-04-FINAL-REPORT.md` (baseline: `LEGACY-04-REPORT.md`) |
+| LEGACY-05 Workflow Engine | ✅ เสร็จ 2026-08-14 · 320 tests / 832 assertions · shadow ตรง 100% · **ยังไม่ cutover** · `docs/checkpoints/LEGACY-05-REPORT.md` |
 
 **Architecture Decision (อนุมัติแล้ว 2026-08-12):** คงเทคโนโลยีเดิม Laravel + Vue 3 + MySQL 8 + Tailwind + Docker
 เอกสาร Target Architecture ตีความเป็น Architectural Principles และ Engineering Standards ไม่ใช่คำสั่งให้ rewrite stack

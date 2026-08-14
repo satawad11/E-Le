@@ -11,13 +11,42 @@ use App\Notifications\LeaveStatusChanged;
 use App\Services\LeaveService;
 use App\Services\LineNotificationService;
 use App\Services\TelegramService;
+use App\Services\Workflow\LeaveWorkflowShadow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class GovernmentApprovalController extends Controller
 {
-    public function __construct(private LeaveService $service, private TelegramService $telegram, private LineNotificationService $line) {}
+    public function __construct(
+        private LeaveService $service,
+        private TelegramService $telegram,
+        private LineNotificationService $line,
+        private LeaveWorkflowShadow $shadow,
+    ) {}
+
+    /**
+     * LEGACY-05 · 05-3 — Shadow mode
+     *
+     * ให้ workflow engine ใหม่คำนวณคู่ขนานแล้วบันทึกผลเทียบไว้
+     * **ตรรกะเดิมด้านล่างยังเป็น source of truth ทั้งหมด** — ทุกอย่างในนี้
+     * ถูกห่อ try/catch ไว้แล้วในตัว shadow เอง จึงไม่มีทางทำให้การอนุมัติจริงล้ม
+     *
+     * ถอดออกได้ทันทีด้วย config `workflow.shadow_mode` โดยไม่ต้อง revert โค้ด
+     */
+    private function shadowPrepare(Leave $leave): ?int
+    {
+        return config('workflow.shadow_mode', true) ? $this->shadow->prepare($leave) : null;
+    }
+
+    private function shadow(Leave $leave, string $action, Request $request, ?string $comment, ?int $instanceId): void
+    {
+        if (! config('workflow.shadow_mode', true)) {
+            return;
+        }
+
+        $this->shadow->mirrorAction($leave, $action, $request->user(), $comment, $instanceId);
+    }
 
     /**
      * แจ้งเตือนผู้ยื่นใบลาทุกช่องทาง — ห้ามให้ช่องทางภายนอกล้มแล้วทำให้คำขออนุมัติพังตาม
@@ -70,7 +99,8 @@ class GovernmentApprovalController extends Controller
         abort_if($leave->user_id === $r->user()->id, 403, 'ห้ามอนุมัติใบลาของตนเอง');
         if ($leave->substitute_id) {
             abort_unless($leave->substitute_status === 'Accepted', 422, 'ผู้ปฏิบัติงานแทนยังไม่ตอบรับ');
-        }DB::transaction(function () use ($r, $leave, $data) {
+        }$shadowInstanceId = $this->shadowPrepare($leave);
+        DB::transaction(function () use ($r, $leave, $data) {
             $locked = Leave::whereKey($leave->id)->lockForUpdate()->firstOrFail();
             $step = $this->step($locked);
             $delegatedFrom = $this->authorizeStep($r, $step);
@@ -84,6 +114,7 @@ class GovernmentApprovalController extends Controller
             }LeaveAuditLog::create(['leave_id' => $locked->id, 'user_id' => $r->user()->id, 'action' => 'approval_approved', 'after' => ['step' => $step->step_order, 'final' => ! $next], 'ip_address' => $r->ip(), 'user_agent' => $r->userAgent()]);
         }, 5);
         $leave->refresh();
+        $this->shadow($leave, 'approve', $r, $data['comment'] ?? null, $shadowInstanceId);
         if ($leave->status === 'Approved') {
             $this->notify($leave, 'Approved', $r->user()->name);
         }
@@ -96,6 +127,7 @@ class GovernmentApprovalController extends Controller
         $data = $r->validate(['comment' => 'required|string|max:1000']);
         abort_unless($leave->status === 'Pending', 422, 'ใบลาไม่ได้อยู่ระหว่างอนุมัติ');
         abort_if($leave->user_id === $r->user()->id, 403, 'ห้ามปฏิเสธใบลาของตนเอง');
+        $shadowInstanceId = $this->shadowPrepare($leave);
         DB::transaction(function () use ($r, $leave, $data) {
             $locked = Leave::whereKey($leave->id)->lockForUpdate()->firstOrFail();
             $step = $this->step($locked);
@@ -106,6 +138,7 @@ class GovernmentApprovalController extends Controller
             LeaveAuditLog::create(['leave_id' => $locked->id, 'user_id' => $r->user()->id, 'action' => 'approval_rejected', 'after' => ['step' => $step->step_order, 'comment' => $data['comment']], 'ip_address' => $r->ip(), 'user_agent' => $r->userAgent()]);
         }, 5);
         $leave->refresh();
+        $this->shadow($leave, 'reject', $r, $data['comment'], $shadowInstanceId);
         $this->notify($leave, 'Rejected', $r->user()->name);
 
         return response()->json(['message' => 'ปฏิเสธใบลาเรียบร้อย']);

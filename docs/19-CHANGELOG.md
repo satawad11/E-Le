@@ -3,6 +3,29 @@
 ## Unreleased
 - Initial documentation pack created.
 
+### LEGACY-05 Workflow Engine
+
+- ปิด LEGACY-05 (05-1 ถึง 05-3, 05-5 ถึง 05-7); full regression ผ่าน 320 tests / 832 assertions, Pint 359 files และ frontend build
+- เพิ่ม workflow engine กลางแบบ versioned 9 ตาราง (definitions/versions/steps/transitions/instances/tasks/actions/delegations + shadow comparison) แบบ additive ล้วน
+- แปลง `approval_steps` ที่ใช้อยู่เป็น Leave Workflow v1 โดย instance ทุกตัว pin `workflow_version_id` — แก้สายอนุมัติแล้วรายการเก่าไม่เปลี่ยนความหมาย
+- เปิด shadow mode บน endpoint อนุมัติจริง โดยตรรกะเดิมยังเป็น source of truth ทั้งหมด (`WORKFLOW_SHADOW_MODE`)
+- shadow จับ mismatch ได้จริง 1 กรณี: ใบลาที่ยกเลิกก่อนมีใครอนุมัติจะกลับมาโผล่ในคิวรออนุมัติ — แก้แล้วพร้อมเทสต์ล็อก
+- เชื่อม `user_delegations` เข้า engine พร้อมแยกผู้กดจริงออกจากผู้ที่ควรเป็นเจ้าของงาน และตรวจ effective date ทุกครั้ง
+- บันทึก workflow action แบบ append-only พร้อม actor/effective actor/from-to step/correlation id
+- เตรียมสายงานสารบรรณเป็น draft โดยไม่แตะสิทธิ์ที่ปิดไว้ใน LEGACY-04
+- **ยังไม่ cutover** — `approval_steps` และ `leave_approvals` ยังเป็น source of truth และคงไว้ทั้งหมด
+
+### LEGACY-04 RBAC + ABAC (ปิดงาน)
+
+- ปิด LEGACY-04 ครบ 04-1 ถึง 04-9 หลังได้รับการตัดสินใจ 4 ข้อจากเจ้าของระบบเมื่อ 2026-08-14; full regression ผ่าน 268 tests / 693 assertions, Pint 334 files และ frontend build
+- เพิ่ม permission 7 ตัวที่ route บังคับใช้แต่ไม่เคยถูกสร้าง และแจกตามหน้าที่จริง — แก้ข้อบกพร่องที่ทำให้ **บุคลากรทั่วไปลงเวลาเข้า-ออกไม่ได้เลย**
+- กำหนดให้ `Document Officer` เป็นเจ้าหน้าที่สารบรรณตามสิทธิ์ `saraban.document.register` และเลิกอ้างชื่อ role เก่า (`admin_saraban`, `Saraban Officer`, `เจ้าหน้าที่สารบัญ`) ทั้งฝั่ง server และหน้าเว็บ
+- แยกสิทธิ์งานสารบรรณ 6 ด้านตามหน้าที่ โดยไม่ให้สิทธิ์ลบเอกสาร เอกสารลับ และตั้งค่าระบบแก่เจ้าหน้าที่สารบรรณโดยอัตโนมัติ
+- ปิดช่องยกระดับสิทธิ์ 2 จุดที่มีมาก่อนหน้า: ผู้ถือ `edit_users` เคยมอบ permission ให้ผู้อื่นและสร้าง role ใหม่ได้
+- แยก `/api/saraban/settings` ออกจาก `/api/admin/settings` เพื่อไม่ให้สิทธิ์ตั้งค่าสารบรรณเปิดค่า SMTP/Telegram/LINE และค่าลับของทั้งระบบ
+- เพิ่ม `org_unit_managers` แบบ effective-dated รองรับหัวหน้าแผนก/หัวหน้างาน/หัวหน้าฝ่าย/ผู้รักษาการ โดยไม่สร้าง role สำหรับตำแหน่งเหล่านี้
+- `hasRole` ใน `app/` เหลือ 3 จุดที่เป็น Super Admin bootstrap และมีเทสต์บังคับไม่ให้เพิ่มจุดใหม่
+
 ### LEGACY-03 Core Data Foundation
 
 - ปิด LEGACY-03 ครบ 03-1 ถึง 03-9 (03-9 ทำไว้ใน LEGACY-01); full regression ผ่าน 204 tests / 506 assertions, Pint 316 files, Composer audit 0 advisory และ frontend build 879 modules
