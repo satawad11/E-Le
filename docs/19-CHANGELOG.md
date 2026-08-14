@@ -3,6 +3,18 @@
 ## Unreleased
 - Initial documentation pack created.
 
+### LEGACY-06 Time Foundation
+
+- ปิด LEGACY-06 ครบ 06-1 ถึง 06-4 · **เจ้าของระบบอนุมัติเมื่อ 2026-08-15**; full regression ผ่าน 372 tests / 952 assertions, Pint 373 files และ frontend build
+- ค่าที่ยืนยันตอนอนุมัติ: grace period = 0 (รักษาพฤติกรรมเดิม) · เวลาราชการเริ่มต้น 08:30–16:30 จันทร์–ศุกร์
+- เพิ่ม `work_schedules` + `work_schedule_days` + `work_schedule_assignments` แบบ effective-dated รองรับกะ กะข้ามวัน และ timezone รายตาราง
+- เพิ่มบริการเวลากลาง `TimeService` — โมดูลอื่นเลิกคำนวณวันและเวลาเอง
+- รวมตรรกะเวลาที่เคยกระจายสองที่: `LeaveService::calculateTotalDays()` และ `AttendanceController` ทั้งการมาสายและการกลับก่อนเวลา
+- แก้ข้อบกพร่องจริง: โมดูลลงเวลาเดิมไม่รู้จักวันหยุดเลย จึงนับ "มาสาย" ได้แม้ในวันหยุดราชการ
+- เพิ่ม grace period (`grace_minutes`) — เดิมสายทันทีที่เกินเวลาเริ่มงาน 1 วินาที · ตั้งค่าเริ่มต้น 0 เพื่อรักษาพฤติกรรมเดิม
+- นำ `holidays`, `work_calendar_exceptions`, `fiscal_years` ของเดิมมาเชื่อมเข้า engine โดยไม่สร้างซ้ำ
+- backfill ตารางเวลาเริ่มต้นจาก setting ที่มีอยู่ โดย **ไม่แตะ** `users.work_start_time` / `work_end_time`
+
 ### CORE CHECKPOINT (2026-08-14)
 
 - ตรวจ CORE CHECKPOINT ครบทุกเงื่อนไข — ผล **PASS**: P0 = 0 (16/16) · P1 = 0 (18/18) · **เจ้าของระบบอนุมัติเมื่อ 2026-08-14**

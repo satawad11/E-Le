@@ -109,7 +109,13 @@
   - [x] migrate จากฐานว่างบน MySQL 8 ครบ 103 migration
   - [x] TRACEABILITY-MATRIX อัปเดตครบ
   - [x] ได้รับอนุมัติรายงานจากเจ้าของระบบ
-- [ ] TIME Foundation
+- [x] LEGACY-06 TIME Foundation — **อนุมัติแล้ว 2026-08-15** · 372 tests / 952 assertions · `docs/checkpoints/LEGACY-06-REPORT.md`
+  - [x] 06-1 `work_schedules` / `work_schedule_days` / `work_schedule_assignments` แบบ effective-dated
+  - [x] 06-2 backfill จาก setting เดิม โดยไม่แตะ `users.work_start_time`
+  - [x] 06-3 grace period (ค่าเริ่มต้น 0 เพื่อรักษาพฤติกรรมเดิม)
+  - [x] 06-4 เชื่อม `holidays` + `work_calendar_exceptions` เข้ากับ engine
+  - [x] `TimeService` เป็นบริการเวลากลาง — โมดูลอื่นเลิกคำนวณวันและเวลาเอง
+  - [ ] **รอตัดสินใจ:** กะข้ามวัน — การลงเวลาหลังเที่ยงคืนนับเป็นของวันไหน (เงื่อนไขก่อนเปิดใช้กะดึกจริง)
 - [ ] Leave Modernization
 - [ ] Attendance Integration
 - [ ] OT

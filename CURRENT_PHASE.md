@@ -8,15 +8,18 @@
 
 ## Current Phase
 
-`CORE CHECKPOINT — PASS · อนุมัติแล้ว 2026-08-14`
+`LEGACY-06 TIME FOUNDATION — COMPLETE · อนุมัติแล้ว 2026-08-15`
 
-> **ยังไม่เริ่ม LEGACY-06 และยังไม่ทำ Workflow Cutover — รอคำสั่ง**
+> **หยุดรอคำสั่งก่อนเริ่ม LEGACY-07 Leave Modernization**
 >
-> ตรวจเมื่อ 2026-08-14 · **P0 = 0 · P1 = 0** · เงื่อนไขครบทุกข้อ · เจ้าของระบบอนุมัติแล้ว
-> รายงาน: `CORE_CHECKPOINT_REPORT.md`
+> เสร็จเมื่อ 2026-08-15 · 372 tests / 952 assertions · `docs/checkpoints/LEGACY-06-REPORT.md`
+> ตรรกะเวลาทั้งระบบรวมอยู่ที่ `TimeService` แล้ว
 >
-> เฟสถัดไปที่เปิดให้ทำได้: **LEGACY-06 Time Foundation**
-> สิ่งที่ยังห้ามทำจนกว่าจะมีคำสั่งแยก: Workflow Cutover (05-4)
+> ค่าที่เจ้าของระบบยืนยัน: grace period = 0 · เวลาราชการ 08:30–16:30 จันทร์–ศุกร์
+>
+> สิ่งที่ยังห้ามทำจนกว่าจะมีคำสั่งแยก:
+> - Workflow Cutover (05-4)
+> - เปิดใช้กะข้ามวันจริง — ต้องตัดสินก่อนว่าการลงเวลาหลังเที่ยงคืนนับเป็นของวันไหน
 >
 > Workflow engine เดินคู่ขนานอยู่ ตรรกะเดิมยังเป็น source of truth
 > การ cutover (05-4) เป็นขั้นตอนแยกที่ต้องได้รับอนุมัติ — ดู `docs/checkpoints/LEGACY-05-REPORT.md` ข้อ 11
@@ -31,6 +34,7 @@
 | LEGACY-04 RBAC + ABAC | ✅ เสร็จ 2026-08-14 · 268 tests / 693 assertions · `docs/checkpoints/LEGACY-04-FINAL-REPORT.md` (baseline: `LEGACY-04-REPORT.md`) |
 | LEGACY-05 Workflow Engine | ✅ เสร็จ 2026-08-14 · 320 tests / 832 assertions · shadow ตรง 100% · **ยังไม่ cutover** · `docs/checkpoints/LEGACY-05-REPORT.md` |
 | **CORE CHECKPOINT** | ✅ **PASS · อนุมัติแล้ว** 2026-08-14 · P0 = 0 · P1 = 0 · `CORE_CHECKPOINT_REPORT.md` |
+| LEGACY-06 Time Foundation | ✅ เสร็จ · **อนุมัติแล้ว** 2026-08-15 · 372 tests / 952 assertions · `docs/checkpoints/LEGACY-06-REPORT.md` |
 
 **Architecture Decision (อนุมัติแล้ว 2026-08-12):** คงเทคโนโลยีเดิม Laravel + Vue 3 + MySQL 8 + Tailwind + Docker
 เอกสาร Target Architecture ตีความเป็น Architectural Principles และ Engineering Standards ไม่ใช่คำสั่งให้ rewrite stack

@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\SystemSettingService;
 use App\Services\ThaiDateService;
+use App\Services\Time\TimeService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
@@ -19,6 +20,13 @@ use Illuminate\Validation\ValidationException;
 
 class AttendanceController extends Controller
 {
+    /**
+     * LEGACY-06 — บริการเวลากลาง
+     *
+     * โมดูลนี้ไม่คำนวณวันทำงาน เวลาเริ่ม/เลิกงาน หรือการมาสายเองอีกต่อไป
+     */
+    public function __construct(private readonly TimeService $time) {}
+
     /**
      * Check in for the day
      */
@@ -73,19 +81,18 @@ class AttendanceController extends Controller
             $imagePath = $this->storeAttendanceImage($request->image);
         }
 
-        // Determine start time and late minutes
-        $status = 'Present';
-        $lateMinutes = 0;
-
-        $workStartTime = $user->work_start_time ?: $settings->get('default_work_start_time');
-
-        if ($workStartTime) {
-            $startTime = Carbon::createFromFormat('H:i:s', strlen($workStartTime) == 5 ? $workStartTime.':00' : $workStartTime);
-            if ($time->format('H:i:s') > $startTime->format('H:i:s')) {
-                $status = 'Late';
-                $lateMinutes = $time->copy()->setDate($startTime->year, $startTime->month, $startTime->day)->diffInMinutes($startTime);
-            }
-        }
+        /*
+         * LEGACY-06 — ใช้บริการเวลากลางแทนการคำนวณเอง
+         *
+         * ตรรกะเดิมเทียบเวลาเป็นสตริงกับ `users.work_start_time` ตรง ๆ ซึ่ง:
+         *   - ไม่รู้จักวันหยุดเลย จึงนับ "มาสาย" ได้แม้ในวันหยุดราชการ
+         *   - ไม่มีการผ่อนผัน สายทันทีที่เกินเวลาเริ่มงาน 1 วินาที
+         *   - ไม่รองรับตารางรายวัน กะ หรือกะข้ามวัน
+         *
+         * ตอนนี้ทั้งระบบตอบคำถามเรื่องเวลาจากแหล่งเดียวกัน
+         */
+        $lateMinutes = $this->time->lateMinutes($user, $time, $time);
+        $status = $lateMinutes > 0 ? 'Late' : 'Present';
 
         if (! $attendance) {
             $attendance = new Attendance([
@@ -181,16 +188,8 @@ class AttendanceController extends Controller
             $imagePath = $this->storeAttendanceImage($request->image);
         }
 
-        // Determine early leave minutes
-        $earlyLeaveMinutes = 0;
-        $workEndTime = $user->work_end_time ?: $settings->get('default_work_end_time');
-
-        if ($workEndTime) {
-            $endTime = Carbon::createFromFormat('H:i:s', strlen($workEndTime) == 5 ? $workEndTime.':00' : $workEndTime);
-            if ($time->format('H:i:s') < $endTime->format('H:i:s')) {
-                $earlyLeaveMinutes = $endTime->copy()->setDate($time->year, $time->month, $time->day)->diffInMinutes($time);
-            }
-        }
+        // LEGACY-06 — คำนวณจากบริการเวลากลาง (รองรับกะข้ามวันและการผ่อนผัน)
+        $earlyLeaveMinutes = $this->time->earlyLeaveMinutes($user, $time, $attendance->date ?? $time);
 
         $attendance->check_out_time = $time;
         if ($request->location) {

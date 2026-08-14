@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ApprovalStep;
-use App\Models\Holiday;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveBalance;
@@ -11,7 +10,7 @@ use App\Models\LeaveEvidence;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\User;
-use App\Models\WorkCalendarException;
+use App\Services\Time\TimeService;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -27,38 +26,30 @@ class LeaveService
         private LeaveAuditService $audit,
         private LeaveEligibilityRuleService $eligibilityRules,
         private LeaveVerificationService $verification,
+        // LEGACY-06 — บริการเวลากลาง โมดูลนี้ไม่คำนวณวันทำงานเองอีกต่อไป
+        private TimeService $time,
     ) {}
 
+    /**
+     * LEGACY-06 — ส่งต่อให้ `TimeService` ซึ่งเป็นบริการเวลากลางของระบบ
+     *
+     * เดิมตรรกะวันทำงาน (เสาร์อาทิตย์ + วันหยุดราชการ + exception รายหน่วยงาน)
+     * อยู่ในเมธอดนี้ที่เดียว ส่วนโมดูล attendance มีตรรกะเวลาของตัวเองแยกต่างหาก
+     * ที่ไม่รู้จักวันหยุดเลย ทั้งระบบจึงตอบคำถามว่า "วันนี้เป็นวันทำงานไหม"
+     * ได้ไม่เหมือนกันแล้วแต่ว่าใครถาม
+     *
+     * ผลลัพธ์เท่าเดิมทุกกรณี — มีเทสต์เทียบไว้ใน `TimeServiceTest`
+     */
     public function calculateTotalDays($startDate, $endDate, bool $excludeHolidays = true, ?int $departmentId = null): float
     {
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate);
+
         if (! $excludeHolidays) {
-            return (float) ($start->diffInDays($end) + 1);
+            return $this->time->calendarDaysBetween($start, $end);
         }
 
-        $holidays = Holiday::where('is_active', true)
-            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
-            ->pluck('date')->map(fn ($date) => Carbon::parse($date)->toDateString())->all();
-
-        $exceptions = WorkCalendarException::query()
-            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
-            ->where(fn ($query) => $query->whereNull('department_id')
-                ->when($departmentId, fn ($query) => $query->orWhere('department_id', $departmentId)))
-            ->orderByRaw('CASE WHEN department_id IS NULL THEN 0 ELSE 1 END')
-            ->get()->keyBy(fn ($item) => Carbon::parse($item->date)->toDateString());
-
-        $days = 0;
-        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
-            $key = $date->toDateString();
-            $exception = $exceptions->get($key);
-            $isWorkingDay = $exception ? (bool) $exception->is_working_day : ($date->isWeekday() && ! in_array($key, $holidays, true));
-            if ($isWorkingDay) {
-                $days++;
-            }
-        }
-
-        return (float) $days;
+        return $this->time->workingDaysBetween($start, $end, null, $departmentId);
     }
 
     public function createLeaveRequest(array $data, int $userId, ?UploadedFile $attachment): Leave

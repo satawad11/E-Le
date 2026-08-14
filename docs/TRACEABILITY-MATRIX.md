@@ -40,5 +40,10 @@
 | CORE-CP-DEPLOY | DEPLOY-001 / DEPLOY-004 | nginx + php-fpm เป็นทางเข้าเดียว · Dockerfile ชุดเดียว · `docker/nginx/default.conf` ใช้งานจริง | ตรวจ HTTP จริง: `/api/ping` 200, `/storage` 404, backend ไม่เปิดพอร์ต | Verified |
 | CORE-CP-SARABAN-WF | CORE-WF-002 | เอกสารสารบรรณ pin `workflow_version_id` ผ่าน SarabanWorkflowProvisioner | SarabanWorkflowPinningTest | Verified |
 | CORE-CP-SARABAN-AUTHZ | CORE-WF-002 (ต้นทาง) | ผอ./รอง ผอ. ได้ `saraban.document.approve` / `.sign` โดยไม่ได้สิทธิ์ลบ/เอกสารลับ/ตั้งค่า | OperationalPermissionMatrixTest | Verified |
+| LEGACY-06-SCHEDULE | LEGACY-MIGRATION-PLAN 06-1 · TIME-SCH-001 | work_schedules + work_schedule_days + work_schedule_assignments (effective-dated, กะ, กะข้ามวัน, timezone) | TimeServiceTest | Verified |
+| LEGACY-06-BACKFILL | LEGACY-MIGRATION-PLAN 06-2 | WorkScheduleSeeder สร้างตารางเริ่มต้นจาก setting เดิม โดยไม่แตะ users.work_start_time | WorkScheduleBackfillTest | Verified |
+| LEGACY-06-GRACE | LEGACY-MIGRATION-PLAN 06-3 | grace_minutes / early_leave_grace_minutes ใน work_schedules | TimeServiceTest (grace period) | Verified |
+| LEGACY-06-CALENDAR | LEGACY-MIGRATION-PLAN 06-4 · TIME-CAL-001 | WorkingCalendar เชื่อม holidays + work_calendar_exceptions เข้ากับ engine (ไม่สร้างใหม่) | TimeServiceTest (holiday/exception) | Verified |
+| LEGACY-06-CENTRAL | โจทย์ LEGACY-06 | TimeService เป็นทางเข้าเดียว · LeaveService และ AttendanceController เลิกคำนวณเอง | TimeServiceTest + full regression | Verified |
 | CORE-CP-BACKUP | CORE CHECKPOINT | backup อัตโนมัติ + restore drill 73 ตาราง mismatch 0 | `restore-verification-core-checkpoint.txt` | Verified |
 | CORE-CP-RECON | CORE CHECKPOINT | data reconciliation 55 → 73 ตาราง อธิบายได้ครบ | `rowcount-baseline-2026-08-12T22.txt` เทียบปัจจุบัน | Verified |
