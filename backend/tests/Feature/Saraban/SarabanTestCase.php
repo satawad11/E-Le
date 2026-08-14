@@ -6,18 +6,54 @@ use App\Models\Department;
 use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentType;
 use App\Models\User;
-use Database\Seeders\SarabanPermissionSeeder;
+use Database\Seeders\OperationalPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Shared fixtures for the saraban feature tests: the real permission set from
- * SarabanPermissionSeeder plus one user per authorization tier.
+ * Shared fixtures for the saraban feature tests: one user per authorization tier.
+ *
+ * LEGACY-04 (ปิดงาน) · Decision 2 — เดิมชั้นสิทธิ์ที่นี่ผูกกับ **ชื่อ role**
+ * (`admin_saraban`, `manager`, `staff`) ที่ seeder สร้างขึ้นมาเองและไม่มีอยู่
+ * บนระบบจริงเลยสักชื่อ ทำให้เทสต์ผ่านทั้งที่ของจริงใช้ไม่ได้
+ *
+ * ตอนนี้ให้สิทธิ์กับผู้ใช้ตรง ๆ ตามหน้าที่ เทสต์จึงวัดสิ่งที่ระบบบังคับใช้จริง
+ * (permission) ไม่ใช่ชื่อบทบาทที่แก้ได้จากหน้าจอ
  */
 abstract class SarabanTestCase extends TestCase
 {
     use RefreshDatabase;
+
+    /** เจ้าหน้าที่ทะเบียนรับ-ส่ง — ดูแลทะเบียนทั้งเล่ม */
+    protected const REGISTRAR_PERMISSIONS = [
+        'saraban.document.view',
+        'saraban.document.view_classified',
+        'saraban.document.create',
+        'saraban.document.edit',
+        'saraban.document.delete',
+        'saraban.document.register',
+        'saraban.document.approve',
+        'saraban.document.sign',
+        'saraban.document.manage_types',
+        'saraban.document.report',
+    ];
+
+    /** ผู้บริหาร — อ่าน กลั่นกรอง ลงนาม แต่ไม่ดูแลทะเบียน */
+    protected const APPROVER_PERMISSIONS = [
+        'saraban.document.view',
+        'saraban.document.view_classified',
+        'saraban.document.approve',
+        'saraban.document.sign',
+        'saraban.document.report',
+    ];
+
+    /** บุคลากรทั่วไป — อ่านและร่างหนังสือของตนเอง */
+    protected const STAFF_PERMISSIONS = [
+        'saraban.document.view',
+        'saraban.document.create',
+        'saraban.document.edit',
+    ];
 
     protected Department $department;
 
@@ -35,7 +71,8 @@ abstract class SarabanTestCase extends TestCase
     {
         parent::setUp();
 
-        $this->seed(SarabanPermissionSeeder::class);
+        // สร้างชุด permission จริงของระบบ (ไม่แจกให้ role ใด เพราะยังไม่มี role)
+        $this->seed(OperationalPermissionSeeder::class);
 
         $this->department = Department::create([
             'name' => 'Test Department',
@@ -47,18 +84,21 @@ abstract class SarabanTestCase extends TestCase
             'code' => 'int',
         ]);
 
-        $this->registrar = $this->makeUser('admin_saraban');
-        $this->approver = $this->makeUser('manager');
-        $this->staff = $this->makeUser('staff');
-        $this->outsider = $this->makeUser('staff');
+        $this->registrar = $this->makeUser(self::REGISTRAR_PERMISSIONS);
+        $this->approver = $this->makeUser(self::APPROVER_PERMISSIONS);
+        $this->staff = $this->makeUser(self::STAFF_PERMISSIONS);
+        $this->outsider = $this->makeUser(self::STAFF_PERMISSIONS);
     }
 
-    protected function makeUser(string $role): User
+    /**
+     * @param  array<int,string>  $permissions
+     */
+    protected function makeUser(array $permissions): User
     {
         $user = User::factory()->create(['department_id' => $this->department->id]);
-        $user->assignRole($role);
+        $user->givePermissionTo($permissions);
 
-        return $user;
+        return $user->fresh();
     }
 
     protected function makeDocument(array $attributes = []): Document

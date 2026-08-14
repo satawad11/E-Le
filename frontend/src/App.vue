@@ -330,7 +330,7 @@
 
             <!-- จัดการหมวดหมู่เอกสาร -->
             <router-link
-              v-if="authStore.isAdmin || authStore.hasAnyPermission(['saraban.config.manage', 'saraban.setting.manage', 'saraban.document.manage_types'])"
+              v-if="authStore.hasPermission('saraban.document.manage_types')"
               to="/saraban/types"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -348,7 +348,7 @@
             </router-link>
             <!-- ตั้งค่าระบบสารบรรณ -->
             <router-link
-              v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')"
+              v-if="authStore.hasPermission('saraban.setting.manage')"
               to="/saraban/settings"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -664,7 +664,7 @@
                 รายงานสถิติ
               </router-link>
 
-              <router-link v-if="authStore.isAdmin || authStore.isSarabanOfficer" to="/saraban/types" @click="mobileMenu=false"
+              <router-link v-if="authStore.hasPermission('saraban.document.manage_types')" to="/saraban/types" @click="mobileMenu=false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
                 active-class="!bg-white/20 !text-white">
                 จัดการหมวดหมู่เอกสาร
@@ -674,7 +674,7 @@
                 active-class="!bg-white/20 !text-white">
                 สายการอนุมัติ
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/saraban/settings" @click="mobileMenu=false"
+              <router-link v-if="authStore.hasPermission('saraban.setting.manage')" to="/saraban/settings" @click="mobileMenu=false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
                 active-class="!bg-white/20 !text-white">
                 ตั้งค่าระบบสารบรรณ

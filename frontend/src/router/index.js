@@ -233,7 +233,7 @@ const router = createRouter({
       path: '/saraban/settings',
       name: 'saraban-settings',
       component: () => import('../views/admin/SarabanSettingsView.vue'),
-      meta: { requiresAuth: true, permission: 'manage_settings' }
+      meta: { requiresAuth: true, permission: 'saraban.setting.manage' }
     },
     {
       path: '/saraban/workflow-templates',

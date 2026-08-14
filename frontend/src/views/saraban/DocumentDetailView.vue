@@ -408,14 +408,20 @@ const canSubmit = computed(() => {
          (authStore.isSuperAdmin || authStore.isSarabanOfficer || document.value?.created_by === authStore.user?.id)
 })
 
+/*
+ * LEGACY-04 (ปิดงาน) · Decision 2 — กลั่นกรองและลงนามเป็นสิทธิ์ของตัวเอง
+ *
+ * เดิมเงื่อนไขนี้อิง `isSarabanOfficer` / `isManager` (ซึ่งดูสิทธิ์อนุมัติ **ใบลา**)
+ * ทำให้ปุ่มโผล่กับคนที่ backend ปฏิเสธ ตอนนี้ถามสิทธิ์ตัวเดียวกับที่ route บังคับ
+ */
 const canApprove = computed(() => {
-  return ['pending_review', 'pending_approval'].includes(document.value?.status) && 
-         (authStore.isSuperAdmin || authStore.isSarabanOfficer || authStore.isManager)
+  return ['pending_review', 'pending_approval'].includes(document.value?.status) &&
+         authStore.hasPermission('saraban.document.approve')
 })
 
 const canSign = computed(() => {
-  return document.value?.status === 'approved_pending_signature' && 
-         (authStore.isSuperAdmin || authStore.isManager || authStore.isSarabanOfficer || document.value?.created_by === authStore.user?.id)
+  return document.value?.status === 'approved_pending_signature' &&
+         authStore.hasPermission('saraban.document.sign')
 })
 
 const canCircular = computed(() => {

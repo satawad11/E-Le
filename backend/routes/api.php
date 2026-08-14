@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Saraban\CircularController;
 use App\Http\Controllers\Api\Saraban\DocumentController;
 use App\Http\Controllers\Api\Saraban\DocumentTypeController;
 use App\Http\Controllers\Api\Saraban\DocumentWorkflowTemplateController;
+use App\Http\Controllers\Api\Saraban\SettingController as SarabanSettingController;
 use App\Http\Controllers\Api\Saraban\SignatureController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttendanceController;
@@ -133,13 +134,24 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/admin/departments-list', [UserController::class, 'departments']);
     });
 
-    Route::group(['middleware' => ['permission:edit_users|system.user.manage|admin.users.manage_permissions']], function () {
+    Route::group(['middleware' => ['permission:edit_users|system.user.manage']], function () {
         Route::post('/admin/users', [UserController::class, 'store']);
         Route::post('/admin/users/import', [UserController::class, 'importCsv']);
         Route::put('/admin/users/{user}', [UserController::class, 'update']);
         Route::post('/admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
+    });
 
-        // Individual Permission Management API
+    /*
+     * การกำหนดสิทธิ์รายบุคคล — LEGACY-04 (ปิดงาน)
+     *
+     * เดิมสี่ endpoint นี้อยู่ในกลุ่มเดียวกับการแก้ไขผู้ใช้ ซึ่งยอมรับ `edit_users`
+     * ด้วย แปลว่าผู้ที่แก้ไขข้อมูลผู้ใช้ได้ (เช่น HR) จะ **มอบสิทธิ์ใด ๆ ให้ตนเอง
+     * หรือผู้อื่นได้ทันที** เป็นช่องยกระดับสิทธิ์ที่มีมาก่อนหน้านี้
+     *
+     * แยกออกมาให้ต้องมี `admin.users.manage_permissions` โดยเฉพาะ ตามข้อกำหนด
+     * least privilege ของงานนี้ที่ระบุ "การจัดการ permission" ไว้ชัดเจน
+     */
+    Route::group(['middleware' => ['permission:admin.users.manage_permissions']], function () {
         Route::get('/admin/permissions/modules', [PermissionController::class, 'modules']);
         Route::get('/admin/permissions/user-counts', [PermissionController::class, 'userCounts']);
         Route::get('/admin/users/{user}/permissions', [PermissionController::class, 'getUserPermissions']);
@@ -172,7 +184,16 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     });
 
     // Admin: Settings & Fiscal Years
-    Route::middleware('permission:manage_settings|system.setting.manage|saraban.setting.manage')->group(function () {
+    /*
+     * ตั้งค่าระบบ — LEGACY-04 (ปิดงาน)
+     *
+     * ถอด `saraban.setting.manage` ออกจากกลุ่มนี้ เพราะกลุ่มนี้ครอบคลุมค่า SMTP,
+     * Telegram/LINE, การล้างค่าลับ, ปีงบประมาณ และเทมเพลตเอกสารทั้งหมด
+     * ผู้ดูแลงานสารบรรณไม่ควรเห็นหรือแก้ค่าเหล่านั้น
+     *
+     * ค่าที่เป็นของงานสารบรรณย้ายไปที่ `/api/saraban/settings` ด้านล่าง
+     */
+    Route::middleware('permission:manage_settings|system.setting.manage')->group(function () {
         Route::get('/admin/settings', [SecureSettingController::class, 'adminIndex']);
         Route::post('/admin/settings', [SecureSettingController::class, 'update']);
         Route::post('/admin/settings/upload-logo', [SecureSettingController::class, 'uploadLogo']);
@@ -202,6 +223,16 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     // Route-level `permission:` middleware is the coarse gate; DocumentPolicy
     // (checked inside the controllers) enforces per-document rules on top of it.
     Route::prefix('saraban')->group(function () {
+        /*
+         * ตั้งค่าระบบสารบรรณ — จำกัดเฉพาะค่าของงานสารบรรณ
+         * (Decision 1: `saraban.setting.manage` "เฉพาะผู้ได้รับมอบหมาย")
+         */
+        Route::middleware('permission:saraban.setting.manage')->group(function () {
+            Route::get('/settings', [SarabanSettingController::class, 'index']);
+            Route::post('/settings', [SarabanSettingController::class, 'update']);
+            Route::post('/settings/garuda-logo', [SarabanSettingController::class, 'uploadGarudaLogo']);
+        });
+
         // Document Types — read for anyone who can see the register, write for registrars.
         Route::middleware('permission:saraban.document.view')->group(function () {
             Route::get('/types', [DocumentTypeController::class, 'index']);
@@ -286,7 +317,16 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
     // Dynamic Menu & Role Management routes
     Route::get('/user/menus', [MenuController::class, 'index']);
-    Route::group(['middleware' => ['permission:edit_users|system.menu.manage']], function () {
+    /*
+     * จัดการเมนูและบทบาท — LEGACY-04 (ปิดงาน)
+     *
+     * เดิมกลุ่มนี้ยอมรับ `edit_users` ด้วย ผู้ที่แก้ไขผู้ใช้ได้จึง **สร้าง role
+     * และผูก permission ใดก็ได้เข้ากับ role นั้น** แล้วมอบให้ตนเอง
+     * เป็นช่องยกระดับสิทธิ์แบบเดียวกับการกำหนดสิทธิ์รายบุคคลด้านบน
+     *
+     * เหลือเฉพาะ `system.menu.manage` ซึ่งเป็นสิทธิ์ของผู้ดูแลระบบ
+     */
+    Route::group(['middleware' => ['permission:system.menu.manage']], function () {
         Route::get('/admin/menus', [MenuController::class, 'adminIndex']);
         Route::put('/admin/menus/{menu}/permissions', [MenuController::class, 'updatePermissions']);
         Route::get('/admin/permissions', [RoleController::class, 'permissions']);

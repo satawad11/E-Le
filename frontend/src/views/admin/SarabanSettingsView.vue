@@ -94,7 +94,9 @@ const assetUrl = (path) => path ? new URL(path, window.location.origin).toString
 
 onMounted(async () => {
   try {
-    const res = await api.get('/admin/settings')
+    // LEGACY-04 (ปิดงาน): ใช้ endpoint เฉพาะของงานสารบรรณ
+    // `/admin/settings` เป็นของผู้ดูแลระบบและมีค่าลับของทั้งระบบอยู่ด้วย
+    const res = await api.get('/saraban/settings')
     const settings = res.data || {}
     
     if (settings.require_pin_for_signature) {
@@ -122,7 +124,7 @@ const uploadGarudaLogo = async (event) => {
   
   isUploadingLogo.value = true
   try {
-    const res = await api.post('/admin/settings/upload-garuda', formData, {
+    const res = await api.post('/saraban/settings/garuda-logo', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     garudaLogoUrl.value = assetUrl(res.data.url)
@@ -144,8 +146,8 @@ const saveSettings = async () => {
       saraban_incoming_number_format: formatIncoming.value,
       saraban_outgoing_number_format: formatOutgoing.value
     }
-    await api.post('/admin/settings', payload)
-    
+    await api.post('/saraban/settings', payload)
+
     alertStore.success('บันทึกการตั้งค่าสารบรรณเรียบร้อยแล้ว')
   } catch (err) {
     console.error('Failed to save settings', err)

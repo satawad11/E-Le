@@ -34,12 +34,15 @@ class DocumentController extends Controller
     }
 
     /**
-     * Registrars (เจ้าหน้าที่สารบัญ) see the whole register.
+     * Registrars (เจ้าหน้าที่สารบรรณ) see the whole register.
+     *
+     * LEGACY-04 (ปิดงาน) · Decision 2 — เลิกเช็คชื่อ role ที่ไม่มีอยู่จริง
+     * (`admin_saraban`) และใช้สิทธิ์ "รับ/ส่งหนังสือ" เป็นตัวตัดสินแทน
+     * ให้ตรงกับ DocumentPolicy::isRegistrar() ซึ่งเป็นด่านบังคับจริง
      */
     private function isRegistrar(User $user): bool
     {
-        return $user->can('saraban.document.manage_types')
-            || $user->hasRole(['Super Admin', 'SuperAdmin', 'admin_saraban']);
+        return $user->can('saraban.document.register');
     }
 
     /**

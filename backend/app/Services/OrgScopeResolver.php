@@ -62,17 +62,89 @@ class OrgScopeResolver
      *
      * คืน null แปลว่า "ไม่จำกัด" (ORGANIZATION) เพื่อให้ผู้เรียกข้ามการกรองไปได้เลย
      *
+     * ลำดับการตัดสิน:
+     *   1. แถวใน `permission_scopes` ของผู้ใช้คนนี้ (ผู้ดูแลกำหนดเอง) — ชนะเสมอ
+     *   2. การมอบหมายเป็นหัวหน้าหน่วยงานที่มีผลอยู่ ณ วันนี้ (Decision 3)
+     *   3. ค่าเริ่มต้นของจุดเรียก ซึ่งเลือกให้ตรงกับพฤติกรรมเดิม
+     *
      * @return array<int,int>|null
      */
     public function visibleOrgUnitIds(User $user, string $ability, string $default = self::UNIT): ?array
     {
-        $resolved = $this->resolve($user, $ability, $default);
+        $explicit = $this->evaluator->scopeFor($user, $ability);
+
+        if ($explicit !== null) {
+            return $this->expand($user, $explicit['scope'], $explicit['org_unit_id']);
+        }
+
+        /*
+         * LEGACY-04 (ปิดงาน) · Decision 3
+         *
+         * หัวหน้าแผนก/หัวหน้างาน/หัวหน้าฝ่าย/ผู้รักษาการ ไม่ได้เป็น "ชื่อ role"
+         * แต่เป็นการมอบหมายใน `org_unit_managers` ขอบเขตของคนเหล่านี้จึงมาจาก
+         * หน่วยงานที่ตนรับผิดชอบ ไม่ใช่จากหน่วยงานต้นสังกัดของตนเอง
+         *
+         * ถ้ายังไม่มีการมอบหมาย จะไม่มีผลใด ๆ กับใครทั้งสิ้น
+         */
+        $managed = $this->managedOrgUnitIds($user);
+
+        if ($managed !== []) {
+            return $managed;
+        }
+
+        return $this->expand($user, $default, null);
+    }
+
+    /**
+     * หน่วยงานทั้งหมดที่ผู้ใช้รับผิดชอบในฐานะหัวหน้า/ผู้รักษาการ/ผู้รับมอบอำนาจ
+     *
+     * นับเฉพาะการมอบหมายที่ **มีผลอยู่ ณ วันที่ระบุ** เพื่อไม่ให้ผู้ที่พ้นหน้าที่
+     * แล้วยังเห็นข้อมูลของหน่วยงานเดิม
+     *
+     * @return array<int,int>
+     */
+    public function managedOrgUnitIds(User $user, ?string $on = null): array
+    {
+        if (! DB::getSchemaBuilder()->hasTable('org_unit_managers')) {
+            return [];
+        }
+
+        $date = $on ?? now()->toDateString();
+
+        $assignments = DB::table('org_unit_managers')
+            ->where('user_id', $user->getKey())
+            ->whereDate('effective_from', '<=', $date)
+            ->where(fn ($query) => $query->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date))
+            ->get(['org_unit_id', 'scope']);
+
+        $units = [];
+
+        foreach ($assignments as $assignment) {
+            $ids = $assignment->scope === self::DESCENDANTS
+                ? $this->subtreeIds((int) $assignment->org_unit_id)
+                : [(int) $assignment->org_unit_id];
+
+            foreach ($ids as $id) {
+                $units[$id] = $id;
+            }
+        }
+
+        return array_values($units);
+    }
+
+    /**
+     * แปลงชื่อขอบเขตเป็นรายการหน่วยงาน
+     *
+     * @return array<int,int>|null
+     */
+    private function expand(User $user, string $scope, ?int $orgUnitId): ?array
+    {
         $home = $this->homeOrgUnitId($user);
 
-        return match ($resolved['scope']) {
+        return match ($scope) {
             self::ORGANIZATION => null,
             self::SELF, self::ASSIGNED => [],
-            self::CUSTOM => $resolved['org_unit_id'] === null ? [] : [$resolved['org_unit_id']],
+            self::CUSTOM => $orgUnitId === null ? [] : [$orgUnitId],
             self::DESCENDANTS => $home === null ? [] : $this->subtreeIds($home),
             default => $home === null ? [] : [$home],
         };

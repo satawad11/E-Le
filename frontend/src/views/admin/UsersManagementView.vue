@@ -649,8 +649,14 @@ const fetchDepartments = async () => {
 }
 
 const fetchRoles = async () => {
-  const res = await api.get('/admin/roles')
-  roles.value = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : [])
+  // ผู้ที่ดูรายชื่อผู้ใช้ได้ อาจไม่มีสิทธิ์จัดการบทบาท — ให้หน้าจอทำงานต่อได้
+  // แทนที่จะพังทั้งหน้า (เหมือนที่ fetchPermissions ทำอยู่แล้ว)
+  try {
+    const res = await api.get('/admin/roles')
+    roles.value = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : [])
+  } catch (e) {
+    console.error('Failed to fetch roles', e)
+  }
 }
 
 const fetchPermissions = async () => {

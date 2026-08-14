@@ -113,7 +113,7 @@
         </div>
 
         <!-- ปุ่มลบหลายรายการ -->
-        <button v-if="canManage && selectedIds.length > 0" @click="confirmDeleteMultiple" class="bg-red-500 text-white px-4 py-2 rounded shadow hover:bg-red-600 transition">
+        <button v-if="canDelete && selectedIds.length > 0" @click="confirmDeleteMultiple" class="bg-red-500 text-white px-4 py-2 rounded shadow hover:bg-red-600 transition">
           ลบที่เลือก ({{ selectedIds.length }})
         </button>
       </div>
@@ -130,7 +130,7 @@
       <table v-else class="w-full text-left border-collapse">
         <thead>
           <tr class="bg-gray-50 text-gray-600 text-sm">
-            <th v-if="canManage" class="p-4 border-b font-medium w-12 text-center">
+            <th v-if="canDelete" class="p-4 border-b font-medium w-12 text-center">
               <input type="checkbox" :checked="selectAll" @change="toggleSelectAll" class="rounded text-[#800000] focus:ring-[#800000]">
             </th>
             <th class="p-4 border-b font-medium">เลขที่เอกสาร</th>
@@ -142,7 +142,7 @@
         </thead>
         <tbody>
           <tr v-for="doc in documents" :key="doc.id" class="hover:bg-gray-50">
-            <td v-if="canManage" class="p-4 border-b text-center">
+            <td v-if="canDelete" class="p-4 border-b text-center">
               <input type="checkbox" :value="doc.id" v-model="selectedIds" class="rounded text-[#800000] focus:ring-[#800000]">
             </td>
             <td class="p-4 border-b text-sm">{{ doc.document_number || '-' }}</td>
@@ -193,14 +193,14 @@
                 </router-link>
                 
                 <!-- แอดมินลบถาวร -->
-                <button v-if="canManage" @click="confirmDelete(doc.id)" class="text-red-500 hover:text-red-700" title="ลบถาวร (ส่วนกลาง)">
+                <button v-if="canDelete" @click="confirmDelete(doc.id)" class="text-red-500 hover:text-red-700" title="ลบถาวร (ส่วนกลาง)">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>
                 
                 <!-- ผู้ใช้ลบออกจากรายการตัวเอง -->
-                <button v-if="!canManage" @click="hideDocument(doc.id)" class="text-gray-400 hover:text-red-500" title="ลบออกจากรายการของฉัน">
+                <button v-if="!canDelete" @click="hideDocument(doc.id)" class="text-gray-400 hover:text-red-500" title="ลบออกจากรายการของฉัน">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -209,7 +209,7 @@
             </td>
           </tr>
           <tr v-if="documents.length === 0 && !store.loading">
-            <td :colspan="canManage ? 6 : 5" class="p-8 text-center text-gray-500 border-b">
+            <td :colspan="canDelete ? 6 : 5" class="p-8 text-center text-gray-500 border-b">
               <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
@@ -321,9 +321,15 @@ const pageNumbers = computed(() => {
   return pages
 })
 
-const canManage = computed(() => {
-  return authStore.isSuperAdmin || authStore.isAdmin || authStore.isSarabanOfficer
-})
+/*
+ * LEGACY-04 (ปิดงาน) · Decision 2 — แยก "ดูแลทะเบียน" ออกจาก "ลบหนังสือ"
+ *
+ * เจ้าหน้าที่สารบรรณดูแลทะเบียนได้ แต่ **ไม่ได้สิทธิ์ลบมาโดยอัตโนมัติ**
+ * เดิมสองอย่างนี้ใช้เงื่อนไขเดียวกัน ปุ่มลบจึงโผล่ให้คนที่ backend ปฏิเสธ
+ */
+const canManage = computed(() => authStore.isSarabanOfficer)
+
+const canDelete = computed(() => authStore.hasPermission('saraban.document.delete'))
 
 const selectAll = computed(() => {
   return documents.value.length > 0 && selectedIds.value.length === documents.value.length

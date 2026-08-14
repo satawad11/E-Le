@@ -58,7 +58,7 @@ class DocumentWorkflowService
 
         // Notify the registrars. Selected by permission rather than by a role name
         // string, because the role that holds it differs between installs.
-        $officers = User::permission('saraban.document.manage_types')->get();
+        $officers = User::permission('saraban.document.register')->get();
         Notification::send($officers, new SarabanDocumentNotification(
             $document->id,
             "เอกสารรอตรวจสอบ: {$document->title}",

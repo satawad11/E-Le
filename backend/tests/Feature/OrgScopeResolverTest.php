@@ -136,6 +136,130 @@ class OrgScopeResolverTest extends TestCase
         $this->assertFalse($this->resolver->canSeeOrgUnit($user, 'leave.approval.dept', $this->deptA));
     }
 
+    // ------------------------------- Decision 3 — หัวหน้าหน่วยงานเป็น "การมอบหมาย"
+
+    private function assignManager(
+        User $user,
+        int $orgUnitId,
+        string $scope = OrgScopeResolver::UNIT,
+        string $type = 'MANAGER',
+        ?string $from = null,
+        ?string $to = null,
+    ): void {
+        DB::table('org_unit_managers')->insert([
+            'uuid' => (string) Str::uuid(),
+            'org_unit_id' => $orgUnitId,
+            'user_id' => $user->getKey(),
+            'assignment_type' => $type,
+            'scope' => $scope,
+            'effective_from' => $from ?? now()->subDay()->toDateString(),
+            'effective_to' => $to,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * ไม่มีการมอบหมาย = ไม่มีอะไรเปลี่ยน — เป็นเหตุผลที่ตารางนี้ปลอดภัยที่จะเพิ่ม
+     */
+    public function test_without_any_assignment_nothing_changes(): void
+    {
+        $user = $this->userIn($this->deptA);
+
+        $this->assertSame([], $this->resolver->managedOrgUnitIds($user));
+        $this->assertSame([$this->deptA], $this->resolver->visibleOrgUnitIds($user, 'leave.approval.dept'));
+    }
+
+    /**
+     * หัวหน้าหน่วยงานเห็นหน่วยงานที่ตนรับผิดชอบ ไม่ใช่หน่วยงานต้นสังกัดของตน
+     *
+     * จุดสำคัญของ Decision 3: ตำแหน่งหัวหน้าไม่ใช่ชื่อ role แต่เป็นข้อมูลการมอบหมาย
+     */
+    public function test_a_manager_sees_the_unit_they_are_assigned_to(): void
+    {
+        $manager = $this->userIn($this->unrelated);
+        $this->assignManager($manager, $this->deptA);
+
+        $this->assertSame([$this->deptA], $this->resolver->visibleOrgUnitIds($manager, 'leave.approval.dept'));
+        $this->assertTrue($this->resolver->canSeeOrgUnit($manager, 'leave.approval.dept', $this->deptA));
+        $this->assertFalse($this->resolver->canSeeOrgUnit($manager, 'leave.approval.dept', $this->deptB));
+    }
+
+    /**
+     * หน่วยงานที่มีหน่วยงานลูก ให้ขอบเขต DESCENDANTS ตาม Decision 3
+     */
+    public function test_a_manager_of_a_parent_unit_can_be_given_the_whole_subtree(): void
+    {
+        $manager = $this->userIn($this->unrelated);
+        $this->assignManager($manager, $this->faculty, OrgScopeResolver::DESCENDANTS);
+
+        $visible = $this->resolver->visibleOrgUnitIds($manager, 'leave.approval.dept');
+
+        $this->assertContains($this->faculty, $visible);
+        $this->assertContains($this->deptA, $visible);
+        $this->assertContains($this->deptB, $visible);
+        $this->assertNotContains($this->unrelated, $visible);
+    }
+
+    /**
+     * ผู้รักษาการได้ขอบเขตเท่าหัวหน้าตัวจริงระหว่างช่วงที่รักษาการอยู่
+     */
+    public function test_an_acting_manager_is_treated_the_same_while_the_assignment_is_effective(): void
+    {
+        $acting = $this->userIn($this->unrelated);
+        $this->assignManager($acting, $this->deptB, OrgScopeResolver::UNIT, 'ACTING');
+
+        $this->assertSame([$this->deptB], $this->resolver->visibleOrgUnitIds($acting, 'leave.approval.dept'));
+    }
+
+    /**
+     * พ้นหน้าที่แล้วต้องไม่เห็นข้อมูลของหน่วยงานเดิมอีก
+     *
+     * เก็บแถวเดิมไว้ตามข้อห้าม "overwrite ประวัติ effective-dated" ของโปรเจกต์
+     */
+    public function test_an_expired_assignment_grants_nothing(): void
+    {
+        $formerHead = $this->userIn($this->unrelated);
+        $this->assignManager(
+            $formerHead,
+            $this->deptA,
+            OrgScopeResolver::UNIT,
+            'MANAGER',
+            now()->subYear()->toDateString(),
+            now()->subMonth()->toDateString(),
+        );
+
+        $this->assertSame([], $this->resolver->managedOrgUnitIds($formerHead));
+        $this->assertFalse($this->resolver->canSeeOrgUnit($formerHead, 'leave.approval.dept', $this->deptA));
+    }
+
+    public function test_a_future_assignment_grants_nothing_yet(): void
+    {
+        $incoming = $this->userIn($this->unrelated);
+        $this->assignManager(
+            $incoming,
+            $this->deptA,
+            OrgScopeResolver::UNIT,
+            'MANAGER',
+            now()->addMonth()->toDateString(),
+        );
+
+        $this->assertSame([], $this->resolver->managedOrgUnitIds($incoming));
+    }
+
+    /**
+     * ขอบเขตที่ผู้ดูแลกำหนดไว้เองต้องชนะการมอบหมายเสมอ
+     * เพื่อให้หรี่ขอบเขตของหัวหน้าคนใดคนหนึ่งได้โดยไม่ต้องถอนการมอบหมาย
+     */
+    public function test_an_explicit_scope_row_still_wins_over_the_assignment(): void
+    {
+        $manager = $this->userIn($this->unrelated);
+        $this->assignManager($manager, $this->faculty, OrgScopeResolver::DESCENDANTS);
+        $this->setScope($manager, OrgScopeResolver::SELF);
+
+        $this->assertSame([], $this->resolver->visibleOrgUnitIds($manager, 'leave.approval.dept'));
+    }
+
     // ------------------------------------------------------- ผลจริงกับ LeavePolicy
 
     public function test_leave_policy_uses_the_scope_for_department_approvers(): void

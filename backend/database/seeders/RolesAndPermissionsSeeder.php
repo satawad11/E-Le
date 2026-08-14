@@ -77,5 +77,13 @@ class RolesAndPermissionsSeeder extends Seeder
         $superAdminRole = Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
         // Super Admin has all permissions (handled via Gate in AuthServiceProvider typically, or just assign all)
         $superAdminRole->syncPermissions(Permission::all());
+
+        /*
+         * LEGACY-04 (ปิดงาน) — ชุดสิทธิ์ที่ route บังคับใช้จริง
+         *
+         * ต้องรันหลังจาก role ทั้งหมดถูกสร้างแล้ว เพราะมันแจกสิทธิ์ตามชื่อ role
+         * รายละเอียดการแจกอยู่ใน OperationalPermissionSeeder ที่เดียว
+         */
+        $this->call(OperationalPermissionSeeder::class);
     }
 }

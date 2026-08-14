@@ -72,26 +72,16 @@ class AuthorizationMatrixTest extends TestCase
     /**
      * ช่องว่างที่ค้นพบแล้วและยังรอการตัดสินใจของเจ้าของระบบ
      *
-     * ทุกตัวในรายการนี้ทำให้ endpoint ที่เกี่ยวข้อง **ใช้ได้เฉพาะ Super Admin**
-     * เพราะ permission ไม่มีอยู่จริงในฐานข้อมูล — เป็นปัญหาที่มีมาก่อน LEGACY-04
-     * ไม่ใช่ผลจากการ refactor
+     * **รายการนี้ว่างแล้ว** — permission ทั้ง 7 ตัวที่เคยอยู่ในนี้ถูกสร้างและแจก
+     * ตามหน้าที่จริงเมื่อ 2026-08-14 หลังได้รับอนุมัติ (Decision 1 / Decision 2)
+     * ดู `OperationalPermissionSeeder` และ `OperationalPermissionMatrixTest`
      *
-     * ที่ร้ายแรงที่สุดคือสองตัวแรก: ทำให้ **บุคลากรทั่วไปลงเวลาเข้า-ออกไม่ได้เลย**
-     *
-     * การเติม permission เหล่านี้เป็นการ "ให้สิทธิ์ใหม่" จึงต้องได้รับอนุมัติก่อน
-     * — ห้ามลบชื่อออกจากรายการนี้จนกว่าจะแก้จริง
+     * ถ้าจะเพิ่มชื่อกลับเข้ามาอีก ต้องระบุเหตุผลกำกับเสมอ เพราะทุกชื่อในรายการนี้
+     * หมายถึง endpoint ที่ใช้ได้เฉพาะ Super Admin
      *
      * @var array<int,string>
      */
-    private const KNOWN_MISSING_PENDING_DECISION = [
-        'attendance.checkin',
-        'attendance.view_self',
-        'attendance.ot',
-        'attendance.ot_summary',
-        'system.menu.manage',
-        'admin.users.manage_permissions',
-        'saraban.setting.manage',
-    ];
+    private const KNOWN_MISSING_PENDING_DECISION = [];
 
     public function test_every_permission_enforced_on_a_route_exists_in_the_catalogue(): void
     {
@@ -145,6 +135,80 @@ class AuthorizationMatrixTest extends TestCase
                 $role,
                 $existing,
                 "โค้ดยังอ้างถึง role `{$role}` แต่ไม่มีอยู่จริง — ตรรกะที่ผูกกับชื่อนี้จะไม่ทำงาน",
+            );
+        }
+    }
+
+    /**
+     * `hasRole()` / `hasAnyRole()` ต้องเหลือเฉพาะ Super Admin bootstrap ที่ประกาศไว้
+     *
+     * LEGACY-04 (ปิดงาน) — เกณฑ์ข้อสุดท้ายของเฟสนี้ เดิมตรวจด้วยมือด้วย grep
+     * ซึ่งเชื่อถือไม่ได้เมื่อมีคนเพิ่มโค้ดใหม่ เทสต์ตัวนี้ตรวจให้อัตโนมัติ
+     *
+     * สามจุดที่คงไว้เป็น bootstrap identity ของผู้ดูแลระบบสูงสุด — ถ้าผูกกับ
+     * permission จะเกิดปัญหาไก่กับไข่ตอนตั้งค่าระบบครั้งแรก
+     */
+    public function test_role_name_checks_survive_only_at_the_declared_bootstrap_points(): void
+    {
+        $declared = [
+            'app/Services/PermissionEvaluator.php',
+            'app/Providers/AppServiceProvider.php',
+        ];
+
+        $found = [];
+        $directory = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(app_path()));
+
+        foreach ($directory as $file) {
+            if (! $file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $contents = file_get_contents($file->getPathname());
+
+            if (preg_match('/->has(Any)?Role\s*\(/', $contents) !== 1) {
+                continue;
+            }
+
+            $relative = str_replace('\\', '/', substr($file->getPathname(), strlen(base_path()) + 1));
+
+            if (! in_array($relative, $declared, true)) {
+                $found[] = $relative;
+            }
+        }
+
+        sort($found);
+
+        $this->assertSame(
+            [],
+            $found,
+            "พบการตัดสินสิทธิ์จากชื่อ role นอกจุดที่ประกาศไว้:\n  ".implode("\n  ", $found).
+            "\n\nชื่อ role แก้ได้จากหน้าจอ จึงใช้เป็นตัวตัดสินสิทธิ์ไม่ได้ — ให้ใช้ permission แทน",
+        );
+    }
+
+    /**
+     * Decision 3 — ห้ามมี role ที่ตั้งขึ้นเพื่อใช้เป็น business logic ของตำแหน่งหัวหน้า
+     *
+     * ตำแหน่งหัวหน้าแผนก/หัวหน้างาน/หัวหน้าฝ่าย/ผู้รักษาการ เป็น **การมอบหมาย**
+     * ใน `org_unit_managers` ไม่ใช่ชื่อบทบาท
+     */
+    public function test_the_install_does_not_create_a_department_head_role(): void
+    {
+        $forbidden = [
+            'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย',
+            'Head of Department',
+            'admin_saraban',
+            'Saraban Officer',
+            'เจ้าหน้าที่สารบัญ',
+        ];
+
+        $existing = Role::pluck('name')->all();
+
+        foreach ($forbidden as $name) {
+            $this->assertNotContains(
+                $name,
+                $existing,
+                "seeder ยังสร้าง role `{$name}` ซึ่งไม่ควรมี — ตำแหน่งหัวหน้าใช้การมอบหมายใน org_unit_managers",
             );
         }
     }

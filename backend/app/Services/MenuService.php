@@ -17,7 +17,16 @@ class MenuService
 
         return Cache::remember($cacheKey, 3600, function () use ($user) {
             $userPermissions = $user->getAllPermissions()->pluck('name')->toArray();
-            $isAdmin = $user->hasRole('admin') || $user->hasRole('super_admin') || $user->hasRole('admin_saraban');
+
+            /*
+             * LEGACY-04 (ปิดงาน) — เดิมบรรทัดนี้เช็ค role ชื่อ `admin`, `super_admin`,
+             * `admin_saraban` ซึ่ง **ไม่มีอยู่จริงสักชื่อเดียว** `$isAdmin` จึงเป็น false
+             * เสมอ และตรรกะ "ผู้ดูแลเห็นทุกเมนู" ไม่เคยทำงานเลย
+             *
+             * ตัดสินจากสิทธิ์จัดการเมนูแทน — `can()` ผ่าน Gate::before จึงครอบคลุม
+             * Super Admin ให้อัตโนมัติโดยไม่ต้องอ้างชื่อ role ที่นี่
+             */
+            $isAdmin = $user->can('system.menu.manage');
 
             $rootMenus = Menu::with(['children.permissions', 'permissions'])
                 ->whereNull('parent_id')
