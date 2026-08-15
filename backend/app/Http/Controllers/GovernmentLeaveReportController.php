@@ -3,16 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\Leave;
+use App\Services\OrgScopeResolver;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class GovernmentLeaveReportController extends Controller
 {
+    public function __construct(private OrgScopeResolver $scopes) {}
+
     /** สร้าง query ทะเบียนคุมการลาตามเงื่อนไขที่กรอง — ใช้ร่วมกันทั้งหน้าจอและไฟล์ส่งออก */
     private function registerQuery(Request $r)
     {
         abort_unless($r->user()->can('leave.report.view') || $r->user()->can('leave.management.manage'), 403);
         $data = $r->validate(['from' => 'required|date', 'to' => 'required|date|after_or_equal:from', 'department_id' => 'nullable|exists:departments,id', 'personnel_type_id' => 'nullable|exists:personnel_types,id']);
         $q = Leave::withTrashed()->with(['user:id,name,department_id,personnel_type_id', 'user.department:id,name', 'user.personnelType:id,name', 'type:id,name'])->whereBetween('start_date', [$data['from'], $data['to']]);
+        $this->applyReportScope($q, $r);
         if ($data['department_id'] ?? null) {
             $q->whereHas('user', fn ($x) => $x->where('department_id', $data['department_id']));
         }
@@ -48,7 +53,10 @@ class GovernmentLeaveReportController extends Controller
         abort_unless(in_array($months, [6, 12]), 422);
         $from = now()->subMonths($months)->startOfDay();
 
-        return Leave::query()->join('leave_types', 'leaves.leave_type_id', '=', 'leave_types.id')->where('leaves.start_date', '>=', $from)->selectRaw('leave_types.name as leave_type, COUNT(*) requests, SUM(leaves.total_days) days, SUM(leaves.status="Approved") approved, SUM(leaves.status="Rejected") rejected, SUM(CASE WHEN leaves.status="Approved" THEN leaves.total_days ELSE 0 END) approved_days')->groupBy('leave_types.id', 'leave_types.name')->get();
+        $query = Leave::query()->join('leave_types', 'leaves.leave_type_id', '=', 'leave_types.id')->where('leaves.start_date', '>=', $from);
+        $this->applyReportScope($query, $r);
+
+        return $query->selectRaw('leave_types.name as leave_type, COUNT(*) requests, SUM(leaves.total_days) days, SUM(leaves.status="Approved") approved, SUM(leaves.status="Rejected") rejected, SUM(CASE WHEN leaves.status="Approved" THEN leaves.total_days ELSE 0 END) approved_days')->groupBy('leave_types.id', 'leave_types.name')->get();
     }
 
     public function csv(Request $r)
@@ -67,5 +75,14 @@ class GovernmentLeaveReportController extends Controller
         fclose($out);
 
         return response("\xEF\xBB\xBF".$content, 200, ['Content-Type' => 'text/csv; charset=UTF-8', 'Content-Disposition' => 'attachment; filename="leave-register.csv"']);
+    }
+
+    private function applyReportScope(Builder $query, Request $request): void
+    {
+        $ability = $request->user()->can('leave.report.view') ? 'leave.report.view' : 'leave.management.manage';
+        $visible = $this->scopes->visibleOrgUnitIds($request->user(), $ability, OrgScopeResolver::ORGANIZATION);
+        if ($visible !== null) {
+            $query->whereHas('user', fn (Builder $users) => $users->whereIn('org_unit_id', $visible));
+        }
     }
 }

@@ -12,6 +12,7 @@ use App\Models\Workflow\WorkflowTransition;
 use App\Models\Workflow\WorkflowVersion;
 use App\Services\AuditLogger;
 use App\Services\OrgScopeResolver;
+use App\Services\PermissionEvaluator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -34,6 +35,7 @@ class WorkflowEngine
         private readonly DelegationResolver $delegations,
         private readonly OrgScopeResolver $orgScope,
         private readonly AuditLogger $audit,
+        private readonly PermissionEvaluator $permissions,
     ) {}
 
     // ------------------------------------------------------------------ อ่านสถานะ
@@ -352,7 +354,7 @@ class WorkflowEngine
         $ids = match ($step?->assignee_type) {
             WorkflowStep::ASSIGNEE_USER => array_filter([$task->assignee_user_id ?? $step->assignee_user_id]),
             WorkflowStep::ASSIGNEE_PERMISSION => $step->assignee_permission
-                ? User::permission($step->assignee_permission)->pluck('id')->all()
+                ? $this->permissionCandidates($step->assignee_permission)
                 : [],
             WorkflowStep::ASSIGNEE_INITIATOR => array_filter([$instance->initiated_by]),
             WorkflowStep::ASSIGNEE_ORG_MANAGER => $this->orgManagersFor($instance),
@@ -365,6 +367,18 @@ class WorkflowEngine
         sort($ids);
 
         return array_values(array_unique($ids));
+    }
+
+    /** @return array<int, int> */
+    private function permissionCandidates(string $permission): array
+    {
+        $names = DB::table('permissions')
+            ->where('guard_name', 'web')
+            ->whereIn('name', $this->permissions->equivalentNames($permission))
+            ->pluck('name')
+            ->all();
+
+        return $names === [] ? [] : User::permission($names)->pluck('id')->map(fn ($id) => (int) $id)->all();
     }
 
     /**

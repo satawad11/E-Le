@@ -2,36 +2,18 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
-
+/** @deprecated Use NotificationCenter; retained as a compatibility proxy. */
 class TelegramNotificationService
 {
-    protected $botToken;
+    private TelegramService $telegram;
 
-    public function __construct()
+    public function __construct(?TelegramService $telegram = null)
     {
-        // Assuming bot token is in .env file
-        $this->botToken = env('TELEGRAM_BOT_TOKEN');
+        $this->telegram = $telegram ?? app(TelegramService::class);
     }
 
     public function sendMessage($chatId, $message)
     {
-        if (! $this->botToken || ! $chatId) {
-            return false;
-        }
-
-        try {
-            $response = Http::post("https://api.telegram.org/bot{$this->botToken}/sendMessage", [
-                'chat_id' => $chatId,
-                'text' => $message,
-                'parse_mode' => 'HTML',
-            ]);
-
-            return $response->successful();
-        } catch (\Exception $e) {
-            \Log::error('Telegram notification error: '.$e->getMessage());
-
-            return false;
-        }
+        return filled($chatId) && $this->telegram->sendMessage((string) $chatId, (string) $message);
     }
 }

@@ -2,20 +2,24 @@
 
 ## Mode
 
-`LEGACY MODERNIZATION`
+`PRODUCTION PHASE`
 
-ใช้โหมดนี้เมื่อ repository มีระบบเดิมอยู่แล้ว
+ใช้โหมดนี้สำหรับเตรียมและปรับใช้ระบบเข้าสู่ Production
 
 ## Current Phase
 
-`LEGACY-06 TIME FOUNDATION — COMPLETE · อนุมัติแล้ว 2026-08-15`
+`PROD-00 Architecture Freeze`
 
-> **หยุดรอคำสั่งก่อนเริ่ม LEGACY-07 Leave Modernization**
+> เสร็จเมื่อ 2026-08-15 · 456 tests / 1,328 assertions · Pint 452 files · frontend build 879 modules
+> `docs/checkpoints/LEGACY-12-REPORT.md` · `docs/checkpoints/LEGACY-MODERNIZATION-FINAL-REPORT.md`
+> **LEGACY-00 ถึง LEGACY-12 = FINAL PASS** · หยุดตามคำสั่ง
+
+> **หยุดรอคำสั่งก่อนเริ่ม LEGACY-08 Attendance Integration**
 >
-> เสร็จเมื่อ 2026-08-15 · 372 tests / 952 assertions · `docs/checkpoints/LEGACY-06-REPORT.md`
-> ตรรกะเวลาทั้งระบบรวมอยู่ที่ `TimeService` แล้ว
+> เสร็จเมื่อ 2026-08-15 · 402 tests / 993 assertions · `docs/checkpoints/LEGACY-07-REPORT.md`
+> โมดูลลาเชื่อมกับ Core ใหม่ครบแล้ว · ไม่มี migration ใหม่ · ของเดิมที่ดีอยู่แล้วยังอยู่ครบ
 >
-> ค่าที่เจ้าของระบบยืนยัน: grace period = 0 · เวลาราชการ 08:30–16:30 จันทร์–ศุกร์
+> ค่าที่เจ้าของระบบยืนยันไว้ (LEGACY-06): grace period = 0 · เวลาราชการ 08:30–16:30 จันทร์–ศุกร์
 >
 > สิ่งที่ยังห้ามทำจนกว่าจะมีคำสั่งแยก:
 > - Workflow Cutover (05-4)
@@ -35,6 +39,14 @@
 | LEGACY-05 Workflow Engine | ✅ เสร็จ 2026-08-14 · 320 tests / 832 assertions · shadow ตรง 100% · **ยังไม่ cutover** · `docs/checkpoints/LEGACY-05-REPORT.md` |
 | **CORE CHECKPOINT** | ✅ **PASS · อนุมัติแล้ว** 2026-08-14 · P0 = 0 · P1 = 0 · `CORE_CHECKPOINT_REPORT.md` |
 | LEGACY-06 Time Foundation | ✅ เสร็จ · **อนุมัติแล้ว** 2026-08-15 · 372 tests / 952 assertions · `docs/checkpoints/LEGACY-06-REPORT.md` |
+| LEGACY-07 Leave Modernization | ✅ เสร็จ 2026-08-15 · 402 tests / 993 assertions · `docs/checkpoints/LEGACY-07-REPORT.md` |
+| LEGACY-08 Attendance Integration | ✅ PASS 2026-08-15 · 428 tests / 1056 assertions · raw/result separation · vendor connector deferred by requirement · `docs/checkpoints/LEGACY-08-REPORT.md` |
+| LEGACY-09 Overtime | ✅ PASS 2026-08-15 · 435 tests / 1096 assertions · approved/actual/certified separated · no compensation calculation · `docs/checkpoints/LEGACY-09-REPORT.md` |
+| LEGACY-10 Notification Center | ✅ PASS 2026-08-15 · 442 tests / 1140 assertions · In-App/Email + optional LINE OA/Telegram adapters · `docs/checkpoints/LEGACY-10-REPORT.md` |
+| LEGACY-11 Evaluation & Reporting | ✅ PASS 2026-08-15 · 448 tests / 1186 assertions · scope-safe reporting/export + raw evaluation metrics · `docs/checkpoints/LEGACY-11-REPORT.md` |
+| LEGACY-12 Future Module Readiness | ✅ FINAL PASS 2026-08-15 · 456 tests / 1328 assertions · Module Registry/Contract + safe disable · `docs/checkpoints/LEGACY-12-REPORT.md` |
+| **UX STABILIZATION (UX-01 ถึง UX-12)** | ✅ **FINAL PASS 2026-08-15** · 462 tests / 1370 assertions · frontend build 887 modules · 0 critical · `docs/checkpoints/UX-12-FINAL-REPORT.md` |
+| **APPROVAL WORKFLOW AUDIT & FIX** | ✅ **FINAL PASS 2026-08-16** · 9/9 tests passed (44 assertions) · `docs/checkpoints/APPROVAL-WORKFLOW-FIX-REPORT.md` |
 
 **Architecture Decision (อนุมัติแล้ว 2026-08-12):** คงเทคโนโลยีเดิม Laravel + Vue 3 + MySQL 8 + Tailwind + Docker
 เอกสาร Target Architecture ตีความเป็น Architectural Principles และ Engineering Standards ไม่ใช่คำสั่งให้ rewrite stack
@@ -43,23 +55,26 @@
 
 ## Allowed Work
 
-- อ่าน Source Code และ Database schema
-- Inventory ระบบเดิม
-- Security assessment
-- Gap analysis
-- Migration planning
-- กรอก `docs/LEGACY-SYSTEM-ASSESSMENT.md`
-- กรอก `docs/LEGACY-GAP-ANALYSIS.md`
-- กรอก `docs/LEGACY-MIGRATION-PLAN.md`
+- Pin dependency versions (PHP, Node, Composer, NPM)
+- Document architecture and decisions
+- Freeze database schemas
+- Setup production environments
 
 ## Forbidden Work
 
-- ห้ามแก้ Source Code ใน Assessment รอบแรก
-- ห้าม Drop/Rename schema
-- ห้ามลบข้อมูล
-- ห้ามเริ่ม CORE-01 ถึง CORE-05
-- ห้ามเริ่ม Leave/Attendance/OT
+- Feature development
+- Schema modifications (unless critical bug fix)
+- Unapproved dependency upgrades
 
 ## Exit Condition
 
-ต้องได้รับการตรวจและอนุมัติ Legacy Assessment + Gap Analysis + Migration Plan ก่อนเข้าสู่ Legacy Refactor Phase
+- Dependencies pinned
+- Architectures documented
+- Schemas frozen
+- `.env.example` ready for production
+
+> LEGACY-07-2 completion addendum (2026-08-14): `LeaveController` responsibility split completed; no migration/schema/workflow cutover; full backend suite and frontend build pass. See `docs/checkpoints/LEGACY-07-REPORT.md` section 12.
+
+> LEGACY-08 completion (2026-08-15): attendance sources/devices/raw events, idempotent reconciliation, scoped access, and workflow-based correction are active. Existing `attendances` remains the compatible daily result table; no vendor-specific connector was invented.
+
+> LEGACY-09 completion (2026-08-15): OT orders, assignments, actual time, and certified time are separate domain records. Legacy attendance OT columns are read-only compatibility data; remuneration is intentionally out of scope.

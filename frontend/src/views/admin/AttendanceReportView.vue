@@ -1,12 +1,12 @@
 <template>
-  <div class="max-w-7xl mx-auto py-8">
+  <div class="max-w-7xl mx-auto space-y-6">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold text-gray-800">รายงานการลงเวลา (Admin)</h2>
     </div>
 
     <!-- Filters -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         <div class="relative z-50">
           <label class="block text-sm font-medium text-gray-700 mb-1">วันที่</label>
           <ThaiDatePicker v-model="filters.date" />
@@ -32,13 +32,13 @@
             <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }} {{ user.last_name }}</option>
           </select>
         </div>
-        <div class="flex items-end gap-2">
-          <button @click="fetchRecords(1)" class="flex-1 bg-[#800000] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#600000]">
+        <div class="flex items-end gap-2 sm:col-span-2 md:col-span-1">
+          <button @click="fetchRecords(1)" class="w-full bg-[#800000] text-white px-4 py-2 rounded-lg text-sm hover:bg-[#600000] font-semibold">
             ค้นหา
           </button>
         </div>
       </div>
-      <div class="mt-4 flex justify-end gap-2">
+      <div class="mt-4 flex flex-wrap justify-end gap-2">
         <button @click="syncLeaves" :disabled="isSyncing" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 flex items-center gap-2 disabled:opacity-50">
           <svg class="w-4 h-4" :class="{'animate-spin': isSyncing}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
           {{ isSyncing ? 'กำลังซิงค์...' : 'ซิงค์ข้อมูลการลา' }}
@@ -157,7 +157,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../../axios'
+import { useAlertStore } from '../../stores/alert'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
+
+const alertStore = useAlertStore()
 import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 
 const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
@@ -225,7 +228,7 @@ const exportReport = async (type) => {
     window.URL.revokeObjectURL(url)
   } catch (error) {
     console.error('Error exporting report:', error)
-    alert('ไม่สามารถโหลดข้อมูลได้ หรือเกิดข้อผิดพลาดในการดาวน์โหลด')
+    alertStore.error('ไม่สามารถโหลดข้อมูลได้ หรือเกิดข้อผิดพลาดในการดาวน์โหลด')
   }
 }
 
@@ -240,11 +243,11 @@ const syncLeaves = async () => {
       month: filters.value.month || new Date().getMonth() + 1,
       year: filters.value.year || new Date().getFullYear()
     })
-    alert(res.data.message || 'ซิงค์ข้อมูลสำเร็จ')
+    alertStore.success(res.data.message || 'ซิงค์ข้อมูลสำเร็จ')
     fetchRecords(1)
   } catch (error) {
     console.error('Error syncing leaves:', error)
-    alert(error.response?.data?.message || 'เกิดข้อผิดพลาดในการซิงค์ข้อมูล')
+    alertStore.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการซิงค์ข้อมูล')
   } finally {
     isSyncing.value = false
   }

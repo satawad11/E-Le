@@ -17,18 +17,38 @@ class LeavePolicyService
 {
     public function resolve(User $user, int $leaveTypeId, Carbon $date): LeavePolicy
     {
-        if (! $user->personnel_type_id) {
-            $user->personnel_type_id = PersonnelType::where('code', 'civil_servant')->value('id');
+        // 1. Resolve personnel_type_id from Personnel Domain assignment
+        $personnelTypeId = $user->relationLoaded('currentAssignment')
+            ? $user->currentAssignment?->personnel_type_id
+            : null;
+
+        if ($personnelTypeId === null) {
+            $personnelTypeId = DB::table('personnel_assignments')
+                ->where('user_id', $user->id)
+                ->whereDate('effective_from', '<=', $date->toDateString())
+                ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date->toDateString()))
+                ->orderByDesc('effective_from')
+                ->orderByDesc('id')
+                ->value('personnel_type_id');
+        }
+
+        // 2. Fallback to users.personnel_type_id
+        $personnelTypeId ??= $user->personnel_type_id;
+
+        if (! $personnelTypeId) {
+            $personnelTypeId = PersonnelType::where('code', 'civil_servant')->value('id');
+            $user->personnel_type_id = $personnelTypeId;
             $user->save();
         }
-        $policy = LeavePolicy::where('personnel_type_id', $user->personnel_type_id)->where('leave_type_id', $leaveTypeId)->where('is_active', true)->whereDate('effective_from', '<=', $date)->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date))->orderByDesc('effective_from')->first();
+
+        $policy = LeavePolicy::where('personnel_type_id', $personnelTypeId)->where('leave_type_id', $leaveTypeId)->where('is_active', true)->whereDate('effective_from', '<=', $date)->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date))->orderByDesc('effective_from')->first();
         if ($policy) {
             return $policy;
         }
         $type = LeaveType::findOrFail($leaveTypeId);
         $legacyQuota = LeaveBalance::where('user_id', $user->id)->where('leave_type_id', $leaveTypeId)->value('quota');
 
-        return LeavePolicy::create(['personnel_type_id' => $user->personnel_type_id, 'leave_type_id' => $leaveTypeId, 'effective_from' => $date->copy()->startOfYear(), 'annual_quota' => $legacyQuota ?? $type->max_days, 'notice_period_days' => $type->notice_period_days ?? 0, 'allow_past_dates' => $type->allow_past_dates ?? false, 'exclude_holidays' => $type->exclude_holidays ?? true, 'allow_half_day' => true, 'attachment_required_after_days' => $type->require_attachment_after_days, 'required_evidence_type' => ($type->require_attachment_after_days !== null ? 'supporting_document' : null), 'is_carry_forward' => $type->is_carry_forward ?? false, 'max_carry_forward' => $type->max_carry_forward ?? 0, 'period_basis' => 'fiscal_year', 'is_active' => true]);
+        return LeavePolicy::create(['personnel_type_id' => $personnelTypeId, 'leave_type_id' => $leaveTypeId, 'effective_from' => $date->copy()->startOfYear(), 'annual_quota' => $legacyQuota ?? $type->max_days, 'notice_period_days' => $type->notice_period_days ?? 0, 'allow_past_dates' => $type->allow_past_dates ?? false, 'exclude_holidays' => $type->exclude_holidays ?? true, 'allow_half_day' => true, 'attachment_required_after_days' => $type->require_attachment_after_days, 'required_evidence_type' => ($type->require_attachment_after_days !== null ? 'supporting_document' : null), 'is_carry_forward' => $type->is_carry_forward ?? false, 'max_carry_forward' => $type->max_carry_forward ?? 0, 'period_basis' => 'fiscal_year', 'is_active' => true]);
     }
 
     public function fiscalYear(Carbon $date): ?FiscalYear
@@ -67,7 +87,11 @@ class LeavePolicyService
 
     public function assertEligible(User $user, LeavePolicy $policy, Carbon $start, Carbon $end, float $days, string $period, bool $hasEvidence): void
     {
-        $serviceStart = optional($user->profile)->start_date ? Carbon::parse($user->profile->start_date) : null;
+        $startDateVal = $user->personnel?->effective_from
+            ? $user->personnel->effective_from->toDateString()
+            : ($user->profile?->start_date ? Carbon::parse($user->profile->start_date)->toDateString() : null);
+
+        $serviceStart = $startDateVal ? Carbon::parse($startDateVal) : null;
         if ($serviceStart && $serviceStart->diffInDays($start, false) < $policy->minimum_service_days) {
             throw ValidationException::withMessages(['start_date' => 'อายุราชการ/อายุงานยังไม่ครบตามหลักเกณฑ์']);
         }if (! $policy->allow_past_dates && $start->lt(today())) {

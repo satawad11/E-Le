@@ -66,7 +66,7 @@ class AuthController extends Controller
         $expiration = (int) config('sanctum.expiration', 480);
         $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;
 
-        $user->load('department', 'profile');
+        $user->load(['department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']);
         $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
         $user->direct_permissions = array_values(array_unique($user->getDirectPermissions()->pluck('name')->toArray()));
         $user->role_names = array_values(array_unique($user->roles->pluck('name')->toArray()));
@@ -153,7 +153,7 @@ class AuthController extends Controller
 
     public function user(Request $request)
     {
-        $user = $request->user()->load('department', 'profile');
+        $user = $request->user()->load(['department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']);
         $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
         $user->direct_permissions = array_values(array_unique($user->getDirectPermissions()->pluck('name')->toArray()));
         $user->role_names = array_values(array_unique($user->roles->pluck('name')->toArray()));

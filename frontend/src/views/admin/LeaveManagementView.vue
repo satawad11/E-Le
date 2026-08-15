@@ -110,7 +110,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../../axios'
+import { useAlertStore } from '../../stores/alert'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
+
+const alertStore = useAlertStore()
 
 const activeTab = ref('sync')
 const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
@@ -151,7 +154,7 @@ const handleManualSubmit = async () => {
   manualLoading.value = true
   try {
     await api.post('/admin/leaves', manualForm.value)
-    alert('บันทึกวันลาให้พนักงานสำเร็จ!')
+    alertStore.success('บันทึกวันลาให้พนักงานสำเร็จ!')
     // Reset form
     manualForm.value = {
       user_id: '',
@@ -161,7 +164,12 @@ const handleManualSubmit = async () => {
       reason: ''
     }
   } catch (error) {
-    alert(error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+    const errors = error.response?.data?.errors
+    if (errors) {
+      alertStore.error(Object.values(errors).flat().join(' | '))
+    } else {
+      alertStore.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+    }
   } finally {
     manualLoading.value = false
   }

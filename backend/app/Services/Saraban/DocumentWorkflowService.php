@@ -6,7 +6,7 @@ use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentSignature;
 use App\Models\Saraban\DocumentWorkflowStep;
 use App\Models\User;
-use App\Notifications\SarabanDocumentNotification;
+use App\Services\NotificationCenter\NotificationCenter;
 use App\Services\Workflow\SarabanWorkflowProvisioner;
 use chillerlan\QRCode\Common\EccLevel;
 use chillerlan\QRCode\Output\QRMarkupSVG;
@@ -15,11 +15,12 @@ use chillerlan\QRCode\QROptions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
 class DocumentWorkflowService
 {
+    public function __construct(private NotificationCenter $notifications) {}
+
     /**
      * Update the workflow state of a document.
      */
@@ -84,12 +85,9 @@ class DocumentWorkflowService
         // Notify the registrars. Selected by permission rather than by a role name
         // string, because the role that holds it differs between installs.
         $officers = User::permission('saraban.document.register')->get();
-        Notification::send($officers, new SarabanDocumentNotification(
-            $document->id,
-            "เอกสารรอตรวจสอบ: {$document->title}",
-            "เอกสาร {$document->document_number} ถูกส่งเพื่อรอการตรวจสอบ",
-            'submitted'
-        ));
+        $this->notifications->emit('saraban.task', $officers, $document, [
+            'status' => 'pending_review', 'action' => 'submitted',
+        ], User::find($userId));
 
         return $result;
     }
@@ -103,12 +101,9 @@ class DocumentWorkflowService
         $result = $this->transitionState($document, $newState, $userId, 'approved', $comment, $ip);
 
         if ($document->creator) {
-            $document->creator->notify(new SarabanDocumentNotification(
-                $document->id,
-                'เอกสารได้รับการอนุมัติ',
-                "เอกสาร {$document->title} ของคุณได้รับการอนุมัติแล้ว",
-                'approved'
-            ));
+            $this->notifications->emit('saraban.task', [$document->creator], $document, [
+                'status' => $newState, 'action' => 'approved',
+            ], User::find($userId));
         }
 
         return $result;
@@ -122,12 +117,9 @@ class DocumentWorkflowService
         $result = $this->transitionState($document, 'draft', $userId, 'rejected', $comment, $ip);
 
         if ($document->creator) {
-            $document->creator->notify(new SarabanDocumentNotification(
-                $document->id,
-                'เอกสารถูกตีกลับ',
-                "เอกสาร {$document->title} ของคุณถูกตีกลับ: {$comment}",
-                'rejected'
-            ));
+            $this->notifications->emit('saraban.task', [$document->creator], $document, [
+                'status' => 'draft', 'action' => 'rejected',
+            ], User::find($userId));
         }
 
         return $result;

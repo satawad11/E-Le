@@ -1,6 +1,6 @@
 <?php
 
-return [
+$modules = [
     /*
     |--------------------------------------------------------------------------
     | System Modules Registry & Permission Definitions
@@ -75,3 +75,5 @@ return [
         ],
     ],
 ];
+
+return array_replace_recursive($modules, require __DIR__.'/module_registry.php');

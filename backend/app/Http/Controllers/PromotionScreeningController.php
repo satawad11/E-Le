@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Leave;
 use App\Models\LeaveType;
 use App\Models\User;
+use App\Services\OrgScopeResolver;
 use App\Services\PersonalDataAccessLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -23,7 +24,7 @@ use Illuminate\Http\Request;
  */
 class PromotionScreeningController extends Controller
 {
-    public function __construct(private PersonalDataAccessLogger $accessLog) {}
+    public function __construct(private PersonalDataAccessLogger $accessLog, private OrgScopeResolver $scopes) {}
 
     private const DEFAULT_MAX_LEAVE_DAYS = 23;
 
@@ -72,15 +73,20 @@ class PromotionScreeningController extends Controller
 
         $countedTypeIds = LeaveType::where('counts_toward_promotion', true)->pluck('id')->all();
 
+        $ability = $request->user()->can('leave.report.view') ? 'leave.report.view' : 'leave.management.manage';
+        $visible = $this->scopes->visibleOrgUnitIds($request->user(), $ability, OrgScopeResolver::ORGANIZATION);
         $users = User::with(['profile:id,user_id,position,start_date', 'department:id,name', 'personnelType:id,name'])
             ->where('is_active', true)
+            ->when($visible !== null, fn ($q) => $q->whereIn('org_unit_id', $visible))
             ->when($data['department_id'] ?? null, fn ($q, $v) => $q->where('department_id', $v))
             ->when($data['personnel_type_id'] ?? null, fn ($q, $v) => $q->where('personnel_type_id', $v))
             ->orderBy('name')
             ->get();
+        $userIds = $users->pluck('id');
 
         // ดึงสถิติทั้งรอบครั้งเดียวแล้วค่อยจับคู่ เพื่อไม่ให้เกิด query ต่อผู้ใช้หนึ่งคน
         $leaveStats = Leave::selectRaw('user_id, leave_type_id, COUNT(*) as times, SUM(total_days) as days')
+            ->whereIn('user_id', $userIds)
             ->where('status', 'Approved')
             ->whereBetween('start_date', [$from, $to])
             ->groupBy('user_id', 'leave_type_id')
@@ -88,6 +94,7 @@ class PromotionScreeningController extends Controller
             ->groupBy('user_id');
 
         $lateStats = Attendance::selectRaw('user_id, COUNT(*) as times, SUM(late_minutes) as minutes')
+            ->whereIn('user_id', $userIds)
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->where('late_minutes', '>', 0)
             ->groupBy('user_id')

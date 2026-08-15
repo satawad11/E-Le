@@ -131,7 +131,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../../axios'
+import { useAlertStore } from '../../stores/alert'
 
+const alertStore = useAlertStore()
 const templates = ref([])
 const loading = ref(true)
 const showModal = ref(false)
@@ -194,11 +196,11 @@ const removeStep = (index) => {
 
 const saveTemplate = async () => {
   if (!form.value.name) {
-    alert('กรุณากรอกชื่อเทมเพลต')
+    alertStore.error('กรุณากรอกชื่อเทมเพลต')
     return
   }
   if (form.value.steps_config.length === 0) {
-    alert('กรุณาเพิ่มอย่างน้อย 1 ขั้นตอน')
+    alertStore.error('กรุณาเพิ่มอย่างน้อย 1 ขั้นตอน')
     return
   }
 
@@ -206,14 +208,21 @@ const saveTemplate = async () => {
   try {
     if (editingId.value) {
       await api.put(`/saraban/workflow-templates/${editingId.value}`, form.value)
+      alertStore.success('อัปเดตแม่แบบกระบวนการเรียบร้อยแล้ว')
     } else {
       await api.post('/saraban/workflow-templates', form.value)
+      alertStore.success('สร้างแม่แบบกระบวนการเรียบร้อยแล้ว')
     }
     showModal.value = false
     fetchTemplates()
   } catch (error) {
     console.error('Failed to save template:', error)
-    alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+    const errors = error.response?.data?.errors
+    if (errors) {
+      alertStore.error(Object.values(errors).flat().join(' | '))
+    } else {
+      alertStore.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+    }
   } finally {
     saving.value = false
   }
@@ -224,10 +233,11 @@ const deleteTemplate = async (id) => {
 
   try {
     await api.delete(`/saraban/workflow-templates/${id}`)
+    alertStore.success('ลบเทมเพลตเรียบร้อยแล้ว')
     fetchTemplates()
   } catch (error) {
     console.error('Failed to delete template:', error)
-    alert('เกิดข้อผิดพลาดในการลบข้อมูล')
+    alertStore.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการลบข้อมูล')
   }
 }
 </script>

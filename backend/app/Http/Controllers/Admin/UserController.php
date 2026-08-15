@@ -19,7 +19,7 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $users = User::with(['roles', 'department', 'profile'])->orderBy('name', 'asc')->get();
+        $users = User::with(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType'])->orderBy('name', 'asc')->get();
 
         // คืนทะเบียนประวัติของบุคลากรทุกคน จึงถือเป็นการเข้าถึงข้อมูลส่วนบุคคลแบบรวม
         app(PersonalDataAccessLogger::class)
@@ -30,7 +30,7 @@ class UserController extends Controller
 
     public function list(Request $request)
     {
-        $users = User::select('id', 'name', 'department_id')->orderBy('name', 'asc')->get();
+        $users = User::select('id', 'uuid', 'name', 'department_id', 'org_unit_id')->with('personnel:id,user_id,uuid,personnel_code')->orderBy('name', 'asc')->get();
 
         return response()->json($users);
     }
@@ -98,14 +98,16 @@ class UserController extends Controller
             $today = today();
             $year = $policies->fiscalYearNumber(FiscalYear::current(), $today);
 
+            $activePolicies = LeavePolicy::where('personnel_type_id', $user->personnel_type_id)
+                ->where('is_active', true)
+                ->whereDate('effective_from', '<=', $today)
+                ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $today))
+                ->orderByDesc('effective_from')
+                ->get()
+                ->groupBy('leave_type_id');
+
             foreach (LeaveType::all() as $lt) {
-                $policy = LeavePolicy::where('personnel_type_id', $user->personnel_type_id)
-                    ->where('leave_type_id', $lt->id)
-                    ->where('is_active', true)
-                    ->whereDate('effective_from', '<=', $today)
-                    ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $today))
-                    ->orderByDesc('effective_from')
-                    ->first();
+                $policy = $activePolicies->get($lt->id)?->first();
 
                 LeaveBalance::firstOrCreate(
                     ['user_id' => $user->id, 'leave_type_id' => $lt->id, 'year' => $year],
@@ -118,7 +120,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'สร้างผู้ใช้เรียบร้อยแล้ว',
-            'user' => $user->load('roles', 'department', 'profile'),
+            'user' => $user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
         ], 201);
     }
 
@@ -127,7 +129,7 @@ class UserController extends Controller
         app(PersonalDataAccessLogger::class)
             ->record($request, $user->id, 'user_profile', 'เปิดดูทะเบียนประวัติบุคลากร');
 
-        return response()->json($user->load('roles', 'department', 'profile'));
+        return response()->json($user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']));
     }
 
     public function update(Request $request, User $user)
@@ -191,7 +193,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว',
-            'user' => $user->load('roles', 'department', 'profile'),
+            'user' => $user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
         ]);
     }
 
@@ -209,7 +211,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => $user->is_active ? 'เปิดใช้งานผู้ใช้แล้ว' : 'ระงับการใช้งานผู้ใช้แล้ว',
-            'user' => $user->fresh(),
+            'user' => $user->fresh()->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
         ]);
     }
 }

@@ -8,50 +8,68 @@
       </button>
     </div>
 
-    <!-- Table -->
+    <!-- Table Card -->
     <div class="bg-white shadow rounded-lg overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-500 text-white">
-            <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ลำดับ</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">แผนกวิชา</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">หัวหน้าแผนก</th>
-              <th scope="col" class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">เลือกดำเนินการ</th>
-              <th scope="col" class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">เปิด-ปิดการใช้งาน</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="(dept, index) in departments" :key="dept.id" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ index + 1 }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ dept.name }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ dept.head_of_department ? dept.head_of_department.full_name_with_title : '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                <div class="flex justify-center gap-2">
-                  <button @click="openEditModal(dept)" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    แก้ไข
+      <!-- Loading State -->
+      <div v-if="loading" class="p-6">
+        <LoadingState type="skeleton-table" :rows="4" :cols="5" message="กำลังโหลดข้อมูลแผนกวิชา..." />
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="loadError" class="p-6">
+        <ErrorState :message="loadError" @retry="loadData" />
+      </div>
+
+      <div v-else>
+        <!-- Empty State -->
+        <EmptyState
+          v-if="departments.length === 0"
+          title="ไม่พบข้อมูลแผนกวิชา"
+          description="ยังไม่มีการสร้างแผนกวิชาในระบบ"
+          action-text="เพิ่มแผนก"
+          @action="openAddModal"
+        />
+
+        <div v-else class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-500 text-white">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ลำดับ</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">แผนกวิชา</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">หัวหน้าแผนก</th>
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">เลือกดำเนินการ</th>
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">เปิด-ปิดการใช้งาน</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr v-for="(dept, index) in departments" :key="dept.id" class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ index + 1 }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ dept.name }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {{ dept.head_of_department ? dept.head_of_department.full_name_with_title : '-' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                  <div class="flex justify-center gap-2">
+                    <button @click="openEditModal(dept)" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                      แก้ไข
+                    </button>
+                    <button @click="confirmDelete(dept)" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      ลบข้อมูล
+                    </button>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center">
+                  <button @click="toggleStatus(dept)" :class="dept.is_active ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-400 hover:bg-gray-500'" class="text-white px-3 py-1 rounded text-xs flex items-center justify-center gap-1 mx-auto w-24">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                    {{ dept.is_active ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน' }}
                   </button>
-                  <button @click="confirmDelete(dept)" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    ลบข้อมูล
-                  </button>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-center">
-                <button @click="toggleStatus(dept)" :class="dept.is_active ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-400 hover:bg-gray-500'" class="text-white px-3 py-1 rounded text-xs flex items-center justify-center gap-1 mx-auto w-24">
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
-                  {{ dept.is_active ? 'ปิดการใช้งาน' : 'เปิดการใช้งาน' }}
-                </button>
-              </td>
-            </tr>
-            <tr v-if="departments.length === 0">
-              <td colspan="5" class="px-6 py-8 text-center text-gray-500">ไม่พบข้อมูลแผนกวิชา</td>
-            </tr>
-          </tbody>
-        </table>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -98,9 +116,15 @@
 import { ref, onMounted } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { getErrorMessage } from '../../utils/errorHandler'
+import LoadingState from '../../components/ui/LoadingState.vue'
+import EmptyState from '../../components/ui/EmptyState.vue'
+import ErrorState from '../../components/ui/ErrorState.vue'
 
 const alertStore = useAlertStore()
 
+const loading = ref(true)
+const loadError = ref('')
 const departments = ref([])
 const users = ref([])
 
@@ -115,12 +139,30 @@ const form = ref({
   is_active: true
 })
 
+const loadData = async () => {
+  loading.value = true
+  loadError.value = ''
+  try {
+    const [deptRes, userRes] = await Promise.all([
+      api.get('/admin/departments'),
+      api.get('/admin/users')
+    ])
+    departments.value = deptRes.data
+    users.value = userRes.data.data || userRes.data
+  } catch (error) {
+    console.error(error)
+    loadError.value = getErrorMessage(error, 'ไม่สามารถโหลดข้อมูลแผนกวิชาได้')
+  } finally {
+    loading.value = false
+  }
+}
+
 const fetchDepartments = async () => {
   try {
     const res = await api.get('/admin/departments')
     departments.value = res.data
   } catch (error) {
-    alertStore.error('ไม่สามารถโหลดข้อมูลแผนกวิชาได้')
+    alertStore.error(getErrorMessage(error, 'ไม่สามารถโหลดข้อมูลแผนกวิชาได้'))
   }
 }
 
@@ -134,8 +176,7 @@ const fetchUsers = async () => {
 }
 
 onMounted(() => {
-  fetchDepartments()
-  fetchUsers()
+  loadData()
 })
 
 const openAddModal = () => {
@@ -177,7 +218,12 @@ const saveDepartment = async () => {
     closeModal()
     fetchDepartments()
   } catch (error) {
-    alertStore.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึก')
+    const errors = error.response?.data?.errors
+    if (errors) {
+      alertStore.error(Object.values(errors).flat().join(' | '))
+    } else {
+      alertStore.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึก')
+    }
   } finally {
     isSaving.value = false
   }
@@ -190,7 +236,7 @@ const confirmDelete = async (dept) => {
       alertStore.success('ลบแผนกวิชาสำเร็จ')
       fetchDepartments()
     } catch (error) {
-      alertStore.error('ไม่สามารถลบแผนกวิชาได้')
+      alertStore.error(error.response?.data?.message || 'ไม่สามารถลบแผนกวิชาได้')
     }
   }
 }

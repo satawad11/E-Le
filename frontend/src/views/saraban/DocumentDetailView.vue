@@ -205,7 +205,7 @@
     <div v-else class="text-center py-16 text-gray-500">ไม่พบข้อมูลเอกสาร</div>
 
     <!-- Action Modal -->
-    <div v-if="showActionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div v-if="showActionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
         <div class="p-6">
           <h3 class="text-lg font-bold mb-4">{{ actionModalTitle }}</h3>
@@ -222,13 +222,13 @@
     </div>
 
     <!-- Sign Modal -->
-    <div v-if="showSignModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div v-if="showSignModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl overflow-hidden my-8">
         <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <h3 class="text-lg font-bold mb-4">ลงนาม/เกษียนเอกสาร</h3>
             
-            <div class="flex gap-4 mb-4">
+            <div class="flex flex-wrap gap-3 mb-4">
               <label class="flex items-center cursor-pointer">
                 <input type="radio" v-model="signMode" value="esignature" class="text-[#800000] focus:ring-[#800000]">
                 <span class="ml-2 text-sm">e-Signature (ใช้รหัสผ่าน)</span>
@@ -361,6 +361,7 @@ import { useAuthStore } from '../../stores/auth'
 import { sarabanStatusConfig } from '../../utils/statusHelper'
 import { userDisplayName } from '../../utils/userName'
 import Swal from 'sweetalert2'
+import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 
 const route = useRoute()
 const store = useSarabanDocumentStore()
@@ -436,15 +437,8 @@ const actionModalTitle = computed(() => {
   return 'ดำเนินการ'
 })
 
-const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
-
 const formatThaiDate = (dateStr) => {
-  if (!dateStr) return '-'
-  const d = new Date(dateStr)
-  const day = d.getDate()
-  const month = thaiMonths[d.getMonth()]
-  const year = d.getFullYear() + 543
-  return `${day} ${month} ${year}`
+  return ThaiDateFormatter.toThaiShortText(dateStr)
 }
 
 /**
@@ -520,15 +514,13 @@ const submitAction = async () => {
     showActionModal.value = false
     // Refresh document
     document.value = await store.fetchDocument(route.params.id)
+    Swal.fire('สำเร็จ', 'ดำเนินการเรียบร้อยแล้ว', 'success')
   } catch (err) {
-    alert(err.response?.data?.message || 'เกิดข้อผิดพลาด')
+    Swal.fire('ข้อผิดพลาด', err.response?.data?.message || 'เกิดข้อผิดพลาด', 'error')
   } finally {
     isSubmittingAction.value = false
   }
 }
-
-import SignaturePad from 'signature_pad'
-import { nextTick } from 'vue'
 
 const openSignModal = async () => {
   signMode.value = 'esignature'
@@ -572,7 +564,7 @@ const submitSign = async () => {
 
     await store.signDocument(document.value.id, payload)
     showSignModal.value = false
-    alert('ลงนามสำเร็จ')
+    Swal.fire('สำเร็จ', 'ลงนามสำเร็จ', 'success')
     // Refresh document
     document.value = await store.fetchDocument(route.params.id)
   } catch (err) {
@@ -633,9 +625,9 @@ const submitCircular = async () => {
       message: circularMessage.value
     })
     showCircularModal.value = false
-    alert('ส่งหนังสือเวียนเรียบร้อยแล้ว')
+    Swal.fire('สำเร็จ', 'ส่งหนังสือเวียนเรียบร้อยแล้ว', 'success')
   } catch (err) {
-    alert(err.response?.data?.message || 'เกิดข้อผิดพลาดในการส่งหนังสือเวียน')
+    Swal.fire('ข้อผิดพลาด', err.response?.data?.message || 'เกิดข้อผิดพลาดในการส่งหนังสือเวียน', 'error')
   } finally {
     isSendingCircular.value = false
   }

@@ -16,8 +16,13 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="flex justify-center py-16">
-      <div class="animate-spin h-10 w-10 rounded-full border-4 border-[#800000] border-t-transparent"></div>
+    <div v-if="loading" class="py-8">
+      <LoadingState type="skeleton-card" :rows="3" message="กำลังโหลดรายการใบลา..." />
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="loadError" class="py-6">
+      <ErrorState :message="loadError" @retry="loadLeaves" />
     </div>
 
     <div v-else>
@@ -49,15 +54,13 @@
       </div>
 
       <!-- Empty state -->
-      <div v-if="filteredLeaves.length === 0"
-        class="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm">
-        <svg class="w-14 h-14 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-        </svg>
-        <p class="text-gray-500 text-sm font-medium">ไม่มีรายการใบลา</p>
-        <p class="text-gray-400 text-xs mt-1">ลองเปลี่ยนตัวกรองหรือยื่นใบลาใหม่</p>
-      </div>
+      <EmptyState
+        v-if="filteredLeaves.length === 0"
+        title="ไม่มีรายการใบลา"
+        description="ยังไม่มีรายการใบลาในเงื่อนไขนี้ หรือลองปรับเปลี่ยนตัวกรอง"
+        action-text="ยื่นใบลาใหม่"
+        @action="$router.push('/request')"
+      />
 
       <!-- Leave cards -->
       <div v-else class="space-y-4">
@@ -95,10 +98,10 @@
               <!-- Right: actions -->
               <div class="flex flex-col gap-2 flex-shrink-0">
                 <!-- PDF/Word download (All statuses) -->
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2">
                   <button @click="downloadPdf(leave)"
                     :disabled="pdfLoading === leave.id || wordLoading === leave.id"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#800000] border border-[#800000]/20 rounded-lg hover:bg-[#800000]/5 transition-colors">
+                    class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#800000] border border-[#800000]/20 rounded-lg hover:bg-[#800000]/5 transition-colors min-h-[38px] flex-1 sm:flex-none">
                     <svg v-if="pdfLoading === leave.id" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
@@ -111,7 +114,7 @@
                   </button>
                   <button @click="downloadWord(leave)"
                     :disabled="wordLoading === leave.id || pdfLoading === leave.id"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 border border-blue-600/20 rounded-lg hover:bg-blue-50 transition-colors">
+                    class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-600 border border-blue-600/20 rounded-lg hover:bg-blue-50 transition-colors min-h-[38px] flex-1 sm:flex-none">
                     <svg v-if="wordLoading === leave.id" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
@@ -127,7 +130,7 @@
                 <button v-if="canCancel(leave)"
                   @click="confirmCancel(leave)"
                   :disabled="cancelLoading === leave.id"
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                  class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors min-h-[38px]">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                   </svg>
@@ -136,7 +139,7 @@
                 <button v-if="leave.status === 'Approved' && (leave.user_id === authStore.user?.id || isAdminOrHR) && leave.cancellation_status === 'None'"
                   @click="confirmCancel(leave)"
                   :disabled="cancelLoading === leave.id"
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors">
+                  class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors min-h-[38px]">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                   ขอยกเลิก
                 </button>
@@ -185,40 +188,32 @@
               </div>
             </div>
 
-            <!-- Approval trail -->
-            <div v-if="leave.approvals && leave.approvals.length > 0" class="mt-4 pt-4 border-t border-gray-50">
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">ประวัติการอนุมัติ</p>
-              <div class="flex flex-wrap gap-2">
-                <div v-for="approval in leave.approvals" :key="approval.id"
-                  class="flex items-center gap-1.5 text-xs bg-gray-50 rounded-lg px-2.5 py-1.5">
-                  <span :class="[
-                    'w-2 h-2 rounded-full flex-shrink-0',
-                    approval.status === 'Approved' ? 'bg-green-500' : 'bg-red-500'
-                  ]"></span>
-                  <span class="font-medium text-gray-700">{{ approval.approver?.name }}</span>
-                  <span class="text-gray-400">—</span>
-                  <span :class="approval.status === 'Approved' ? 'text-green-700' : 'text-red-700'">
-                    {{ approval.status === 'Approved' ? 'อนุมัติ' : 'ไม่อนุมัติ' }}
-                  </span>
-                  <span v-if="approval.comment" class="text-gray-400 italic truncate max-w-[120px]">"{{ approval.comment }}"</span>
-                </div>
-              </div>
-            </div>
+            <!-- Workflow Timeline Toggle & Component -->
+            <div class="mt-4 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                @click="toggleTimeline(leave.id)"
+                class="text-xs font-semibold text-[#800000] hover:text-[#600000] flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#800000] rounded py-1 px-1.5 transition-colors"
+                :aria-expanded="expandedLeaveIds.includes(leave.id)"
+              >
+                <svg
+                  class="w-4 h-4 transition-transform duration-200"
+                  :class="expandedLeaveIds.includes(leave.id) ? 'rotate-180' : ''"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+                <span>{{ expandedLeaveIds.includes(leave.id) ? 'ซ่อนขั้นตอนการอนุมัติ' : 'ดูขั้นตอนการอนุมัติและประวัติ (Workflow Timeline)' }}</span>
+              </button>
 
-            <!-- Audit trail -->
-            <div v-if="leave.action_logs && leave.action_logs.length > 0" class="mt-4 pt-4 border-t border-gray-50">
-              <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">ประวัติการดำเนินการ (Audit Logs)</p>
-              <div class="flex flex-col gap-1.5">
-                <div v-for="log in leave.action_logs" :key="log.id"
-                  class="flex items-center gap-2 text-xs bg-gray-50 rounded-lg px-2.5 py-1.5">
-                  <span class="text-gray-400 min-w-[120px]">{{ ThaiDateFormatter.toThaiSlash(log.created_at) }}</span>
-                  <span class="font-medium text-gray-700 min-w-[150px]">{{ log.user?.name || 'ระบบ' }}</span>
-                  <span class="text-blue-600 font-semibold">{{ log.action }}</span>
-                  <span v-if="log.details?.comment || log.details?.reason" class="text-gray-500 italic ml-2">
-                    "{{ log.details.comment || log.details.reason }}"
-                  </span>
+              <transition name="slide-down">
+                <div v-if="expandedLeaveIds.includes(leave.id)" class="mt-4 pt-4 border-t border-dashed border-gray-200">
+                  <WorkflowTimeline :leave="leave" />
                 </div>
-              </div>
+              </transition>
             </div>
           </div>
         </div>
@@ -308,14 +303,22 @@
 import { ref, computed, onMounted } from 'vue'
 import { useLeaveStore } from '../stores/leave'
 import { useAuthStore } from '../stores/auth'
+import { useAlertStore } from '../stores/alert'
 import { statusLabel, statusBadgeClass, compositeStatusLabel, compositeStatusBadgeClass } from '../utils/statusHelper'
 import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
+import { getErrorMessage } from '../utils/errorHandler'
+import LoadingState from '../components/ui/LoadingState.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
+import ErrorState from '../components/ui/ErrorState.vue'
+import WorkflowTimeline from '../components/ui/WorkflowTimeline.vue'
 import api from '../axios'
 
 const leaveStore = useLeaveStore()
 const authStore  = useAuthStore()
+const alertStore = useAlertStore()
 
 const loading      = ref(true)
+const loadError    = ref('')
 const pdfLoading   = ref(null)
 const wordLoading  = ref(null)
 const cancelLoading = ref(null)
@@ -324,6 +327,16 @@ const cancelTarget = ref(null)
 const cancellationReason = ref('')
 const activeFilter = ref('all')
 const viewMode = ref('mine')
+const expandedLeaveIds = ref([])
+
+function toggleTimeline(leaveId) {
+  const index = expandedLeaveIds.value.indexOf(leaveId)
+  if (index > -1) {
+    expandedLeaveIds.value.splice(index, 1)
+  } else {
+    expandedLeaveIds.value.push(leaveId)
+  }
+}
 
 const currentPage = ref(1)
 const itemsPerPage = 10
@@ -337,8 +350,8 @@ const filters = [
   { label: 'งานที่ได้รับมอบหมาย', value: 'Substitute' },
 ]
 
-const allAllowed = computed(() => authStore.user?.role?.name !== 'Employee')
-const isAdminOrHR = computed(() => ['Super Admin', 'HR Head'].includes(authStore.user?.role?.name))
+const allAllowed = computed(() => authStore.isSuperAdmin || authStore.isHRHead || authStore.isManager || authStore.hasAnyPermission(['leave.report.view', 'leave.approval.dept', 'leave.approval.director']))
+const isAdminOrHR = computed(() => authStore.isSuperAdmin || authStore.isHRHead || authStore.hasPermission('leave.management.manage'))
 
 const canCancel = (leave) => {
   if (leave.status !== 'Pending') return false;
@@ -411,7 +424,7 @@ const downloadPdf = async (leave) => {
     window.URL.revokeObjectURL(url)
   } catch (e) {
     console.error('PDF error:', e)
-    alert('ไม่สามารถดาวน์โหลด PDF ได้')
+    alertStore.error('ไม่สามารถดาวน์โหลด PDF ได้')
   } finally {
     pdfLoading.value = null
   }
@@ -432,7 +445,7 @@ const downloadWord = async (leave) => {
     window.URL.revokeObjectURL(url)
   } catch (e) {
     console.error('Word error:', e)
-    alert('ไม่สามารถดาวน์โหลด Word ได้')
+    alertStore.error('ไม่สามารถดาวน์โหลด Word ได้')
   } finally {
     wordLoading.value = null
   }
@@ -453,7 +466,7 @@ const downloadCancelPdf = async (leave) => {
     window.URL.revokeObjectURL(url)
   } catch (e) {
     console.error('PDF error:', e)
-    alert('ไม่สามารถดาวน์โหลด PDF ใบยกเลิกได้')
+    alertStore.error('ไม่สามารถดาวน์โหลด PDF ใบยกเลิกได้')
   } finally {
     pdfLoading.value = null
   }
@@ -474,7 +487,7 @@ const downloadCancelWord = async (leave) => {
     window.URL.revokeObjectURL(url)
   } catch (e) {
     console.error('Word error:', e)
-    alert('ไม่สามารถดาวน์โหลด Word ใบยกเลิกได้')
+    alertStore.error('ไม่สามารถดาวน์โหลด Word ใบยกเลิกได้')
   } finally {
     wordLoading.value = null
   }
@@ -489,16 +502,17 @@ const confirmCancel = (leave) => {
 const doCancel = async () => {
   if (!cancelTarget.value) return
   if (cancelTarget.value.status === 'Approved' && !cancellationReason.value.trim()) {
-    alert('กรุณาระบุเหตุผลการขอยกเลิก')
+    alertStore.error('กรุณาระบุเหตุผลการขอยกเลิก')
     return
   }
   cancelLoading.value = cancelTarget.value.id
   try {
     await leaveStore.cancelLeave(cancelTarget.value.id, cancellationReason.value)
+    alertStore.success('ดำเนินการยกเลิกใบลาเรียบร้อยแล้ว')
     showCancelModal.value = false
     cancelTarget.value = null
   } catch (e) {
-    alert(e?.response?.data?.message || 'ยกเลิกไม่สำเร็จ กรุณาลองใหม่')
+    alertStore.error(e?.response?.data?.message || 'ยกเลิกไม่สำเร็จ กรุณาลองใหม่')
   } finally {
     cancelLoading.value = null
   }
@@ -508,34 +522,46 @@ const deleteLeave = async (leaveId) => {
   if (!confirm('ยืนยันการลบใบลา?')) return
   try {
     await api.delete(`/leaves/${leaveId}`)
+    alertStore.success('ลบใบลาเรียบร้อยแล้ว')
     await leaveStore.fetchLeaves()
   } catch (e) {
-    alert(e?.response?.data?.message || 'ลบไม่สำเร็จ')
+    alertStore.error(e?.response?.data?.message || 'ลบไม่สำเร็จ')
   }
 }
 
 const acceptSubstitute = async (leaveId) => {
   try {
     await leaveStore.acceptSubstitute(leaveId)
+    alertStore.success('รับทราบการปฏิบัติหน้าที่แทนแล้ว')
   } catch (e) {
-    alert('เกิดข้อผิดพลาด')
+    alertStore.error(e?.response?.data?.message || 'เกิดข้อผิดพลาด')
   }
 }
 
 const rejectSubstitute = async (leaveId) => {
   try {
     await leaveStore.rejectSubstitute(leaveId)
+    alertStore.success('ปฏิเสธการปฏิบัติหน้าที่แทนแล้ว')
   } catch (e) {
-    alert('เกิดข้อผิดพลาด')
+    alertStore.error(e?.response?.data?.message || 'เกิดข้อผิดพลาด')
   }
 }
 
-onMounted(async () => {
+const loadLeaves = async () => {
+  loading.value = true
+  loadError.value = ''
   try {
     await leaveStore.fetchLeaves()
+  } catch (e) {
+    console.error(e)
+    loadError.value = getErrorMessage(e, 'ไม่สามารถโหลดรายการใบลาได้')
   } finally {
     loading.value = false
   }
+}
+
+onMounted(() => {
+  loadLeaves()
 })
 </script>
 

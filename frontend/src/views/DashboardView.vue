@@ -5,8 +5,8 @@
         <h1 class="text-2xl font-bold text-gray-900">หน้าหลัก</h1>
         <p class="text-gray-500 mt-1">ยินดีต้อนรับ, {{ authStore.user?.name }}</p>
       </div>
-      <div class="flex items-center gap-4">
-        <router-link to="/request" class="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-[#800000] hover:bg-[#600000] text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+      <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+        <router-link to="/request" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#800000] hover:bg-[#600000] text-white text-sm font-semibold rounded-xl transition-colors shadow-sm min-h-[44px]">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           ยื่นใบลาใหม่
         </router-link>
@@ -14,53 +14,42 @@
           <input type="checkbox" v-model="viewSelf" @change="fetchDashboard" class="rounded text-[#800000] focus:ring-[#800000]">
           ดูเฉพาะข้อมูลของฉัน
         </label>
-        <select v-model="selectedYear" @change="fetchDashboard" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] block p-2.5 shadow-sm">
+        <select v-model="selectedYear" @change="fetchDashboard" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] block p-2 sm:p-2.5 shadow-sm">
           <option v-for="fy in fiscalYearsList" :key="fy.year" :value="fy.year">ปีงบประมาณ {{ fy.year }} {{ fy.is_current ? '(ปัจจุบัน)' : '' }}</option>
         </select>
       </div>
     </div>
 
-    <!-- Skeleton Loader -->
-    <div v-if="loading" class="space-y-8 animate-pulse">
-      <!-- Attendance Card Skeleton -->
-      <div class="h-28 bg-gray-200 rounded-2xl"></div>
-      <!-- Stats Skeleton -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="h-24 bg-gray-200 rounded-2xl"></div>
-        <div class="h-24 bg-gray-200 rounded-2xl"></div>
-        <div class="h-24 bg-gray-200 rounded-2xl"></div>
-        <div class="h-24 bg-gray-200 rounded-2xl"></div>
-      </div>
-      <!-- Balances Skeleton -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="h-32 bg-gray-200 rounded-2xl"></div>
-        <div class="h-32 bg-gray-200 rounded-2xl"></div>
-        <div class="h-32 bg-gray-200 rounded-2xl"></div>
-      </div>
+    <!-- Error State -->
+    <div v-if="fetchError" class="py-6">
+      <ErrorState :message="fetchError" @retry="loadDashboardData" />
     </div>
+
+    <!-- Skeleton Loader -->
+    <LoadingState v-else-if="loading" type="skeleton-card" :rows="3" message="" />
 
 
     <div v-else>
       <!-- Today's Attendance Card -->
-      <div class="mb-8 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col md:flex-row items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-white">
-        <div class="flex items-center gap-4 mb-4 md:mb-0">
-          <div class="p-4 bg-blue-100 text-blue-600 rounded-full shadow-inner">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="mb-8 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col md:flex-row items-center justify-between p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-white gap-4">
+        <div class="flex items-center gap-4">
+          <div class="p-3 sm:p-4 bg-blue-100 text-blue-600 rounded-full shadow-inner flex-shrink-0">
+            <svg class="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <div>
-            <h2 class="text-xl font-bold text-gray-800">สถานะการลงเวลาวันนี้</h2>
-            <div class="flex gap-4 mt-2 text-sm">
-              <div class="flex items-center gap-2">
+            <h2 class="text-lg sm:text-xl font-bold text-gray-800">สถานะการลงเวลาวันนี้</h2>
+            <div class="flex flex-wrap gap-2 sm:gap-4 mt-2 text-xs sm:text-sm">
+              <div class="flex items-center gap-1 sm:gap-2">
                 <span class="text-gray-500">เวลาเข้างาน:</span>
-                <span class="font-bold text-base" :class="todayAttendance?.check_in_time ? 'text-green-600' : 'text-gray-400'">
+                <span class="font-bold text-sm sm:text-base" :class="todayAttendance?.check_in_time ? 'text-green-600' : 'text-gray-400'">
                   {{ formatTime(todayAttendance?.check_in_time) }} {{ todayAttendance?.check_in_time ? 'น.' : '' }}
                 </span>
               </div>
-              <div class="flex items-center gap-2 border-l pl-4">
+              <div class="flex items-center gap-1 sm:gap-2 sm:border-l sm:pl-4">
                 <span class="text-gray-500">เวลาออกงาน:</span>
-                <span class="font-bold text-base" :class="todayAttendance?.check_out_time ? 'text-green-600' : 'text-gray-400'">
+                <span class="font-bold text-sm sm:text-base" :class="todayAttendance?.check_out_time ? 'text-green-600' : 'text-gray-400'">
                   {{ formatTime(todayAttendance?.check_out_time) }} {{ todayAttendance?.check_out_time ? 'น.' : '' }}
                 </span>
               </div>
@@ -217,7 +206,9 @@
             </thead>
             <tbody class="divide-y divide-gray-50">
               <tr v-if="filteredLeaves.length === 0">
-                <td colspan="5" class="text-center text-gray-400 py-8">ไม่มีข้อมูล</td>
+                <td colspan="5" class="text-center py-10">
+                  <div class="text-center text-gray-400 text-sm font-medium">ยังไม่มีรายการใบลาในเงื่อนไขนี้</div>
+                </td>
               </tr>
               <tr v-for="leave in paginatedLeaves" :key="leave.id" class="hover:bg-gray-50 transition-colors">
                 <td class="px-6 py-4 font-medium text-gray-900">{{ leave.user?.name || authStore.user?.name }}</td>
@@ -256,9 +247,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useLeaveStore } from '../stores/leave'
 import { useAuthStore } from '../stores/auth'
+import { useAlertStore } from '../stores/alert'
 import api from '../axios'
 import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
+import LoadingState from '../components/ui/LoadingState.vue'
 import { statusLabel, statusBadgeClass } from '../utils/statusHelper'
+import { getErrorMessage } from '../utils/errorHandler'
+import ErrorState from '../components/ui/ErrorState.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
 
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
 import { Bar } from 'vue-chartjs'
@@ -267,7 +263,9 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const leaveStore = useLeaveStore()
 const authStore = useAuthStore()
+const alertStore = useAlertStore()
 const loading = ref(true)
+const fetchError = ref('')
 const pdfLoading = ref(null)
 const wordLoading = ref(null)
 const stats = ref({ pending: 0, approved: 0, rejected: 0, total: 0, monthly: [] })
@@ -303,7 +301,7 @@ const downloadPdf = async (leave) => {
     window.URL.revokeObjectURL(url)
   } catch (e) {
     console.error('PDF download error:', e)
-    alert('ไม่สามารถดาวน์โหลด PDF ได้ กรุณาลองใหม่')
+    alertStore.error('ไม่สามารถดาวน์โหลด PDF ได้ กรุณาลองใหม่')
   } finally {
     pdfLoading.value = null
   }
@@ -324,7 +322,7 @@ const downloadWord = async (leave) => {
     window.URL.revokeObjectURL(url)
   } catch (e) {
     console.error('Word error:', e)
-    alert('ไม่สามารถดาวน์โหลด Word ได้ กรุณาลองใหม่')
+    alertStore.error('ไม่สามารถดาวน์โหลด Word ได้ กรุณาลองใหม่')
   } finally {
     wordLoading.value = null
   }
@@ -344,8 +342,7 @@ const maxMonthly = computed(() => {
 })
 
 const isManager = computed(() => {
-  const role = authStore.user?.role?.name
-  return ['Director', 'Deputy Director', 'HR Head', 'Super Admin'].includes(role)
+  return authStore.isManager || authStore.isHRHead || authStore.isSuperAdmin
 })
 
 const fiscalYearsList = ref([])
@@ -379,8 +376,16 @@ const changePage = (p) => {
   }
 }
 
+const loadDashboardData = async () => {
+  fetchError.value = ''
+  leaveStore.fetchLeaves()
+  await fetchDashboard()
+  fetchTodayAttendance()
+}
+
 const fetchDashboard = async () => {
   loading.value = true
+  fetchError.value = ''
   try {
     const params = { view_self: viewSelf.value }
     if (selectedYear.value) {
@@ -404,6 +409,7 @@ const fetchDashboard = async () => {
     leaveStore.fetchBalances(selectedYear.value)
   } catch (e) {
     console.error(e)
+    fetchError.value = getErrorMessage(e, 'ไม่สามารถโหลดข้อมูลสถิติหน้าหลักได้')
   } finally {
     loading.value = false
   }

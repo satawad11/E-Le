@@ -1,5 +1,5 @@
 <template>
-  <main class="mx-auto max-w-4xl space-y-5 p-4 sm:p-6" aria-labelledby="history-title">
+  <div class="max-w-4xl mx-auto space-y-6" aria-labelledby="history-title">
     <header class="flex flex-wrap items-end justify-between gap-3">
       <div>
         <h1 id="history-title" class="text-2xl font-bold text-gray-900">ประวัติการเข้าถึงข้อมูลของฉัน</h1>
@@ -71,7 +71,7 @@
         </div>
       </section>
     </template>
-  </main>
+  </div>
 </template>
 
 <script setup>

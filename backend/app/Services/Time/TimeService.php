@@ -92,7 +92,15 @@ class TimeService
      */
     public function isWorkingDay(CarbonInterface $date, ?User $user = null, ?int $departmentId = null): bool
     {
-        $departmentId ??= $user?->department_id;
+        if ($departmentId === null && $user !== null) {
+            $orgUnitId = $user->currentAssignment?->org_unit_id ?? $user->org_unit_id;
+            if ($orgUnitId) {
+                $departmentId = \Illuminate\Support\Facades\DB::table('department_org_unit_map')
+                    ->where('org_unit_id', $orgUnitId)
+                    ->value('department_id');
+            }
+            $departmentId ??= $user->department_id;
+        }
 
         $exception = $this->calendar->calendarException($date, $departmentId);
 

@@ -91,14 +91,21 @@ class LeaveWorkflowProvisioner
             $steps = [];
 
             foreach ($legacySteps->values() as $index => $legacy) {
+                $assigneeType = match ($legacy->approver_type ?? 'ROLE') {
+                    ApprovalStep::RESOLVER_SPECIFIC_USER => WorkflowStep::ASSIGNEE_USER,
+                    ApprovalStep::RESOLVER_REQUESTER_SUPERVISOR, ApprovalStep::RESOLVER_DEPARTMENT_HEAD, ApprovalStep::RESOLVER_DIVISION_DIRECTOR, ApprovalStep::RESOLVER_DIRECTOR => WorkflowStep::ASSIGNEE_ORG_MANAGER,
+                    default => WorkflowStep::ASSIGNEE_ROLE,
+                };
+
                 $steps[] = WorkflowStep::create([
                     'workflow_version_id' => $version->getKey(),
                     'code' => 'step_'.$legacy->step_order,
                     'name' => $legacy->name ?: ('ขั้นตอนที่ '.$legacy->step_order),
                     'step_order' => $legacy->step_order,
                     'type' => WorkflowStep::TYPE_APPROVAL,
-                    'assignee_type' => WorkflowStep::ASSIGNEE_ROLE,
+                    'assignee_type' => $assigneeType,
                     'assignee_role_id' => $legacy->role_id,
+                    'assignee_user_id' => $legacy->specific_user_id,
                     'completion_policy' => 'any',
                     'is_final' => $index === $legacySteps->count() - 1,
                 ]);
@@ -298,7 +305,7 @@ class LeaveWorkflowProvisioner
     private function fingerprintOf($legacySteps): string
     {
         return $legacySteps
-            ->map(fn ($step) => $step->step_order.':'.$step->role_id.':'.$step->name)
+            ->map(fn ($step) => $step->step_order.':'.($step->approver_type ?? 'ROLE').':'.($step->role_id ?? '0').':'.($step->specific_user_id ?? '0').':'.$step->name)
             ->implode('|');
     }
 
@@ -306,7 +313,7 @@ class LeaveWorkflowProvisioner
     {
         return $version->steps()
             ->get()
-            ->map(fn (WorkflowStep $step) => $step->step_order.':'.$step->assignee_role_id.':'.$step->name)
+            ->map(fn (WorkflowStep $step) => $step->step_order.':'.$step->assignee_type.':'.($step->assignee_role_id ?? '0').':'.($step->assignee_user_id ?? '0').':'.$step->name)
             ->implode('|');
     }
 }

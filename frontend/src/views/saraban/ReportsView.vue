@@ -98,6 +98,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import api from '../../axios'
+import { useAlertStore } from '../../stores/alert'
 import {
   Chart as ChartJS,
   Title,
@@ -112,6 +113,7 @@ import { Bar, Pie } from 'vue-chartjs'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement)
 
+const alertStore = useAlertStore()
 const loading = ref(false)
 const selectedYear = ref(new Date().getFullYear())
 const availableYears = ref([])
@@ -212,7 +214,7 @@ const exportData = async () => {
     link.remove()
   } catch (error) {
     console.error('Export failed', error)
-    alert('เกิดข้อผิดพลาดในการดาวน์โหลดไฟล์')
+    alertStore.error('เกิดข้อผิดพลาดในการดาวน์โหลดไฟล์')
   }
 }
 

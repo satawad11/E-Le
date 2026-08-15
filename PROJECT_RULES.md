@@ -25,3 +25,4 @@
 - direct DB writes จาก client
 - overwrite ประวัติ effective-dated
 - public bucket สำหรับเอกสารบุคลากร
+- **PROD PHASE**: ห้ามแก้ไขโครงสร้างฐานข้อมูล (schema modifications) เว้นแต่เป็นการแก้ไขบั๊กร้ายแรง (Critical Bug Fix)

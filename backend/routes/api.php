@@ -17,17 +17,27 @@ use App\Http\Controllers\Api\Saraban\SettingController as SarabanSettingControll
 use App\Http\Controllers\Api\Saraban\SignatureController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AttendanceCorrectionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FiscalYearController;
-use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\LeaveCancellationController;
+use App\Http\Controllers\LeaveDocumentController;
+use App\Http\Controllers\LeaveQueryController;
+use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\LeaveVerificationController;
+use App\Http\Controllers\LeaveWorkflowActionController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Overtime\OvertimeOrderController;
+use App\Http\Controllers\Overtime\OvertimeReportController;
+use App\Http\Controllers\Overtime\OvertimeTimeController;
 use App\Http\Controllers\PersonalDataController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReportingController;
 use App\Http\Controllers\SecureFileController;
 use App\Http\Controllers\SecureSettingController;
+use App\Services\Reporting\ReportingDataService;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -71,32 +81,47 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
     // Leave routes
-    Route::get('/leaves', [LeaveController::class, 'index']);
-    Route::get('/leaves/team-calendar', [LeaveController::class, 'teamCalendar']);
-    Route::post('/leaves', [LeaveController::class, 'store']);
-    Route::get('/leaves/balances', [LeaveController::class, 'balances']);
-    Route::get('/leaves/types', [LeaveController::class, 'types']);
-    Route::get('/leaves/{leave}/pdf', [LeaveController::class, 'exportPdf'])->middleware('throttle:10,1');
-    Route::get('/leaves/{leave}/word', [LeaveController::class, 'exportWord'])->middleware('throttle:10,1');
-    Route::post('/leaves/{leave}/cancel', [LeaveController::class, 'cancel']);
-    Route::post('/leaves/{leave}/approve-cancellation', [LeaveController::class, 'approveCancellation']);
-    Route::post('/leaves/{leave}/reject-cancellation', [LeaveController::class, 'rejectCancellation']);
-    Route::post('/leaves/{leave}/hr-verify', [LeaveController::class, 'hrVerify']);
-    Route::post('/leaves/{leave}/substitute-accept', [LeaveController::class, 'acceptSubstitute']);
-    Route::post('/leaves/{leave}/substitute-reject', [LeaveController::class, 'rejectSubstitute']);
-    Route::put('/leaves/{leave}', [LeaveController::class, 'update']);
-    Route::delete('/leaves/{leave}', [LeaveController::class, 'destroy']);
+    Route::get('/leaves', [LeaveQueryController::class, 'index']);
+    Route::get('/leaves/team-calendar', [LeaveQueryController::class, 'teamCalendar']);
+    Route::post('/leaves', [LeaveRequestController::class, 'store']);
+    Route::get('/leaves/balances', [LeaveQueryController::class, 'balances']);
+    Route::get('/leaves/types', [LeaveQueryController::class, 'types']);
+    Route::get('/leaves/{leave}/pdf', [LeaveDocumentController::class, 'exportPdf'])->middleware('throttle:10,1');
+    Route::get('/leaves/{leave}/word', [LeaveDocumentController::class, 'exportWord'])->middleware('throttle:10,1');
+    Route::post('/leaves/{leave}/cancel', [LeaveCancellationController::class, 'cancel']);
+    Route::post('/leaves/{leave}/approve-cancellation', [LeaveCancellationController::class, 'approve']);
+    Route::post('/leaves/{leave}/reject-cancellation', [LeaveCancellationController::class, 'reject']);
+    Route::post('/leaves/{leave}/hr-verify', [LeaveWorkflowActionController::class, 'hrVerify']);
+    Route::post('/leaves/{leave}/substitute-accept', [LeaveWorkflowActionController::class, 'acceptSubstitute']);
+    Route::post('/leaves/{leave}/substitute-reject', [LeaveWorkflowActionController::class, 'rejectSubstitute']);
+    Route::put('/leaves/{leave}', [LeaveRequestController::class, 'update']);
+    Route::delete('/leaves/{leave}', [LeaveRequestController::class, 'destroy']);
 
     // Attendance routes — ตรวจสอบสิทธิ์รายฟังก์ชันตามโมดูล attendance
-    Route::group(['middleware' => ['permission:attendance.checkin|attendance.view_self']], function () {
+    Route::group(['middleware' => ['can:attendance.checkin']], function () {
         Route::post('/attendances/check-in', [AttendanceController::class, 'checkIn']);
         Route::post('/attendances/check-out', [AttendanceController::class, 'checkOut']);
-        Route::get('/attendances/today', [AttendanceController::class, 'today']);
     });
 
-    Route::group(['middleware' => ['can:attendance.ot']], function () {
-        Route::post('/attendances/ot-check-in', [AttendanceController::class, 'otCheckIn']);
-        Route::post('/attendances/ot-check-out', [AttendanceController::class, 'otCheckOut']);
+    Route::get('/attendances/today', [AttendanceController::class, 'today'])
+        ->middleware('permission:attendance.checkin|attendance.view_self');
+    Route::post('/attendances/{attendance:uuid}/corrections', [AttendanceCorrectionController::class, 'store'])
+        ->middleware('permission:attendance.view_self|attendance.view_all');
+
+    Route::group(['middleware' => ['can:overtime.operation.execute']], function () {
+        Route::post('/attendances/ot-check-in', [OvertimeTimeController::class, 'checkIn']);
+        Route::post('/attendances/ot-check-out', [OvertimeTimeController::class, 'checkOut']);
+        Route::get('/overtime/my-active', [OvertimeTimeController::class, 'active']);
+        Route::post('/overtime/orders', [OvertimeOrderController::class, 'store']);
+    });
+
+    Route::group(['middleware' => ['can:overtime.management.review']], function () {
+        Route::get('/overtime/orders', [OvertimeOrderController::class, 'index']);
+        Route::post('/overtime/orders/{order:uuid}/approve', [OvertimeOrderController::class, 'approve']);
+        Route::post('/overtime/orders/{order:uuid}/reject', [OvertimeOrderController::class, 'reject']);
+        Route::post('/overtime/orders/{order:uuid}/assignments', [OvertimeOrderController::class, 'assign']);
+        Route::post('/overtime/time-records/{record:uuid}/certify', [OvertimeTimeController::class, 'certify']);
+        Route::get('/overtime/reports', [OvertimeReportController::class, 'index']);
     });
 
     Route::get('/attendances/me', [AttendanceController::class, 'myRecords'])
@@ -109,13 +134,15 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/admin/attendances/export/word', [AttendanceController::class, 'exportWord'])->middleware('throttle:10,1');
         Route::get('/admin/attendances/summary', [AttendanceController::class, 'summary']);
         Route::post('/admin/attendances/sync-leaves', [AttendanceController::class, 'syncLeaves']);
+        Route::post('/admin/attendance-corrections/{correction:uuid}/approve', [AttendanceCorrectionController::class, 'approve']);
+        Route::post('/admin/attendance-corrections/{correction:uuid}/reject', [AttendanceCorrectionController::class, 'reject']);
     });
 
     // OT Summary — สิทธิ์เฉพาะ
     Route::get('/admin/attendances/ot-summary', [AttendanceController::class, 'otSummary'])
         ->middleware('can:attendance.ot_summary');
 
-    Route::post('/admin/leaves', [LeaveController::class, 'storeAsAdmin']);
+    Route::post('/admin/leaves', [LeaveRequestController::class, 'storeAsAdmin']);
 
     // Approval routes
     // approve/reject ประกาศไว้ที่ routes/leave_government.php (GovernmentApprovalController)
@@ -126,6 +153,15 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/reports/summary', [ReportController::class, 'summary']);
     Route::get('/reports/export-excel', [ReportController::class, 'exportExcel'])->middleware('throttle:10,1');
     Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])->middleware('throttle:10,1');
+
+    // Unified, scope-aware reporting layer. Existing Government Report endpoints remain unchanged.
+    Route::get('/reporting/evaluation-metrics', [ReportingController::class, 'evaluation']);
+    Route::get('/reporting/{report}/export/{format}', [ReportingController::class, 'export'])
+        ->whereIn('report', ReportingDataService::REPORTS)
+        ->whereIn('format', ['pdf', 'xlsx', 'docx', 'csv'])
+        ->middleware('throttle:10,1');
+    Route::get('/reporting/{report}', [ReportingController::class, 'show'])
+        ->whereIn('report', ReportingDataService::REPORTS);
 
     // Admin routes
     Route::group(['middleware' => ['can:view_users']], function () {
@@ -314,7 +350,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->whereUuid('id');
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::get('/notification-preferences', [NotificationController::class, 'preferences']);
+    Route::put('/notification-preferences', [NotificationController::class, 'updatePreference']);
     // Dynamic Menu & Role Management routes
     Route::get('/user/menus', [MenuController::class, 'index']);
     /*

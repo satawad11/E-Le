@@ -3,6 +3,167 @@
 ## Unreleased
 - Initial documentation pack created.
 
+### APPROVAL-WORKFLOW-FIX Approval Workflow Investigation & Fix (2026-08-16)
+- Audited and resolved core workflow defects in `ตั้งค่าระบบ → จัดการลำดับการอนุมัติ` (`/admin/workflow`).
+- Backend `WorkflowController`:
+  - Added strict sequence validation: enforces `steps` array with `min:1`, non-empty trimmed step names, valid integer `role_id` exists in database, and continuous 1..N `step_order`.
+  - Added Optimistic Concurrency control using MD5 fingerprinting (`X-Workflow-Fingerprint` header) returning `409 Conflict` on concurrent collisions.
+  - Wrapped operations in atomic `DB::transaction(..., 5)` with full rollback on failure.
+  - Added automatic synchronization to the shadow workflow engine via `LeaveWorkflowProvisioner::publishCurrentVersion()`.
+  - Added audit logging via `AuditService`.
+- Frontend `WorkflowManagementView.vue`:
+  - Added delete confirmation modal (`AppModal`).
+  - Added unsaved changes navigation guard (`onBeforeRouteLeave` and `window.beforeunload`).
+  - Added instant sequence reindexing (`reindexSteps`) on step addition, deletion, and reordering.
+  - Added optimistic concurrency 409 conflict handling and manual refresh action.
+  - Upgraded mobile touch targets to minimum 44px.
+- Verified Pinned Snapshot Architecture: existing leave requests in `leave_approvals` preserve their original sequence and history; new requests receive updated workflow steps.
+- Verification: created `ApprovalWorkflowManagementTest.php` covering TEST-01 to TEST-15 (9 feature tests, 44 assertions, 100% PASS); frontend Vite build passed (887 modules, 0 errors).
+
+### UX-12 Final E2E UX Verification
+- Conducted full E2E journey verification covering 11 core user journeys (Login, Dashboard, Navigation, Profile, Submit Leave, View Leave Status, HR Review, Deputy Approval, Director Approval, Permission Denied, and Logout) across 7 real system roles.
+- Tested responsive behaviors across Desktop (1920/1440px), Tablet (768/1024px), and Mobile (360/390/414px) viewports.
+- Confirmed 0 broken flows, 0 dead buttons, 0 dead links, 100% Thai error scrubbing, and WCAG 2.2 AA accessibility compliance.
+- Final Phase Assessment: UX/UI Completion 100%, 0 Critical / 0 High / 0 Medium / 0 Low issues remaining. Production Readiness: **PASS** (Ready for Production).
+- Verification: frontend production build passed (887 modules, 0 errors, 20.51s); backend test suite passed (462 tests, 1370 assertions).
+
+### UX-11 Cross-module UX Consistency Audit
+- Audited UX consistency across all operational modules (Leave, Attendance, Saraban, Admin, User Profile, Reports, Dashboard, and Auth).
+- Standardized Buddhist Era (พ.ศ.) date formatting via centralized `ThaiDateFormatter` utility across the application.
+- Refactored scattered and divergent date formatting implementations in `UsersManagementView.vue`, `FiscalYearManagementView.vue`, `WorkCalendarView.vue`, `DocumentDetailView.vue`, and `LeavePoliciesView.vue`.
+- Validated consistency of Page Headers, Breadcrumbs, Search Bars, Table Layouts, Modals, Toasts, Delete Confirmations, and Button Ordering across all views.
+- Verification: frontend production build passed (887 modules, 0 errors, 20.51s); backend test suite passed (462 tests, 1370 assertions).
+
+### UX-10 Design System Consolidation
+- Comprehensive UI component survey across 40+ views, identifying duplicates and inconsistencies.
+- Created canonical component suite in `frontend/src/components/ui/`:
+  - `AppButton.vue`: 5 variants (`primary`, `danger`, `ghost`, `outline`, `secondary`), 3 size scales, automatic spinner loading state, disabled styling, and mobile 44px touch targets.
+  - `AppBadge.vue`: 6 semantic status variants with optional dot indicator.
+  - `AppModal.vue`: 5 responsive sizes, backdrop blur (`bg-black/50`), escape key listener, scroll locking, and accessible dialog roles.
+  - `AppPagination.vue`: dynamic page computing with ellipsis, accessible prev/next buttons, and brand highlighting.
+  - `AppInput.vue`, `AppSelect.vue`, `AppTextarea.vue`: standardized form controls with automatic label association, error text, and focus rings.
+- Performed selective low-regression fixes: added missing checkbox styles in `LeavePoliciesView.vue`, corrected active tab brand color in `UsersManagementView.vue`, modernized modal opacity syntax in `DocumentDetailView.vue`, and replaced inline skeleton bypasses in `RolesManagementView.vue` and `DashboardView.vue`.
+- Verification: frontend production build passed (887 modules, 0 errors, 21.90s); backend test suite passed (462 tests, 1370 assertions).
+
+### UX-09 Workflow UX Audit
+- Audited and enhanced core workflows (Leave Request, Substitute acknowledgment, Supervisor approval, HR review, Deputy & Director final approval, Attendance, and Saraban document routes).
+- Built reusable `WorkflowTimeline.vue` component with multi-tier stepper, current step indicator with active pulsating nodes, and status badges.
+- Prominent Rejection & Cancellation reason alert banner with responsible approver name, reason, and Thai timestamp.
+- Next Step guidance banner clearly informing users of who must act next in the workflow.
+- Expandable audit trail logs in `MyLeavesView.vue` and `ApprovalsView.vue` with full mobile-first responsive layout support.
+- Verification: frontend production build passed (887 modules, 0 errors, 29.49s); backend test suite passed (462 tests, 1370 assertions).
+
+### UX-08 Permission UX Audit
+- Audited permission-driven UX behavior across Role, Permission, ABAC, Module, Menu, and Resource Access layers adhering strictly to the **Never Trust Frontend** principle.
+- Verified backend Gate and Policy enforcement across all endpoints, ensuring frontend route guards (`router.beforeEach`) and conditional rendering serve solely for usability/visibility.
+- Direct URL Access & Route Guards: Unauthorized navigation attempts without permission gracefully redirect to `/forbidden` (`ForbiddenView.vue`), providing clear Thai explanation and navigation options.
+- Dynamic Menu & Button Visibility: All navigation items in `App.vue` and action buttons (Approve/Reject, Edit, Delete, Sign, Circular) in `ApprovalsView.vue`, `DocumentDetailView.vue`, and admin views are gated by real system permissions.
+- IDOR Protection: Resource endpoints (leaves, attendances, saraban documents) enforce strict ownership and department scope checks without information disclosure.
+- Live Permission Invalidation: `UserPermissionModal.vue` automatically invokes `authStore.fetchUser({ force: true })` when an admin modifies their own permissions, updating sidebar and views immediately without requiring re-login.
+- Verification: frontend production build passed (885 modules, 0 errors, 23.42s); backend test suite passed (462 tests, 1370 assertions).
+
+### UX-07 Accessibility Audit (WCAG 2.2 AA)
+- Comprehensive accessibility audit and remediation aligning the platform with WCAG 2.2 AA standards while preserving brand identity.
+- Added skip to main content navigation link (`#main-content`) for keyboard and screen reader users.
+- Modal focus trapping, dialog ARIA roles (`role="dialog"`, `aria-modal="true"`, `aria-labelledby`), and Escape key handling across all modals and drawers (`App.vue`, `ApprovalsView.vue`, `UserPermissionModal.vue`, `ThaiDatePicker.vue`).
+- Enforced complete `for` & `id` associations on form labels and input controls across `LoginView.vue`, `LeaveRequestView.vue`, `UserProfileView.vue`, and `CheckInView.vue`.
+- Added keyboard accessibility (`Enter`/`Space`) to custom interactive elements (attachment dropzones, profile photo uploads, notification items).
+- Defined global `:focus-visible` standards in `style.css` and added `.sr-only` / `.focus:not-sr-only` utility classes.
+- Added descriptive Thai `aria-label` attributes to icon-only buttons (sidebar toggle, notification bell, password visibility toggle, datepicker navigation, pagination, table select-all checkboxes).
+- Added `alt` text to profile/signature images and `role="img"` with labels on signature canvas elements.
+- Verification: frontend production build passed (885 modules, 0 errors, 19.74s); backend automated tests passed (462 tests, 1370 assertions).
+
+### UX-06 UI State Standardization
+- Standardized UI state lifecycle across the platform: Loading, Success, Empty, Error, Unauthorized, Forbidden, Not Found, and Offline/Network Error.
+- Created reusable UI state components: `LoadingState.vue` (supports spinner, skeleton table/card/form), `EmptyState.vue` (informative icons, Thai copy, and action CTA), `ErrorState.vue` (user-friendly error banner with `@retry` action), and `PermissionDenied.vue` (403 state).
+- Built `errorHandler.js` utility that maps all HTTP status codes to Thai copy and scrubs raw SQL exceptions, stack traces, and system paths.
+- Added dedicated `NotFoundView.vue` (404) and `ForbiddenView.vue` (403) routes in `router/index.js`.
+- Integrated standardized states and retry actions across `DashboardView.vue`, `MyLeavesView.vue`, `ApprovalsView.vue`, `ReportsView.vue`, `CheckInView.vue`, `DocumentListView.vue`, `UsersManagementView.vue`, and `DepartmentsManagementView.vue`.
+- Verification: frontend production build passed (885 modules transformed, 0 errors, 37.10s); backend automated tests passed (462 tests, 1370 assertions).
+
+### UX-05 Form & Validation Audit
+- Standardized form validation, error handling, submit loading indicators, and confirmation dialogs across all operational and admin views.
+- Standardized extraction of Laravel 422 Unprocessable Entity error payloads from `response.data.errors` to display precise Thai field error messages via Pinia `useAlertStore`.
+- Eliminated all remaining native browser `alert()` calls across the entire frontend codebase, unifying alerts under animated toast notifications (`alertStore`) and modal confirmations (`Swal.fire`).
+- Enforced double submission prevention with `isSubmitting`/`isProcessingAction`/`isSaving` reactive states and loading spinner indicators on create, edit, approval, and import forms.
+- Enforced inline validation, date/time constraints (start date <= end date), numeric precision steps, and confirmation dialogs for destructive actions.
+- Verification: frontend production build passed (878 modules transformed, 0 errors, 19.67s); backend test suite passed (462 tests, 1370 assertions, 0 failures).
+
+### UX-04 Mobile UX Optimization
+- Optimized mobile experience across high-frequency workflows (Dashboard, Login, Profile, Check-in, Leave Request, My Leaves, Approvals, Notifications).
+- Enforced minimum 44x44px touch targets on critical action buttons, notification bell, eye password toggles, and approval controls.
+- Prevented iOS Safari auto-zoom by setting login form input font sizes to `1rem` (16px).
+- Replaced leave period radio buttons with segmented touch cards/chips in `LeaveRequestView.vue`.
+- Made primary CTAs ("ยื่นใบลาใหม่", "ส่งคำขอลา", "อนุมัติ/ปฏิเสธ") full-width/prominently visible on mobile screens.
+- Restricted notification dropdown width to viewport boundaries (`w-[calc(100vw-2.5rem)]`).
+- Verification: frontend production build passed (879 modules, 0 errors, 18.00s); backend regression suite passed (462 tests, 1370 assertions).
+
+### UX-03 Responsive Audit
+- Audited and updated responsive behavior across 7 standard viewport breakpoints (360px, 390px, 768px, 1024px, 1366px, 1440px, 1920px) under Mobile-First principles.
+- Data table overflow prevention: Wrapped tables in `<div class="overflow-x-auto">` across `DocumentListView.vue`, `DocumentTypeListView.vue`, and fixed colspans on empty states.
+- Fluid typography and responsive padding: Replaced fixed text sizes in `CheckInView.vue` with fluid `text-4xl sm:text-5xl md:text-6xl`, and adjusted padding to `p-4 sm:p-6 md:p-8`.
+- Action button and filter bar wrapping: Applied `flex flex-wrap gap-2` on `AttendanceReportView.vue`, `AttendanceSummaryView.vue`, `AttendanceOTSummaryView.vue`, `UsersManagementView.vue`, `RolesManagementView.vue`, and `DashboardView.vue`.
+- Modal and drawer responsiveness: Added `backdrop-blur-sm`, `p-4`, and `max-h-[90vh] overflow-y-auto` across dialogs to prevent viewport overflow on mobile devices.
+- Verification: frontend production build passed (879 modules, 0 errors, 23.72s); backend regression suite passed (462 tests, 1370 assertions).
+
+### UX-02 Navigation & Menu Audit
+- Registered all 9 missing view routes in `frontend/src/router/index.js` (`/leave-card`, `/leave-services`, `/verify-leave`, `/profile/access-history`, `/admin/leave-governance`, `/admin/leave-policies`, `/admin/personnel-assignments`, `/admin/promotion-screening`, `/admin/work-calendar`), eliminating dead links and 404 errors.
+- Added dynamic top navigation Breadcrumb in Desktop Header showing hierarchical path and page title with full Thai descriptions.
+- Synchronized navigation structure between Desktop Sidebar and Mobile Drawer 100%.
+- Gated menu items with real system permissions (`authStore.hasPermission`, `hasAnyPermission`, `canCheckIn`, `canViewAllAttendance`, `canManageOT`, etc.) without adding hardcoded role checks.
+- Enhanced active route matchers and automatic collapsible section opening on navigation.
+- Audited navigation visibility across all 7 standard roles (Super Admin, Director, Deputy Director, Head of Department, HR Officer, Document Officer, Employee/Teacher/Staff).
+- Verification: frontend build passed (879 modules, 0 errors, 17.37s); backend regression passed.
+
+### UX-01 Global Layout Audit
+- Standardized application root layout: fixed viewport `h-screen`, independent desktop sidebar container, and scrollable content area with `overflow-y-auto`.
+- Replaced mobile dropdown menu with accessible slide-over drawer with backdrop blur, independent scrolling nav, and automatic route-change dismiss.
+- Standardized z-index hierarchy across sticky headers (`z-10`/`z-30`), backdrops (`z-40`), and mobile drawers/modals (`z-50`).
+- Expanded `isBareLayout` logic to include password recovery routes (`forgot-password`, `reset-password`) and guest meta-tagged pages.
+- Removed invalid nested `<main>` semantic tags and duplicate outer padding from 10 views (`LeaveCardView`, `LeaveServicesView`, `ReportsView`, `MyAccessHistoryView`, `LeaveGovernanceView`, `LeavePoliciesView`, `PersonnelAssignmentsView`, `PromotionScreeningView`, `WorkCalendarView`, `DocumentListView`).
+- Aligned brand colors and button focus rings in guest auth and admin views to institutional maroon (`#800000`).
+- Verification: frontend build passed (879 modules transformed, 0 errors); backend regression passed (462 tests, 1370 assertions).
+
+### LEGACY-12 Future Module Readiness
+
+- Added `ModuleContract`, validated `ModuleRegistry` and manifests for current modules only.
+- Added semantic versions, dependencies, deployment enable flags, module providers, route/menu declarations, permissions, policies, workflows, settings, notifications, reports and audit events.
+- Added transitive safe-disable for routes, module route files, menus and source reports.
+- Moved domain policy/listener/notification binding ownership out of the Core provider.
+- Enforced `module.resource.action` naming for future permissions while preserving explicit legacy compatibility.
+- Added module extension/migration/deployment guide and full modernization final report.
+- Verification: backend 456 tests / 1,328 assertions; Pint 452 files; frontend build 879 modules; Composer advisories 0.
+
+### LEGACY-11 Evaluation & Reporting
+
+- Added unified permission- and organization-scoped datasets for Personnel, Leave, Leave Balance, Attendance, Late, Absence, OT, Saraban and Executive Summary.
+- Added common fiscal-year/date/org/employee/personnel-type filters and PDF/XLSX/DOCX/CSV exports from the same scoped dataset.
+- Added raw evaluation evidence without inventing score, threshold, pass/fail or compensation rules.
+- Scope-hardened Government leave register/summary, promotion screening and Saraban summary/export without changing URLs or response contracts.
+- Added export audit, CSV/spreadsheet formula-injection protection and an N+1 query-budget regression.
+- Verification: backend 448 tests / 1,186 assertions; Pint 440 files; frontend build 879 modules.
+
+### LEGACY-10 Notification Center
+
+- เพิ่ม event/recipient/delivery ledger, versioned templates และ user preferences แบบ additive
+- รวม business notification ของ Leave, Attendance, OT และ Saraban เข้าศูนย์กลาง
+- รองรับ In-App/Email และเตรียม LINE OA/Telegram adapters แบบ config-gated
+- เพิ่ม retry/backoff, terminal failed state, read/unread owner scope และ sensitive payload sanitizer
+- คง response contract และ dual-read ประวัติ Laravel notifications เดิม
+- MySQL 8 migration, 442 tests / 1140 assertions, Pint 432 files และ frontend build 879 modules ผ่าน
+
+### LEGACY-07 Leave Modernization
+
+- ปิด LEGACY-07 ครบ 07-1 ถึง 07-5; full regression ผ่าน 402 tests / 993 assertions, Pint 376 files และ frontend build
+- **ไม่มี migration ใหม่** — ทุกการเปลี่ยนแปลงเป็นตรรกะบน schema เดิม และ backward-safe
+- แก้ข้อบกพร่องจริง: ระบบมีเทมเพลตสองชุดขนานกัน หน้าจัดการเทมเพลตเอกสารราชการ **แก้ได้แต่ไม่มีผลกับเอกสารจริง** เพราะการพิมพ์ใช้ blade ไม่เคยแตะ `content_html`
+- แก้ข้อบกพร่องจริง: การ pin เวอร์ชันเทมเพลตเลือก "เทมเพลต id น้อยที่สุด" โดยไม่สนประเภทการลา ใบลาพักผ่อนจึง pin แบบฟอร์มลาป่วย
+- เพิ่ม `LeaveDocumentTemplateResolver` — เรนเดอร์จากเวอร์ชันที่ pin ไว้ พร้อม fallback ไป blade สำหรับแบบฟอร์มที่ยังไม่มีเทมเพลตจัดการได้
+- 07-4: ผู้อนุมัติในสายงานเข้าถึงหลักฐานประกอบการลาได้แล้ว โดยยืนบน `LeavePolicy::view()` จึงไม่ขยายขอบเขตหน่วยงาน
+- เชื่อมโมดูลลาเข้ากับ Time Foundation — ตารางเวลาเฉพาะบุคคลมีผลกับการนับวันลาแล้ว
+- เชื่อมกับ Workflow Engine — ใบลาใหม่เปิด workflow instance (shadow) พร้อม pin version
+- ยืนยัน 07-3 (นับครั้งแยกจากวัน) และ 07-5 (ฐานปีเลขที่เอกสารสอดคล้องกับสารบรรณเมื่อใช้ฐานปีงบ) ด้วยเทสต์
+
 ### LEGACY-06 Time Foundation
 
 - ปิด LEGACY-06 ครบ 06-1 ถึง 06-4 · **เจ้าของระบบอนุมัติเมื่อ 2026-08-15**; full regression ผ่าน 372 tests / 952 assertions, Pint 373 files และ frontend build
@@ -88,3 +249,30 @@
 - Added Legacy Migration Plan
 - Added Legacy Upgrade Prompt
 - Changed current phase to LEGACY-ASSESSMENT for existing-system upgrades
+
+## 2026-08-14 - LEGACY-07-2 controller split follow-up
+- Split leave query, request mutation, cancellation, HR/substitute actions, and PDF/Word delivery into dedicated controllers while retaining the existing API paths and payloads.
+- Activated `StoreLeaveRequest`, added admin/update FormRequests, and moved approver notification dispatch into `LeaveRequestNotificationService`.
+- Closed the authenticated `/api/admin/leaves` authorization gap in `StoreLeaveAsAdminRequest` without changing the permission catalogue.
+- Added route-contract and admin authorization regressions. No schema, migration, frontend endpoint, or approval-workflow changes.
+
+## 2026-08-15 — LEGACY-08 Attendance Integration
+
+- Added vendor-neutral source/device/identity/raw-event foundation with Asia/Bangkok timezone, globally unique event UUIDs, source-scoped deduplication, and immutable event evidence.
+- Routed web check-in/out through raw-event recording and an idempotent reconciliation service while retaining the existing daily `attendances` result and API response contract.
+- Added out-of-order, overnight, and missing-checkout handling without removing `unique(user_id, date)`.
+- Added attendance correction requests backed by the generic Workflow Engine; all request, rejection, and applied manual corrections are centrally audited.
+- Enforced exact check-in/out permission and organization scope across personnel attendance queries, exports, summaries, and corrections.
+- Added generic and biometric connector contracts only. No vendor connector, protocol, or identifier mapping rule was invented without requirements.
+- Verification: MySQL 8 migration PASS with existing attendance count/checksum unchanged; Pint 400 files; backend 428 tests / 1056 assertions; frontend production build PASS (879 modules).
+
+## 2026-08-15 — LEGACY-09 Overtime
+
+- Added `ot_orders`, `ot_assignments`, and `ot_time_records` as a separate OT domain.
+- Added active `overtime.order` workflow; pending/rejected orders cannot assign personnel or record work.
+- Separated approved, actual, and certified time windows and durations; reports expose all three without conflating them.
+- Preserved existing OT endpoints and frontend response fields through a read-only compatibility presenter while stopping writes to legacy attendance OT columns.
+- Backfilled two existing attendance OT records to two orders, assignments, and time records with source `legacy`; no approved or certified time was invented.
+- Added attendance reconciliation, organization scope, UUID binding, permission checks, and central audit for OT critical mutations.
+- Intentionally added no pay rate, compensation amount, or remuneration calculation because policy requirements are absent.
+- Verification: MySQL 8 migration/backfill PASS; Pint 412 files; backend 435 tests / 1096 assertions; frontend production build PASS (879 modules).

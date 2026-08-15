@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Modules\ModuleRegistry;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -14,14 +15,13 @@ class PermissionController extends Controller
     /**
      * Return all available system modules and their permissions.
      */
-    public function modules()
+    public function modules(ModuleRegistry $modules)
     {
-        $modules = config('modules', []);
         $allPermissions = Permission::orderBy('name')->get();
 
         return response()->json([
             'success' => true,
-            'modules' => $modules,
+            'modules' => $modules->describe(),
             'permissions' => $allPermissions,
         ]);
     }

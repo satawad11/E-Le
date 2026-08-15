@@ -46,6 +46,7 @@ class WorkflowAuthorizationTest extends TestCase
         $this->deputy = Role::firstOrCreate(['name' => 'Deputy Director', 'guard_name' => 'web']);
         $this->director = Role::firstOrCreate(['name' => 'Director', 'guard_name' => 'web']);
         Permission::findOrCreate('leave.management.manage', 'web');
+        Permission::findOrCreate('leave.approval.hr', 'web');
 
         ApprovalStep::create(['step_order' => 1, 'role_id' => $this->hr->id, 'name' => 'ขั้นที่ 1']);
         ApprovalStep::create(['step_order' => 2, 'role_id' => $this->deputy->id, 'name' => 'ขั้นที่ 2']);
@@ -127,6 +128,50 @@ class WorkflowAuthorizationTest extends TestCase
             ->assertOk();
 
         $this->assertSame('Approved', $leave->fresh()->status, 'ขั้นสุดท้ายต้องทำให้ใบลาได้รับอนุมัติ');
+    }
+
+    public function test_http_submission_hr_verification_deputy_and_director_complete_the_real_flow(): void
+    {
+        $employee = User::factory()->create();
+        LeaveBalance::create([
+            'user_id' => $employee->id,
+            'leave_type_id' => $this->leaveType->id,
+            'year' => now()->year,
+            'quota' => 30,
+            'used' => 0,
+            'reserved' => 0,
+        ]);
+        $start = now()->addWeek()->nextWeekday();
+        $end = $start->copy()->nextWeekday();
+
+        $response = $this->actingAs($employee)->postJson('/api/leaves', [
+            'leave_type_id' => $this->leaveType->id,
+            'start_date' => $start->toDateString(),
+            'end_date' => $end->toDateString(),
+            'reason' => 'critical path regression',
+        ])->assertCreated();
+        $leave = Leave::findOrFail($response->json('leave.id'));
+        $this->assertSame([1, 2, 3], $leave->approvals()->orderBy('step_order')->pluck('step_order')->all());
+
+        $hr = $this->userWithRole($this->hr);
+        $hr->givePermissionTo('leave.approval.hr');
+        $this->actingAs($hr)->postJson("/api/leaves/{$leave->id}/hr-verify")->assertOk();
+        $this->assertNotNull($leave->fresh()->hr_verified_at);
+        $this->actingAs($hr)->postJson("/api/approvals/{$leave->id}/approve")->assertOk();
+
+        $this->actingAs($this->userWithRole($this->deputy))
+            ->postJson("/api/approvals/{$leave->id}/approve")
+            ->assertOk();
+        $this->actingAs($this->userWithRole($this->director))
+            ->postJson("/api/approvals/{$leave->id}/approve")
+            ->assertOk();
+
+        $leave->refresh();
+        $this->assertSame('Approved', $leave->status);
+        $this->assertSame(['Approved', 'Approved', 'Approved'], $leave->approvals()->orderBy('step_order')->pluck('status')->all());
+        $balance = LeaveBalance::where('user_id', $employee->id)->where('leave_type_id', $this->leaveType->id)->firstOrFail();
+        $this->assertSame(0.0, (float) $balance->reserved);
+        $this->assertGreaterThan(0.0, (float) $balance->used);
     }
 
     public function test_rejecting_a_pending_leave_behaves_as_before(): void

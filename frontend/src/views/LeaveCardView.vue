@@ -1,11 +1,11 @@
 <template>
-  <main class="mx-auto max-w-6xl space-y-5 p-4 sm:p-6" aria-labelledby="card-title">
+  <div class="max-w-7xl mx-auto space-y-6" aria-labelledby="card-title">
     <header class="flex flex-wrap items-end justify-between gap-3">
       <div>
         <h1 id="card-title" class="text-2xl font-bold text-gray-900">บัตรลา</h1>
         <p class="text-sm text-gray-500">สรุปสถิติการลารายบุคคลประจำปีงบประมาณ สำหรับแนบประกอบการเลื่อนเงินเดือน</p>
       </div>
-      <button type="button" class="rounded-xl bg-[#800000] px-4 py-2 text-white text-sm font-semibold" @click="exportPdf">
+      <button type="button" class="rounded-xl bg-[#800000] px-4 py-2 text-white text-sm font-semibold hover:bg-[#600000] transition-colors" @click="exportPdf">
         พิมพ์บัตรลา (PDF)
       </button>
     </header>
@@ -108,7 +108,7 @@
         </div>
       </section>
     </template>
-  </main>
+  </div>
 </template>
 
 <script setup>

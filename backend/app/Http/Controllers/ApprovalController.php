@@ -8,11 +8,10 @@ use App\Models\LeaveActionLog;
 use App\Models\LeaveApproval;
 use App\Models\User;
 use App\Models\UserDelegation;
-use App\Notifications\LeaveStatusChanged;
 use App\Services\LeaveService;
 use App\Services\LeaveVisibility;
-use App\Services\LineNotificationService;
-use App\Services\TelegramService;
+use App\Services\NotificationCenter\NotificationCenter;
+use App\Services\Workflow\ApproverResolverService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -21,12 +20,12 @@ class ApprovalController extends Controller
 {
     protected LeaveService $leaveService;
 
-    protected TelegramService $telegramService;
-
-    public function __construct(LeaveService $leaveService, TelegramService $telegramService)
-    {
+    public function __construct(
+        LeaveService $leaveService,
+        private NotificationCenter $notifications,
+        private ApproverResolverService $resolver,
+    ) {
         $this->leaveService = $leaveService;
-        $this->telegramService = $telegramService;
     }
 
     public function pending(Request $request, LeaveVisibility $visibility)
@@ -118,33 +117,18 @@ class ApprovalController extends Controller
             ], 422);
         }
 
+        $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
+
         // Check if user is authorized to approve this level
         if (! $isSuperAdmin) {
-            $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
-            // LEGACY-04 (04-7): role_id เป็น accessor ของ Spatie แล้ว จึงซ้ำกับบรรทัดนี้
-            $userRoleIds = $user->roles->pluck('id')->unique()->values()->all();
-
-            $isAuthorized = false;
-            if ($currentStep && in_array($currentStep->role_id, $userRoleIds)) {
-                $isAuthorized = true;
-            } elseif ($currentStep) {
-                $isDelegate = UserDelegation::where('delegate_id', $user->id)
-                    ->where('is_active', true)
-                    ->where('start_date', '<=', now())
-                    ->where('end_date', '>=', now())
-                    ->whereHas('user', function ($q) use ($currentStep) {
-                        $q->where('role_id', $currentStep->role_id)
-                            ->orWhereHas('roles', fn ($rq) => $rq->where('roles.id', $currentStep->role_id));
-                    })->exists();
-                if ($isDelegate) {
-                    $isAuthorized = true;
-                }
-            }
+            $isAuthorized = $currentStep && $this->resolver->isAuthorizedApprover($user, $leave->user, $currentStep);
 
             if (! $isAuthorized) {
                 return response()->json(['message' => 'ไม่มีสิทธิ์อนุมัติในระดับนี้'], 403);
             }
         }
+
+        $delegatedFrom = ($currentStep && ! $isSuperAdmin) ? $this->resolver->getDelegatedFromId($user, $leave->user, $currentStep) : null;
 
         DB::transaction(function () use ($leave, $user, $request, $isSuperAdmin) {
             $profile = $user->profile;
@@ -202,10 +186,21 @@ class ApprovalController extends Controller
 
                     // Auto-fill signatures for all approval steps (HR, Deputy, Director)
                     $steps = ApprovalStep::orderBy('step_order', 'asc')->get();
+                    $roleIds = $steps->pluck('role_id')->filter()->unique();
+                    $stepUsers = User::with('profile')
+                        ->whereHas('roles', fn ($rq) => $rq->whereIn('roles.id', $roleIds))
+                        ->get()
+                        ->mapToGroups(function ($u) {
+                            $roles = $u->roles->pluck('id');
+                            $res = [];
+                            foreach ($roles as $rId) {
+                                if ($rId) $res[] = [$rId => $u];
+                            }
+                            return $res;
+                        })->flatMap(function($v) { return $v; })->mapToDictionary(function ($v, $k) { return [$k => $v]; });
+
                     foreach ($steps as $st) {
-                        $stepUser = User::where('role_id', $st->role_id)
-                            ->orWhereHas('roles', fn ($rq) => $rq->where('roles.id', $st->role_id))
-                            ->first();
+                        $stepUser = $stepUsers->get($st->role_id)?->first();
 
                         if ($stepUser) {
                             $stepProfile = $stepUser->profile;
@@ -240,20 +235,9 @@ class ApprovalController extends Controller
 
         // Notify user if fully approved
         if ($leave->status === 'Approved') {
-            $leave->user->notify(new LeaveStatusChanged($leave, 'Approved', $user->name));
-            $startDateStr = $leave->start_date ? $leave->start_date->format('d/m/Y') : '';
-            $endDateStr = $leave->end_date ? $leave->end_date->format('d/m/Y') : '';
-            $msg = "✅ ใบลาของท่านได้รับการอนุมัติเรียบร้อยแล้ว\n"
-                 .'ประเภท: '.($leave->type->name ?? 'การลา')."\n"
-                 ."ตั้งแต่วันที่: {$startDateStr}\n"
-                 ."ถึงวันที่: {$endDateStr}";
-
-            if ($leave->user->telegram_chat_id) {
-                $this->telegramService->sendMessage($leave->user->telegram_chat_id, $msg);
-            }
-
-            $lineService = new LineNotificationService;
-            $lineService->sendMessage($msg, $leave->user->line_user_id ?? null);
+            $this->notifications->emit('leave.approved', [$leave->user], $leave, [
+                'status' => 'approved',
+            ], $user);
         }
 
         return response()->json(['message' => 'อนุมัติเรียบร้อยแล้ว']);
@@ -271,28 +255,11 @@ class ApprovalController extends Controller
             return response()->json(['message' => 'ใบลานี้ไม่อยู่ในสถานะรออนุมัติ'], 422);
         }
 
+        $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
+
         // Check if user is authorized to reject this level
         if (! $isSuperAdmin) {
-            $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
-            // LEGACY-04 (04-7): role_id เป็น accessor ของ Spatie แล้ว จึงซ้ำกับบรรทัดนี้
-            $userRoleIds = $user->roles->pluck('id')->unique()->values()->all();
-
-            $isAuthorized = false;
-            if ($currentStep && in_array($currentStep->role_id, $userRoleIds)) {
-                $isAuthorized = true;
-            } elseif ($currentStep) {
-                $isDelegate = UserDelegation::where('delegate_id', $user->id)
-                    ->where('is_active', true)
-                    ->where('start_date', '<=', now())
-                    ->where('end_date', '>=', now())
-                    ->whereHas('user', function ($q) use ($currentStep) {
-                        $q->where('role_id', $currentStep->role_id)
-                            ->orWhereHas('roles', fn ($rq) => $rq->where('roles.id', $currentStep->role_id));
-                    })->exists();
-                if ($isDelegate) {
-                    $isAuthorized = true;
-                }
-            }
+            $isAuthorized = $currentStep && $this->resolver->isAuthorizedApprover($user, $leave->user, $currentStep);
 
             if (! $isAuthorized) {
                 return response()->json(['message' => 'ไม่มีสิทธิ์อนุมัติในระดับนี้'], 403);
@@ -339,13 +306,9 @@ class ApprovalController extends Controller
             $leave->save();
         });
 
-        $leave->user->notify(new LeaveStatusChanged($leave, 'Rejected', $user->name));
-        if ($leave->user->telegram_chat_id) {
-            $msg = "❌ ใบลาของท่านถูกปฏิเสธ\n";
-            $msg .= "ประเภท: {$leave->type->name}\n";
-            $msg .= 'เหตุผล: '.($request->comment ?: 'ไม่มี');
-            $this->telegramService->sendMessage($leave->user->telegram_chat_id, $msg);
-        }
+        $this->notifications->emit('leave.rejected', [$leave->user], $leave, [
+            'status' => 'rejected',
+        ], $user);
 
         return response()->json(['message' => 'ปฏิเสธการลาเรียบร้อยแล้ว']);
     }

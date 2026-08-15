@@ -34,21 +34,29 @@
         <div class="flex flex-col md:flex-row gap-8 mb-8">
           <!-- Profile Picture -->
           <div class="w-full md:w-1/3 flex flex-col items-center">
-            <div class="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center mb-4 overflow-hidden border-4 border-white shadow cursor-pointer group relative" @click="$refs.imageInput.click()">
-              <img v-if="imagePreview" :src="imagePreview" class="w-full h-full object-cover" />
-              <img v-else-if="form.profile.profile_photo_path" v-secure-src="form.profile.profile_photo_path" class="w-full h-full object-cover" />
-              <svg v-else class="w-20 h-20 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+            <div
+              class="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center mb-4 overflow-hidden border-4 border-white shadow cursor-pointer group relative focus-visible:ring-2 focus-visible:ring-[#800000] focus:outline-none"
+              role="button"
+              tabindex="0"
+              aria-label="คลิกหรือกด Enter เพื่อเปลี่ยนรูปภาพประจำตัว"
+              @click="$refs.imageInput.click()"
+              @keydown.enter.prevent="$refs.imageInput.click()"
+              @keydown.space.prevent="$refs.imageInput.click()"
+            >
+              <img v-if="imagePreview" :src="imagePreview" alt="ตัวอย่างรูปโปรไฟล์ใหม่" class="w-full h-full object-cover" />
+              <img v-else-if="form.profile.profile_photo_path" v-secure-src="form.profile.profile_photo_path" alt="รูปโปรไฟล์ปัจจุบัน" class="w-full h-full object-cover" />
+              <svg v-else class="w-20 h-20 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
               
-              <div class="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <div class="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true">
                 <i class="fas fa-camera text-white text-2xl mb-2"></i>
                 <span class="text-white text-sm">อัปโหลดรูป</span>
               </div>
             </div>
-            <input type="file" ref="imageInput" @change="onImageSelected" accept="image/jpeg, image/png, image/jpg" class="hidden" />
+            <input type="file" ref="imageInput" @change="onImageSelected" accept="image/jpeg, image/png, image/jpg" class="hidden" aria-hidden="true" />
             <div class="text-center">
-              <h2 class="text-lg font-bold text-gray-900">{{ form.name }}</h2>
-              <p class="text-gray-500 text-sm">{{ form.profile.position || form.role?.name }}</p>
-              <p class="text-gray-500 text-sm">{{ form.department?.name }}</p>
+              <h2 class="text-lg font-bold text-gray-900">{{ form.personnel?.full_name || form.name }}</h2>
+              <p class="text-gray-500 text-sm">{{ form.current_assignment?.position || form.position || form.profile?.position || form.role?.name }}</p>
+              <p class="text-gray-500 text-sm">{{ form.current_assignment?.org_unit?.name || form.org_unit?.name || form.department?.name }}</p>
             </div>
           </div>
 
@@ -167,7 +175,7 @@
           </div>
 
           <!-- Delegation Section -->
-          <div v-if="authStore.isManager || authStore.user?.role?.name === 'Super Admin' || authStore.hasPermission('approvals')" class="md:col-span-2">
+          <div v-if="authStore.isManager || authStore.isSuperAdmin || authStore.hasPermission('approvals')" class="md:col-span-2">
             <h3 class="text-lg font-bold text-red-700 mb-2 border-b pb-2 mt-4">มอบหมายผู้อนุมัติชั่วคราว</h3>
             <p class="text-xs text-gray-500 mb-4">ในกรณีที่คุณลางานหรือไม่สามารถอนุมัติใบลาได้ คุณสามารถมอบหมายให้ผู้ใช้อื่นอนุมัติแทนชั่วคราวได้</p>
             
@@ -176,7 +184,7 @@
                 <label class="block text-xs text-gray-700 mb-1">เลือกผู้รับมอบหมาย</label>
                 <select v-model="delegationForm.delegate_id" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
                   <option :value="null">-- ไม่มีการมอบหมาย --</option>
-                  <option v-for="u in usersList" :key="u.id" :value="u.id">{{ u.name }} ({{ u.profile?.position || u.role?.name }})</option>
+                  <option v-for="u in usersList" :key="u.id" :value="u.id">{{ u.personnel?.full_name || u.name }} ({{ u.current_assignment?.position || u.position || u.profile?.position || u.role?.name }})</option>
                 </select>
               </div>
               <div v-if="delegationForm.delegate_id">
@@ -308,7 +316,7 @@ onMounted(async () => {
     }
 
     // Load users list for delegation
-    if (authStore.isManager || authStore.user?.role?.name === 'Super Admin' || authStore.hasPermission('approvals')) {
+    if (authStore.isManager || authStore.isSuperAdmin || authStore.hasPermission('approvals')) {
       const uRes = await api.get('/admin/users')
       usersList.value = uRes.data.filter(u => u.id !== authStore.user.id)
     }
@@ -458,7 +466,12 @@ const submitProfile = async () => {
     authStore.fetchUser()
   } catch (e) {
     console.error(e)
-    alertStore.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการอัปเดต')
+    const errors = e.response?.data?.errors
+    if (errors) {
+      alertStore.error(Object.values(errors).flat().join(' | '))
+    } else {
+      alertStore.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการอัปเดต')
+    }
   } finally {
     submitting.value = false
   }

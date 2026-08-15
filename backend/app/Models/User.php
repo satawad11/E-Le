@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
+use App\Models\Overtime\OvertimeTimeRecord;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,43 +26,26 @@ class User extends Authenticatable
         return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean', 'phone' => 'encrypted'];
     }
 
-    protected $appends = ['full_name_with_title', 'role', 'role_id'];
+    protected $appends = ['full_name_with_title', 'role', 'role_id', 'personnel_uuid', 'personnel_code', 'personnel_status', 'position'];
 
-    protected static function booted(): void
+    public function getPersonnelUuidAttribute(): ?string
     {
-        static::saving(function (User $user): void {
-            if ($user->isDirty('department_id')) {
-                $user->org_unit_id = $user->department_id
-                    ? Department::find($user->department_id)?->orgUnit?->id
-                    : null;
-            }
-        });
+        return $this->personnel?->uuid;
+    }
 
-        static::saved(function (User $user): void {
-            if ($user->wasRecentlyCreated || $user->wasChanged(['department_id', 'personnel_type_id'])) {
-                $current = PersonnelAssignment::where('user_id', $user->id)->whereNull('effective_to')->first();
-                if ($current && ($current->org_unit_id !== $user->org_unit_id || $current->personnel_type_id !== $user->personnel_type_id)) {
-                    $current->update(['effective_to' => now()->subDay()->toDateString()]);
-                    $current = null;
-                }
-                if (! $current) {
-                    PersonnelAssignment::create([
-                        'uuid' => (string) Str::uuid(),
-                        'user_id' => $user->id,
-                        'org_unit_id' => $user->org_unit_id,
-                        'personnel_type_id' => $user->personnel_type_id,
-                        'position' => null,
-                        'effective_from' => now()->toDateString(),
-                    ]);
-                }
-            }
-        });
+    public function getPersonnelCodeAttribute(): ?string
+    {
+        return $this->personnel?->personnel_code ?? $this->profile?->personnel_code;
+    }
 
-        static::updated(function (User $user) {
-            if ($user->wasChanged('password') || ($user->wasChanged('is_active') && ! $user->is_active)) {
-                $user->tokens()->delete();
-            }
-        });
+    public function getPersonnelStatusAttribute(): ?string
+    {
+        return $this->personnel?->status ?? $this->profile?->status;
+    }
+
+    public function getPositionAttribute(): ?string
+    {
+        return $this->currentAssignment?->position ?? $this->profile?->position;
     }
 
     public function getFullNameWithTitleAttribute()
@@ -86,6 +70,17 @@ class User extends Authenticatable
         return $this->hasMany(PersonnelAssignment::class);
     }
 
+    public function currentAssignment()
+    {
+        return $this->hasOne(PersonnelAssignment::class)
+            ->where(function ($q) {
+                $q->whereNull('effective_to')
+                    ->orWhereDate('effective_to', '>=', today());
+            })
+            ->whereDate('effective_from', '<=', today())
+            ->latest('effective_from');
+    }
+
     public function personnelType()
     {
         return $this->belongsTo(PersonnelType::class);
@@ -106,6 +101,11 @@ class User extends Authenticatable
         return $this->hasOne(UserProfile::class);
     }
 
+    public function personnel()
+    {
+        return $this->hasOne(Personnel::class);
+    }
+
     public function leaveBalances()
     {
         return $this->hasMany(LeaveBalance::class);
@@ -119,5 +119,10 @@ class User extends Authenticatable
     public function attendances()
     {
         return $this->hasMany(Attendance::class);
+    }
+
+    public function overtimeTimeRecords()
+    {
+        return $this->hasMany(OvertimeTimeRecord::class);
     }
 }

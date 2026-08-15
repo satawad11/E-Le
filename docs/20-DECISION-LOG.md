@@ -91,3 +91,70 @@ Workflow engine ใหม่ถูกติดตั้งในโหมด sha
 
 ## ADR-003 Vendor attendance as raw source
 ระบบผู้ผลิตเครื่องสแกนส่ง raw events เข้าระบบกลาง; Attendance Engine ของระบบกลางเป็นผู้ตัดสินสถานะตามตาราง/นโยบาย.
+
+## ADR-009 Attendance raw evidence, reconciliation, and corrections
+
+ตัดสินเมื่อ 2026-08-15 (LEGACY-08)
+
+ทุกแหล่ง `manual`, `web`, `device`, `import` ส่ง event แบบ vendor-neutral เข้า
+`attendance_raw_events` ก่อนแปลงเป็นผลรายวันใน `attendances` โดยใช้
+`event_uuid` และ `(attendance_source_id, dedup_key)` เป็น idempotency boundary
+เหตุการณ์ดิบแก้ payload/เวลา/ตัวตนไม่ได้ แต่ service อัปเดต processing metadata ได้
+เพื่อรองรับ retry และ reconciliation โดยไม่ทำลายหลักฐานต้นทาง
+
+ยังคง `unique(user_id, date)` บน `attendances` จนกว่า pipeline จริงจาก vendor
+จะผ่านการ pilot/reconciliation ตามแผน การแก้ผล attendance ด้วยคนต้องสร้าง
+`attendance_corrections` และผ่าน Workflow Engine ก่อน apply พร้อม central audit
+ห้าม controller หรือ connector แก้ raw event หรือผลย้อนหลังโดยตรง
+
+Connector ใช้ `AttendanceConnector` และ marker `BiometricConnector` เท่านั้นในเฟสนี้
+ห้ามเพิ่ม SDK/protocol/identifier ของยี่ห้อใดจนกว่าจะตอบ Open Question #1/#2.
+
+## ADR-010 Overtime has three independent time truths
+
+ตัดสินเมื่อ 2026-08-15 (LEGACY-09)
+
+OT แยกเป็น `ot_orders` (คำสั่งและเวลาที่อนุมัติ), `ot_assignments`
+(ผู้ได้รับมอบหมาย), และ `ot_time_records` (เวลาปฏิบัติจริงและเวลาที่รับรอง)
+ห้ามใช้ค่าใดค่าหนึ่งแทนอีกค่า เพราะ approved time, actual time และ certified time
+เป็นคนละข้อเท็จจริงและอาจไม่เท่ากันโดยชอบด้วยกระบวนการ
+
+คำสั่งต้องผ่าน Workflow Engine ก่อนมอบหมาย การลงเวลาจริงต้องมี assignment
+ที่อนุมัติและอยู่ในช่วงเวลา การรับรองทำภายหลังโดยผู้ถือสิทธิ์ภายใน org scope
+และทุก mutation สำคัญเข้า central audit
+
+คอลัมน์ `attendances.ot_*` คงไว้เป็นข้อมูล legacy แบบอ่านอย่างเดียวเพื่อ rollback
+และ compatibility แต่ source of truth ใหม่คือโดเมน OT เท่านั้น ห้ามสร้าง rate,
+amount หรือการคำนวณค่าตอบแทนจนกว่าจะมีหลักเกณฑ์ที่อนุมัติและ versioned.
+
+## ADR-011 Business modules emit; Notification Center delivers
+
+ตัดสินใจเมื่อ 2026-08-15 (LEGACY-10)
+
+โมดูล Leave, Attendance, Overtime และ Saraban มีหน้าที่เลือก event, related resource และผู้รับภายใต้ permission/scope แล้ว emit เข้า Notification Center เท่านั้น ห้ามเรียก Email, LINE OA หรือ Telegram provider จาก business flow โดยตรง
+
+Notification Center เป็นเจ้าของ notification type, versioned template, user preference, recipient/read state, delivery status และ retry แยก channel ความล้มเหลวของ provider ต้องเกิดหลัง business transaction และห้าม rollback ธุรกรรมหลัก
+
+payload และ template ใช้ข้อมูลขั้นต่ำ ตัด credential, รหัสประชาชน, เหตุผลลา, medical detail, attachment และเนื้อหาเอกสารออกโดยปริยาย ประวัติใน Laravel `notifications` เดิมคงไว้และ dual-read ระหว่างช่วง compatibility; ยังไม่ลบหรือ backfill จนกว่าจะพิสูจน์การส่งจริงครบหนึ่งรอบการใช้งาน
+
+## ADR-012 Reporting datasets are scoped facts; evaluation formulas require approval
+
+ตัดสินใจเมื่อ 2026-08-15 (LEGACY-11)
+
+รายงานทุกชนิดต้องสร้างจาก dataset ที่ผ่าน permission และ organization scope ก่อน และ export ทุก format ต้องใช้ dataset เดียวกับ JSON response เพื่อไม่ให้เกิดช่องทางส่งออกข้อมูลเกิน scope. Government Reports เดิมคง URL และ response contract ไว้ แต่ query ต้องเคารพ explicit permission scope.
+
+Evaluation layer เก็บและส่งคืนเฉพาะข้อเท็จจริง เช่น วันลา การมาสาย การขาดงาน และเวลา OT ที่อนุมัติ/ปฏิบัติจริง/รับรอง ห้ามสร้าง score, weight, threshold, ranking หรือ pass/fail จนกว่าองค์กรจะกำหนดหลักเกณฑ์และอนุมัติ version ที่ใช้บังคับอย่างชัดเจน.
+
+## ADR-013 Modules declare extensions; Core never imports business modules
+
+ตัดสินใจเมื่อ 2026-08-15 (LEGACY-12)
+
+โมดูลใหม่ต้องลงทะเบียนผ่าน `ModuleContract`/`ModuleRegistry` และประกาศ routes, menus, permissions, policies, workflows, settings, notifications, reports, audit events, version, dependencies และ enabled state. Permission ใหม่ใช้ `module.resource.action`; ชื่อเดิมที่ไม่ตรงเป็น compatibility exception เท่านั้น.
+
+Core ให้ contracts และ platform services แต่ห้าม import Leave, Attendance, Overtime, Saraban หรือโมดูลธุรกิจในอนาคต. Module provider เป็นผู้ผูก policy/listener/adapter ของ domain. การปิดโมดูลเป็น deployment switch แบบ transitive: routes ตอบ 404, route files ไม่โหลดและ menus ไม่แสดง แต่ container adapters ยังคง resolve ได้เพื่อไม่ทำให้งาน queue/in-flight พัง. เมนูเป็นเพียง presentation และไม่ให้สิทธิ์ backend.
+
+## ADR-014 PROD-00 Architecture Freeze
+
+ตัดสินใจเมื่อ 2026-08-15 (PROD-00)
+
+สถานะของระบบเข้าสู่ Production Phase อย่างเป็นทางการ สถาปัตยกรรม เทคโนโลยี (Laravel, Vue 3, MySQL 8, Tailwind, Docker) และโครงสร้างหลักจะถูก Freeze หรือล็อคไว้ ไม่มีการปรับเปลี่ยนหรือเพิ่มเครื่องมือใหม่ (Dependency versions pinned) นอกจากมีเหตุผลด้านความปลอดภัยร้ายแรงหรือ Critical Bug Fixes เท่านั้น โครงสร้างฐานข้อมูลจะถูก Freeze เพื่อป้องกันผลกระทบต่อ UAT และ Production Data.

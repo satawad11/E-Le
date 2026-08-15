@@ -4,16 +4,18 @@ namespace App\Http\Controllers\Api\Saraban;
 
 use App\Http\Controllers\Controller;
 use App\Models\Saraban\Document;
+use App\Models\User;
+use App\Services\OrgScopeResolver;
 use App\Services\Saraban\AuditLogService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
     protected $auditLog;
 
-    public function __construct(AuditLogService $auditLog)
+    public function __construct(AuditLogService $auditLog, private OrgScopeResolver $scopes)
     {
         $this->auditLog = $auditLog;
     }
@@ -28,7 +30,9 @@ class ReportController extends Controller
             ? "CAST(strftime('%m', created_at) AS INTEGER)"
             : 'MONTH(created_at)';
 
-        $monthlyData = Document::select(
+        $monthlyQuery = Document::query();
+        $this->applyScope($monthlyQuery, $request);
+        $monthlyData = $monthlyQuery->select(
             DB::raw("{$monthExpr} as month"),
             DB::raw('COUNT(*) as count')
         )
@@ -43,7 +47,9 @@ class ReportController extends Controller
         }
 
         // Stats by Priority
-        $priorityData = Document::select(
+        $priorityQuery = Document::query();
+        $this->applyScope($priorityQuery, $request);
+        $priorityData = $priorityQuery->select(
             'priority',
             DB::raw('COUNT(*) as count')
         )
@@ -62,7 +68,9 @@ class ReportController extends Controller
         }
 
         // Stats by Department
-        $deptData = Document::join('departments', 'saraban_documents.department_id', '=', 'departments.id')
+        $departmentQuery = Document::query();
+        $this->applyScope($departmentQuery, $request);
+        $deptData = $departmentQuery->join('departments', 'saraban_documents.department_id', '=', 'departments.id')
             ->select('departments.name', DB::raw('COUNT(saraban_documents.id) as count'))
             ->whereYear('saraban_documents.created_at', $year)
             ->groupBy('departments.name')
@@ -80,10 +88,9 @@ class ReportController extends Controller
     {
         $year = $request->input('year', date('Y'));
 
-        $documents = Document::with(['type', 'creator.profile', 'department'])
-            ->whereYear('created_at', $year)
-            ->when(! Auth::user()->can('saraban.document.view_classified'),
-                fn ($q) => $q->where('secrecy', 'normal'))
+        $documentsQuery = Document::with(['type', 'creator.profile', 'department']);
+        $this->applyScope($documentsQuery, $request);
+        $documents = $documentsQuery->whereYear('created_at', $year)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -145,5 +152,20 @@ class ReportController extends Controller
         ];
 
         return $map[$status] ?? $status;
+    }
+
+    private function applyScope(Builder $query, Request $request): void
+    {
+        $visible = $this->scopes->visibleOrgUnitIds(
+            $request->user(),
+            'saraban.document.report',
+            OrgScopeResolver::ORGANIZATION,
+        );
+        if ($visible !== null) {
+            $query->whereIn('saraban_documents.created_by', User::query()->select('users.id')->whereIn('users.org_unit_id', $visible));
+        }
+        if (! $request->user()->can('saraban.document.view_classified')) {
+            $query->where('saraban_documents.secrecy', 'normal');
+        }
     }
 }

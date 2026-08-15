@@ -8,7 +8,7 @@ use App\Models\Saraban\DocumentCircular;
 use App\Models\Saraban\DocumentCircularRecipient;
 use App\Models\Setting;
 use App\Models\User;
-use App\Notifications\SarabanDocumentNotification;
+use App\Services\NotificationCenter\NotificationCenter;
 use App\Services\Saraban\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -17,7 +17,7 @@ class CircularController extends Controller
 {
     protected $auditLog;
 
-    public function __construct(AuditLogService $auditLog)
+    public function __construct(AuditLogService $auditLog, private NotificationCenter $notifications)
     {
         $this->auditLog = $auditLog;
     }
@@ -66,13 +66,11 @@ class CircularController extends Controller
                 'user_id' => $user->id,
             ]);
 
-            $user->notify(new SarabanDocumentNotification(
-                $document->id,
-                'มีหนังสือเวียนใหม่ถึงคุณ',
-                "เอกสาร {$document->title} แจ้งเพื่อทราบ: ".$request->input('message'),
-                'circular'
-            ));
         }
+
+        $this->notifications->emit('saraban.task', $usersToNotify, $document, [
+            'status' => $document->status, 'action' => 'circular',
+        ], $request->user());
 
         $this->auditLog->log('circular.sent', $document, [
             'circular_id' => $circular->id,

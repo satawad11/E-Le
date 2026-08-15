@@ -162,7 +162,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { useAlertStore } from '../../stores/alert'
 
+const alertStore = useAlertStore()
 const templates = ref([])
 const loading = ref(true)
 const saving = ref(false)
@@ -271,7 +273,12 @@ const saveTemplate = async () => {
     showModal.value = false
     await fetchTemplates()
   } catch (err) {
-    alert(err.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกแม่แบบเอกสาร')
+    const errors = err.response?.data?.errors
+    if (errors) {
+      alertStore.error(Object.values(errors).flat().join(' | '))
+    } else {
+      alertStore.error(err.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกแม่แบบเอกสาร')
+    }
   } finally {
     saving.value = false
   }
@@ -282,9 +289,10 @@ const deleteTemplate = async (tpl) => {
   try {
     await axios.delete(`/api/admin/document-templates/${tpl.id}`)
     message.value = 'ลบแม่แบบเอกสารเรียบร้อยแล้ว'
+    alertStore.success('ลบแม่แบบเอกสารเรียบร้อยแล้ว')
     await fetchTemplates()
   } catch (err) {
-    alert('เกิดข้อผิดพลาดในการลบแม่แบบ')
+    alertStore.error(err.response?.data?.message || 'เกิดข้อผิดพลาดในการลบแม่แบบ')
   }
 }
 
@@ -293,9 +301,10 @@ const seedDefaults = async () => {
   try {
     await axios.post('/api/admin/document-templates/seed-defaults')
     message.value = 'ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว 🎉'
+    alertStore.success('ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว')
     await fetchTemplates()
   } catch (err) {
-    alert('ซิงค์ล้มเหลว')
+    alertStore.error('ซิงค์ล้มเหลว')
   } finally {
     seeding.value = false
   }

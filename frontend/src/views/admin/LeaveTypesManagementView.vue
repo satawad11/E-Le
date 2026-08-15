@@ -203,7 +203,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../../axios'
+import { useAlertStore } from '../../stores/alert'
 
+const alertStore = useAlertStore()
 const loading = ref(true)
 const saving  = ref(false)
 const deleting = ref(false)
@@ -294,11 +296,12 @@ const doDelete = async () => {
   deleting.value = true
   try {
     await api.delete(`/admin/leave-types/${deleteTarget.value.id}`)
+    alertStore.success('ลบประเภทการลาเรียบร้อยแล้ว')
     await fetchTypes()
     showDeleteModal.value = false
     deleteTarget.value = null
   } catch (e) {
-    alert(e?.response?.data?.message || 'ลบไม่สำเร็จ')
+    alertStore.error(e?.response?.data?.message || 'ลบไม่สำเร็จ')
   } finally {
     deleting.value = false
   }

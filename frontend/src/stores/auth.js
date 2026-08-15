@@ -31,6 +31,14 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isAuthenticated: (state) => !!state.token,
 
+    // Personnel Domain helpers (with legacy fallback)
+    personnel: (state) => state.user?.personnel || null,
+    currentAssignment: (state) => state.user?.current_assignment || null,
+    personnelCode: (state) => state.user?.personnel?.personnel_code || state.user?.personnel_code || state.user?.profile?.personnel_code || '',
+    displayName: (state) => state.user?.personnel?.full_name || state.user?.full_name_with_title || state.user?.name || '',
+    positionName: (state) => state.user?.current_assignment?.position || state.user?.position || state.user?.profile?.position || '',
+    orgUnitName: (state) => state.user?.current_assignment?.org_unit?.name || state.user?.org_unit?.name || state.user?.department?.name || '',
+
     // Role name helper (returns first role or empty)
     roleName: (state) => state.user?.role_names?.[0] || state.user?.role?.name || '',
 

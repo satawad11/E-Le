@@ -37,6 +37,10 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                 'attendance.record.create' => 'สร้างการบันทึกเวลาปฏิบัติงาน',
                 'attendance.record.view_my' => 'ดูประวัติการบันทึกเวลาปฏิบัติงานของตนเอง',
             ],
+            'overtime' => [
+                'overtime.operation.execute' => 'บันทึกและจัดทำคำสั่งปฏิบัติงานล่วงเวลา',
+                'overtime.management.review' => 'อนุมัติ รับรอง และดูรายงานการปฏิบัติงานล่วงเวลา',
+            ],
             'saraban' => [
                 'saraban.document.view' => 'เข้าถึงทะเบียนรับ-ส่งหนังสือราชการ',
                 'saraban.document.create' => 'สร้างร่างหนังสือราชการใหม่',

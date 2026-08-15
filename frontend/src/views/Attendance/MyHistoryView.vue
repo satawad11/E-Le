@@ -1,9 +1,9 @@
 <template>
-  <div class="max-w-5xl mx-auto py-8">
-    <div class="flex justify-between items-center mb-6">
+  <div class="max-w-5xl mx-auto space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
       <h2 class="text-2xl font-bold text-gray-800">ประวัติการลงเวลา</h2>
       
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <select v-model="selectedMonth" class="border-gray-300 rounded-lg text-sm focus:border-[#800000] focus:ring-[#800000]">
           <option v-for="(name, index) in months" :key="index" :value="index + 1">{{ name }}</option>
         </select>
@@ -32,10 +32,10 @@
           </thead>
           <tbody class="text-sm">
             <tr v-if="loading">
-              <td colspan="6" class="py-8 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
+              <td colspan="7" class="py-8 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
             </tr>
             <tr v-else-if="records.length === 0">
-              <td colspan="6" class="py-8 text-center text-gray-500">ไม่มีข้อมูลในเดือนนี้</td>
+              <td colspan="7" class="py-8 text-center text-gray-500">ไม่มีข้อมูลในเดือนนี้</td>
             </tr>
             <tr v-else v-for="record in records" :key="record.id" class="border-b border-gray-50 hover:bg-gray-50/50">
               <td class="py-4 px-4 font-medium text-gray-900">

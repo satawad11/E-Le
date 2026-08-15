@@ -3,17 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
+use App\Models\AttendanceSource;
 use App\Models\Leave;
+use App\Models\Overtime\OvertimeTimeRecord;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\Attendance\AttendanceEventRecorder;
+use App\Services\Attendance\AttendanceReconciliationService;
+use App\Services\Attendance\AttendanceScopeService;
+use App\Services\NotificationCenter\NotificationCenter;
 use App\Services\SystemSettingService;
 use App\Services\ThaiDateService;
 use App\Services\Time\TimeService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
-use GuzzleHttp\Client;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -25,7 +29,13 @@ class AttendanceController extends Controller
      *
      * โมดูลนี้ไม่คำนวณวันทำงาน เวลาเริ่ม/เลิกงาน หรือการมาสายเองอีกต่อไป
      */
-    public function __construct(private readonly TimeService $time) {}
+    public function __construct(
+        private readonly TimeService $time,
+        private readonly AttendanceEventRecorder $events,
+        private readonly AttendanceReconciliationService $reconciliation,
+        private readonly AttendanceScopeService $scope,
+        private readonly NotificationCenter $notifications,
+    ) {}
 
     /**
      * Check in for the day
@@ -39,8 +49,8 @@ class AttendanceController extends Controller
         ]);
 
         $user = auth()->user();
-        $date = Carbon::now()->toDateString();
-        $time = Carbon::now();
+        $time = $this->time->now($user);
+        $date = $time->toDateString();
 
         // ดึง settings ทั้งหมดครั้งเดียว (แทนการ query แยก 5 ครั้ง)
         $settings = app(SystemSettingService::class)->runtimeValues();
@@ -94,30 +104,26 @@ class AttendanceController extends Controller
         $lateMinutes = $this->time->lateMinutes($user, $time, $time);
         $status = $lateMinutes > 0 ? 'Late' : 'Present';
 
-        if (! $attendance) {
-            $attendance = new Attendance([
-                'user_id' => $user->id,
-                'date' => $date,
-            ]);
-        }
-
-        $attendance->check_in_time = $time;
-        $attendance->check_in_location = $request->location;
-        $attendance->distance_from_college = $distance;
-        if ($imagePath) {
-            $attendance->check_in_image = $imagePath;
-        }
-        $attendance->status = $status;
-        $attendance->late_minutes = $lateMinutes;
-        $attendance->notes = $request->notes;
-        $attendance->save();
+        $source = AttendanceSource::firstOrCreate(
+            ['code' => 'web'],
+            ['name' => 'ระบบเว็บ', 'type' => 'web', 'timezone' => 'Asia/Bangkok', 'health_state' => 'healthy'],
+        );
+        $recorded = $this->events->record(
+            $source,
+            'check_in',
+            $time,
+            "web:{$user->id}:{$date}:check_in",
+            ['location' => $request->location, 'distance' => $distance, 'image_path' => $imagePath, 'notes' => $request->notes],
+            $user,
+        );
+        $attendance = $this->reconciliation->reconcile($recorded['event']);
 
         if ($lateMinutes > 0) {
-            $msg = "⚠️ แจ้งเตือนมาสาย\nชื่อ: {$user->first_name} {$user->last_name}\nสาย: {$lateMinutes} นาที\nเวลา: ".$time->format('H:i');
-            if ($request->notes) {
-                $msg .= "\nหมายเหตุ: ".$request->notes;
-            }
-            $this->sendLineMessage($msg);
+            $reviewers = User::permission('attendance.view_all')->get()
+                ->filter(fn (User $reviewer) => $this->scope->canSee($reviewer, $user));
+            $this->notifications->emit('attendance.late', $reviewers, $attendance, [
+                'minutes' => $lateMinutes, 'time' => $time->format('H:i'),
+            ], $user);
         }
 
         return response()->json([
@@ -138,8 +144,8 @@ class AttendanceController extends Controller
         ]);
 
         $user = auth()->user();
-        $date = Carbon::now()->toDateString();
-        $time = Carbon::now();
+        $time = $this->time->now($user);
+        $date = $time->toDateString();
 
         // ดึง settings ทั้งหมดครั้งเดียว (แทนการ query แยก 4 ครั้ง)
         $settings = app(SystemSettingService::class)->runtimeValues();
@@ -148,16 +154,7 @@ class AttendanceController extends Controller
             ->where('date', $date)
             ->first();
 
-        if (! $attendance) {
-            // Check out without check in
-            $attendance = new Attendance([
-                'user_id' => $user->id,
-                'date' => $date,
-                'status' => 'Absent',
-            ]);
-        }
-
-        if ($attendance->check_out_time) {
+        if ($attendance?->check_out_time) {
             return response()->json(['message' => 'คุณได้ลงเวลาออกงานของวันนี้ไปแล้ว'], 400);
         }
 
@@ -188,109 +185,31 @@ class AttendanceController extends Controller
             $imagePath = $this->storeAttendanceImage($request->image);
         }
 
-        // LEGACY-06 — คำนวณจากบริการเวลากลาง (รองรับกะข้ามวันและการผ่อนผัน)
-        $earlyLeaveMinutes = $this->time->earlyLeaveMinutes($user, $time, $attendance->date ?? $time);
-
-        $attendance->check_out_time = $time;
-        if ($request->location) {
-            $attendance->check_out_location = $request->location;
-        }
-        if ($imagePath) {
-            $attendance->check_out_image = $imagePath;
-        }
-        $attendance->early_leave_minutes = $earlyLeaveMinutes;
-        if ($request->notes) {
-            $attendance->notes = $attendance->notes ? $attendance->notes.' | '.$request->notes : $request->notes;
-        }
-        $attendance->save();
+        $source = AttendanceSource::firstOrCreate(
+            ['code' => 'web'],
+            ['name' => 'ระบบเว็บ', 'type' => 'web', 'timezone' => 'Asia/Bangkok', 'health_state' => 'healthy'],
+        );
+        $recorded = $this->events->record(
+            $source,
+            'check_out',
+            $time,
+            "web:{$user->id}:{$date}:check_out",
+            ['location' => $request->location, 'distance' => $distance, 'image_path' => $imagePath, 'notes' => $request->notes],
+            $user,
+        );
+        $attendance = $this->reconciliation->reconcile($recorded['event']);
+        $earlyLeaveMinutes = (int) $attendance->early_leave_minutes;
 
         if ($earlyLeaveMinutes > 0) {
-            $msg = "⚠️ แจ้งเตือนออกก่อนเวลา\nชื่อ: {$user->first_name} {$user->last_name}\nออกก่อน: {$earlyLeaveMinutes} นาที\nเวลา: ".$time->format('H:i');
-            if ($request->notes) {
-                $msg .= "\nหมายเหตุ: ".$request->notes;
-            }
-            $this->sendLineMessage($msg);
+            $reviewers = User::permission('attendance.view_all')->get()
+                ->filter(fn (User $reviewer) => $this->scope->canSee($reviewer, $user));
+            $this->notifications->emit('attendance.early_leave', $reviewers, $attendance, [
+                'minutes' => $earlyLeaveMinutes, 'time' => $time->format('H:i'),
+            ], $user);
         }
 
         return response()->json([
             'message' => 'ลงเวลาออกงานสำเร็จ',
-            'attendance' => $attendance,
-        ]);
-    }
-
-    /**
-     * OT Check In
-     */
-    public function otCheckIn(Request $request)
-    {
-        $request->validate([
-            'notes' => 'nullable|string',
-        ]);
-
-        $user = auth()->user();
-        $date = Carbon::now()->toDateString();
-        $time = Carbon::now();
-
-        $attendance = Attendance::firstOrCreate(
-            ['user_id' => $user->id, 'date' => $date],
-            ['status' => 'Absent']
-        );
-
-        if ($attendance->ot_check_in_time) {
-            return response()->json(['message' => 'คุณได้ลงเวลาเข้า OT วันนี้ไปแล้ว'], 400);
-        }
-
-        $attendance->ot_check_in_time = $time;
-        if ($request->notes) {
-            $attendance->notes = $attendance->notes ? $attendance->notes.' | '.$request->notes : $request->notes;
-        }
-        $attendance->save();
-
-        return response()->json([
-            'message' => 'ลงเวลาเข้า OT สำเร็จ',
-            'attendance' => $attendance,
-        ]);
-    }
-
-    /**
-     * OT Check Out
-     */
-    public function otCheckOut(Request $request)
-    {
-        $request->validate([
-            'notes' => 'nullable|string',
-        ]);
-
-        $user = auth()->user();
-        $date = Carbon::now()->toDateString();
-        $time = Carbon::now();
-
-        $attendance = Attendance::where('user_id', $user->id)
-            ->where('date', $date)
-            ->first();
-
-        if (! $attendance || ! $attendance->ot_check_in_time) {
-            return response()->json(['message' => 'คุณยังไม่ได้ลงเวลาเข้า OT'], 400);
-        }
-
-        if ($attendance->ot_check_out_time) {
-            return response()->json(['message' => 'คุณได้ลงเวลาออก OT ไปแล้ว'], 400);
-        }
-
-        $attendance->ot_check_out_time = $time;
-
-        // Calculate OT minutes
-        $otStart = Carbon::parse($attendance->ot_check_in_time);
-        $otMinutes = $otStart->diffInMinutes($time);
-        $attendance->ot_minutes = $otMinutes;
-
-        if ($request->notes) {
-            $attendance->notes = $attendance->notes ? $attendance->notes.' | '.$request->notes : $request->notes;
-        }
-        $attendance->save();
-
-        return response()->json([
-            'message' => 'ลงเวลาออก OT สำเร็จ',
             'attendance' => $attendance,
         ]);
     }
@@ -306,6 +225,13 @@ class AttendanceController extends Controller
         $attendance = Attendance::where('user_id', $user->id)
             ->where('date', $date)
             ->first();
+
+        $record = OvertimeTimeRecord::where('user_id', $user->id)
+            ->whereDate('actual_start', $date)->latest('id')->first();
+        if ($record !== null) {
+            $attendance ??= new Attendance(['user_id' => $user->id, 'date' => $date]);
+            $this->setOvertimeCompatibilityAttributes($attendance, $record);
+        }
 
         return response()->json($attendance);
     }
@@ -326,6 +252,7 @@ class AttendanceController extends Controller
         }
 
         $attendances = $query->get();
+        $this->decorateOvertimeCompatibility($attendances);
 
         return response()->json($attendances);
     }
@@ -336,6 +263,7 @@ class AttendanceController extends Controller
     public function allRecords(Request $request)
     {
         $query = Attendance::with('user.department')->orderBy('date', 'desc');
+        $this->scope->applyToAttendanceQuery($query, $request->user());
 
         if ($request->date) {
             $query->where('date', $request->date);
@@ -356,8 +284,36 @@ class AttendanceController extends Controller
         }
 
         $attendances = $query->paginate(20);
+        $this->decorateOvertimeCompatibility($attendances->getCollection());
 
         return response()->json($attendances);
+    }
+
+    private function decorateOvertimeCompatibility($attendances): void
+    {
+        if ($attendances->isEmpty()) {
+            return;
+        }
+        $userIds = $attendances->pluck('user_id')->unique()->values();
+        $from = $attendances->min(fn (Attendance $attendance) => $attendance->date->toDateString());
+        $to = $attendances->max(fn (Attendance $attendance) => $attendance->date->toDateString());
+        $records = OvertimeTimeRecord::whereIn('user_id', $userIds)
+            ->whereDate('actual_start', '>=', $from)->whereDate('actual_start', '<=', $to)
+            ->get()->keyBy(fn (OvertimeTimeRecord $record) => $record->user_id.'|'.$record->actual_start->setTimezone('Asia/Bangkok')->toDateString());
+
+        foreach ($attendances as $attendance) {
+            $record = $records->get($attendance->user_id.'|'.$attendance->date->toDateString());
+            if ($record !== null) {
+                $this->setOvertimeCompatibilityAttributes($attendance, $record);
+            }
+        }
+    }
+
+    private function setOvertimeCompatibilityAttributes(Attendance $attendance, OvertimeTimeRecord $record): void
+    {
+        $attendance->setAttribute('ot_check_in_time', $record->actual_start);
+        $attendance->setAttribute('ot_check_out_time', $record->actual_end);
+        $attendance->setAttribute('ot_minutes', $record->actual_minutes ?? 0);
     }
 
     /**
@@ -410,6 +366,7 @@ class AttendanceController extends Controller
     public function exportPdf(Request $request, ThaiDateService $thaiDateService)
     {
         $query = Attendance::with('user.department')->orderBy('date', 'desc');
+        $this->scope->applyToAttendanceQuery($query, $request->user());
 
         if ($request->date) {
             $query->where('date', $request->date);
@@ -448,6 +405,7 @@ class AttendanceController extends Controller
     public function exportWord(Request $request, ThaiDateService $thaiDateService)
     {
         $query = Attendance::with('user.department')->orderBy('date', 'desc');
+        $this->scope->applyToAttendanceQuery($query, $request->user());
 
         if ($request->date) {
             $query->where('date', $request->date);
@@ -505,6 +463,7 @@ class AttendanceController extends Controller
                     });
                 })->with('type');
         }]);
+        $this->scope->applyToUserQuery($usersQuery, $request->user());
 
         if ($deptId) {
             $usersQuery->where('department_id', $deptId);
@@ -622,6 +581,9 @@ class AttendanceController extends Controller
         $user = User::with(['profile', 'department'])->find($userId);
         if (! $user) {
             return ['error' => 'ไม่พบบุคลากร'];
+        }
+        if (! $this->scope->canSee($request->user(), $user)) {
+            return ['error' => 'คุณไม่มีสิทธิ์ดูข้อมูลบุคลากรรายนี้'];
         }
 
         $thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -875,8 +837,9 @@ class AttendanceController extends Controller
                     ->orWhere(function ($q) use ($month, $year) {
                         $q->whereMonth('end_date', $month)->whereYear('end_date', $year);
                     });
-            })
-            ->get();
+            });
+        $this->scope->applyToUserOwnedQuery($leaves, $request->user());
+        $leaves = $leaves->get();
 
         $count = 0;
 
@@ -907,42 +870,6 @@ class AttendanceController extends Controller
             'message' => "ซิงค์ข้อมูลการลาสำเร็จ (พบข้อมูลวันลาที่ตรงกับเดือนนี้ $count วัน)",
             'synced_count' => $count,
         ]);
-    }
-
-    protected function sendLineMessage($message)
-    {
-        $settings = app(SystemSettingService::class)->runtimeValues();
-
-        $token = $settings->get('line_channel_access_token');
-        $adminId = $settings->get('line_group_id') ?: $settings->get('line_admin_user_id');
-
-        if (! $token || ! $adminId) {
-            return;
-        }
-
-        $url = 'https://api.line.me/v2/bot/message/push';
-        $data = [
-            'to' => $adminId,
-            'messages' => [
-                [
-                    'type' => 'text',
-                    'text' => $message,
-                ],
-            ],
-        ];
-
-        try {
-            $client = new Client;
-            $client->post($url, [
-                'headers' => [
-                    'Authorization' => 'Bearer '.$token,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => $data,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('LINE API Error: '.$e->getMessage());
-        }
     }
 
     /**
@@ -992,11 +919,11 @@ class AttendanceController extends Controller
 
         $daysInMonth = Carbon::createFromDate($year, $month)->daysInMonth;
 
-        $usersQuery = User::with(['profile', 'department', 'attendances' => function ($q) use ($year, $month) {
-            $q->whereYear('date', $year)->whereMonth('date', $month)
-                ->whereNotNull('ot_check_in_time')
-                ->whereNotNull('ot_check_out_time');
+        $usersQuery = User::with(['profile', 'department', 'overtimeTimeRecords' => function ($q) use ($year, $month) {
+            $q->whereYear('actual_start', $year)->whereMonth('actual_start', $month)
+                ->whereNotNull('actual_start')->whereNotNull('actual_end');
         }]);
+        $this->scope->applyToUserQuery($usersQuery, $request->user());
 
         if ($deptId) {
             $usersQuery->where('department_id', $deptId);
@@ -1012,14 +939,9 @@ class AttendanceController extends Controller
             $attendancesByDay = array_fill(1, $daysInMonth, null);
             $totalMins = 0;
 
-            foreach ($user->attendances as $att) {
-                $day = (int) Carbon::parse($att->date)->format('d');
-                $in = Carbon::parse($att->ot_check_in_time);
-                $out = Carbon::parse($att->ot_check_out_time);
-                if ($out->lt($in)) {
-                    $out->addDay();
-                }
-                $diff = $in->diffInMinutes($out);
+            foreach ($user->overtimeTimeRecords as $timeRecord) {
+                $day = (int) $timeRecord->actual_start->setTimezone('Asia/Bangkok')->format('d');
+                $diff = (int) ($timeRecord->actual_minutes ?? 0);
                 $h = floor($diff / 60);
                 $m = $diff % 60;
                 $attendancesByDay[$day] = sprintf('%d.%02d', $h, $m);

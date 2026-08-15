@@ -11,9 +11,11 @@ use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\User;
 use App\Services\Time\TimeService;
+use App\Services\Workflow\LeaveWorkflowShadow;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +30,8 @@ class LeaveService
         private LeaveVerificationService $verification,
         // LEGACY-06 — บริการเวลากลาง โมดูลนี้ไม่คำนวณวันทำงานเองอีกต่อไป
         private TimeService $time,
+        // LEGACY-07 — เปิด workflow instance ให้ใบลาใหม่ (ยังเป็น shadow)
+        private LeaveWorkflowShadow $workflow,
     ) {}
 
     /**
@@ -40,7 +44,7 @@ class LeaveService
      *
      * ผลลัพธ์เท่าเดิมทุกกรณี — มีเทสต์เทียบไว้ใน `TimeServiceTest`
      */
-    public function calculateTotalDays($startDate, $endDate, bool $excludeHolidays = true, ?int $departmentId = null): float
+    public function calculateTotalDays($startDate, $endDate, bool $excludeHolidays = true, ?int $departmentId = null, ?User $user = null): float
     {
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate);
@@ -49,19 +53,26 @@ class LeaveService
             return $this->time->calendarDaysBetween($start, $end);
         }
 
-        return $this->time->workingDaysBetween($start, $end, null, $departmentId);
+        /*
+         * LEGACY-07 — ส่ง `$user` เข้าไปด้วย เพื่อให้ตารางเวลาเฉพาะบุคคล/หน่วยงาน
+         * มีผลกับการนับวันลา ผู้ที่ทำงานเสาร์ตามตารางของตนต้องถูกนับวันลาวันเสาร์ด้วย
+         *
+         * เรียกโดยไม่ส่ง `$user` ได้เหมือนเดิม (ใช้ตารางระดับองค์กร) เพื่อไม่ให้
+         * ผู้เรียกเดิมพัง
+         */
+        return $this->time->workingDaysBetween($start, $end, $user, $departmentId);
     }
 
     public function createLeaveRequest(array $data, int $userId, ?UploadedFile $attachment): Leave
     {
-        return DB::transaction(function () use ($data, $userId, $attachment) {
-            $user = User::with(['personnelType', 'profile'])->lockForUpdate()->findOrFail($userId);
+        $leave = DB::transaction(function () use ($data, $userId, $attachment) {
+            $user = User::with(['personnel', 'currentAssignment', 'personnelType', 'profile'])->lockForUpdate()->findOrFail($userId);
             $start = Carbon::parse($data['start_date']);
             $end = Carbon::parse($data['end_date']);
             $policy = $this->policies->resolve($user, (int) $data['leave_type_id'], $start);
             $period = $data['leave_period'] ?? 'full_day';
             $days = $period === 'full_day'
-                ? $this->calculateTotalDays($start, $end, $policy->exclude_holidays, $user->department_id)
+                ? $this->calculateTotalDays($start, $end, $policy->exclude_holidays, $user->department_id, $user)
                 : 0.5;
             if ($days <= 0) {
                 throw ValidationException::withMessages(['start_date' => 'ช่วงวันที่เลือกไม่มีวันทำการ']);
@@ -133,6 +144,27 @@ class LeaveService
 
             return $leave;
         }, 5);
+
+        /*
+         * LEGACY-07 — เปิด workflow instance ให้ใบลาใบใหม่ (shadow mode)
+         *
+         * ทำนอก transaction และห่อ try/catch เพราะ workflow engine ยังเป็น
+         * shadow อยู่ (LEGACY-05 · ADR-009) ตรรกะเดิมใน `leave_approvals`
+         * ยังเป็น source of truth การเปิด instance ไม่สำเร็จจึงต้องไม่ทำให้
+         * การยื่นใบลาล้ม
+         */
+        if (config('workflow.shadow_mode', true)) {
+            try {
+                $this->workflow->prepare($leave);
+            } catch (\Throwable $exception) {
+                Log::warning('เปิด workflow instance ให้ใบลาไม่สำเร็จ', [
+                    'leave_id' => $leave->id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return $leave;
     }
 
     /**

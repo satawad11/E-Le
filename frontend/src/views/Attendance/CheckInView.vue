@@ -1,23 +1,23 @@
 <template>
-  <div class="max-w-3xl mx-auto py-8">
+  <div class="max-w-3xl mx-auto">
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <!-- Header -->
-      <div class="bg-[#800000] px-6 py-8 text-center text-white relative overflow-hidden">
+      <div class="bg-[#800000] px-4 sm:px-6 py-6 sm:py-8 text-center text-white relative overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
         <div class="relative z-10">
-          <h2 class="text-3xl font-bold mb-2">ลงเวลาปฏิบัติงาน</h2>
-          <p class="text-white/80">ระบบลงเวลาเข้า-ออกงานออนไลน์</p>
+          <h2 class="text-2xl sm:text-3xl font-bold mb-2">ลงเวลาปฏิบัติงาน</h2>
+          <p class="text-white/80 text-sm sm:text-base">ระบบลงเวลาเข้า-ออกงานออนไลน์</p>
         </div>
       </div>
 
       <!-- Main Content -->
-      <div class="p-8">
+      <div class="p-4 sm:p-6 md:p-8">
         <!-- Current Time Display -->
-        <div class="text-center mb-10">
-          <div class="text-6xl font-bold text-gray-800 tracking-tight font-mono">
+        <div class="text-center mb-8 sm:mb-10">
+          <div class="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-800 tracking-tight font-mono">
             {{ currentTime }}
           </div>
-          <div class="text-gray-500 mt-2 text-lg">
+          <div class="text-gray-500 mt-2 text-sm sm:text-base md:text-lg">
             {{ currentDate }}
           </div>
         </div>
@@ -46,9 +46,9 @@
 
         <!-- Notes Input -->
         <div class="mb-8">
-          <label class="block text-sm font-medium text-gray-700 mb-2">หมายเหตุ (ถ้ามี)</label>
-          <textarea v-model="notes" rows="2" 
-                    class="w-full border-gray-300 rounded-xl shadow-sm focus:border-[#800000] focus:ring-[#800000] text-sm"
+          <label for="checkin-notes" class="block text-sm font-medium text-gray-700 mb-2">หมายเหตุ (ถ้ามี)</label>
+          <textarea id="checkin-notes" v-model="notes" rows="2" 
+                    class="w-full border-gray-300 rounded-xl shadow-sm focus:border-[#800000] focus:ring-[#800000] text-sm focus-visible:ring-2 focus-visible:ring-[#800000]"
                     placeholder="เช่น ทำงานนอกสถานที่, ลืมลงเวลาเมื่อเช้า"></textarea>
         </div>
 
@@ -56,21 +56,22 @@
         <div v-if="requireSelfie" class="mb-8">
           <label class="block text-sm font-medium text-gray-700 mb-2">ถ่ายรูปยืนยันตัวตน (บังคับ)</label>
           <div class="relative bg-black rounded-xl overflow-hidden aspect-[4/3] flex items-center justify-center">
-            <video ref="videoRef" class="w-full h-full object-cover" autoplay playsinline muted></video>
+            <video ref="videoRef" class="w-full h-full object-cover" autoplay playsinline muted aria-label="การแสดงภาพสดจากกล้อง"></video>
             <div v-if="!cameraStream && !cameraError" class="absolute text-white animate-pulse">กำลังเปิดกล้อง...</div>
             <div v-if="cameraError" class="absolute text-red-500 bg-black/50 p-4 text-center">{{ cameraError }}</div>
           </div>
-          <canvas ref="canvasRef" class="hidden"></canvas>
+          <canvas ref="canvasRef" class="hidden" aria-hidden="true"></canvas>
         </div>
 
         <!-- Action Buttons -->
         <div class="grid grid-cols-2 gap-4 mb-4">
           <button @click="handleCheckIn" 
                   :disabled="loading || !location || hasCheckedIn"
-                  class="flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-200"
+                  aria-label="ลงเวลาเข้างานปกติ"
+                  class="flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-green-600 focus:outline-none"
                   :class="loading || !location || hasCheckedIn ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400' : 'border-green-100 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-200'">
             <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-3">
-              <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
               </svg>
             </div>
@@ -80,10 +81,11 @@
 
           <button @click="handleCheckOut" 
                   :disabled="loading || !location || !hasCheckedIn || hasCheckedOut"
-                  class="flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-200"
+                  aria-label="ลงเวลาออกงานปกติ"
+                  class="flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-orange-600 focus:outline-none"
                   :class="loading || !location || !hasCheckedIn || hasCheckedOut ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400' : 'border-orange-100 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:border-orange-200'">
             <div class="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-3">
-              <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
               </svg>
             </div>
@@ -95,20 +97,22 @@
         <div class="grid grid-cols-2 gap-4">
           <button @click="handleOtCheckIn" 
                   :disabled="loading || !location || hasOtCheckedIn"
-                  class="flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200"
+                  aria-label="ลงเวลาเข้างานล่วงเวลา (OT)"
+                  class="flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-600 focus:outline-none"
                   :class="loading || !location || hasOtCheckedIn ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400' : 'border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-200'">
             <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-2">
-              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
             <span class="font-bold">เข้างาน OT</span>
           </button>
 
           <button @click="handleOtCheckOut" 
                   :disabled="loading || !location || !hasOtCheckedIn || hasOtCheckedOut"
-                  class="flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200"
+                  aria-label="ลงเวลาออกงานล่วงเวลา (OT)"
+                  class="flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-purple-600 focus:outline-none"
                   :class="loading || !location || !hasOtCheckedIn || hasOtCheckedOut ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400' : 'border-purple-100 bg-purple-50 text-purple-700 hover:bg-purple-100 hover:border-purple-200'">
             <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-2">
-              <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
             <span class="font-bold">ออกงาน OT</span>
           </button>
@@ -124,6 +128,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import api from '../../axios'
 import { useAuthStore } from '../../stores/auth'
 import { useAlertStore } from '../../stores/alert'
+import { getErrorMessage } from '../../utils/errorHandler'
 
 const authStore = useAuthStore()
 const alertStore = useAlertStore()
@@ -274,7 +279,7 @@ const handleCheckIn = async () => {
     notes.value = ''
     await fetchTodayAttendance()
   } catch (error) {
-    alertStore.addAlert(error.response?.data?.message || 'เกิดข้อผิดพลาดในการลงเวลา', 'error')
+    alertStore.addAlert(getErrorMessage(error, 'เกิดข้อผิดพลาดในการลงเวลา'), 'error')
   } finally {
     loading.value = false
   }
@@ -313,7 +318,7 @@ const handleCheckOut = async () => {
     notes.value = ''
     await fetchTodayAttendance()
   } catch (error) {
-    alertStore.addAlert(error.response?.data?.message || 'เกิดข้อผิดพลาดในการลงเวลา', 'error')
+    alertStore.addAlert(getErrorMessage(error, 'เกิดข้อผิดพลาดในการลงเวลา'), 'error')
   } finally {
     loading.value = false
   }
@@ -334,7 +339,7 @@ const handleOtCheckIn = async () => {
     notes.value = ''
     await fetchTodayAttendance()
   } catch (error) {
-    alertStore.addAlert(error.response?.data?.message || 'เกิดข้อผิดพลาดในการลงเวลา OT', 'error')
+    alertStore.addAlert(getErrorMessage(error, 'เกิดข้อผิดพลาดในการลงเวลา OT'), 'error')
   } finally {
     loading.value = false
   }
@@ -362,7 +367,7 @@ const handleOtCheckOut = async () => {
     notes.value = ''
     await fetchTodayAttendance()
   } catch (error) {
-    alertStore.addAlert(error.response?.data?.message || 'เกิดข้อผิดพลาดในการลงเวลา OT', 'error')
+    alertStore.addAlert(getErrorMessage(error, 'เกิดข้อผิดพลาดในการลงเวลา OT'), 'error')
   } finally {
     loading.value = false
   }

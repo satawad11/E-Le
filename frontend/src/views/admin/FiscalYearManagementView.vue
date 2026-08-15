@@ -133,6 +133,7 @@ import { ref, onMounted, watch } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
+import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 
 const alertStore = useAlertStore()
 
@@ -153,16 +154,8 @@ const form = ref({
   is_current: false,
 })
 
-const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
-
 const formatThaiDate = (dateString) => {
-  if (!dateString) return '-'
-  const date = new Date(dateString)
-  if (isNaN(date.getTime())) return dateString
-  const d = date.getDate()
-  const m = thaiMonths[date.getMonth()]
-  const y = date.getFullYear() + 543
-  return `${d} ${m} ${y}`
+  return ThaiDateFormatter.toThaiShortText(dateString)
 }
 
 // Auto-fill name when year changes
@@ -224,8 +217,13 @@ const submitForm = async () => {
     showModal.value = false
     fetchFiscalYears()
   } catch (e) {
-    const msg = e.response?.data?.message || 'เกิดข้อผิดพลาด'
-    alertStore.error(msg)
+    const errors = e.response?.data?.errors
+    if (errors) {
+      alertStore.error(Object.values(errors).flat().join(' | '))
+    } else {
+      const msg = e.response?.data?.message || 'เกิดข้อผิดพลาด'
+      alertStore.error(msg)
+    }
   } finally {
     submitting.value = false
   }
@@ -243,7 +241,7 @@ const doDelete = async () => {
     showDeleteModal.value = false
     fetchFiscalYears()
   } catch (e) {
-    alertStore.error('ไม่สามารถลบได้')
+    alertStore.error(e.response?.data?.message || 'ไม่สามารถลบได้')
   }
 }
 

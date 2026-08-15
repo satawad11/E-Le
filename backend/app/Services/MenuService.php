@@ -4,16 +4,19 @@ namespace App\Services;
 
 use App\Models\Menu;
 use App\Models\User;
+use App\Services\Modules\ModuleRegistry;
 use Illuminate\Support\Facades\Cache;
 
 class MenuService
 {
+    public function __construct(private ModuleRegistry $modules) {}
+
     /**
      * Get accessible menu tree for the given user.
      */
     public function getUserMenuTree(User $user): array
     {
-        $cacheKey = "user_menu_tree_{$user->id}";
+        $cacheKey = "user_menu_tree_{$user->id}_{$this->modules->stateFingerprint()}";
 
         return Cache::remember($cacheKey, 3600, function () use ($user) {
             $userPermissions = $user->getAllPermissions()->pluck('name')->toArray();
@@ -51,7 +54,7 @@ class MenuService
      */
     protected function formatMenuItem(Menu $menu, array $userPermissions, bool $isAdmin): ?array
     {
-        if (! $menu->is_active) {
+        if (! $menu->is_active || ! $this->modules->has($menu->module) || ! $this->modules->isEnabled($menu->module)) {
             return null;
         }
 
@@ -116,6 +119,6 @@ class MenuService
      */
     public function clearUserMenuCache(User $user): void
     {
-        Cache::forget("user_menu_tree_{$user->id}");
+        Cache::forget("user_menu_tree_{$user->id}_{$this->modules->stateFingerprint()}");
     }
 }

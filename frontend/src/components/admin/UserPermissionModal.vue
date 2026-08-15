@@ -1,24 +1,32 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+  <div
+    v-if="show"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="perm-modal-title"
+    @keydown.escape="close"
+    tabindex="-1"
+    class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 focus:outline-none"
+  >
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-100 animate-fade-in">
       
       <!-- Modal Header -->
       <div class="px-6 py-5 bg-gradient-to-r from-indigo-700 via-indigo-800 to-slate-900 text-white flex items-center justify-between">
         <div class="flex items-center space-x-3">
           <div class="p-2.5 bg-white/10 rounded-xl backdrop-blur-md border border-white/20">
-            <svg class="w-6 h-6 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
           <div>
-            <h3 class="text-lg font-bold">กำหนดสิทธิ์รายบุคคล (Individual Permissions)</h3>
+            <h3 id="perm-modal-title" class="text-lg font-bold">กำหนดสิทธิ์รายบุคคล (Individual Permissions)</h3>
             <p class="text-xs text-indigo-200" v-if="userData">
               จัดการสิทธิ์สำหรับ {{ userData.name }} ({{ userData.email }})
             </p>
           </div>
         </div>
-        <button @click="close" class="text-indigo-200 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button @click="close" class="text-indigo-200 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-white focus:outline-none" aria-label="ปิดหน้าต่างกำหนดสิทธิ์">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
@@ -198,6 +206,7 @@
 import { ref, watch, computed } from 'vue';
 import api from '../../axios';
 import { useAlertStore } from '../../stores/alert';
+import { useAuthStore } from '../../stores/auth';
 
 const props = defineProps({
   show: Boolean,
@@ -207,6 +216,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved']);
 
 const alertStore = useAlertStore();
+const authStore = useAuthStore();
 
 const loading = ref(false);
 const saving = ref(false);
@@ -280,6 +290,12 @@ async function savePermissions() {
       showToast(`✅ บันทึกสิทธิ์เฉพาะบุคคลสำเร็จแล้ว (${directPermissions.value.length} สิทธิ์)`, 'success');
       if (alertStore.showSuccess) alertStore.showSuccess('บันทึกสิทธิ์เฉพาะบุคคลเรียบร้อยแล้ว');
       else if (alertStore.success) alertStore.success('บันทึกสิทธิ์เฉพาะบุคคลเรียบร้อยแล้ว');
+      
+      // หากเป็นผู้ใช้ปัจจุบันที่กำลังล็อกอินอยู่ ให้รีเฟรช permission ใน store ทันทีเพื่ออัปเดตเมนู
+      if (props.userId == authStore.user?.id) {
+        await authStore.fetchUser({ force: true });
+      }
+
       emit('saved');
       // ดีเลย์ปิด modal เพื่อให้ผู้ใช้เห็น toast ก่อน
       setTimeout(() => close(), 1400);

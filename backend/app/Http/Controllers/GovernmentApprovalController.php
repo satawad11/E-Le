@@ -7,22 +7,18 @@ use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveAuditLog;
 use App\Models\UserDelegation;
-use App\Notifications\LeaveStatusChanged;
 use App\Services\LeaveService;
-use App\Services\LineNotificationService;
-use App\Services\TelegramService;
+use App\Services\NotificationCenter\NotificationCenter;
 use App\Services\Workflow\LeaveWorkflowShadow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class GovernmentApprovalController extends Controller
 {
     public function __construct(
         private LeaveService $service,
-        private TelegramService $telegram,
-        private LineNotificationService $line,
         private LeaveWorkflowShadow $shadow,
+        private NotificationCenter $notifications,
     ) {}
 
     /**
@@ -51,21 +47,15 @@ class GovernmentApprovalController extends Controller
     /**
      * แจ้งเตือนผู้ยื่นใบลาทุกช่องทาง — ห้ามให้ช่องทางภายนอกล้มแล้วทำให้คำขออนุมัติพังตาม
      */
-    private function notify(Leave $leave, string $status, string $actorName): void
+    private function notify(Leave $leave, string $status, Request $request): void
     {
-        $leave->user->notify(new LeaveStatusChanged($leave, $status, $actorName));
-        $type = $leave->type->name ?? 'การลา';
-        $message = $status === 'Approved'
-         ? "✅ ใบลาของท่านได้รับการอนุมัติเรียบร้อยแล้ว\nประเภท: {$type}\nตั้งแต่วันที่: ".$leave->start_date?->format('d/m/Y')."\nถึงวันที่: ".$leave->end_date?->format('d/m/Y')
-         : "❌ ใบลาของท่านถูกปฏิเสธ\nประเภท: {$type}\nเหตุผล: ".($leave->approvals()->orderByDesc('acted_at')->value('comment') ?: 'ไม่มี');
-        try {
-            if ($leave->user->telegram_chat_id) {
-                $this->telegram->sendMessage($leave->user->telegram_chat_id, $message);
-            }
-            $this->line->sendMessage($message, $leave->user->line_user_id ?? null);
-        } catch (\Throwable $e) {
-            Log::warning('ส่งแจ้งเตือนใบลาไม่สำเร็จ', ['leave_id' => $leave->id, 'error' => $e->getMessage()]);
-        }
+        $this->notifications->emit(
+            $status === 'Approved' ? 'leave.approved' : 'leave.rejected',
+            [$leave->user],
+            $leave,
+            ['status' => strtolower($status)],
+            $request->user(),
+        );
     }
 
     private function step(Leave $leave): LeaveApproval
@@ -79,17 +69,17 @@ class GovernmentApprovalController extends Controller
         return LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'step_order' => $legacy->step_order], ['step_name' => $legacy->name, 'required_role_id' => $legacy->role_id, 'status' => 'Pending']);
     }
 
-    private function authorizeStep(Request $r, LeaveApproval $step): ?int
+    private function authorizeStep(Request $r, LeaveApproval $step, Leave $leave): ?int
     {
-        // LEGACY-04 (04-4): เลิกเช็คชื่อ role — Super Admin ยังผ่านทาง Gate::before
-        if ($r->user()->can('leave.management.manage')) {
+        if ($r->user()->can('leave.management.manage') || $r->user()->roles->contains('name', 'Super Admin')) {
             return null;
-        }if ($r->user()->roles->contains('id', $step->required_role_id)) {
-            return null;
-        }$delegation = UserDelegation::where('delegate_id', $r->user()->id)->where('is_active', true)->whereDate('start_date', '<=', today())->whereDate('end_date', '>=', today())->whereHas('user.roles', fn ($q) => $q->where('roles.id', $step->required_role_id))->first();
-        abort_unless($delegation, 403, 'ไม่มีสิทธิ์อนุมัติในขั้นตอนนี้');
+        }
 
-        return $delegation->user_id;
+        $resolver = app(\App\Services\Workflow\ApproverResolverService::class);
+        $isAuthorized = $resolver->isAuthorizedApprover($r->user(), $leave->user, $step);
+        abort_unless($isAuthorized, 403, 'ไม่มีสิทธิ์อนุมัติในขั้นตอนนี้');
+
+        return $resolver->getDelegatedFromId($r->user(), $leave->user, $step);
     }
 
     public function approve(Request $r, Leave $leave)
@@ -101,9 +91,9 @@ class GovernmentApprovalController extends Controller
             abort_unless($leave->substitute_status === 'Accepted', 422, 'ผู้ปฏิบัติงานแทนยังไม่ตอบรับ');
         }$shadowInstanceId = $this->shadowPrepare($leave);
         DB::transaction(function () use ($r, $leave, $data) {
-            $locked = Leave::whereKey($leave->id)->lockForUpdate()->firstOrFail();
+            $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
             $step = $this->step($locked);
-            $delegatedFrom = $this->authorizeStep($r, $step);
+            $delegatedFrom = $this->authorizeStep($r, $step, $locked);
             $step->update(['approver_id' => $r->user()->id, 'approver_name' => $r->user()->full_name_with_title, 'approver_position' => $r->user()->profile?->position, 'signature_path' => $r->user()->profile?->signature_path, 'status' => 'Approved', 'comment' => $data['comment'] ?? null, 'approved_at' => now(), 'acted_at' => now(), 'delegated_from_user_id' => $delegatedFrom]);
             $next = $locked->approvals()->where('step_order', '>', $step->step_order)->orderBy('step_order')->first();
             if ($next) {
@@ -116,7 +106,7 @@ class GovernmentApprovalController extends Controller
         $leave->refresh();
         $this->shadow($leave, 'approve', $r, $data['comment'] ?? null, $shadowInstanceId);
         if ($leave->status === 'Approved') {
-            $this->notify($leave, 'Approved', $r->user()->name);
+            $this->notify($leave, 'Approved', $r);
         }
 
         return response()->json(['message' => 'อนุมัติเรียบร้อย', 'status' => $leave->status]);
@@ -129,9 +119,9 @@ class GovernmentApprovalController extends Controller
         abort_if($leave->user_id === $r->user()->id, 403, 'ห้ามปฏิเสธใบลาของตนเอง');
         $shadowInstanceId = $this->shadowPrepare($leave);
         DB::transaction(function () use ($r, $leave, $data) {
-            $locked = Leave::whereKey($leave->id)->lockForUpdate()->firstOrFail();
+            $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
             $step = $this->step($locked);
-            $delegatedFrom = $this->authorizeStep($r, $step);
+            $delegatedFrom = $this->authorizeStep($r, $step, $locked);
             $step->update(['approver_id' => $r->user()->id, 'approver_name' => $r->user()->full_name_with_title, 'approver_position' => $r->user()->profile?->position, 'signature_path' => $r->user()->profile?->signature_path, 'status' => 'Rejected', 'comment' => $data['comment'], 'approved_at' => now(), 'acted_at' => now(), 'delegated_from_user_id' => $delegatedFrom]);
             $this->service->restoreBalance($locked);
             $locked->update(['status' => 'Rejected']);
@@ -139,7 +129,7 @@ class GovernmentApprovalController extends Controller
         }, 5);
         $leave->refresh();
         $this->shadow($leave, 'reject', $r, $data['comment'], $shadowInstanceId);
-        $this->notify($leave, 'Rejected', $r->user()->name);
+        $this->notify($leave, 'Rejected', $r);
 
         return response()->json(['message' => 'ปฏิเสธใบลาเรียบร้อย']);
     }

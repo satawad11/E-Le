@@ -9,7 +9,7 @@
       <form @submit.prevent="handleSubmit" enctype="multipart/form-data" class="space-y-6">
         <!-- Leave type -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1.5">ประเภทการลา <span class="text-red-500">*</span></label>
+          <label for="leave-type" class="block text-sm font-semibold text-gray-700 mb-1.5">ประเภทการลา <span class="text-red-500">*</span></label>
           <select v-model="form.leave_type_id" required id="leave-type" @change="onLeaveTypeChange" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-900 focus:outline-none focus:border-[#800000] transition-colors bg-white">
             <option value="" disabled>เลือกประเภทการลา...</option>
             <option v-for="type in leaveStore.types" :key="type.id" :value="type.id">{{ type.name }}</option>
@@ -74,18 +74,18 @@
         <!-- Leave Period -->
         <div class="pt-2">
           <label class="block text-sm font-semibold text-gray-700 mb-2">ระยะเวลาการลา <span class="text-red-500">*</span></label>
-          <div class="flex flex-wrap gap-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="radio" v-model="form.leave_period" value="full_day" @change="onPeriodChange" class="text-[#800000] focus:ring-[#800000]">
-              <span class="text-sm">เต็มวัน</span>
+          <div class="grid grid-cols-3 gap-2 sm:gap-4">
+            <label class="flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all cursor-pointer select-none text-center min-h-[44px]" :class="form.leave_period === 'full_day' ? 'border-[#800000] bg-[#800000]/5 text-[#800000] font-bold shadow-sm' : 'border-gray-200 text-gray-600 hover:border-gray-300'">
+              <input type="radio" v-model="form.leave_period" value="full_day" @change="onPeriodChange" class="sr-only">
+              <span class="text-xs sm:text-sm">เต็มวัน</span>
             </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="radio" v-model="form.leave_period" value="morning" @change="onPeriodChange" class="text-[#800000] focus:ring-[#800000]">
-              <span class="text-sm">ครึ่งวันเช้า</span>
+            <label class="flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all cursor-pointer select-none text-center min-h-[44px]" :class="form.leave_period === 'morning' ? 'border-[#800000] bg-[#800000]/5 text-[#800000] font-bold shadow-sm' : 'border-gray-200 text-gray-600 hover:border-gray-300'">
+              <input type="radio" v-model="form.leave_period" value="morning" @change="onPeriodChange" class="sr-only">
+              <span class="text-xs sm:text-sm">ครึ่งวันเช้า</span>
             </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="radio" v-model="form.leave_period" value="afternoon" @change="onPeriodChange" class="text-[#800000] focus:ring-[#800000]">
-              <span class="text-sm">ครึ่งวันบ่าย</span>
+            <label class="flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all cursor-pointer select-none text-center min-h-[44px]" :class="form.leave_period === 'afternoon' ? 'border-[#800000] bg-[#800000]/5 text-[#800000] font-bold shadow-sm' : 'border-gray-200 text-gray-600 hover:border-gray-300'">
+              <input type="radio" v-model="form.leave_period" value="afternoon" @change="onPeriodChange" class="sr-only">
+              <span class="text-xs sm:text-sm">ครึ่งวันบ่าย</span>
             </label>
           </div>
         </div>
@@ -110,7 +110,7 @@
 
         <!-- Reason -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1.5">เหตุผลการลา <span class="text-red-500">*</span></label>
+          <label for="reason" class="block text-sm font-semibold text-gray-700 mb-1.5">เหตุผลการลา <span class="text-red-500">*</span></label>
           <textarea v-model="form.reason" id="reason" required rows="4" maxlength="1000"
             class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-900 focus:outline-none focus:border-[#800000] transition-colors resize-none"
             placeholder="ระบุเหตุผลการลา..."></textarea>
@@ -119,7 +119,7 @@
 
         <!-- Contact Address -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1.5">สถานที่ติดต่อระหว่างลา <span class="text-red-500">*</span></label>
+          <label for="contact_address" class="block text-sm font-semibold text-gray-700 mb-1.5">สถานที่ติดต่อระหว่างลา <span class="text-red-500">*</span></label>
           <textarea v-model="form.contact_address" id="contact_address" required rows="2" maxlength="1000"
             class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-900 focus:outline-none focus:border-[#800000] transition-colors resize-none"
             placeholder="ระบุสถานที่ที่สามารถติดต่อได้ระหว่างการลา..."></textarea>
@@ -279,16 +279,16 @@
               </div>
               <div class="md:w-2/3 flex flex-col items-center">
                 <div v-if="sigType === 'profile'" class="w-full max-w-xs h-24 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
-                  <img v-if="authStore.user?.profile?.signature_path" v-secure-src="authStore.user.profile.signature_path" class="max-h-full object-contain p-2" />
+                  <img v-if="authStore.user?.profile?.signature_path" v-secure-src="authStore.user.profile.signature_path" alt="รูปลายเซ็นจากโปรไฟล์ผู้ใช้งาน" class="max-h-full object-contain p-2" />
                   <span v-else class="text-gray-400 text-sm">ไม่พบลายเซ็นในโปรไฟล์</span>
                 </div>
                 <div v-else class="w-full flex flex-col items-center">
-                  <canvas ref="sigCanvas" width="300" height="120" class="border border-gray-300 bg-white rounded shadow-inner cursor-crosshair touch-none"
+                  <canvas ref="sigCanvas" width="300" height="120" role="img" aria-label="กระดานวาดลายเซ็นดิจิทัล" class="border border-gray-300 bg-white rounded shadow-inner cursor-crosshair touch-none"
                     @mousedown="startDraw" @mousemove="draw" @mouseup="endDraw" @mouseout="endDraw"
                     @touchstart="startDrawTouch" @touchmove="drawTouch" @touchend="endDraw"></canvas>
                   <div class="mt-2 flex gap-2 w-full max-w-[300px] justify-between">
-                    <button type="button" @click="clearCanvas" class="px-3 py-1 text-xs font-semibold bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors">ล้างลายเซ็น</button>
-                    <span v-if="canvasSaved" class="text-xs text-green-600 flex items-center gap-1"><i class="fas fa-check-circle"></i> วาดเสร็จแล้ว</span>
+                    <button type="button" @click="clearCanvas" class="px-3 py-1 text-xs font-semibold bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors focus-visible:ring-2 focus-visible:ring-[#800000]">ล้างลายเซ็น</button>
+                    <span v-if="canvasSaved" class="text-xs text-green-600 flex items-center gap-1"><i class="fas fa-check-circle" aria-hidden="true"></i> วาดเสร็จแล้ว</span>
                   </div>
                 </div>
               </div>
@@ -299,16 +299,24 @@
         <!-- Attachment -->
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">เอกสารแนบ (ถ้ามี)</label>
-          <div class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-[#800000] transition-colors cursor-pointer" @click="$refs.fileInput.click()">
-            <input ref="fileInput" type="file" accept=".pdf,.jpg,.jpeg,.png" @change="handleFile" class="hidden">
-            <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-            <p class="text-sm text-gray-400">{{ fileName || 'คลิกเพื่อแนบไฟล์ (PDF, JPG, PNG ไม่เกิน 5MB)' }}</p>
+          <div
+            class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-[#800000] transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#800000] focus:outline-none"
+            role="button"
+            tabindex="0"
+            aria-label="คลิกหรือกด Enter เพื่อเลือกแนบไฟล์เอกสารประกอบการลา"
+            @click="$refs.fileInput.click()"
+            @keydown.enter.prevent="$refs.fileInput.click()"
+            @keydown.space.prevent="$refs.fileInput.click()"
+          >
+            <input ref="fileInput" type="file" accept=".pdf,.jpg,.jpeg,.png" @change="handleFile" class="hidden" aria-hidden="true">
+            <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+            <p class="text-sm text-gray-500">{{ fileName || 'คลิกเพื่อแนบไฟล์ (PDF, JPG, PNG ไม่เกิน 5MB)' }}</p>
           </div>
         </div>
 
         <div class="flex justify-end pt-2">
-          <button type="submit" id="submit-leave" :disabled="loading" class="px-8 py-3 bg-[#800000] hover:bg-[#600000] text-white font-bold rounded-xl shadow-md transition-all hover:shadow-lg disabled:opacity-50 flex items-center gap-2 text-sm">
-            <span v-if="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+          <button type="submit" id="submit-leave" :disabled="loading" class="w-full sm:w-auto px-8 py-3.5 bg-[#800000] hover:bg-[#600000] text-white font-bold rounded-xl shadow-md transition-all hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 text-base sm:text-sm min-h-[48px] focus-visible:ring-2 focus-visible:ring-[#800000]">
+            <span v-if="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white" aria-hidden="true"></span>
             {{ loading ? 'กำลังส่ง...' : 'ส่งคำขอลา' }}
           </button>
         </div>

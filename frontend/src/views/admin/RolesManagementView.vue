@@ -1,7 +1,7 @@
 <template>
-  <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto space-y-6">
     <!-- Header -->
-    <div class="md:flex md:items-center md:justify-between mb-6">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
       <div class="flex-1 min-w-0">
         <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate flex items-center gap-3">
           <span>👥</span> จัดการบทบาทและสิทธิ์ (Role & Permission Management)
@@ -10,7 +10,7 @@
           บริหารจัดการบทบาทในระบบ (Roles) และกำหนดชุดสิทธิ์การใช้งาน (Permission Matrix) สำหรับแต่ละกลุ่มผู้ใช้
         </p>
       </div>
-      <div class="mt-4 flex gap-2 md:mt-0 md:ml-4">
+      <div class="flex flex-wrap gap-2">
         <button
           @click="fetchRoles"
           class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
@@ -41,10 +41,7 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#800000] border-t-transparent"></div>
-      <p class="mt-2 text-sm text-gray-500">กำลังโหลดรายการบทบาทและสิทธิ์...</p>
-    </div>
+    <LoadingState v-if="loading" type="spinner" message="กำลังโหลดรายการบทบาทและสิทธิ์..." />
 
     <!-- Empty State -->
     <div v-else-if="!roles || roles.length === 0" class="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200 p-8">
@@ -243,6 +240,7 @@
 import { ref, computed, onMounted } from 'vue';
 import api from '../../axios';
 import { useAuthStore } from '../../stores/auth';
+import LoadingState from '../../components/ui/LoadingState.vue';
 
 const authStore = useAuthStore();
 const roles = ref([]);

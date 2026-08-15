@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6">
+  <div class="max-w-7xl mx-auto space-y-6">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">ทะเบียนรับ-ส่ง หนังสือราชการ</h1>
       <router-link to="/saraban/create" class="bg-[#800000] text-white px-4 py-2 rounded shadow hover:bg-red-800">
@@ -76,7 +76,7 @@
               v-model="searchQuery"
               type="text"
               placeholder="ค้นหาเรื่อง, เลขที่เอกสาร..."
-              class="pl-9 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#800000] outline-none w-64"
+              class="w-full sm:w-64 pl-9 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#800000] outline-none text-sm"
             />
           </div>
 
@@ -119,105 +119,103 @@
       </div>
       
       <!-- Loading State -->
-      <div v-if="store.loading" class="text-center py-12 text-gray-500">
-        <svg class="animate-spin h-8 w-8 mx-auto mb-2 text-[#800000]" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-        </svg>
-        กำลังโหลดข้อมูล...
+      <div v-if="store.loading" class="py-6">
+        <LoadingState type="skeleton-table" :rows="4" :cols="5" message="กำลังโหลดรายการเอกสาร..." />
       </div>
 
-      <table v-else class="w-full text-left border-collapse">
-        <thead>
-          <tr class="bg-gray-50 text-gray-600 text-sm">
-            <th v-if="canDelete" class="p-4 border-b font-medium w-12 text-center">
-              <input type="checkbox" :checked="selectAll" @change="toggleSelectAll" class="rounded text-[#800000] focus:ring-[#800000]">
-            </th>
-            <th class="p-4 border-b font-medium">เลขที่เอกสาร</th>
-            <th class="p-4 border-b font-medium">เรื่อง</th>
-            <th class="p-4 border-b font-medium">ชั้นความลับ</th>
-            <th class="p-4 border-b font-medium">สถานะ</th>
-            <th class="p-4 border-b font-medium">จัดการ</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="doc in documents" :key="doc.id" class="hover:bg-gray-50">
-            <td v-if="canDelete" class="p-4 border-b text-center">
-              <input type="checkbox" :value="doc.id" v-model="selectedIds" class="rounded text-[#800000] focus:ring-[#800000]">
-            </td>
-            <td class="p-4 border-b text-sm">{{ doc.document_number || '-' }}</td>
-            <td class="p-4 border-b">
-              <div class="flex flex-col gap-1">
-                <span class="font-medium flex items-center gap-2">
-                  <svg v-if="doc.is_pinned" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-                  </svg>
-                  {{ doc.title }}
-                </span>
-                <div class="flex gap-2 flex-wrap">
-                  <span v-if="doc.type" class="px-2 py-0.5 text-[10px] rounded text-white font-medium" :style="{ backgroundColor: doc.type.color || '#6b7280' }">
-                    {{ doc.type.name }}
+      <div v-else class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-gray-50 text-gray-600 text-sm">
+              <th v-if="canDelete" class="p-4 border-b font-medium w-12 text-center">
+                <input type="checkbox" :checked="selectAll" @change="toggleSelectAll" class="rounded text-[#800000] focus:ring-[#800000]">
+              </th>
+              <th class="p-4 border-b font-medium">เลขที่เอกสาร</th>
+              <th class="p-4 border-b font-medium">เรื่อง</th>
+              <th class="p-4 border-b font-medium">ชั้นความลับ</th>
+              <th class="p-4 border-b font-medium">สถานะ</th>
+              <th class="p-4 border-b font-medium">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="doc in documents" :key="doc.id" class="hover:bg-gray-50">
+              <td v-if="canDelete" class="p-4 border-b text-center">
+                <input type="checkbox" :value="doc.id" v-model="selectedIds" class="rounded text-[#800000] focus:ring-[#800000]">
+              </td>
+              <td class="p-4 border-b text-sm">{{ doc.document_number || '-' }}</td>
+              <td class="p-4 border-b">
+                <div class="flex flex-col gap-1">
+                  <span class="font-medium flex items-center gap-2">
+                    <svg v-if="doc.is_pinned" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                    </svg>
+                    {{ doc.title }}
                   </span>
-                  <span v-if="!doc.is_read" class="px-2 py-0.5 text-[10px] rounded bg-red-500 text-white font-bold">ใหม่</span>
-                  <span v-if="['urgent', 'very_urgent', 'most_urgent'].includes(doc.priority)" class="px-2 py-0.5 text-[10px] rounded bg-orange-100 text-orange-800">
-                    {{ doc.priority === 'urgent' ? 'ด่วน' : doc.priority === 'very_urgent' ? 'ด่วนมาก' : 'ด่วนที่สุด' }}
-                  </span>
+                  <div class="flex gap-2 flex-wrap">
+                    <span v-if="doc.type" class="px-2 py-0.5 text-[10px] rounded text-white font-medium" :style="{ backgroundColor: doc.type.color || '#6b7280' }">
+                      {{ doc.type.name }}
+                    </span>
+                    <span v-if="!doc.is_read" class="px-2 py-0.5 text-[10px] rounded bg-red-500 text-white font-bold">ใหม่</span>
+                    <span v-if="['urgent', 'very_urgent', 'most_urgent'].includes(doc.priority)" class="px-2 py-0.5 text-[10px] rounded bg-orange-100 text-orange-800">
+                      {{ doc.priority === 'urgent' ? 'ด่วน' : doc.priority === 'very_urgent' ? 'ด่วนมาก' : 'ด่วนที่สุด' }}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </td>
-            <td class="p-4 border-b">
-              <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">{{ secrecyLabel(doc.secrecy) }}</span>
-            </td>
-            <td class="p-4 border-b">
-              <span class="px-2 py-1 text-xs rounded-full border" :class="statusConfig(doc.status).class">{{ statusConfig(doc.status).label }}</span>
-            </td>
-            <td class="p-4 border-b">
-              <div class="flex space-x-3">
-                <router-link :to="`/saraban/${doc.id}`" class="text-gray-600 hover:text-[#800000]" title="ดูรายละเอียด">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                </router-link>
-                
-                <button @click="togglePin(doc)" class="text-gray-400 hover:text-orange-500" :class="{'text-orange-500': doc.is_pinned}" title="ปักหมุด/เลิกปักหมุด">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
-                </button>
+              </td>
+              <td class="p-4 border-b">
+                <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">{{ secrecyLabel(doc.secrecy) }}</span>
+              </td>
+              <td class="p-4 border-b">
+                <span class="px-2 py-1 text-xs rounded-full border" :class="statusConfig(doc.status).class">{{ statusConfig(doc.status).label }}</span>
+              </td>
+              <td class="p-4 border-b">
+                <div class="flex space-x-3">
+                  <router-link :to="`/saraban/${doc.id}`" class="text-gray-600 hover:text-[#800000]" title="ดูรายละเอียด">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </router-link>
+                  
+                  <button @click="togglePin(doc)" class="text-gray-400 hover:text-orange-500" :class="{'text-orange-500': doc.is_pinned}" title="ปักหมุด/เลิกปักหมุด">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h6a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                  </button>
 
-                <router-link v-if="canManage" :to="`/saraban/${doc.id}/edit`" class="text-blue-500 hover:text-blue-700" title="แก้ไข">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </router-link>
-                
-                <!-- แอดมินลบถาวร -->
-                <button v-if="canDelete" @click="confirmDelete(doc.id)" class="text-red-500 hover:text-red-700" title="ลบถาวร (ส่วนกลาง)">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-                
-                <!-- ผู้ใช้ลบออกจากรายการตัวเอง -->
-                <button v-if="!canDelete" @click="hideDocument(doc.id)" class="text-gray-400 hover:text-red-500" title="ลบออกจากรายการของฉัน">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </td>
-          </tr>
-          <tr v-if="documents.length === 0 && !store.loading">
-            <td :colspan="canDelete ? 6 : 5" class="p-8 text-center text-gray-500 border-b">
-              <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-              ไม่พบข้อมูลเอกสาร
-            </td>
-          </tr>
-        </tbody>
-      </table>
+                  <router-link v-if="canManage" :to="`/saraban/${doc.id}/edit`" class="text-blue-500 hover:text-blue-700" title="แก้ไข">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </router-link>
+                  
+                  <!-- แอดมินลบถาวร -->
+                  <button v-if="canDelete" @click="confirmDelete(doc.id)" class="text-red-500 hover:text-red-700" title="ลบถาวร (ส่วนกลาง)">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                  
+                  <!-- ผู้ใช้ลบออกจากรายการตัวเอง -->
+                  <button v-if="!canDelete" @click="hideDocument(doc.id)" class="text-gray-400 hover:text-red-500" title="ลบออกจากรายการของฉัน">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="documents.length === 0 && !store.loading">
+              <td :colspan="canDelete ? 6 : 5" class="p-8 text-center text-gray-500 border-b">
+                <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                ไม่พบข้อมูลเอกสาร
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <!-- Pagination -->
       <div v-if="store.pagination.total > 0" class="p-4 border-t flex items-center justify-between flex-wrap gap-2">
@@ -254,17 +252,17 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { useSarabanDocumentStore } from '../../stores/useSarabanDocumentStore'
-import { useAuthStore } from '../../stores/auth'
-import Swal from 'sweetalert2'
-import api from '../../axios'
 import { sarabanStatusConfig } from '../../utils/statusHelper'
+import { getErrorMessage } from '../../utils/errorHandler'
+import LoadingState from '../../components/ui/LoadingState.vue'
+import EmptyState from '../../components/ui/EmptyState.vue'
+import ErrorState from '../../components/ui/ErrorState.vue'
 
 const store = useSarabanDocumentStore()
 const authStore = useAuthStore()
 const route = useRoute()
 const documents = computed(() => store.documents)
+const loadError = ref('')
 
 const stats = ref({ total: 0, unread: 0, urgent: 0, pinned: 0 })
 const documentTypes = ref([])

@@ -220,4 +220,15 @@ class LeaveAuthorizationTest extends TestCase
     {
         $this->postJson("/api/leaves/{$this->leave->id}/hr-verify")->assertUnauthorized();
     }
+
+    public function test_ordinary_user_cannot_create_an_approved_leave_for_someone_else(): void
+    {
+        $ordinaryUser = $this->userIn($this->deptA);
+
+        $this->actingAs($ordinaryUser)
+            ->postJson('/api/admin/leaves', [
+                'user_id' => $this->owner->id,
+            ])
+            ->assertForbidden();
+    }
 }

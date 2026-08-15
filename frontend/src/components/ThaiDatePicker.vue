@@ -2,28 +2,31 @@
   <div class="relative w-full" ref="containerRef">
     <!-- Trigger input -->
     <div
-      class="date-trigger"
+      class="date-trigger focus-visible:ring-2 focus-visible:ring-[#800000] focus:outline-none"
       :class="{ 'date-trigger--open': isOpen, 'date-trigger--filled': !!displayDate }"
       @click="toggleOpen"
       role="button"
       :aria-expanded="isOpen"
+      aria-haspopup="dialog"
+      aria-label="เลือกวันที่"
       tabindex="0"
       @keydown.enter.prevent="toggleOpen"
+      @keydown.space.prevent="toggleOpen"
       @keydown.escape="isOpen = false"
     >
-      <svg class="trigger-cal-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="trigger-cal-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
           d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
       </svg>
       <span class="trigger-text" :class="displayDate ? 'text-filled' : 'text-placeholder'">
         {{ displayDate || 'เลือกวันที่' }}
       </span>
-      <button v-if="displayDate" type="button" class="clear-btn" @click.stop="clearDate" title="ล้างวันที่">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <button v-if="displayDate" type="button" class="clear-btn focus-visible:ring-2 focus-visible:ring-[#800000]" @click.stop="clearDate" title="ล้างวันที่" aria-label="ล้างวันที่">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
-      <svg v-else class="chevron-icon" :class="{ 'rotate-180': isOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg v-else class="chevron-icon" :class="{ 'rotate-180': isOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
       </svg>
     </div>
@@ -31,27 +34,37 @@
     <!-- Calendar popover (teleport to body to avoid overflow:hidden clipping) -->
     <teleport to="body">
       <transition name="cal-pop">
-      <div v-if="isOpen" class="cal-popover" :style="popoverStyle" @click.stop>
+      <div
+        v-if="isOpen"
+        role="dialog"
+        aria-modal="true"
+        aria-label="ปฏิทินเลือกวันที่"
+        class="cal-popover focus:outline-none"
+        :style="popoverStyle"
+        tabindex="-1"
+        @keydown.escape="isOpen = false"
+        @click.stop
+      >
         <!-- Header: Month/Year navigation -->
         <div class="cal-header">
-          <button type="button" class="nav-btn" @click.stop="prevMonth" title="เดือนก่อน">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button type="button" class="nav-btn focus-visible:ring-2 focus-visible:ring-[#800000]" @click.stop="prevMonth" title="เดือนก่อนหน้า" aria-label="เดือนก่อนหน้า">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
           </button>
 
           <!-- Month/Year selector row -->
           <div class="header-selectors">
-            <select v-model="currentMonth" class="header-select" @change.stop @click.stop>
+            <select v-model="currentMonth" class="header-select" aria-label="เลือกเดือน" @change.stop @click.stop>
               <option v-for="(m, i) in monthNames" :key="i" :value="i">{{ m }}</option>
             </select>
-            <select v-model="currentYear" class="header-select" @change.stop @click.stop>
+            <select v-model="currentYear" class="header-select" aria-label="เลือกปี พ.ศ." @change.stop @click.stop>
               <option v-for="y in yearRange" :key="y" :value="y">{{ y + 543 }}</option>
             </select>
           </div>
 
-          <button type="button" class="nav-btn" @click.stop="nextMonth" title="เดือนถัดไป">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button type="button" class="nav-btn focus-visible:ring-2 focus-visible:ring-[#800000]" @click.stop="nextMonth" title="เดือนถัดไป" aria-label="เดือนถัดไป">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
           </button>
@@ -59,22 +72,22 @@
 
         <!-- "Today" shortcut -->
         <div class="today-bar">
-          <button type="button" class="today-btn" @click.stop="selectToday">
+          <button type="button" class="today-btn focus-visible:ring-2 focus-visible:ring-[#800000]" @click.stop="selectToday" aria-label="เลือกวันปัจจุบัน">
             📅 วันนี้ ({{ todayDisplay }})
           </button>
         </div>
 
         <!-- Day-of-week headers -->
-        <div class="weekday-grid">
-          <div v-for="d in weekDays" :key="d" class="weekday-cell" :class="{ 'text-red-500': d === 'อา', 'text-blue-500': d === 'ส' }">
+        <div class="weekday-grid" role="row">
+          <div v-for="d in weekDays" :key="d" class="weekday-cell" role="columnheader" :class="{ 'text-red-500': d === 'อา', 'text-blue-500': d === 'ส' }">
             {{ d }}
           </div>
         </div>
 
         <!-- Days grid -->
-        <div class="days-grid">
+        <div class="days-grid" role="grid" aria-label="ตารางวันในเดือน">
           <!-- Blank cells for first day offset -->
-          <div v-for="b in blankDays" :key="'b-'+b"></div>
+          <div v-for="b in blankDays" :key="'b-'+b" aria-hidden="true"></div>
 
           <!-- Day cells -->
           <button
@@ -82,9 +95,10 @@
             :key="'d-'+day"
             type="button"
             @click.stop="selectDate(day)"
-            class="day-btn"
+            class="day-btn focus-visible:ring-2 focus-visible:ring-[#800000]"
             :class="getDayClass(day)"
             :disabled="isDisabled(day)"
+            :aria-label="`${day} ${monthNames[currentMonth]} ${currentYear + 543}`"
           >
             {{ day }}
           </button>
@@ -92,7 +106,7 @@
 
         <!-- Footer info -->
         <div v-if="selectedDate" class="cal-footer">
-          <svg class="w-3.5 h-3.5 text-[#800000]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3.5 h-3.5 text-[#800000]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
           </svg>
           <span>{{ displayDate }}</span>

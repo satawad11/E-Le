@@ -2,12 +2,7 @@
 
 namespace App\Providers;
 
-use App\Models\Attendance;
-use App\Models\Leave;
-use App\Models\Saraban\Document;
 use App\Models\User;
-use App\Policies\LeavePolicy;
-use App\Policies\Saraban\DocumentPolicy;
 use App\Services\AuditLogger;
 use App\Services\PermissionEvaluator;
 use App\Services\SystemSettingService;
@@ -22,10 +17,7 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
-    public function register(): void
-    {
-        //
-    }
+    public function register(): void {}
 
     /**
      * Bootstrap any application services.
@@ -43,16 +35,14 @@ class AppServiceProvider extends ServiceProvider
             (bool) config('app.debug'),
         );
 
-        Gate::policy(Document::class, DocumentPolicy::class);
-        Gate::policy(Leave::class, LeavePolicy::class);
+        \App\Models\User::observe(\App\Observers\UserObserver::class);
+        \App\Models\Personnel::observe(\App\Observers\PersonnelObserver::class);
+        \App\Models\UserProfile::observe(\App\Observers\UserProfileObserver::class);
+        \App\Models\PersonnelAssignment::observe(\App\Observers\PersonnelAssignmentObserver::class);
 
         User::created(fn (User $user) => app(AuditLogger::class)->log('user.created', 'user', $user->id, null, $user->attributesToArray()));
         User::updated(fn (User $user) => app(AuditLogger::class)->log('user.updated', 'user', $user->id, collect($user->getOriginal())->except(['password', 'remember_token'])->all(), $user->attributesToArray()));
         User::deleted(fn (User $user) => app(AuditLogger::class)->log('user.deleted', 'user', $user->id, collect($user->getOriginal())->except(['password', 'remember_token'])->all()));
-        Attendance::created(fn (Attendance $attendance) => app(AuditLogger::class)->log('attendance.created', 'attendance', $attendance->id, null, $attendance->getAttributes()));
-        Attendance::updated(fn (Attendance $attendance) => app(AuditLogger::class)->log('attendance.updated', 'attendance', $attendance->id, $attendance->getOriginal(), $attendance->getAttributes()));
-        Attendance::deleted(fn (Attendance $attendance) => app(AuditLogger::class)->log('attendance.deleted', 'attendance', $attendance->id, $attendance->getOriginal()));
-
         /*
          * LEGACY-04 (04-2 / 04-5) — ลำดับ: explicit deny > allow > default deny
          *

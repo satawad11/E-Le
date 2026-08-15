@@ -6,7 +6,7 @@
         <h1 class="text-2xl font-bold text-gray-900">จัดการผู้ใช้งาน (บุคลากร)</h1>
         <p class="text-gray-500 mt-1">เพิ่ม แก้ไข และลบข้อมูลบุคลากรภายในระบบ</p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <button
           @click="downloadCsvTemplate"
           class="flex items-center gap-2 px-4 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md hover:shadow-lg"
@@ -82,12 +82,27 @@
 
     <!-- Users Table -->
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div v-if="loading" class="flex justify-center py-16">
-        <div class="animate-spin h-10 w-10 rounded-full border-4 border-[#800000] border-t-transparent"></div>
+      <!-- Loading State -->
+      <div v-if="loading" class="p-6">
+        <LoadingState type="skeleton-table" :rows="5" :cols="7" message="กำลังโหลดรายชื่อบุคลากร..." />
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="loadError" class="p-6">
+        <ErrorState :message="loadError" @retry="loadInitialData" />
       </div>
 
       <div v-else>
-        <div class="overflow-x-auto">
+        <!-- Empty State -->
+        <EmptyState
+          v-if="filteredUsers.length === 0"
+          title="ไม่พบข้อมูลบุคลากร"
+          description="ไม่มีข้อมูลบุคลากรที่ตรงกับเงื่อนไขการค้นหาหรือตัวกรอง"
+          action-text="เพิ่มบุคลากรใหม่"
+          @action="openAddModal"
+        />
+
+        <div v-else class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -101,20 +116,18 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-              <tr v-if="filteredUsers.length === 0">
-                <td colspan="7" class="text-center text-gray-400 py-12">ไม่พบข้อมูลผู้ใช้งาน</td>
-              </tr>
               <tr v-for="(user, index) in filteredUsers" :key="user.id" class="hover:bg-gray-50 transition-colors">
                 <td class="px-4 py-3 text-center text-gray-500">{{ index + 1 }}</td>
                 <td class="px-4 py-3 text-blue-600 font-medium">{{ user.profile?.id_card_number || '-' }}</td>
                 <td class="px-4 py-3">
-                  <div class="font-medium text-gray-900">{{ user.name }}</div>
+                  <div class="font-medium text-gray-900">{{ user.personnel?.full_name || user.name }}</div>
+                  <div v-if="user.personnel_code || user.personnel?.personnel_code" class="text-xs text-gray-500">รหัส: {{ user.personnel?.personnel_code || user.personnel_code }}</div>
                 </td>
-                <td class="px-4 py-3 text-gray-600">{{ user.profile?.position || (user.role ? roleLabel(user.role.name) : '-') }}</td>
-                <td class="px-4 py-3 text-center text-gray-600">{{ formatDate(user.profile?.start_date) || '-' }}</td>
+                <td class="px-4 py-3 text-gray-600">{{ user.current_assignment?.position || user.position || user.profile?.position || (user.role ? roleLabel(user.role.name) : '-') }}</td>
+                <td class="px-4 py-3 text-center text-gray-600">{{ formatDate(user.personnel?.effective_from || user.profile?.start_date) || '-' }}</td>
                 <td class="px-4 py-3 text-center">
-                  <span class="inline-block px-2 py-1 text-xs font-medium rounded-md" :class="user.profile?.status === 'ปฏิบัติหน้าที่' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
-                    {{ user.profile?.status || 'ปฏิบัติหน้าที่' }}
+                  <span class="inline-block px-2 py-1 text-xs font-medium rounded-md" :class="(user.personnel?.status || user.personnel_status || user.profile?.status) === 'active' || (user.personnel?.status || user.personnel_status || user.profile?.status) === 'ปฏิบัติหน้าที่' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
+                    {{ user.personnel?.status === 'active' ? 'ปฏิบัติหน้าที่' : (user.personnel?.status || user.profile?.status || 'ปฏิบัติหน้าที่') }}
                   </span>
                 </td>
                 <td class="px-4 py-3 text-center">
@@ -177,12 +190,13 @@
 
               <!-- Tabs Navigation -->
               <div class="flex flex-col gap-1">
-                <button @click="activeTab = 'personal'" :class="activeTab === 'personal' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลส่วนตัวบุคลากร</button>
-                <button @click="activeTab = 'address'" :class="activeTab === 'address' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลที่อยู่</button>
-                <button @click="activeTab = 'employment'" :class="activeTab === 'employment' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลการจ้าง</button>
-                <button @click="activeTab = 'system'" :class="activeTab === 'system' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลระบบ (Account)</button>
-                <button v-if="authStore.isAdmin" @click="activeTab = 'permissions'" :class="activeTab === 'permissions' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">สิทธิ์การเข้าถึงพิเศษ</button>
+                <button @click="activeTab = 'personal'" :class="activeTab === 'personal' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลส่วนตัวบุคลากร</button>
+                <button @click="activeTab = 'address'" :class="activeTab === 'address' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลที่อยู่</button>
+                <button @click="activeTab = 'employment'" :class="activeTab === 'employment' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลการจ้าง</button>
+                <button @click="activeTab = 'system'" :class="activeTab === 'system' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลระบบ (Account)</button>
+                <button v-if="authStore.isAdmin" @click="activeTab = 'permissions'" :class="activeTab === 'permissions' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">สิทธิ์การเข้าถึงพิเศษ</button>
               </div>
+
             </div>
 
             <!-- Tab Content -->
@@ -465,11 +479,17 @@ import { useAlertStore } from '../../stores/alert'
 import api from '../../axios'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
 import UserPermissionModal from '../../components/admin/UserPermissionModal.vue'
+import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
+import { getErrorMessage } from '../../utils/errorHandler'
+import LoadingState from '../../components/ui/LoadingState.vue'
+import EmptyState from '../../components/ui/EmptyState.vue'
+import ErrorState from '../../components/ui/ErrorState.vue'
 
 const authStore = useAuthStore()
 const alertStore = useAlertStore()
 
 const loading = ref(true)
+const loadError = ref('')
 const submitting = ref(false)
 const users = ref([])
 const departments = ref([])
@@ -622,7 +642,9 @@ const updateFullName = () => {
   form.name = `${title}${fname} ${lname}`.trim()
 }
 
-onMounted(async () => {
+const loadInitialData = async () => {
+  loading.value = true
+  loadError.value = ''
   try {
     await Promise.all([
       fetchUsers(),
@@ -632,10 +654,14 @@ onMounted(async () => {
     ])
   } catch (e) {
     console.error(e)
-    alertStore.error('เกิดข้อผิดพลาดในการดึงข้อมูล')
+    loadError.value = getErrorMessage(e, 'เกิดข้อผิดพลาดในการดึงข้อมูลบุคลากร')
   } finally {
     loading.value = false
   }
+}
+
+onMounted(() => {
+  loadInitialData()
 })
 
 const fetchUsers = async () => {
@@ -669,9 +695,7 @@ const fetchPermissions = async () => {
 }
 
 const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear() + 543}`
+  return ThaiDateFormatter.toThaiSlash(dateStr)
 }
 
 const filteredUsers = computed(() => {
@@ -791,7 +815,12 @@ const submitForm = async () => {
     modal.show = false
   } catch (e) {
     console.error(e)
-    alertStore.error(e.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่')
+    const errors = e.response?.data?.errors
+    if (errors) {
+      alertStore.error(Object.values(errors).flat().join(' | '))
+    } else {
+      alertStore.error(e.response?.data?.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่')
+    }
   } finally {
     submitting.value = false
   }
@@ -849,8 +878,10 @@ const handleCsvUpload = async (e) => {
     let msg = res.data.message
     if (res.data.errors && res.data.errors.length > 0) {
       msg += "\n" + res.data.errors.join("\n")
+      alertStore.info(msg, 6000)
+    } else {
+      alertStore.success(msg)
     }
-    alert(msg) // Or use a proper modal for details
     
     await fetchUsers()
   } catch (e) {

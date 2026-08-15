@@ -172,10 +172,29 @@ class OrgScopeResolver
      */
     public function homeOrgUnitId(User $user): ?int
     {
+        // 1. Prioritize active PersonnelAssignment from Personnel Domain
+        if ($user->relationLoaded('currentAssignment') && $user->currentAssignment?->org_unit_id !== null) {
+            return (int) $user->currentAssignment->org_unit_id;
+        }
+
+        $activeAssignmentOrgUnitId = DB::table('personnel_assignments')
+            ->where('user_id', $user->getKey())
+            ->whereDate('effective_from', '<=', today())
+            ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', today()))
+            ->orderByDesc('effective_from')
+            ->orderByDesc('id')
+            ->value('org_unit_id');
+
+        if ($activeAssignmentOrgUnitId !== null) {
+            return (int) $activeAssignmentOrgUnitId;
+        }
+
+        // 2. Fallback to users.org_unit_id
         if ($user->org_unit_id !== null) {
             return (int) $user->org_unit_id;
         }
 
+        // 3. Fallback to legacy department_id via map
         $departmentId = $user->department_id ?? $user->profile?->department_id;
 
         if ($departmentId === null || ! DB::getSchemaBuilder()->hasTable('department_org_unit_map')) {

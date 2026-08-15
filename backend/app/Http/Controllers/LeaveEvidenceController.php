@@ -10,9 +10,34 @@ use Illuminate\Support\Facades\Storage;
 
 class LeaveEvidenceController extends Controller
 {
+    /**
+     * ใครเข้าถึงหลักฐานประกอบการลาได้บ้าง
+     *
+     * LEGACY-07 · 07-4 (LEAVE-004) — เดิมอนุญาตเฉพาะเจ้าของใบลา ผู้ถือ
+     * `leave.management.manage` และ `leave.approval.hr` เท่านั้น
+     * **ผู้อนุมัติในสายงานปัจจุบันเข้าถึงใบรับรองแพทย์ไม่ได้** ทั้งที่ต้องใช้
+     * ประกอบการพิจารณา จึงต้องขอจากผู้ลาผ่านช่องทางนอกระบบ
+     *
+     * เพิ่มผู้อนุมัติเข้ามา โดยยืนบนสองด่านที่มีอยู่แล้ว ไม่สร้างกฎใหม่:
+     *   - `LeavePolicy::view()` — ผู้ที่เห็นใบลาใบนี้ได้ตามขอบเขตหน่วยงาน (ABAC)
+     *   - ต้องเป็นผู้อนุมัติจริง ๆ คือถือสิทธิ์อนุมัติในสาย
+     *
+     * ผลคือ **ไม่ได้ขยายขอบเขตหน่วยงาน** — ผู้อนุมัติที่เห็นใบลาข้ามหน่วยงานไม่ได้
+     * ก็ยังเข้าถึงหลักฐานของใบนั้นไม่ได้เช่นกัน
+     */
     private function authorizeAccess(Request $r, Leave $leave): void
     {
-        abort_unless($leave->user_id === $r->user()->id || $r->user()->can('leave.management.manage') || $r->user()->can('leave.approval.hr'), 403);
+        $user = $r->user();
+
+        if ($leave->user_id === $user->id
+            || $user->can('leave.management.manage')
+            || $user->can('leave.approval.hr')) {
+            return;
+        }
+
+        $isApprover = $user->can('leave.approval.dept') || $user->can('leave.approval.final');
+
+        abort_unless($isApprover && $user->can('view', $leave), 403);
     }
 
     public function index(Request $r, Leave $leave)
