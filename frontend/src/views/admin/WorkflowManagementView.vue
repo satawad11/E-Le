@@ -172,8 +172,10 @@
 
               <!-- Info hint for automatic resolvers -->
               <div v-else class="flex items-center text-xs text-blue-700 bg-blue-50 p-2.5 rounded-xl">
-                <i class="fas fa-info-circle mr-1.5 text-blue-500"></i>
-                <span>ระบบจะค้นหาผู้ดำรงตำแหน่ง/หัวหน้าหน่วยงานของผู้ยื่นอัตโนมัติ</span>
+                <svg class="w-4 h-4 mr-1.5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>ระบบจะค้นหาผู้ดำรงตำแหน่ง/หัวหน้าหน่วยงานของผู้ยื่นคำขออัตโนมัติ</span>
               </div>
             </div>
 
@@ -271,6 +273,38 @@
         </div>
       </div>
     </div>
+
+    <!-- 409 Conflict Concurrency Modal -->
+    <div
+      v-if="conflictModal.show"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    >
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+        <div class="text-center">
+          <h3 class="text-lg font-bold text-gray-900">ตรวจพบการแก้ไขซ้ำซ้อน (Conflict)</h3>
+          <p class="text-sm text-gray-500 mt-2">
+            ข้อมูลสายการอนุมัติถูกแก้ไขหรือบันทึกโดยผู้ดูแลระบบท่านอื่นก่อนหน้านี้ เพื่อความถูกต้องของข้อมูล กรุณารีเฟรชเพื่อโหลดข้อมูลล่าสุด
+          </p>
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            @click="resolveConflictReload"
+            class="w-full px-5 py-2.5 rounded-xl bg-[#800000] text-white font-semibold hover:bg-[#600000] text-sm shadow-md transition min-h-[44px] flex items-center justify-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            โหลดข้อมูลล่าสุดทันที
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -294,6 +328,10 @@ const deleteModal = ref({
   show: false,
   index: -1,
   name: ''
+})
+
+const conflictModal = ref({
+  show: false
 })
 
 const resolverOptions = [
@@ -380,6 +418,7 @@ const fetchWorkflow = async () => {
     
     reindexSteps()
     initialStepsSnapshot.value = serializeSteps(steps.value)
+    conflictModal.value.show = false
   } catch (e) {
     console.error(e)
     alertStore.error('เกิดข้อผิดพลาดในการดึงข้อมูลลำดับการอนุมัติ')
@@ -457,6 +496,11 @@ const moveDown = (index) => {
   reindexSteps()
 }
 
+const resolveConflictReload = () => {
+  conflictModal.value.show = false
+  fetchWorkflow()
+}
+
 const saveWorkflow = async () => {
   if (steps.value.length === 0) {
     alertStore.error('กรุณาระบุขั้นตอนการอนุมัติอย่างน้อย 1 ขั้นตอน')
@@ -516,10 +560,7 @@ const saveWorkflow = async () => {
   } catch (e) {
     console.error(e)
     if (e.response?.status === 409) {
-      alertStore.error(e.response?.data?.message || 'ข้อมูลถูกแก้ไขโดยผู้ใช้อื่น กรุณารีเฟรชเพื่อโหลดข้อมูลล่าสุด')
-      if (e.response?.data?.current_steps) {
-        currentFingerprint.value = e.response.data.current_fingerprint || ''
-      }
+      conflictModal.value.show = true
     } else {
       alertStore.error(e.response?.data?.message || Object.values(e.response?.data?.errors || {})[0]?.[0] || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
     }
