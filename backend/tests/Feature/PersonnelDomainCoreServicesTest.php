@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Department;
-use App\Models\FiscalYear;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\OrgUnit;
@@ -16,11 +15,11 @@ use App\Services\LeavePolicyService;
 use App\Services\OrgScopeResolver;
 use App\Services\Reporting\ReportFilter;
 use App\Services\Reporting\ReportingDataService;
-use App\Services\Time\TimeService;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class PersonnelDomainCoreServicesTest extends TestCase
@@ -125,9 +124,9 @@ class PersonnelDomainCoreServicesTest extends TestCase
             'is_active' => true,
         ]);
 
-        Personnel::create([
-            'uuid' => (string) Str::uuid(),
+        Personnel::updateOrCreate([
             'user_id' => $user->id,
+        ], [
             'title' => 'ดร.',
             'first_name' => 'สมหมาย',
             'last_name' => 'ปัญญาดี',
@@ -146,10 +145,15 @@ class PersonnelDomainCoreServicesTest extends TestCase
 
         // Grant permission to viewer
         $viewer = User::factory()->create();
-        $viewer->givePermissionTo(\Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'view_users', 'guard_name' => 'web']));
+        $viewer->givePermissionTo(Permission::firstOrCreate(['name' => 'view_users', 'guard_name' => 'web']));
 
         $reportingService = app(ReportingDataService::class);
-        $filter = new ReportFilter(now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString(), (int) date('Y'));
+        // ReportFilter รับ CarbonImmutable ไม่ใช่ string
+        $filter = new ReportFilter(
+            CarbonImmutable::now()->startOfYear(),
+            CarbonImmutable::now()->endOfYear(),
+            (int) date('Y')
+        );
 
         $dataset = $reportingService->build('personnel', $filter, $viewer);
         $matchingRow = collect($dataset->rows)->firstWhere('user_id', $user->id);

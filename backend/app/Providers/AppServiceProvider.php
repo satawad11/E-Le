@@ -2,7 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Personnel;
+use App\Models\PersonnelAssignment;
 use App\Models\User;
+use App\Models\UserProfile;
+use App\Observers\PersonnelAssignmentObserver;
+use App\Observers\PersonnelObserver;
+use App\Observers\UserObserver;
+use App\Observers\UserProfileObserver;
 use App\Services\AuditLogger;
 use App\Services\PermissionEvaluator;
 use App\Services\SystemSettingService;
@@ -35,10 +42,10 @@ class AppServiceProvider extends ServiceProvider
             (bool) config('app.debug'),
         );
 
-        \App\Models\User::observe(\App\Observers\UserObserver::class);
-        \App\Models\Personnel::observe(\App\Observers\PersonnelObserver::class);
-        \App\Models\UserProfile::observe(\App\Observers\UserProfileObserver::class);
-        \App\Models\PersonnelAssignment::observe(\App\Observers\PersonnelAssignmentObserver::class);
+        User::observe(UserObserver::class);
+        Personnel::observe(PersonnelObserver::class);
+        UserProfile::observe(UserProfileObserver::class);
+        PersonnelAssignment::observe(PersonnelAssignmentObserver::class);
 
         User::created(fn (User $user) => app(AuditLogger::class)->log('user.created', 'user', $user->id, null, $user->attributesToArray()));
         User::updated(fn (User $user) => app(AuditLogger::class)->log('user.updated', 'user', $user->id, collect($user->getOriginal())->except(['password', 'remember_token'])->all(), $user->attributesToArray()));

@@ -8,7 +8,6 @@ use App\Models\Personnel;
 use App\Models\PersonnelAssignment;
 use App\Models\PersonnelType;
 use App\Models\User;
-use App\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
@@ -36,9 +35,10 @@ class PersonnelApiAlignmentTest extends TestCase
             'password' => bcrypt('password123456'),
         ]);
 
-        $personnel = Personnel::create([
-            'uuid' => (string) Str::uuid(),
+        // UserObserver สร้าง Personnel ให้แล้วตอน create user — personnel.user_id เป็น unique
+        $personnel = Personnel::updateOrCreate([
             'user_id' => $user->id,
+        ], [
             'personnel_code' => 'TCH-001',
             'title' => 'ครู',
             'first_name' => 'วันดี',
@@ -106,9 +106,9 @@ class PersonnelApiAlignmentTest extends TestCase
         $dept = Department::create(['name' => 'แผนกสามัญ']);
         $targetUser = User::factory()->create(['department_id' => $dept->id]);
 
-        Personnel::create([
-            'uuid' => (string) Str::uuid(),
+        Personnel::updateOrCreate([
             'user_id' => $targetUser->id,
+        ], [
             'personnel_code' => 'ADM-999',
             'title' => 'นาย',
             'first_name' => 'ประสิทธิ์',

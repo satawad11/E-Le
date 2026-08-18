@@ -25,9 +25,22 @@ class PersonalDataProtectionTest extends TestCase
         $personnel = PersonnelType::where('code', 'civil_servant')->firstOrFail();
         $dept = Department::firstOrCreate(['name' => 'แผนกทดสอบ']);
         $user = User::factory()->create(['name' => $name, 'department_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
-        $user->profile()->create(['position' => 'ครู', 'first_name' => 'สมชาย', 'last_name' => 'ใจดี', 'nationality' => 'ไทย']);
+        /*
+         * first/last name ต้องมาจาก $name ที่ผู้เรียกส่งมา
+         * เดิม hardcode เป็น "สมชาย ใจดี" แล้ว PersonnelSyncService จะ sync
+         * ชื่อจาก profile กลับไปทับ users.name ทำให้ทุกคนชื่อเดียวกันหมด
+         */
+        [$firstName, $lastName] = array_pad(explode(' ', trim($name), 2), 2, '');
+        $user->profile()->create([
+            'position' => 'ครู',
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'nationality' => 'ไทย',
+        ]);
 
-        return $user;
+        // PersonnelSyncService อ่าน $user->profile ระหว่าง observer ตอน create
+        // relation จึงถูก cache เป็น null ไปแล้วก่อนบรรทัดข้างบนจะสร้าง profile
+        return $user->fresh();
     }
 
     public function test_sensitive_fields_cannot_be_mass_assigned_anymore(): void

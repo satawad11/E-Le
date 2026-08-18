@@ -91,19 +91,13 @@ class LeaveWorkflowProvisioner
             $steps = [];
 
             foreach ($legacySteps->values() as $index => $legacy) {
-                $assigneeType = match ($legacy->approver_type ?? 'ROLE') {
-                    ApprovalStep::RESOLVER_SPECIFIC_USER => WorkflowStep::ASSIGNEE_USER,
-                    ApprovalStep::RESOLVER_REQUESTER_SUPERVISOR, ApprovalStep::RESOLVER_DEPARTMENT_HEAD, ApprovalStep::RESOLVER_DIVISION_DIRECTOR, ApprovalStep::RESOLVER_DIRECTOR => WorkflowStep::ASSIGNEE_ORG_MANAGER,
-                    default => WorkflowStep::ASSIGNEE_ROLE,
-                };
-
                 $steps[] = WorkflowStep::create([
                     'workflow_version_id' => $version->getKey(),
                     'code' => 'step_'.$legacy->step_order,
-                    'name' => $legacy->name ?: ('ขั้นตอนที่ '.$legacy->step_order),
+                    'name' => $this->stepNameFor($legacy),
                     'step_order' => $legacy->step_order,
                     'type' => WorkflowStep::TYPE_APPROVAL,
-                    'assignee_type' => $assigneeType,
+                    'assignee_type' => $this->assigneeTypeFor($legacy),
                     'assignee_role_id' => $legacy->role_id,
                     'assignee_user_id' => $legacy->specific_user_id,
                     'completion_policy' => 'any',
@@ -302,10 +296,44 @@ class LeaveWorkflowProvisioner
     }
 
     /** ลายนิ้วมือของสายอนุมัติ ใช้ตัดสินว่าต้องออกเวอร์ชันใหม่หรือไม่ */
+    /**
+     * แปลง approver_type ของ approval_steps เป็น assignee_type ของ workflow_steps
+     *
+     * เป็นการแปลงแบบ many-to-one จึงต้องใช้จุดเดียวกันทั้งตอนเขียนเวอร์ชัน
+     * และตอนคำนวณ fingerprint มิฉะนั้นสองฝั่งจะพูดคนละคำศัพท์
+     */
+    private function assigneeTypeFor(ApprovalStep $legacy): string
+    {
+        return match ($legacy->approver_type ?? 'ROLE') {
+            ApprovalStep::RESOLVER_SPECIFIC_USER => WorkflowStep::ASSIGNEE_USER,
+            ApprovalStep::RESOLVER_REQUESTER_SUPERVISOR, ApprovalStep::RESOLVER_DEPARTMENT_HEAD, ApprovalStep::RESOLVER_DIVISION_DIRECTOR, ApprovalStep::RESOLVER_DIRECTOR => WorkflowStep::ASSIGNEE_ORG_MANAGER,
+            default => WorkflowStep::ASSIGNEE_ROLE,
+        };
+    }
+
+    /** ชื่อขั้นตอนที่จะถูกเขียนลง workflow_steps — มี fallback เมื่อ legacy ไม่ได้ตั้งชื่อ */
+    private function stepNameFor(ApprovalStep $legacy): string
+    {
+        return $legacy->name ?: ('ขั้นตอนที่ '.$legacy->step_order);
+    }
+
+    /**
+     * fingerprint ของสายอนุมัติปัจจุบัน — ต้องคำนวณด้วย "รูปแบบหลังแปลง"
+     * ให้ตรงกับ fingerprintOfVersion() เป๊ะ
+     *
+     * เดิมฝั่งนี้ใช้ `approver_type` ดิบและ `name` ที่ยังไม่ผ่าน fallback
+     * ส่วนอีกฝั่งใช้ `assignee_type` ที่แปลงแล้ว ทำให้เทียบกันไม่มีวันตรง
+     * ผลคือ publishCurrentVersion() ออกเวอร์ชันใหม่ทุกครั้งที่ถูกเรียก
+     * ทั้งที่สายอนุมัติไม่ได้เปลี่ยน — ผิดข้อกำหนด idempotent
+     */
     private function fingerprintOf($legacySteps): string
     {
         return $legacySteps
-            ->map(fn ($step) => $step->step_order.':'.($step->approver_type ?? 'ROLE').':'.($step->role_id ?? '0').':'.($step->specific_user_id ?? '0').':'.$step->name)
+            ->map(fn (ApprovalStep $step) => $step->step_order
+                .':'.$this->assigneeTypeFor($step)
+                .':'.($step->role_id ?? '0')
+                .':'.($step->specific_user_id ?? '0')
+                .':'.$this->stepNameFor($step))
             ->implode('|');
     }
 

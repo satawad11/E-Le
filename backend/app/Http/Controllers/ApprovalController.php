@@ -194,10 +194,17 @@ class ApprovalController extends Controller
                             $roles = $u->roles->pluck('id');
                             $res = [];
                             foreach ($roles as $rId) {
-                                if ($rId) $res[] = [$rId => $u];
+                                if ($rId) {
+                                    $res[] = [$rId => $u];
+                                }
                             }
+
                             return $res;
-                        })->flatMap(function($v) { return $v; })->mapToDictionary(function ($v, $k) { return [$k => $v]; });
+                        })->flatMap(function ($v) {
+                            return $v;
+                        })->mapToDictionary(function ($v, $k) {
+                            return [$k => $v];
+                        });
 
                     foreach ($steps as $st) {
                         $stepUser = $stepUsers->get($st->role_id)?->first();

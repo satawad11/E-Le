@@ -12,11 +12,17 @@ use Illuminate\Database\Eloquent\Model;
 class ApprovalStep extends Model
 {
     public const RESOLVER_HR_OFFICER = 'HR_OFFICER';
+
     public const RESOLVER_REQUESTER_SUPERVISOR = 'REQUESTER_SUPERVISOR';
+
     public const RESOLVER_DEPARTMENT_HEAD = 'DEPARTMENT_HEAD';
+
     public const RESOLVER_DIVISION_DIRECTOR = 'DIVISION_DIRECTOR';
+
     public const RESOLVER_DIRECTOR = 'DIRECTOR';
+
     public const RESOLVER_ROLE = 'ROLE';
+
     public const RESOLVER_SPECIFIC_USER = 'SPECIFIC_USER';
 
     public function role()

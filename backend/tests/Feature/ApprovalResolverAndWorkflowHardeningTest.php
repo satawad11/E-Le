@@ -3,16 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveType;
 use App\Models\OrgUnit;
-use App\Models\Personnel;
 use App\Models\PersonnelAssignment;
-use App\Models\PersonnelType;
 use App\Models\User;
-use App\Models\UserDelegation;
 use App\Services\Workflow\ApproverResolverService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -93,12 +89,15 @@ class ApprovalResolverAndWorkflowHardeningTest extends TestCase
         ]);
 
         // Assign deptHead as manager of this unit in org_unit_managers
+        // คอลัมน์จริงคือ uuid / assignment_type / note
+        // เดิมเทสต์เขียน position_title กับ management_type ซึ่งไม่มีอยู่ในสคีมาเลย
         DB::table('org_unit_managers')->insert([
+            'uuid' => (string) Str::uuid(),
             'org_unit_id' => $unit->id,
             'user_id' => $deptHead->id,
-            'position_title' => 'หัวหน้าแผนกวิชาคอมพิวเตอร์',
-            'management_type' => 'primary',
+            'assignment_type' => 'MANAGER',
             'scope' => 'UNIT',
+            'note' => 'หัวหน้าแผนกวิชาคอมพิวเตอร์',
             'effective_from' => '2025-01-01',
             'created_at' => now(),
             'updated_at' => now(),
@@ -149,6 +148,7 @@ class ApprovalResolverAndWorkflowHardeningTest extends TestCase
             'start_date' => now()->addDay()->toDateString(),
             'end_date' => now()->addDays(2)->toDateString(),
             'total_days' => 2,
+            'reason' => 'ทดสอบ snapshot สายอนุมัติ',   // leaves.reason เป็น NOT NULL
             'status' => 'Pending',
             'approval_level' => 1,
         ]);

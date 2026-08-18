@@ -44,8 +44,11 @@ class PersonnelEntityFoundationTest extends TestCase
             'is_active' => true,
         ]);
 
-        $personnel = Personnel::create([
+        // UserObserver สร้าง Personnel ให้อัตโนมัติแล้วตั้งแต่ตอน create user
+        // จึงต้องแก้แถวเดิม ไม่ใช่สร้างใหม่ซ้ำ (personnel.user_id เป็น unique)
+        $personnel = Personnel::updateOrCreate([
             'user_id' => $user->id,
+        ], [
             'personnel_code' => 'P-001',
             'title' => 'นาย',
             'first_name' => 'สมชาย',
@@ -64,8 +67,9 @@ class PersonnelEntityFoundationTest extends TestCase
     public function test_personnel_assignments_relationship(): void
     {
         $user = User::factory()->create(['name' => 'สมศรี รักเรียน']);
-        $personnel = Personnel::create([
+        $personnel = Personnel::updateOrCreate([
             'user_id' => $user->id,
+        ], [
             'first_name' => 'สมศรี',
             'last_name' => 'รักเรียน',
             'effective_from' => now()->toDateString(),

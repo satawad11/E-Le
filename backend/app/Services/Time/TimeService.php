@@ -8,6 +8,7 @@ use App\Models\Time\WorkScheduleDay;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
 
 /**
  * LEGACY-06 — บริการเวลากลางของระบบ
@@ -95,7 +96,7 @@ class TimeService
         if ($departmentId === null && $user !== null) {
             $orgUnitId = $user->currentAssignment?->org_unit_id ?? $user->org_unit_id;
             if ($orgUnitId) {
-                $departmentId = \Illuminate\Support\Facades\DB::table('department_org_unit_map')
+                $departmentId = DB::table('department_org_unit_map')
                     ->where('org_unit_id', $orgUnitId)
                     ->value('department_id');
             }

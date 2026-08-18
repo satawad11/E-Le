@@ -62,22 +62,22 @@ class WorkflowController extends Controller
             $name = trim($step['name'] ?? '');
             if (empty($name)) {
                 throw ValidationException::withMessages([
-                    "steps.{$index}.name" => ["กรุณากรอกชื่อขั้นตอนในลำดับที่ ".($index + 1)],
+                    "steps.{$index}.name" => ['กรุณากรอกชื่อขั้นตอนในลำดับที่ '.($index + 1)],
                 ]);
             }
 
             $approverType = $step['approver_type'] ?? ApprovalStep::RESOLVER_ROLE;
 
             if ($approverType === ApprovalStep::RESOLVER_ROLE) {
-                if (empty($step['role_id']) || ! in_array((int)$step['role_id'], $roleIds, true)) {
+                if (empty($step['role_id']) || ! in_array((int) $step['role_id'], $roleIds, true)) {
                     throw ValidationException::withMessages([
-                        "steps.{$index}.role_id" => ["กรุณาเลือกบทบาทที่ถูกต้องในลำดับที่ ".($index + 1)],
+                        "steps.{$index}.role_id" => ['กรุณาเลือกบทบาทที่ถูกต้องในลำดับที่ '.($index + 1)],
                     ]);
                 }
             } elseif ($approverType === ApprovalStep::RESOLVER_SPECIFIC_USER) {
                 if (empty($step['specific_user_id']) || ! User::whereKey($step['specific_user_id'])->exists()) {
                     throw ValidationException::withMessages([
-                        "steps.{$index}.specific_user_id" => ["กรุณาระบุผู้ใช้ที่ถูกต้องในลำดับที่ ".($index + 1)],
+                        "steps.{$index}.specific_user_id" => ['กรุณาระบุผู้ใช้ที่ถูกต้องในลำดับที่ '.($index + 1)],
                     ]);
                 }
             }

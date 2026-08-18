@@ -30,6 +30,8 @@ services:
     volumes:
       - ./backend:/var/www/html
       - backend_vendor:/var/www/html/vendor
+      # php.ini มีอยู่ใน repo มานานแต่ไม่เคยถูก mount — ค่าที่ตั้งไว้จึงไม่เคยมีผล
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/zz-app.ini:ro
     # ไม่เปิด port ออกนอก — ทางเข้าเดียวของระบบคือ nginx (DEPLOY-001)
     expose:
       - "9000"
@@ -91,6 +93,8 @@ services:
     volumes:
       - ./backend:/var/www/html
       - backend_vendor:/var/www/html/vendor
+      # php.ini มีอยู่ใน repo มานานแต่ไม่เคยถูก mount — ค่าที่ตั้งไว้จึงไม่เคยมีผล
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/zz-app.ini:ro
     environment:
       - DB_HOST=db
       - DB_PORT=3306
@@ -122,6 +126,8 @@ services:
     volumes:
       - ./backend:/var/www/html
       - backend_vendor:/var/www/html/vendor
+      # php.ini มีอยู่ใน repo มานานแต่ไม่เคยถูก mount — ค่าที่ตั้งไว้จึงไม่เคยมีผล
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/zz-app.ini:ro
     environment:
       - DB_HOST=db
       - DB_PORT=3306

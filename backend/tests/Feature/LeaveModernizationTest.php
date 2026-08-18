@@ -82,10 +82,23 @@ class LeaveModernizationTest extends TestCase
 
     private function staff(): User
     {
-        return User::factory()->create([
+        $user = User::factory()->create([
             'personnel_type_id' => $this->personnelType->id,
             'department_id' => Department::create(['name' => 'ฝ่ายทดสอบ'])->id,
         ])->fresh();
+
+        /*
+         * ตั้งวันเริ่มรับราชการไว้ในอดีตให้ชัดเจน
+         *
+         * เดิมไม่ได้ตั้ง จึงตกไปใช้ `created_at` = วันที่รันเทสต์ พอวันจริงเลย
+         * `start_date` ที่ hardcode ไว้ (2026-08-17) วันเริ่มรับราชการจะกลาย
+         * เป็นวันหลังวันลา แล้วชน `LeavePolicyService::assertEligible`
+         * ("อายุราชการ/อายุงานยังไม่ครบตามหลักเกณฑ์") ทำให้เทสต์ทั้งคลาส
+         * ตกพร้อมกันเมื่อเวลาผ่านไป
+         */
+        $user->personnel?->update(['effective_from' => '2000-01-01']);
+
+        return $user->fresh();
     }
 
     private function service(): LeaveService

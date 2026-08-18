@@ -6,9 +6,9 @@ use App\Models\ApprovalStep;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveAuditLog;
-use App\Models\UserDelegation;
 use App\Services\LeaveService;
 use App\Services\NotificationCenter\NotificationCenter;
+use App\Services\Workflow\ApproverResolverService;
 use App\Services\Workflow\LeaveWorkflowShadow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -75,7 +75,7 @@ class GovernmentApprovalController extends Controller
             return null;
         }
 
-        $resolver = app(\App\Services\Workflow\ApproverResolverService::class);
+        $resolver = app(ApproverResolverService::class);
         $isAuthorized = $resolver->isAuthorizedApprover($r->user(), $leave->user, $step);
         abort_unless($isAuthorized, 403, 'ไม่มีสิทธิ์อนุมัติในขั้นตอนนี้');
 

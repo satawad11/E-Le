@@ -15,8 +15,8 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\LeaveService;
-use App\Services\Workflow\LeaveWorkflowProvisioner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class ApprovalWorkflowManagementTest extends TestCase
@@ -24,12 +24,19 @@ class ApprovalWorkflowManagementTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $employee;
+
     private Role $adminRole;
+
     private Role $employeeRole;
+
     private Role $hrRole;
+
     private Role $deputyRole;
+
     private Role $directorRole;
+
     private PersonnelType $personnelType;
 
     protected function setUp(): void
@@ -43,10 +50,10 @@ class ApprovalWorkflowManagementTest extends TestCase
         $this->directorRole = Role::firstOrCreate(['name' => 'Director', 'guard_name' => 'web']);
 
         $this->adminRole->givePermissionTo(
-            \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'manage_workflow_steps', 'guard_name' => 'web'])
+            Permission::firstOrCreate(['name' => 'manage_workflow_steps', 'guard_name' => 'web'])
         );
         $this->adminRole->givePermissionTo(
-            \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'leave.management.manage', 'guard_name' => 'web'])
+            Permission::firstOrCreate(['name' => 'leave.management.manage', 'guard_name' => 'web'])
         );
 
         $dept = Department::firstOrCreate(['name' => 'วิชาการ'], ['code' => 'ACAD', 'is_active' => true]);
@@ -57,7 +64,7 @@ class ApprovalWorkflowManagementTest extends TestCase
 
         FiscalYear::firstOrCreate(
             ['year' => (int) date('Y')],
-            ['name' => 'ปีงบประมาณ ' . ((int) date('Y') + 543), 'start_date' => date('Y') . '-01-01', 'end_date' => date('Y') . '-12-31', 'is_active' => true]
+            ['name' => 'ปีงบประมาณ '.((int) date('Y') + 543), 'start_date' => date('Y').'-01-01', 'end_date' => date('Y').'-12-31', 'is_active' => true]
         );
 
         $this->admin = User::factory()->create([
@@ -75,7 +82,7 @@ class ApprovalWorkflowManagementTest extends TestCase
 
     private function createPolicyAndBalance(User $user, float $quota = 10): array
     {
-        $type = LeaveType::create(['name' => 'ลาพักผ่อน_' . uniqid(), 'code_prefix' => 'V', 'is_active' => true]);
+        $type = LeaveType::create(['name' => 'ลาพักผ่อน_'.uniqid(), 'code_prefix' => 'V', 'is_active' => true]);
         $policy = LeavePolicy::create([
             'personnel_type_id' => $this->personnelType->id,
             'leave_type_id' => $type->id,
@@ -129,7 +136,7 @@ class ApprovalWorkflowManagementTest extends TestCase
                 ['role_id' => $this->hrRole->id, 'name' => 'ขั้นที่ 1 HR', 'step_order' => 1],
                 ['role_id' => $this->deputyRole->id, 'name' => 'ขั้นที่ 2 รอง ผอ.', 'step_order' => 2],
                 ['role_id' => $this->directorRole->id, 'name' => 'ขั้นที่ 3 ผอ.', 'step_order' => 3],
-            ]
+            ],
         ];
 
         $res = $this->actingAs($this->admin)->postJson('/api/admin/workflow-steps', $payload);
@@ -146,7 +153,7 @@ class ApprovalWorkflowManagementTest extends TestCase
             'steps' => [
                 ['role_id' => $this->hrRole->id, 'name' => 'ขั้นที่ 1 HR', 'step_order' => 1],
                 ['role_id' => $this->directorRole->id, 'name' => 'ขั้นที่ 2 ผอ.', 'step_order' => 2],
-            ]
+            ],
         ];
 
         $res2 = $this->actingAs($this->admin)->postJson('/api/admin/workflow-steps', $reorderedPayload);
@@ -180,16 +187,16 @@ class ApprovalWorkflowManagementTest extends TestCase
         // Blank name forbidden
         $resBlankName = $this->actingAs($this->admin)->postJson('/api/admin/workflow-steps', [
             'steps' => [
-                ['role_id' => $this->hrRole->id, 'name' => '   ', 'step_order' => 1]
-            ]
+                ['role_id' => $this->hrRole->id, 'name' => '   ', 'step_order' => 1],
+            ],
         ]);
         $resBlankName->assertStatus(422);
 
         // Invalid role_id forbidden
         $resInvalidRole = $this->actingAs($this->admin)->postJson('/api/admin/workflow-steps', [
             'steps' => [
-                ['role_id' => 99999, 'name' => 'Unknown', 'step_order' => 1]
-            ]
+                ['role_id' => 99999, 'name' => 'Unknown', 'step_order' => 1],
+            ],
         ]);
         $resInvalidRole->assertStatus(422);
     }
@@ -204,7 +211,7 @@ class ApprovalWorkflowManagementTest extends TestCase
         $res->assertForbidden();
 
         $resPost = $this->actingAs($this->employee)->postJson('/api/admin/workflow-steps', [
-            'steps' => [['role_id' => $this->hrRole->id, 'name' => 'HR', 'step_order' => 1]]
+            'steps' => [['role_id' => $this->hrRole->id, 'name' => 'HR', 'step_order' => 1]],
         ]);
         $resPost->assertForbidden();
     }
@@ -269,7 +276,7 @@ class ApprovalWorkflowManagementTest extends TestCase
 
         // Step 1: HR Approve
         $resApprove = $this->actingAs($hrUser)->postJson("/api/approvals/{$leave->id}/approve", [
-            'comment' => 'เอกสารครบถ้วน'
+            'comment' => 'เอกสารครบถ้วน',
         ]);
         $resApprove->assertOk();
 
@@ -285,7 +292,7 @@ class ApprovalWorkflowManagementTest extends TestCase
         UserProfile::create(['user_id' => $directorUser->id, 'position' => 'ผู้อำนวยการ']);
 
         $resReject = $this->actingAs($directorUser)->postJson("/api/approvals/{$leave->id}/reject", [
-            'comment' => 'ไม่อนุมัติเนื่องจากติดราชการด่วน'
+            'comment' => 'ไม่อนุมัติเนื่องจากติดราชการด่วน',
         ]);
         $resReject->assertOk();
 
@@ -323,7 +330,7 @@ class ApprovalWorkflowManagementTest extends TestCase
                 ['role_id' => $this->deputyRole->id, 'name' => 'Deputy v2', 'step_order' => 2],
                 ['role_id' => $this->deputyRole->id, 'name' => 'Deputy2 v2', 'step_order' => 3],
                 ['role_id' => $this->directorRole->id, 'name' => 'Director v2', 'step_order' => 4],
-            ]
+            ],
         ])->assertOk();
 
         // 3. Old leave still preserves its 2-step snapshot and names
@@ -347,14 +354,14 @@ class ApprovalWorkflowManagementTest extends TestCase
         // Admin 2 modifies workflow first
         $this->actingAs($this->admin)->postJson('/api/admin/workflow-steps', [
             'steps' => [
-                ['role_id' => $this->hrRole->id, 'name' => 'Step 1 Modified by Admin 2', 'step_order' => 1]
-            ]
+                ['role_id' => $this->hrRole->id, 'name' => 'Step 1 Modified by Admin 2', 'step_order' => 1],
+            ],
         ])->assertOk();
 
         // Admin 1 attempts to save with outdated fingerprint
         $conflictRes = $this->actingAs($this->admin)->postJson('/api/admin/workflow-steps', [
             'steps' => [
-                ['role_id' => $this->hrRole->id, 'name' => 'Step 1 from Admin 1', 'step_order' => 1]
+                ['role_id' => $this->hrRole->id, 'name' => 'Step 1 from Admin 1', 'step_order' => 1],
             ],
             'fingerprint' => $oldFingerprint,
         ]);

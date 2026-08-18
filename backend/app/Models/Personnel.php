@@ -29,6 +29,12 @@ class Personnel extends Model
         'effective_to' => 'date',
     ];
 
+    /**
+     * accessor `full_name` มีอยู่แล้วแต่ไม่เคยถูกประกาศเป็น appends
+     * ทำให้ payload ของ API ไม่มีคีย์นี้ทั้งที่ contract ฝั่งเรียกใช้ต้องการ
+     */
+    protected $appends = ['full_name'];
+
     public function user()
     {
         return $this->belongsTo(User::class);

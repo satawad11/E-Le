@@ -49,7 +49,10 @@ class PromotionScreeningTest extends TestCase
         ]);
         $user->profile()->create(['position' => 'ครู', 'start_date' => '2015-05-01']);
 
-        return $user;
+        // PersonnelSyncService อ่าน $user->profile ระหว่าง observer ตอน create
+        // relation จึงถูก cache เป็น null ไปแล้วก่อนบรรทัดข้างบนจะสร้าง profile
+        // ต้องคืน instance ใหม่ ไม่งั้น $user->profile ยังเป็น null
+        return $user->fresh();
     }
 
     private function approvedLeave(User $user, LeaveType $type, float $days): void

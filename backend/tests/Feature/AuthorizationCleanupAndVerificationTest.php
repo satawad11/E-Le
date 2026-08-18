@@ -3,21 +3,17 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\Leave;
-use App\Models\LeaveApproval;
+use App\Models\LeaveBalance;
 use App\Models\LeaveType;
 use App\Models\OrgUnit;
-use App\Models\Personnel;
 use App\Models\PersonnelAssignment;
-use App\Models\PersonnelType;
 use App\Models\User;
 use App\Models\UserDelegation;
-use App\Services\LeaveRequestNotificationService;
+use App\Services\LeavePolicyService;
 use App\Services\OrgScopeResolver;
 use App\Services\PermissionEvaluator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -40,7 +36,8 @@ class AuthorizationCleanupAndVerificationTest extends TestCase
         $this->assertTrue($user->can('leave.approval.dept'));
 
         $evaluator = app(PermissionEvaluator::class);
-        $this->assertTrue($evaluator->can($user, 'leave.approval.dept'));
+        // เมธอดชื่อ allows() ไม่ใช่ can()
+        $this->assertTrue($evaluator->allows($user, 'leave.approval.dept'));
     }
 
     public function test_explicit_scope_and_abac_evaluation_through_org_scope_resolver(): void
@@ -105,12 +102,30 @@ class AuthorizationCleanupAndVerificationTest extends TestCase
             'approval_level' => 1,
         ]);
 
-        $res = $this->actingAs($approver)->postJson("/api/leaves/{$leave->id}/approve", [
+        $this->giveQuota($requester, $leaveType, $leave);
+
+        $res = $this->actingAs($approver)->postJson("/api/approvals/{$leave->id}/approve", [
             'comment' => 'อนุมัติเรียบร้อย',
         ]);
 
         $res->assertStatus(200);
         $this->assertEquals('Approved', $leave->fresh()->status);
+    }
+
+    /**
+     * ใบลาที่สร้างตรงผ่าน Model ไม่ได้ผ่าน LeaveService จึงไม่มี leave_balances
+     * ตอนอนุมัติจะตกด้วย 422 "วันลาคงเหลือไม่เพียงพอ"
+     * เทสต์ชุดนี้ตรวจเรื่อง authorization จึงต้องเปิดทางเรื่องโควตาให้ผ่านก่อน
+     */
+    private function giveQuota(User $user, LeaveType $type, Leave $leave): void
+    {
+        LeaveBalance::create([
+            'user_id' => $user->id,
+            'leave_type_id' => $type->id,
+            'year' => app(LeavePolicyService::class)->periodYearForLeave($leave),
+            'quota' => 30,
+            'used' => 0,
+        ]);
     }
 
     public function test_delegation_approval_authorization(): void
@@ -150,7 +165,9 @@ class AuthorizationCleanupAndVerificationTest extends TestCase
             'approval_level' => 1,
         ]);
 
-        $res = $this->actingAs($delegate)->postJson("/api/leaves/{$leave->id}/approve", [
+        $this->giveQuota($requester, $leaveType, $leave);
+
+        $res = $this->actingAs($delegate)->postJson("/api/approvals/{$leave->id}/approve", [
             'comment' => 'อนุมัติแทน ผอ.',
         ]);
 

@@ -35,14 +35,24 @@ class PersonnelSyncTest extends TestCase
             ['name' => 'ข้าราชการครู', 'is_active' => true]
         );
 
-        $user = User::create([
+        /*
+         * `org_unit_id` ไม่ได้อยู่ใน Fillable ของ User โดยตั้งใจ — โค้ด production
+         * ไม่เคยเขียนคอลัมน์นี้ตรง ๆ แต่ derive จาก `department_id` ใน
+         * UserObserver::saving การส่งผ่าน mass assignment จึงถูกตัดทิ้งเงียบ ๆ
+         * และ assignment ที่ observer สร้างจะได้ org_unit_id เป็น null
+         *
+         * ตั้งค่าแบบ explicit เพื่อให้เทสต์สะท้อนทางที่ระบบใช้จริง
+         * โดยไม่ต้องขยายพื้นที่ mass assignment
+         */
+        $user = new User([
             'name' => 'วิทยา เรียนดี',
             'email' => 'wittaya.r@example.com',
             'password' => bcrypt('password123456'),
-            'org_unit_id' => $orgUnit->id,
             'personnel_type_id' => $personnelType->id,
             'is_active' => true,
         ]);
+        $user->org_unit_id = $orgUnit->id;
+        $user->save();
 
         $this->assertNotNull($user->fresh()->personnel);
         $this->assertEquals('วิทยา', $user->fresh()->personnel->first_name);
@@ -111,12 +121,12 @@ class PersonnelSyncTest extends TestCase
             'is_active' => true,
         ]);
 
-        DB::table('department_org_unit_map')->insert([
-            'department_id' => $dept->id,
-            'org_unit_id' => $orgUnit->id,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // การสร้าง Department ผูก org unit ให้เองแล้ว และ department_id เป็น unique
+        // จึงต้องเขียนแบบ upsert ไม่ใช่ insert ตรง ๆ มิฉะนั้นชน unique constraint
+        DB::table('department_org_unit_map')->updateOrInsert(
+            ['department_id' => $dept->id],
+            ['org_unit_id' => $orgUnit->id, 'updated_at' => now(), 'created_at' => now()]
+        );
 
         $user = User::factory()->create(['name' => 'วิชัย มั่นคง']);
 
