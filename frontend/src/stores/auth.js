@@ -176,7 +176,9 @@ export const useAuthStore = defineStore('auth', {
       const attendancePerms = [
         'attendance.checkin', 'attendance.view_self', 'attendance.view_all',
         'attendance.ot', 'attendance.ot_summary', 'attendance.export',
-        'attendance.record.create', 'attendance.record.view_my', 'attendance.report.view_all', 'attendance.summary.export'
+        'attendance.record.create', 'attendance.record.view_my', 'attendance.report.view_all', 'attendance.summary.export',
+        // คำสั่ง OT อยู่ใต้เมนูนี้ ผู้ที่มีสิทธิ์เฉพาะ OT จึงต้องเห็นกลุ่มเมนูด้วย
+        'overtime.operation.execute', 'overtime.management.review'
       ];
       const perms = getPermissionNames(state);
       return perms.some(p => attendancePerms.includes(p));

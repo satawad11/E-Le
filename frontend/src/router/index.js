@@ -155,6 +155,12 @@ const router = createRouter({
       component: () => import('../views/admin/AttendanceOTSummaryView.vue'),
       meta: { requiresAuth: true, permissions: ['view_all_attendances', 'attendance.ot', 'attendance.ot_summary'], title: 'สรุปผลการปฏิบัติงาน (OT)', parent: 'ระบบลงเวลาออนไลน์' }
     },
+    {
+      path: '/admin/overtime-orders',
+      name: 'admin-overtime-orders',
+      component: () => import('../views/admin/OvertimeOrdersView.vue'),
+      meta: { requiresAuth: true, permissions: ['overtime.operation.execute', 'overtime.management.review'], title: 'คำสั่งปฏิบัติงานล่วงเวลา (OT)', parent: 'ระบบลงเวลาออนไลน์' }
+    },
 
     // === ระบบสารบรรณ ===
     {

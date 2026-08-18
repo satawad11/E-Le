@@ -161,6 +161,11 @@ class DatabaseSeeder extends Seeder
             ['role_id' => $directorRole->id, 'name' => 'อนุมัติรอบสุดท้ายโดยผู้อำนวยการ']
         );
 
+        // LEGACY-03: เติม org_units/department_org_unit_map/users.org_unit_id
+        // migration ทำ backfill นี้ไว้แล้วแต่รันก่อน seeder จึงไม่เจอ departments
+        // ต้องอยู่หลังทั้ง department และ user ถูกสร้างครบ
+        $this->call([OrgUnitBackfillSeeder::class]);
+
         // LEGACY-06: ตารางเวลาทำงานเริ่มต้น — ต้องอยู่หลังผู้ใช้ถูกสร้างแล้ว
         // เพราะอ่าน users.work_start_time เพื่อแยกคนที่มีเวลาเฉพาะตัว
         $this->call([WorkScheduleSeeder::class]);

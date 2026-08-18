@@ -261,6 +261,16 @@
               สรุปผลการปฏิบัติงาน
             </router-link>
 
+            <!-- คำสั่ง OT -->
+            <router-link
+              v-if="authStore.hasAnyPermission(['overtime.operation.execute', 'overtime.management.review'])"
+              to="/admin/overtime-orders"
+              class="nav-link !py-2 !text-sm"
+              active-class="nav-link-active"
+            >
+              คำสั่งปฏิบัติงานล่วงเวลา (OT)
+            </router-link>
+
             <!-- สรุปผล OT -->
             <router-link
               v-if="authStore.canManageOT"
@@ -672,6 +682,9 @@
               <router-link v-if="authStore.canViewAllAttendance" to="/admin/attendances/summary" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 สรุปผลการปฏิบัติงาน
               </router-link>
+              <router-link v-if="authStore.hasAnyPermission(['overtime.operation.execute', 'overtime.management.review'])" to="/admin/overtime-orders" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+                คำสั่งปฏิบัติงานล่วงเวลา (OT)
+              </router-link>
               <router-link v-if="authStore.canManageOT" to="/admin/ot-summary" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 สรุปผลการปฏิบัติงาน (OT)
               </router-link>
@@ -996,10 +1009,11 @@ const isLeaveRouteActive = computed(() => {
 })
 
 const isAttendanceRouteActive = computed(() => {
-  return ['attendance-check-in', 'attendance-history', 'admin-attendances', 'admin-attendances-summary', 'admin-ot-summary'].includes(route.name) ||
+  return ['attendance-check-in', 'attendance-history', 'admin-attendances', 'admin-attendances-summary', 'admin-ot-summary', 'admin-overtime-orders'].includes(route.name) ||
     route.path.startsWith('/attendance') ||
     route.path.startsWith('/admin/attendance') ||
-    route.path === '/admin/ot-summary'
+    route.path === '/admin/ot-summary' ||
+    route.path === '/admin/overtime-orders'
 })
 
 const isAdminRouteActive = computed(() => {
