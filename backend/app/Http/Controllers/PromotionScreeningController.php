@@ -112,9 +112,14 @@ class PromotionScreeningController extends Controller
             $lateTimes = (int) ($late->times ?? 0);
 
             // เวลาปฏิบัติราชการในรอบ: ผู้ที่บรรจุกลางรอบจะนับจากวันบรรจุ
-            $serviceStart = $user->profile?->start_date ? Carbon::parse($user->profile->start_date) : null;
-            $effectiveStart = $serviceStart && $serviceStart->gt($from) ? $serviceStart : $from;
-            $serviceMonths = $effectiveStart->gt($to) ? 0 : $effectiveStart->diffInMonths($to);
+            // นับเป็นช่วงวัน และให้ปลายรอบเป็น exclusive (1 ต.ค. 00:00) รอบเต็มจึงได้ 6 เดือนพอดี
+            $serviceStart = $user->profile?->start_date ? Carbon::parse($user->profile->start_date)->startOfDay() : null;
+            $periodStart = $from->copy()->startOfDay();
+            $periodEndExclusive = $to->copy()->startOfDay()->addDay();
+            $effectiveStart = $serviceStart && $serviceStart->gt($periodStart) ? $serviceStart : $periodStart;
+            $serviceMonths = $effectiveStart->gte($periodEndExclusive)
+                ? 0.0
+                : round((float) $effectiveStart->diffInMonths($periodEndExclusive), 2);
 
             $flags = [];
             if ($leaveDays > $maxLeaveDays) {

@@ -149,6 +149,31 @@ class PromotionScreeningTest extends TestCase
         $this->assertStringContainsString('เวลาปฏิบัติราชการไม่ครบ', implode(' ', $row['flags']));
     }
 
+    public function test_full_round_service_time_is_exactly_six_months(): void
+    {
+        $hr = $this->hrUser();
+        $user = $this->staff('ผู้อยู่ครบรอบ');
+
+        $row = collect($this->screen($hr)->assertOk()->json('rows'))->firstWhere('user_id', $user->id);
+
+        // 1 ต.ค. 2025 – 31 มี.ค. 2026 ต้องได้ 6 เดือนพอดี ไม่ใช่ 5.99999…
+        $this->assertSame(6.0, (float) $row['service_months']);
+        $this->assertTrue($row['passed']);
+    }
+
+    public function test_service_time_of_mid_round_appointment_is_counted_from_start_date(): void
+    {
+        $hr = $this->hrUser();
+        $user = $this->staff('ผู้บรรจุกลางรอบ');
+        // บรรจุ 1 ธ.ค. 2025 → ถึงสิ้นรอบ 31 มี.ค. 2026 = 4 เดือนพอดี ผ่านเกณฑ์ขั้นต่ำ
+        $user->profile->update(['start_date' => '2025-12-01']);
+
+        $row = collect($this->screen($hr)->assertOk()->json('rows'))->firstWhere('user_id', $user->id);
+
+        $this->assertSame(4.0, (float) $row['service_months']);
+        $this->assertTrue($row['passed']);
+    }
+
     public function test_report_requires_permission(): void
     {
         $this->actingAs($this->staff('พนักงานทั่วไป'))
