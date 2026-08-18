@@ -21,6 +21,20 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        /*
+         * Seeder ระดับติดตั้ง — ทุกตัว idempotent (firstOrCreate/updateOrCreate)
+         * รันซ้ำได้โดยไม่สร้างข้อมูลซ้ำและไม่ลบของเดิม
+         *
+         * ลำดับสำคัญ: สิทธิ์ต้องมาก่อนเมนู เพราะ MenuSeeder ผูก menu_permissions
+         *
+         * ที่ **จงใจไม่ใส่** ไว้ที่นี่:
+         *   PurgeAndMigrateTo7StandardRolesSeeder  ลบ role และการผูกสิทธิ์ทิ้ง
+         *                                          เป็น one-off migration
+         *   StandardRolesAndPermissionsSeeder      ทับซ้อนกับ RolesAndPermissionsSeeder
+         *   UpdateUserNamesSeeder                  แก้ข้อมูลย้อนหลังครั้งเดียว
+         *   MockDataSeeder / MockLeaveSeeder       ข้อมูลจำลองสำหรับ dev เท่านั้น
+         * ทั้งหมดต้องเรียกด้วยมือเมื่อจำเป็น
+         */
         $this->call([
             RolesAndPermissionsSeeder::class,
             SarabanPermissionSeeder::class,
@@ -29,6 +43,12 @@ class DatabaseSeeder extends Seeder
             FiscalYearSeeder::class,
             ThaiGovernmentHoliday2569Seeder::class,
             DocumentTemplateSeeder::class,
+            // เดิมสี่ตัวนี้ไม่เคยถูกเรียกเลย ทำให้ติดตั้งใหม่ได้ระบบที่ใช้งานไม่ครบ:
+            // ตาราง menus ว่างเปล่า และสิทธิ์ที่ route บังคับใช้จริงไม่ถูกสร้าง
+            OperationalPermissionSeeder::class,
+            ModulePermissionSeeder::class,
+            MenuSeeder::class,
+            CancelSettingSeeder::class,
         ]);
 
         $itDept = Department::firstOrCreate(
@@ -140,6 +160,10 @@ class DatabaseSeeder extends Seeder
             ['step_order' => 3],
             ['role_id' => $directorRole->id, 'name' => 'อนุมัติรอบสุดท้ายโดยผู้อำนวยการ']
         );
+
+        // LEGACY-06: ตารางเวลาทำงานเริ่มต้น — ต้องอยู่หลังผู้ใช้ถูกสร้างแล้ว
+        // เพราะอ่าน users.work_start_time เพื่อแยกคนที่มีเวลาเฉพาะตัว
+        $this->call([WorkScheduleSeeder::class]);
 
         // LEGACY-05: แปลงสายอนุมัติด้านบนเป็น Leave Workflow v1 (shadow mode)
         // ต้องอยู่ท้ายสุดเพราะอ่านจาก approval_steps ที่เพิ่งสร้าง
