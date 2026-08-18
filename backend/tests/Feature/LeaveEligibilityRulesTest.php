@@ -17,6 +17,26 @@ class LeaveEligibilityRulesTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * submit() ยิงใบลาที่ +1 ถึง +6 สัปดาห์จาก "วันนี้" ถ้าปล่อยให้ใช้เวลาจริง
+     * ช่วงประมาณ 6 สัปดาห์ก่อน 1 ต.ค. จะทำให้สองใบตกคนละปีงบประมาณ
+     * ตัวนับ max_times_per_year/โควตาจึงรีเซ็ตและเทสต์ล้มเป็นบางฤดู
+     * ตรึงนาฬิกาไว้กลางปีงบประมาณเพื่อให้ทุกใบลาอยู่ในปีงบเดียวกันเสมอ
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Carbon::setTestNow(Carbon::parse('2026-01-15 09:00:00'));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
+
     private function fiscalYear(): int
     {
         return now()->month >= 10 ? now()->year + 1 : now()->year;
