@@ -7,7 +7,9 @@
       </div>
       <button @click="saveSettings" :disabled="isSaving" class="bg-red-700 hover:bg-red-800 text-white px-5 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all shadow-md disabled:opacity-50">
         <span v-if="isSaving" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-        <i v-else class="fas fa-save"></i>
+        <svg v-else class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.save"/>
+        </svg>
         {{ isSaving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า' }}
       </button>
     </div>
@@ -15,8 +17,10 @@
     <!-- 1. LINE Official Account & Group Notifications -->
     <div class="bg-white shadow-sm border border-gray-100 rounded-2xl p-6 space-y-4">
       <div class="flex items-center gap-3 border-b pb-3">
-        <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xl font-bold">
-          <i class="fab fa-line"></i>
+        <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.chat"/>
+          </svg>
         </div>
         <div>
           <h3 class="text-lg font-bold text-gray-900">1. การตั้งค่า LINE Official Account & กลุ่ม LINE</h3>
@@ -53,8 +57,10 @@
     <!-- 2. Telegram Bot Notifications -->
     <div class="bg-white shadow-sm border border-gray-100 rounded-2xl p-6 space-y-4">
       <div class="flex items-center gap-3 border-b pb-3">
-        <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl font-bold">
-          <i class="fab fa-telegram-plane"></i>
+        <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.send"/>
+          </svg>
         </div>
         <div>
           <h3 class="text-lg font-bold text-gray-900">2. การตั้งค่า Telegram Bot</h3>
@@ -78,8 +84,10 @@
     <!-- 3. SMTP Email Settings -->
     <div class="bg-white shadow-sm border border-gray-100 rounded-2xl p-6 space-y-4">
       <div class="flex items-center gap-3 border-b pb-3">
-        <div class="w-10 h-10 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xl font-bold">
-          <i class="fas fa-envelope"></i>
+        <div class="w-10 h-10 rounded-full bg-red-100 text-red-700 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.mail"/>
+          </svg>
         </div>
         <div>
           <h3 class="text-lg font-bold text-gray-900">3. การตั้งค่าเซิร์ฟเวอร์ส่งอีเมล (SMTP Email)</h3>
@@ -133,6 +141,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { ICONS } from '../../utils/icons'
 
 const alertStore = useAlertStore()
 

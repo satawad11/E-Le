@@ -62,7 +62,7 @@
         v-if="!rows.length"
         title="ไม่พบข้อมูลตามเงื่อนไข"
         description="ไม่มีรายการข้อมูลการลาที่ตรงกับช่วงวันที่และตัวกรองที่เลือก"
-        icon="fas fa-file-invoice"
+        :icon="ICONS.document"
       />
 
       <div v-else class="overflow-x-auto">
@@ -112,6 +112,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../axios'
 import { useAlertStore } from '../stores/alert'
 import { getErrorMessage } from '../utils/errorHandler'
+import { ICONS } from '../utils/icons'
 import LoadingState from '../components/ui/LoadingState.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import ErrorState from '../components/ui/ErrorState.vue'

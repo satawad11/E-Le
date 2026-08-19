@@ -2,6 +2,31 @@
   <div class="max-w-7xl mx-auto space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-3 mb-6"><div><h1 class="text-2xl font-bold text-gray-900">นโยบายสิทธิการลา</h1><p class="text-sm text-gray-500">กำหนดสิทธิ์แยกตามประเภทบุคลากรและช่วงวันที่มีผล</p></div><button @click="openCreate" class="px-4 py-2 rounded-xl bg-[#800000] text-white">เพิ่มนโยบาย</button></div>
     <div v-if="notice" class="mb-4 flex items-start gap-3 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800"><span class="flex-1">{{notice}}</span><button @click="notice=''" class="text-emerald-600 font-bold">×</button></div>
+
+    <!-- ตั้งค่าทั่วไปของระบบลา ย้ายมาจากหน้าข้อมูลสถานศึกษาเพื่อให้อยู่รวมกับนโยบายสิทธิ -->
+    <form @submit.prevent="saveGeneral" class="bg-white rounded-2xl border p-4 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="font-bold text-gray-900">ตั้งค่าทั่วไปของระบบลา</h2>
+          <p class="text-sm text-gray-500">มีผลกับใบลาทุกประเภทและทุกประเภทบุคลากร</p>
+        </div>
+        <button :disabled="isSavingGeneral" class="px-4 py-2 rounded-xl bg-[#800000] text-white text-sm disabled:opacity-50">
+          {{ isSavingGeneral ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า' }}
+        </button>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <label class="text-sm text-gray-700">
+          ยกเลิกใบลาได้ภายใน (วัน)
+          <input v-model.number="general.cancel_allowed_days" type="number" min="0" max="365" class="input">
+          <span class="text-xs text-gray-500 mt-1 block">นับจากวันเริ่มลา หากเกินกำหนดผู้ใช้จะยื่นยกเลิกเองไม่ได้</span>
+        </label>
+        <label class="text-sm text-gray-700">
+          เก็บหลักฐานใบลา (วัน)
+          <input v-model.number="general.leave_evidence_retention_days" type="number" min="1" max="36500" class="input">
+          <span class="text-xs text-gray-500 mt-1 block">ระยะเวลาเก็บไฟล์หลักฐานก่อนถูกลบตามนโยบายคุ้มครองข้อมูลส่วนบุคคล</span>
+        </label>
+      </div>
+    </form>
     <div class="bg-white rounded-2xl border overflow-hidden"><div class="p-4 border-b"><select v-model="filterType" @change="load" class="border rounded-lg px-3 py-2"><option value="">ทุกประเภทบุคลากร</option><option v-for="p in personnel" :key="p.id" :value="p.id">{{p.name}}</option></select></div>
       <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50"><tr><th class="p-3 text-left">บุคลากร</th><th class="p-3 text-left">ประเภทลา</th><th class="p-3">โควตา</th><th class="p-3">รับเงินเดือน</th><th class="p-3">หลักฐานเมื่อ</th><th class="p-3">ช่วงมีผล</th><th class="p-3"></th></tr></thead><tbody><tr v-for="p in policies" :key="p.id" class="border-t"><td class="p-3">{{p.personnel_type?.name}}</td><td class="p-3">{{p.leave_type?.name}}</td><td class="p-3 text-center">{{p.annual_quota ?? 'ไม่จำกัด'}}</td><td class="p-3 text-center">{{p.max_days_with_pay ?? 'ทุกวัน'}}</td><td class="p-3 text-center">{{p.attachment_required_after_days ? `${p.attachment_required_after_days} วัน` : '-'}}</td><td class="p-3 text-center">{{date(p.effective_from)}} – {{p.effective_to?date(p.effective_to):'ไม่มีกำหนด'}}</td><td class="p-3"><button @click="edit(p)" class="text-[#800000] font-semibold">แก้ไข</button></td></tr></tbody></table></div></div>
     <div v-if="show" class="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4"><form @submit.prevent="save" class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"><h2 class="text-xl font-bold mb-4">{{form.id?'แก้ไข':'เพิ่ม'}}นโยบาย</h2><div class="grid sm:grid-cols-2 gap-4">
@@ -43,6 +68,30 @@ const save=async()=>{
     isSaving.value = false;
   }
 };
-const date=v=>ThaiDateFormatter.toThaiShortText(v);onMounted(load);
+// ค่าตั้งทั่วไปของระบบลา เก็บอยู่ใน system settings จึงเรียกคนละ endpoint กับตารางนโยบาย
+const general=ref({cancel_allowed_days:5,leave_evidence_retention_days:2555});const isSavingGeneral=ref(false);
+const loadGeneral=async()=>{
+  try{
+    const {data}=await api.get('/admin/settings');
+    for(const key of Object.keys(general.value)){
+      if(Object.prototype.hasOwnProperty.call(data,key)&&data[key]!==null&&data[key]!=='')general.value[key]=Number(data[key]);
+    }
+  }catch(error){
+    alertStore.error(error.response?.data?.message||'โหลดการตั้งค่าทั่วไปของระบบลาไม่สำเร็จ');
+  }
+};
+const saveGeneral=async()=>{
+  isSavingGeneral.value=true;
+  try{
+    await api.post('/admin/settings',general.value);
+    alertStore.success('บันทึกการตั้งค่าทั่วไปของระบบลาเรียบร้อยแล้ว');
+  }catch(error){
+    const errors=error.response?.data?.errors;
+    alertStore.error(errors?Object.values(errors).flat().join(' | '):error.response?.data?.message||'บันทึกการตั้งค่าไม่สำเร็จ');
+  }finally{
+    isSavingGeneral.value=false;
+  }
+};
+const date=v=>ThaiDateFormatter.toThaiShortText(v);onMounted(()=>{load();loadGeneral()});
 </script>
 <style scoped>.input{display:block;width:100%;margin-top:.35rem;border:1px solid #d1d5db;border-radius:.6rem;padding:.6rem}</style>

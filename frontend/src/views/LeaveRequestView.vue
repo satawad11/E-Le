@@ -288,7 +288,12 @@
                     @touchstart="startDrawTouch" @touchmove="drawTouch" @touchend="endDraw"></canvas>
                   <div class="mt-2 flex gap-2 w-full max-w-[300px] justify-between">
                     <button type="button" @click="clearCanvas" class="px-3 py-1 text-xs font-semibold bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors focus-visible:ring-2 focus-visible:ring-[#800000]">ล้างลายเซ็น</button>
-                    <span v-if="canvasSaved" class="text-xs text-green-600 flex items-center gap-1"><i class="fas fa-check-circle" aria-hidden="true"></i> วาดเสร็จแล้ว</span>
+                    <span v-if="canvasSaved" class="text-xs text-green-600 flex items-center gap-1">
+                      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.check"/>
+                      </svg>
+                      วาดเสร็จแล้ว
+                    </span>
                   </div>
                 </div>
               </div>
@@ -333,6 +338,7 @@ import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
 import ThaiDatePicker from '../components/ThaiDatePicker.vue'
 import api from '../axios'
+import { ICONS } from '../utils/icons'
 
 const authStore = useAuthStore()
 

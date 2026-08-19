@@ -287,7 +287,7 @@ async function savePermissions() {
     });
 
     if (res.data && res.data.success) {
-      showToast(`✅ บันทึกสิทธิ์เฉพาะบุคคลสำเร็จแล้ว (${directPermissions.value.length} สิทธิ์)`, 'success');
+      showToast(`บันทึกสิทธิ์เฉพาะบุคคลสำเร็จแล้ว (${directPermissions.value.length} สิทธิ์)`, 'success');
       if (alertStore.showSuccess) alertStore.showSuccess('บันทึกสิทธิ์เฉพาะบุคคลเรียบร้อยแล้ว');
       else if (alertStore.success) alertStore.success('บันทึกสิทธิ์เฉพาะบุคคลเรียบร้อยแล้ว');
       
@@ -300,7 +300,7 @@ async function savePermissions() {
       // ดีเลย์ปิด modal เพื่อให้ผู้ใช้เห็น toast ก่อน
       setTimeout(() => close(), 1400);
     } else {
-      showToast('⚠️ เกิดข้อผิดพลาดในการบันทึกสิทธิ์', 'error');
+      showToast('เกิดข้อผิดพลาดในการบันทึกสิทธิ์', 'error');
     }
   } catch (err) {
     console.error('Save permissions failed', err);
@@ -312,7 +312,7 @@ async function savePermissions() {
     } else if (err?.message) {
       msg = err.message;
     }
-    showToast(`❌ ${msg}`, 'error', 5000);
+    showToast(`${msg}`, 'error', 5000);
     if (alertStore.showError) alertStore.showError(msg);
     else if (alertStore.error) alertStore.error(msg);
   } finally {

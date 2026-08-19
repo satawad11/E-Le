@@ -18,7 +18,9 @@
 
         <div class="features">
           <div v-for="f in features" :key="f.text" class="feature-item">
-            <span class="feature-icon">{{ f.icon }}</span>
+            <svg class="feature-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="f.icon"/>
+            </svg>
             <span>{{ f.text }}</span>
           </div>
         </div>
@@ -144,7 +146,9 @@
               class="demo-btn"
               :class="{ 'col-span-2 sm:col-span-1': acc.wide }"
             >
-              <span>{{ acc.icon }}</span>
+              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="acc.icon"/>
+              </svg>
               <span>{{ acc.label }}</span>
             </button>
           </div>
@@ -159,6 +163,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
+import { ICONS } from '../utils/icons'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -173,19 +178,19 @@ const focusEmail = ref(false)
 const focusPass  = ref(false)
 
 const features = [
-  { icon: '📋', text: 'ยื่นใบลาออนไลน์ทุกประเภท' },
-  { icon: '✅', text: 'อนุมัติใบลาผ่านระบบ' },
-  { icon: '📊', text: 'ติดตามสถิติวันลาแบบ Real-time' },
-  { icon: '🔒', text: 'ระบบสิทธิ์ตามตำแหน่งงาน' },
+  { icon: ICONS.clipboard, text: 'ยื่นใบลาออนไลน์ทุกประเภท' },
+  { icon: ICONS.check,     text: 'อนุมัติใบลาผ่านระบบ' },
+  { icon: ICONS.chart,     text: 'ติดตามสถิติวันลาแบบ Real-time' },
+  { icon: ICONS.lock,      text: 'ระบบสิทธิ์ตามตำแหน่งงาน' },
 ]
 
 const testAccounts = [
-  { email: 'superadmin@example.com', label: 'ผู้ดูแลระบบสูงสุด', icon: '👑', id_card: '1111111111111' },
-  { email: 'director@example.com',   label: 'ผู้อำนวยการ',     icon: '🏢', id_card: '2222222222222' },
-  { email: 'deputy@example.com',     label: 'รองผู้อำนวยการ',   icon: '👔', id_card: '3333333333333' },
-  { email: 'hrhead@example.com',     label: 'เจ้าหน้าที่ HR',    icon: '📋', id_card: '4444444444444' },
-  { email: 'doc@example.com',        label: 'สารบรรณกลาง',    icon: '📑', id_card: 'doc@example.com' },
-  { email: 'employee@example.com',   label: 'ครู/เจ้าหน้าที่',    icon: '👤', id_card: '5555555555555' },
+  { email: 'superadmin@example.com', label: 'ผู้ดูแลระบบสูงสุด', icon: ICONS.shieldCheck, id_card: '1111111111111' },
+  { email: 'director@example.com',   label: 'ผู้อำนวยการ',     icon: ICONS.building,    id_card: '2222222222222' },
+  { email: 'deputy@example.com',     label: 'รองผู้อำนวยการ',   icon: ICONS.briefcase,   id_card: '3333333333333' },
+  { email: 'hrhead@example.com',     label: 'เจ้าหน้าที่ HR',    icon: ICONS.clipboard,   id_card: '4444444444444' },
+  { email: 'doc@example.com',        label: 'สารบรรณกลาง',    icon: ICONS.documentDuplicate, id_card: 'doc@example.com' },
+  { email: 'employee@example.com',   label: 'ครู/เจ้าหน้าที่',    icon: ICONS.user,        id_card: '5555555555555' },
 ]
 
 const handleLogin = async () => {
@@ -193,7 +198,7 @@ const handleLogin = async () => {
   loading.value = true
   try {
     await authStore.login(email.value, password.value)
-    alertStore.success('เข้าสู่ระบบสำเร็จ 🎉')
+    alertStore.success('เข้าสู่ระบบสำเร็จ')
     router.push({ name: 'dashboard' })
   } catch (error) {
     errorMsg.value = error.response?.data?.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
@@ -215,7 +220,7 @@ const fill = (acc) => {
   min-height: 100vh;
   display: flex;
   background: #f8f7f4;
-  font-family: 'Inter', 'Sarabun', sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* ====== Left decorative panel ====== */
@@ -291,7 +296,7 @@ const fill = (acc) => {
   font-size: 0.9rem;
   color: rgba(255,255,255,0.9);
 }
-.feature-icon { font-size: 1.25rem; }
+.feature-icon { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
 
 /* ====== Right form panel ====== */
 .login-form-wrap {

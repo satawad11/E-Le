@@ -259,7 +259,10 @@
           <!-- คำเตือนสำหรับ Approved leave (ทุก Role) -->
           <div v-if="cancelTarget?.status === 'Approved'"
             class="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mb-3 text-xs text-yellow-800 text-center">
-            ⚠️ ใบลานี้ผ่านการอนุมัติแล้ว การยกเลิกจะต้องรอ<strong>การอนุมัติจากผู้มีอำนาจ</strong>อีกครั้ง
+            <svg class="w-4 h-4 inline-block align-text-bottom mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.warning"/>
+            </svg>
+            ใบลานี้ผ่านการอนุมัติแล้ว การยกเลิกจะต้องรอ<strong>การอนุมัติจากผู้มีอำนาจ</strong>อีกครั้ง
           </div>
 
           <p class="text-gray-500 text-sm text-center mb-2">
@@ -309,6 +312,7 @@ import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
 import { getErrorMessage } from '../utils/errorHandler'
 import LoadingState from '../components/ui/LoadingState.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
+import { ICONS } from '../utils/icons'
 import ErrorState from '../components/ui/ErrorState.vue'
 import WorkflowTimeline from '../components/ui/WorkflowTimeline.vue'
 import api from '../axios'

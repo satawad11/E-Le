@@ -457,8 +457,8 @@ const chartOptions = {
     tooltip: {
       backgroundColor: 'rgba(0, 0, 0, 0.8)',
       padding: 12,
-      titleFont: { size: 14, family: 'Prompt, sans-serif' },
-      bodyFont: { size: 13, family: 'Prompt, sans-serif' },
+      titleFont: { size: 13, family: "'IBM Plex Sans Thai', sans-serif" },
+      bodyFont: { size: 12, family: "'IBM Plex Sans Thai', sans-serif" },
       cornerRadius: 8,
       displayColors: false,
     }
@@ -472,7 +472,7 @@ const chartOptions = {
       },
       ticks: {
         stepSize: 1,
-        font: { family: 'Prompt, sans-serif' }
+        font: { family: "'IBM Plex Sans Thai', sans-serif" }
       }
     },
     x: {
@@ -481,7 +481,7 @@ const chartOptions = {
         drawBorder: false,
       },
       ticks: {
-        font: { family: 'Prompt, sans-serif' }
+        font: { family: "'IBM Plex Sans Thai', sans-serif" }
       }
     }
   },

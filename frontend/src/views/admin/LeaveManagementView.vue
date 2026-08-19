@@ -12,14 +12,24 @@
         class="py-3 px-6 font-semibold text-sm border-b-2 transition-colors duration-200"
         :class="activeTab === 'sync' ? 'border-[#800000] text-[#800000]' : 'border-transparent text-gray-500 hover:text-gray-700'"
       >
-        <i class="fas fa-sync-alt mr-2"></i> ดึงข้อมูลเข้าสู่ระบบลงเวลา
+        <span class="inline-flex items-center gap-2">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.refresh"/>
+          </svg>
+          ดึงข้อมูลเข้าสู่ระบบลงเวลา
+        </span>
       </button>
       <button 
         @click="activeTab = 'manual'"
         class="py-3 px-6 font-semibold text-sm border-b-2 transition-colors duration-200"
         :class="activeTab === 'manual' ? 'border-[#800000] text-[#800000]' : 'border-transparent text-gray-500 hover:text-gray-700'"
       >
-        <i class="fas fa-pen mr-2"></i> บันทึกวันลาแทนพนักงาน
+        <span class="inline-flex items-center gap-2">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.pencil"/>
+          </svg>
+          บันทึกวันลาแทนพนักงาน
+        </span>
       </button>
     </div>
 
@@ -44,7 +54,9 @@
       </div>
 
       <button @click="handleSync" :disabled="syncLoading" class="w-full md:w-auto px-6 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
-        <i class="fas fa-sync" :class="{'fa-spin': syncLoading}"></i>
+        <svg class="w-4 h-4 flex-shrink-0" :class="{ 'animate-spin': syncLoading }" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.refresh"/>
+        </svg>
         {{ syncLoading ? 'กำลังดึงข้อมูล...' : 'เริ่มดึงข้อมูล (Sync)' }}
       </button>
 
@@ -98,7 +110,9 @@
 
         <div class="pt-4 border-t border-gray-100 flex justify-end">
           <button type="submit" :disabled="manualLoading" class="px-6 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-medium rounded-lg transition-colors flex items-center gap-2">
-            <i class="fas fa-save" :class="{'fa-spin': manualLoading}"></i>
+            <svg class="w-4 h-4 flex-shrink-0" :class="{ 'animate-spin': manualLoading }" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="manualLoading ? ICONS.refresh : ICONS.save"/>
+            </svg>
             {{ manualLoading ? 'กำลังบันทึก...' : 'บันทึกวันลา' }}
           </button>
         </div>
@@ -112,6 +126,7 @@ import { ref, onMounted } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
+import { ICONS } from '../../utils/icons'
 
 const alertStore = useAlertStore()
 

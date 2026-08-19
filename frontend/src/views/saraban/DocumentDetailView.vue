@@ -44,8 +44,11 @@
           <span class="px-3 py-1 text-sm rounded-full border" :class="secrecyClass(document.secrecy)">
             {{ secrecyLabel(document.secrecy) }}
           </span>
-          <span v-if="document.priority !== 'normal'" class="px-3 py-1 text-sm rounded-full bg-orange-100 text-orange-700 border border-orange-200">
-            ⚡ {{ priorityLabel(document.priority) }}
+          <span v-if="document.priority !== 'normal'" class="inline-flex items-center gap-1.5 px-3 py-1 text-sm rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.bolt"/>
+            </svg>
+            {{ priorityLabel(document.priority) }}
           </span>
         </div>
 
@@ -113,8 +116,9 @@
         </h3>
         <div v-if="document.attachments && document.attachments.length > 0" class="space-y-2">
           <div v-for="att in document.attachments" :key="att.id" class="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition">
-            <span v-if="att.type === 'link'" class="mr-3 text-blue-500 text-lg">🔗</span>
-            <span v-else class="mr-3 text-gray-500 text-lg">📄</span>
+            <svg class="w-5 h-5 mr-3 flex-shrink-0" :class="att.type === 'link' ? 'text-blue-500' : 'text-gray-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="att.type === 'link' ? ICONS.link : ICONS.document"/>
+            </svg>
             <div class="flex-1 min-w-0">
               <p class="font-medium text-sm truncate">{{ att.name }}</p>
             </div>
@@ -125,7 +129,12 @@
               <button type="button" @click="downloadAttachment(att)" class="text-sm text-[#800000] hover:underline font-medium">ดาวน์โหลด ↓</button>
             </div>
             <div v-else class="ml-3">
-              <span class="text-sm text-gray-400 cursor-not-allowed" title="ไม่อนุญาตให้ดาวน์โหลด">🔒 ไม่อนุญาต</span>
+              <span class="inline-flex items-center gap-1 text-sm text-gray-400 cursor-not-allowed" title="ไม่อนุญาตให้ดาวน์โหลด">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.lock"/>
+                </svg>
+                ไม่อนุญาต
+              </span>
             </div>
           </div>
         </div>
@@ -151,7 +160,12 @@
               <tr v-for="receiver in document.receivers" :key="receiver.id">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ receiver.name }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                  <span v-if="receiver.pivot.read_at" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">✓ เปิดอ่านแล้ว</span>
+                  <span v-if="receiver.pivot.read_at" class="px-2 inline-flex items-center gap-1 text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.check"/>
+                    </svg>
+                    เปิดอ่านแล้ว
+                  </span>
                   <span v-else class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">ยังไม่ได้อ่าน</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -348,6 +362,7 @@
           </button>
         </div>
       </div>
+import { ICONS } from '../../utils/icons'
     </div>
   </div>
 </template>

@@ -192,10 +192,17 @@ export const useAuthStore = defineStore('auth', {
       return perms.some(p => adminPerms.includes(p));
     },
 
+    // สิทธิ์ตั้งค่าระบบทั่วไป รองรับทั้งชื่อเดิมและชื่อแบบโมดูล ให้ตรงกับ meta.permissions ใน router
+    canManageSettings: (state) => {
+      if (isSuperAdminUser(state)) return true;
+      const perms = getPermissionNames(state);
+      return perms.includes('manage_settings') || perms.includes('system.setting.manage');
+    },
+
     // Check if user has any settings menu permission
     hasAnySettingsMenu: (state) => {
       if (isSuperAdminUser(state)) return true;
-      const settingsPerms = ['manage_departments', 'manage_workflow_steps', 'manage_leave_types', 'manage_settings', 'system.setting.manage', 'system.menu.manage'];
+      const settingsPerms = ['manage_departments', 'manage_workflow_steps', 'manage_leave_types', 'manage_settings', 'system.setting.manage'];
       const perms = getPermissionNames(state);
       return perms.some(p => settingsPerms.includes(p));
     },

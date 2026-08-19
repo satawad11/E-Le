@@ -132,6 +132,15 @@
               รายการใบลาของฉัน
             </router-link>
 
+            <!-- บริการและเอกสารใบลา -->
+            <router-link
+              to="/leave-services"
+              class="nav-link !py-2 !text-sm"
+              active-class="nav-link-active"
+            >
+              บริการและเอกสารใบลา
+            </router-link>
+
             <!-- ปฏิทินวันลาทีม -->
             <router-link
               to="/team-calendar"
@@ -429,6 +438,10 @@
             >
               กำหนดประเภทบุคลากร
             </router-link>
+            <!--
+              ซ่อนเมนู "จัดการเมนูตามสิทธิ์" ไว้ก่อน: แถบเมนูข้างชุดนี้เขียนตายตัวใน App.vue
+              ยังไม่ได้อ่านจาก /user/menus จริง การตั้งค่าในหน้านั้นจึงไม่มีผลกับสิ่งที่ผู้ใช้เห็น
+              route /admin/menus และ API ยังคงอยู่ หากทำ dynamic menu สำเร็จให้เปิดเมนูนี้กลับมา
             <router-link
               v-if="authStore.isAdmin || authStore.hasPermission('system.menu.manage')"
               to="/admin/menus"
@@ -437,6 +450,7 @@
             >
               จัดการเมนูตามสิทธิ์
             </router-link>
+            -->
             <router-link
               v-if="authStore.isAdmin || authStore.hasPermission('system.role.manage')"
               to="/admin/roles"
@@ -469,13 +483,13 @@
           </button>
           
           <div v-show="adminMenuOpen && !isSidebarCollapsed" class="mt-1 space-y-1 pl-9">
-            <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-settings') || authStore.hasPermission('manage_settings')" to="/admin/settings" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+            <router-link v-if="authStore.canManageSettings" to="/admin/settings" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               ข้อมูลสถานศึกษา
             </router-link>
-            <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/export-settings" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+            <router-link v-if="authStore.canManageSettings" to="/admin/export-settings" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               ตั้งค่าแบบฟอร์ม & ส่งออก
             </router-link>
-            <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/work-calendar" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+            <router-link v-if="authStore.canManageSettings" to="/admin/work-calendar" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               ปฏิทินวันทำการ
             </router-link>
             <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_departments')" to="/admin/departments" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
@@ -484,22 +498,22 @@
             <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_workflow_steps')" to="/admin/workflow" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               จัดการลำดับการอนุมัติ
             </router-link>
-            <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/leave-policies" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+            <router-link v-if="authStore.canManageSettings" to="/admin/leave-policies" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               นโยบายสิทธิการลา
             </router-link>
             <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_leave_types')" to="/admin/leave-types" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               ประเภทการลา
             </router-link>
-            <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/fiscal-years" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+            <router-link v-if="authStore.canManageSettings" to="/admin/fiscal-years" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               ปีงบประมาณ
             </router-link>
-            <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/notifications" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+            <router-link v-if="authStore.canManageSettings" to="/admin/notifications" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               การแจ้งเตือน
             </router-link>
-            <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/document-templates" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+            <router-link v-if="authStore.canManageSettings" to="/admin/document-templates" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               จัดการแม่แบบเอกสาร
             </router-link>
-            <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/modules" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+            <router-link v-if="authStore.canManageSettings" to="/admin/modules" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               โมดูลระบบ
             </router-link>
           </div>
@@ -627,6 +641,9 @@
               </router-link>
               <router-link to="/leaves" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 รายการใบลาของฉัน
+              </router-link>
+              <router-link to="/leave-services" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+                บริการและเอกสารใบลา
               </router-link>
               <router-link to="/team-calendar" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 ปฏิทินวันลาทีม
@@ -777,9 +794,7 @@
               >
                 กำหนดประเภทบุคลากร
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('system.menu.manage')" to="/admin/menus" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                จัดการเมนูตามสิทธิ์
-              </router-link>
+              <!-- ซ่อน "จัดการเมนูตามสิทธิ์" ไว้ก่อน ดูเหตุผลประกอบที่เมนูฝั่ง desktop -->
               <router-link v-if="authStore.isAdmin || authStore.hasPermission('system.role.manage')" to="/admin/roles" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 จัดการบทบาทและสิทธิ์
               </router-link>
@@ -805,13 +820,13 @@
             </button>
             
             <div v-show="adminMenuOpen" class="mt-1 pl-6 space-y-1">
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('admin-settings') || authStore.hasPermission('manage_settings')" to="/admin/settings" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+              <router-link v-if="authStore.canManageSettings" to="/admin/settings" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 ข้อมูลสถานศึกษา
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/export-settings" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+              <router-link v-if="authStore.canManageSettings" to="/admin/export-settings" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 ตั้งค่าแบบฟอร์ม & ส่งออก
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/work-calendar" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+              <router-link v-if="authStore.canManageSettings" to="/admin/work-calendar" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 ปฏิทินวันทำการ
               </router-link>
               <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_departments')" to="/admin/departments" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
@@ -820,22 +835,22 @@
               <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_workflow_steps')" to="/admin/workflow" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 จัดการลำดับการอนุมัติ
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/leave-policies" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+              <router-link v-if="authStore.canManageSettings" to="/admin/leave-policies" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 นโยบายสิทธิการลา
               </router-link>
               <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_leave_types')" to="/admin/leave-types" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 ประเภทการลา
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/fiscal-years" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+              <router-link v-if="authStore.canManageSettings" to="/admin/fiscal-years" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 ปีงบประมาณ
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/notifications" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+              <router-link v-if="authStore.canManageSettings" to="/admin/notifications" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 การแจ้งเตือน
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/document-templates" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+              <router-link v-if="authStore.canManageSettings" to="/admin/document-templates" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 จัดการแม่แบบเอกสาร
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_settings')" to="/admin/modules" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+              <router-link v-if="authStore.canManageSettings" to="/admin/modules" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 โมดูลระบบ
               </router-link>
             </div>

@@ -4,7 +4,10 @@
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
       <div class="flex-1 min-w-0">
         <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate flex items-center gap-3">
-          <span>👥</span> จัดการบทบาทและสิทธิ์ (Role & Permission Management)
+          <svg class="w-7 h-7 flex-shrink-0 text-[#800000]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.users"/>
+          </svg>
+          จัดการบทบาทและสิทธิ์ (Role & Permission Management)
         </h2>
         <p class="mt-1 text-sm text-gray-500">
           บริหารจัดการบทบาทในระบบ (Roles) และกำหนดชุดสิทธิ์การใช้งาน (Permission Matrix) สำหรับแต่ละกลุ่มผู้ใช้
@@ -13,15 +16,21 @@
       <div class="flex flex-wrap gap-2">
         <button
           @click="fetchRoles"
-          class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+          class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
         >
-          🔄 รีเฟรช
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.refresh"/>
+          </svg>
+          รีเฟรช
         </button>
         <button
           @click="openCreateModal"
-          class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#800000] hover:bg-[#600000] transition-colors cursor-pointer"
+          class="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#800000] hover:bg-[#600000] transition-colors cursor-pointer"
         >
-          ➕ สร้างบทบาทใหม่
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.plus"/>
+          </svg>
+          สร้างบทบาทใหม่
         </button>
       </div>
     </div>
@@ -29,13 +38,21 @@
     <!-- Alert Banner -->
     <div v-if="successMessage" class="mb-4 bg-green-50 border-l-4 border-green-400 p-4 rounded shadow-sm">
       <div class="flex">
-        <div class="flex-shrink-0"><span class="text-green-500 font-bold">✓</span></div>
+        <div class="flex-shrink-0">
+          <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.check"/>
+          </svg>
+        </div>
         <div class="ml-3"><p class="text-sm text-green-700 font-medium">{{ successMessage }}</p></div>
       </div>
     </div>
     <div v-if="errorMessage" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4 rounded shadow-sm">
       <div class="flex">
-        <div class="flex-shrink-0"><span class="text-red-500 font-bold">✕</span></div>
+        <div class="flex-shrink-0">
+          <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.error"/>
+          </svg>
+        </div>
         <div class="ml-3"><p class="text-sm text-red-700 font-medium">{{ errorMessage }}</p></div>
       </div>
     </div>
@@ -45,17 +62,25 @@
 
     <!-- Empty State -->
     <div v-else-if="!roles || roles.length === 0" class="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-      <div class="text-5xl mb-4">👥</div>
+      <svg class="w-14 h-14 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" :d="ICONS.users"/>
+      </svg>
       <h3 class="text-lg font-bold text-gray-800 mb-2">ไม่พบรายการบทบาทในระบบ</h3>
       <p class="text-sm text-gray-500 mb-6 max-w-md mx-auto">
         ยังไม่มีรายการบทบาทแสดงผลในขณะนี้ กดปุ่มดึงข้อมูลอีกครั้งหรือสร้างบทบาทใหม่
       </p>
       <div class="flex justify-center gap-3">
-        <button @click="fetchRoles" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm rounded-xl transition-colors">
-          🔄 โหลดข้อมูลอีกครั้ง
+        <button @click="fetchRoles" class="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-sm rounded-xl transition-colors">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.refresh"/>
+          </svg>
+          โหลดข้อมูลอีกครั้ง
         </button>
-        <button @click="openCreateModal" class="px-4 py-2 bg-[#800000] hover:bg-[#600000] text-white font-medium text-sm rounded-xl transition-colors">
-          ➕ สร้างบทบาทใหม่
+        <button @click="openCreateModal" class="inline-flex items-center gap-2 px-4 py-2 bg-[#800000] hover:bg-[#600000] text-white font-medium text-sm rounded-xl transition-colors">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.plus"/>
+          </svg>
+          สร้างบทบาทใหม่
         </button>
       </div>
     </div>
@@ -72,13 +97,18 @@
           <div class="flex justify-between items-start mb-3">
             <div>
               <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <span>{{ getRoleBadgeIcon(role.name) }}</span>
+                <svg class="w-5 h-5 flex-shrink-0 text-[#800000]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getRoleBadgeIcon(role.name)"/>
+                </svg>
                 <span>{{ role.name }}</span>
               </h3>
               <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ role.description || 'ไม่มีคำอธิบาย' }}</p>
             </div>
-            <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-              👤 {{ role.users_count || 0 }} คน
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.user"/>
+              </svg>
+              {{ role.users_count || 0 }} คน
             </span>
           </div>
 
@@ -87,8 +117,11 @@
             <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">
               สิทธิ์ในระบบ ({{ role.permissions ? role.permissions.length : 0 }} สิทธิ์):
             </span>
-            <div v-if="role.name === 'SuperAdmin'" class="p-2 bg-yellow-50 rounded-lg border border-yellow-200 text-xs text-yellow-800 font-medium">
-              👑 สิทธิ์เต็มรูปแบบ (All System Permissions)
+            <div v-if="role.name === 'SuperAdmin'" class="flex items-center gap-1.5 p-2 bg-yellow-50 rounded-lg border border-yellow-200 text-xs text-yellow-800 font-medium">
+              <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.shieldCheck"/>
+              </svg>
+              สิทธิ์เต็มรูปแบบ (All System Permissions)
             </div>
             <div v-else-if="role.permissions && role.permissions.length > 0" class="flex flex-wrap gap-1 max-h-36 overflow-y-auto pr-1">
               <span
@@ -110,16 +143,22 @@
         <div class="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-end gap-2">
           <button
             @click="openEditModal(role)"
-            class="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-lg text-xs font-medium transition-colors cursor-pointer"
           >
-            ✏️ แก้ไขสิทธิ์
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.pencil"/>
+            </svg>
+            แก้ไขสิทธิ์
           </button>
           <button
             v-if="!['SuperAdmin', 'Director', 'Employee', 'HR Head', 'Deputy Director'].includes(role.name)"
             @click="confirmDeleteRole(role)"
-            class="px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-medium transition-colors border border-red-200 cursor-pointer"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-medium transition-colors border border-red-200 cursor-pointer"
           >
-            🗑️ ลบ
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.trash"/>
+            </svg>
+            ลบ
           </button>
         </div>
       </div>
@@ -134,7 +173,11 @@
             <h3 class="font-bold text-lg">
               {{ isEditing ? `แก้ไขบทบาท: ${editingRole?.name}` : 'สร้างบทบาทใหม่' }}
             </h3>
-            <button @click="closeModal" class="text-white/80 hover:text-white text-xl font-bold">×</button>
+            <button @click="closeModal" aria-label="ปิด" class="text-white/80 hover:text-white">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.x"/>
+              </svg>
+            </button>
           </div>
 
           <!-- Modal Body -->
@@ -170,7 +213,7 @@
                 <input
                   type="text"
                   v-model="searchQuery"
-                  placeholder="🔍 ค้นหาสิทธิ์..."
+                  placeholder="ค้นหาสิทธิ์..."
                   class="px-3 py-1 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#800000]"
                 />
               </div>
@@ -182,8 +225,11 @@
                   class="border border-gray-200 rounded-xl p-4 bg-gray-50/50"
                 >
                   <div class="flex justify-between items-center mb-2 pb-1 border-b border-gray-200">
-                    <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                      📂 {{ groupName }}
+                    <h4 class="flex items-center gap-1.5 text-xs font-bold text-gray-800 uppercase tracking-wider">
+                      <svg class="w-4 h-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.folder"/>
+                      </svg>
+                      {{ groupName }}
                     </h4>
                     <button
                       type="button"
@@ -241,6 +287,7 @@ import { ref, computed, onMounted } from 'vue';
 import api from '../../axios';
 import { useAuthStore } from '../../stores/auth';
 import LoadingState from '../../components/ui/LoadingState.vue';
+import { ICONS } from '../../utils/icons';
 
 const authStore = useAuthStore();
 const roles = ref([]);
@@ -395,15 +442,15 @@ const confirmDeleteRole = async (role) => {
 
 const getRoleBadgeIcon = (roleName) => {
   const map = {
-    'SuperAdmin': '👑',
-    'Director': '🏢',
-    'DeputyDirector': '👔',
-    'HeadOfDepartment': '💼',
-    'HROfficer': '📋',
-    'SarabanOfficer': '📑',
-    'Employee': '👤',
+    'SuperAdmin': ICONS.shieldCheck,
+    'Director': ICONS.building,
+    'DeputyDirector': ICONS.briefcase,
+    'HeadOfDepartment': ICONS.briefcase,
+    'HROfficer': ICONS.clipboard,
+    'SarabanOfficer': ICONS.documentDuplicate,
+    'Employee': ICONS.user,
   };
-  return map[roleName] || '🏷️';
+  return map[roleName] || ICONS.tag;
 };
 
 const showToast = (msg) => {

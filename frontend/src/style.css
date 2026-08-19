@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
@@ -14,10 +14,21 @@
   --color-maroon-800: #4a0000;
   --color-maroon-900: #3b0000;
   --color-primary: #800000;
+
+  /* ฟอนต์หลักของระบบ (มีผลกับ utility font-sans ด้วย) */
+  --font-sans: 'IBM Plex Sans Thai', 'Sarabun', 'TH Sarabun New', system-ui, sans-serif;
+
+  /* base 15px จะทำให้ spacing ของ Tailwind หดตามไปด้วย จึง pin ให้เท่าเดิม = 4px */
+  --spacing: 0.266667rem;
+}
+
+/* ขนาดตัวอักษรฐานของทั้งระบบ: 15px (ค่า default ของเบราว์เซอร์คือ 16px) */
+html {
+  font-size: 93.75%;
 }
 
 body {
-  font-family: 'Sarabun', 'TH Sarabun New', sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 

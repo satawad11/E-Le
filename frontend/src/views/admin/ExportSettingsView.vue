@@ -34,10 +34,14 @@
       <!-- Left Column: Form Settings -->
       <div class="lg:col-span-2 space-y-6">
         
-        <!-- 🏢 Section 1: Organization Metadata -->
+        <!-- Section 1: Organization Metadata -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm space-y-5">
           <div class="flex items-center gap-3 pb-3 border-b border-gray-100">
-            <div class="w-9 h-9 rounded-xl bg-[#800000]/10 text-[#800000] flex items-center justify-center font-bold">🏢</div>
+            <div class="w-9 h-9 rounded-xl bg-[#800000]/10 text-[#800000] flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.building"/>
+              </svg>
+            </div>
             <div>
               <h2 class="font-bold text-gray-900">ข้อมูลสถานศึกษาและหน่วยงาน</h2>
               <p class="text-xs text-gray-500">ข้อมูลนี้จะถูกนำไปใช้บนหัวกระดาษของใบลาและรายงานทุกประเภท</p>
@@ -72,10 +76,14 @@
           </div>
         </div>
 
-        <!-- ✍️ Section 2: Signatories & Authorizers -->
+        <!-- Section 2: Signatories & Authorizers -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm space-y-5">
           <div class="flex items-center gap-3 pb-3 border-b border-gray-100">
-            <div class="w-9 h-9 rounded-xl bg-[#800000]/10 text-[#800000] flex items-center justify-center font-bold">✍️</div>
+            <div class="w-9 h-9 rounded-xl bg-[#800000]/10 text-[#800000] flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.pencil"/>
+              </svg>
+            </div>
             <div>
               <h2 class="font-bold text-gray-900">ผู้มีอำนาจลงนามประจำตำแหน่ง</h2>
               <p class="text-xs text-gray-500">กำหนดชื่อตั้งต้นสำหรับบล็อกลงนามในไฟล์ PDF และ Word</p>
@@ -105,10 +113,14 @@
           </div>
         </div>
 
-        <!-- 📄 Section 3: Page Margins & Font Settings -->
+        <!-- Section 3: Page Margins & Font Settings -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm space-y-5">
           <div class="flex items-center gap-3 pb-3 border-b border-gray-100">
-            <div class="w-9 h-9 rounded-xl bg-[#800000]/10 text-[#800000] flex items-center justify-center font-bold">📄</div>
+            <div class="w-9 h-9 rounded-xl bg-[#800000]/10 text-[#800000] flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.document"/>
+              </svg>
+            </div>
             <div>
               <h2 class="font-bold text-gray-900">ระยะขอบกระดาษและรูปแบบเลขที่หนังสือ</h2>
               <p class="text-xs text-gray-500">กำหนดระยะขอบกระดาษ PDF (ตามมาตรฐานสารบรรณ: บน 2.5 ซม., ซ้าย 3.0 ซม.)</p>
@@ -154,10 +166,13 @@
       <!-- Right Column: Logo Uploaders & Format Status -->
       <div class="space-y-6">
         
-        <!-- 🦅 Garuda Logo Uploader -->
+        <!-- Garuda Logo Uploader -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm space-y-4">
           <h3 class="font-bold text-gray-900 text-sm flex items-center gap-2">
-            <span>🦅</span> ตราครุฑมาตรฐาน (Garuda Logo)
+            <svg class="w-4 h-4 flex-shrink-0 text-[#800000]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.photo"/>
+            </svg>
+            ตราครุฑมาตรฐาน (Garuda Logo)
           </h3>
           <div class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
             <img v-if="form.saraban_garuda_logo" v-secure-src="form.saraban_garuda_logo" alt="Garuda Logo" class="h-24 object-contain mb-3">
@@ -170,10 +185,13 @@
           <p class="text-[11px] text-gray-400 text-center">* แนะนำไฟล์ PNG พื้นหลังโปร่งใส (Transparent)</p>
         </div>
 
-        <!-- 🏫 School Logo Uploader -->
+        <!-- School Logo Uploader -->
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm space-y-4">
           <h3 class="font-bold text-gray-900 text-sm flex items-center gap-2">
-            <span>🏫</span> ตราสัญลักษณ์สถานศึกษา
+            <svg class="w-4 h-4 flex-shrink-0 text-[#800000]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.academic"/>
+            </svg>
+            ตราสัญลักษณ์สถานศึกษา
           </h3>
           <div class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
             <img v-if="form.organization_logo" v-secure-src="form.organization_logo" alt="School Logo" class="h-24 object-contain mb-3">
@@ -185,20 +203,35 @@
           </div>
         </div>
 
-        <!-- 📊 Supported Formats Badge -->
+        <!-- Supported Formats Badge -->
         <div class="bg-gradient-to-br from-[#800000]/5 to-amber-50 rounded-2xl p-6 border border-[#800000]/15 space-y-3">
           <h4 class="font-bold text-[#800000] text-sm">รูปแบบไฟล์ที่รองรับการส่งออก</h4>
           <div class="space-y-2 text-xs">
             <div class="flex items-center justify-between p-2 rounded-lg bg-white border border-gray-100">
-              <span class="font-medium text-gray-700">📕 PDF (DomPDF + TH Sarabun)</span>
+              <span class="inline-flex items-center gap-1.5 font-medium text-gray-700">
+                <svg class="w-4 h-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.document"/>
+                </svg>
+                PDF (DomPDF + TH Sarabun)
+              </span>
               <span class="text-green-600 font-bold">พร้อมใช้งาน</span>
             </div>
             <div class="flex items-center justify-between p-2 rounded-lg bg-white border border-gray-100">
-              <span class="font-medium text-gray-700">📘 Word (.docx Native)</span>
+              <span class="inline-flex items-center gap-1.5 font-medium text-gray-700">
+                <svg class="w-4 h-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.documentDuplicate"/>
+                </svg>
+                Word (.docx Native)
+              </span>
               <span class="text-green-600 font-bold">พร้อมใช้งาน</span>
             </div>
             <div class="flex items-center justify-between p-2 rounded-lg bg-white border border-gray-100">
-              <span class="font-medium text-gray-700">📗 Excel (.xlsx Native)</span>
+              <span class="inline-flex items-center gap-1.5 font-medium text-gray-700">
+                <svg class="w-4 h-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.table"/>
+                </svg>
+                Excel (.xlsx Native)
+              </span>
               <span class="text-green-600 font-bold">พร้อมใช้งาน</span>
             </div>
           </div>
@@ -214,6 +247,7 @@
 import { ref, onMounted } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { ICONS } from '../../utils/icons'
 
 const alertStore = useAlertStore()
 const saving = ref(false)
@@ -253,7 +287,7 @@ const saveSettings = async () => {
   message.value = ''
   try {
     await api.post('/admin/export-settings', form.value)
-    message.value = 'บันทึกการตั้งค่าแบบฟอร์มและการส่งออกไฟล์เรียบร้อยแล้ว 🎉'
+    message.value = 'บันทึกการตั้งค่าแบบฟอร์มและการส่งออกไฟล์เรียบร้อยแล้ว'
   } catch (err) {
     alertStore.error(Object.values(err.response?.data?.errors || {}).flat()[0] || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
   } finally {

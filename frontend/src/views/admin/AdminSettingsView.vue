@@ -1,7 +1,10 @@
-﻿<template>
+<template>
   <div class="space-y-6">
     <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold text-gray-800">ตั้งค่าระบบ</h1>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">ข้อมูลสถานศึกษาและแบบฟอร์ม</h1>
+        <p class="text-sm text-gray-500 mt-1">ข้อมูลหน่วยงาน ผู้ลงนาม และรูปแบบเอกสารที่ระบบใช้ออกหนังสือราชการ</p>
+      </div>
       <button @click="saveSettings" :disabled="isSaving" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2 transition-colors disabled:opacity-50">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
         {{ isSaving ? 'กำลังบันทึก...' : 'บันทึกข้อมูล' }}
@@ -34,13 +37,13 @@
 
     <div class="bg-white shadow rounded-lg p-6">
       <form @submit.prevent="saveSettings">
-        
-        <!-- Tab 1: ข้อมูลพื้นฐานของสถานศึกษา -->
+
+        <!-- Tab 1: ข้อมูลสถานศึกษา -->
         <div v-show="currentTab === 'basic'" id="settings-panel-basic" role="tabpanel" class="space-y-6">
-          <h3 class="text-lg leading-6 font-medium text-red-700 border-b pb-2">ข้อมูลพื้นฐานของสถานศึกษา</h3>
-          
+          <h3 class="text-lg leading-6 font-medium text-red-700 border-b pb-2">ข้อมูลสถานศึกษา</h3>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Left Column: Info & Logo -->
+            <!-- Left Column: Identity & Logo -->
             <div class="space-y-6">
               <div class="border rounded-md p-4 space-y-4">
                 <div class="flex items-center">
@@ -54,6 +57,10 @@
                 <div class="flex items-center">
                   <label class="w-1/3 text-sm font-medium text-gray-700">ชื่อสถานศึกษา :</label>
                   <input type="text" v-model="settings.institution_name" class="flex-1 border-gray-300 rounded-md shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                </div>
+                <div class="flex items-center">
+                  <label class="w-1/3 text-sm font-medium text-gray-700">สังกัด :</label>
+                  <input type="text" v-model="settings.school_affiliation" class="flex-1 border-gray-300 rounded-md shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
                 </div>
                 <div class="flex items-center">
                   <label class="w-1/3 text-sm font-medium text-gray-700">อาชีวศึกษาจังหวัด :</label>
@@ -79,175 +86,145 @@
               </div>
             </div>
 
-            <!-- Right Column: Executives -->
-            <div class="border rounded-md p-4 space-y-3">
-              <p class="text-sm font-medium text-gray-700 mb-2">สมาชิกของผู้บริหาร</p>
-              
-              <div v-for="field in executiveFields" :key="field.key" class="flex items-center">
-                <label class="w-1/2 text-sm text-gray-700">{{ field.label }} :</label>
-                <select v-model="settings[field.key]" class="flex-1 border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-                  <option value="">-- เลือกจากผู้ใช้งาน --</option>
-                  <option v-for="user in users" :key="user.id" :value="user.full_name_with_title">{{ user.full_name_with_title }}</option>
-                </select>
+            <!-- Right Column: Contact & Names -->
+            <div class="space-y-6">
+              <div class="border rounded-md p-4 space-y-4">
+                <p class="text-sm font-medium text-gray-700">ที่อยู่และช่องทางติดต่อ</p>
+                <div>
+                  <label class="block text-sm text-gray-700 mb-1">ที่อยู่</label>
+                  <input type="text" v-model="settings.school_address" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">โทรศัพท์</label>
+                    <input type="text" v-model="settings.school_phone" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">เลขไปรษณีย์</label>
+                    <input type="text" v-model="settings.postal_code" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-700 mb-1">อีเมล</label>
+                  <input type="email" v-model="settings.school_email" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                </div>
+              </div>
+
+              <div class="border rounded-md p-4 space-y-4">
+                <p class="text-sm font-medium text-gray-700">ชื่อย่อและข้อมูลประกอบ</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">ชื่อย่อ (ภาษาไทย)</label>
+                    <input type="text" v-model="settings.short_name_th" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">ชื่อย่อ (ภาษาอังกฤษ)</label>
+                    <input type="text" v-model="settings.short_name_en" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-700 mb-1">ชื่อสถานศึกษา (ภาษาอังกฤษ)</label>
+                  <input type="text" v-model="settings.full_name_en" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">ประเภทโรงเรียน</label>
+                    <select v-model="settings.school_type" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                      <option value="ในระบบ">ในระบบ</option>
+                      <option value="นอกระบบ">นอกระบบ</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">ภาษาที่สอน</label>
+                    <input type="text" v-model="settings.teaching_language" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">วันก่อตั้ง</label>
+                    <ThaiDatePicker v-model="settings.founding_date" />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">เวลาเข้าเรียน</label>
+                    <input type="time" v-model="settings.start_time" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-700 mb-1">เวลาเลิกเรียน</label>
+                    <input type="time" v-model="settings.end_time" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Tab 2: ข้อมูลเพิ่มเติม -->
-        <div v-show="currentTab === 'additional'" id="settings-panel-additional" role="tabpanel" class="space-y-6">
-          <h3 class="text-lg leading-6 font-medium text-red-700 border-b pb-2">ข้อมูลเพิ่มเติม</h3>
-          
+        <!-- Tab 2: ผู้บริหารและผู้ลงนาม -->
+        <div v-show="currentTab === 'executives'" id="settings-panel-executives" role="tabpanel" class="space-y-6">
+          <h3 class="text-lg leading-6 font-medium text-red-700 border-b pb-2">ผู้บริหารและผู้ลงนาม</h3>
+          <p class="text-sm text-gray-500">ชื่อที่เลือกไว้จะถูกนำไปพิมพ์ในช่องลงนามของเอกสารที่ระบบออกให้</p>
+
+          <div class="border rounded-md p-4">
+            <label class="block text-sm text-gray-700 mb-1">ตำแหน่งผู้อำนวยการ (ข้อความใต้ลายเซ็น)</label>
+            <input type="text" v-model="settings.director_position" placeholder="เช่น ผู้อำนวยการวิทยาลัย..." class="block w-full md:w-1/2 border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+          </div>
+
+          <div class="border rounded-md p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+            <div v-for="field in executiveFields" :key="field.key" class="flex items-center">
+              <label class="w-1/2 text-sm text-gray-700">{{ field.label }} :</label>
+              <select v-model="settings[field.key]" class="flex-1 border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                <option value="">-- เลือกจากผู้ใช้งาน --</option>
+                <option v-for="user in users" :key="user.id" :value="user.full_name_with_title">{{ user.full_name_with_title }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: แบบฟอร์มและการส่งออก -->
+        <div v-show="currentTab === 'export'" id="settings-panel-export" role="tabpanel" class="space-y-6">
+          <h3 class="text-lg leading-6 font-medium text-red-700 border-b pb-2">แบบฟอร์มและการส่งออกเอกสาร</h3>
+
           <div class="border rounded-md p-4 space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <p class="text-sm font-medium text-gray-700">ระยะขอบกระดาษ (เซนติเมตร)</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <label class="block text-sm text-gray-700 mb-1">ชื่อย่อสถานศึกษา (ภาษาไทย)</label>
-                <input type="text" v-model="settings.short_name_th" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                <label class="block text-sm text-gray-700 mb-1">ขอบบน</label>
+                <input type="number" step="0.1" min="0" max="10" v-model="settings.margin_top" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 sm:text-sm">
               </div>
               <div>
-                <label class="block text-sm text-gray-700 mb-1">ชื่อย่อสถานศึกษา (ภาษาอังกฤษ)</label>
-                <input type="text" v-model="settings.short_name_en" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                <label class="block text-sm text-gray-700 mb-1">ขอบล่าง</label>
+                <input type="number" step="0.1" min="0" max="10" v-model="settings.margin_bottom" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 sm:text-sm">
+              </div>
+              <div>
+                <label class="block text-sm text-gray-700 mb-1">ขอบซ้าย</label>
+                <input type="number" step="0.1" min="0" max="10" v-model="settings.margin_left" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 sm:text-sm">
+              </div>
+              <div>
+                <label class="block text-sm text-gray-700 mb-1">ขอบขวา</label>
+                <input type="number" step="0.1" min="0" max="10" v-model="settings.margin_right" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 sm:text-sm">
               </div>
             </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div class="md:col-span-2">
-                <label class="block text-sm text-gray-700 mb-1">ชื่อสถานศึกษา (ภาษาอังกฤษ)</label>
-                <input type="text" v-model="settings.full_name_en" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1">ประเภทโรงเรียน</label>
-                <select v-model="settings.school_type" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-                  <option value="ในระบบ">ในระบบ</option>
-                  <option value="นอกระบบ">นอกระบบ</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1">ภาษาที่สอน</label>
-                <input type="text" v-model="settings.teaching_language" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label class="block text-sm text-gray-700 mb-1 text-red-500">วันก่อตั้ง *</label>
-                <ThaiDatePicker v-model="settings.founding_date" />
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1 text-red-500">เวลาเข้าเรียน *</label>
-                <input type="time" v-model="settings.start_time" required class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1 text-red-500">เวลาเลิกเรียน *</label>
-                <input type="time" v-model="settings.end_time" required class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1">เลขที่หนังสือออก</label>
-                <input type="text" v-model="settings.document_number_out" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="bg-red-50 p-3 rounded border border-red-100">
-                <label class="block text-sm font-semibold text-red-700 mb-1">เวลาเข้างานมาตรฐานของระบบ</label>
-                <input type="time" v-model="settings.default_work_start_time" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-                <span class="text-xs text-red-600 mt-1 block">ใช้สำหรับบุคลากรที่ไม่ได้กำหนดเวลาเข้างานไว้</span>
-              </div>
-              <div class="bg-red-50 p-3 rounded border border-red-100">
-                <label class="block text-sm font-semibold text-red-700 mb-1">เวลาออกงานมาตรฐานของระบบ</label>
-                <input type="time" v-model="settings.default_work_end_time" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-                <span class="text-xs text-red-600 mt-1 block">ใช้สำหรับคำนวณการออกก่อนเวลา</span>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm text-gray-700 mb-1">พิกัด GPS ละติจูด (Latitude)</label>
-                <input type="number" step="any" min="-90" max="90" v-model="settings.college_latitude" placeholder="เช่น 13.7563" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1">พิกัด GPS ลองจิจูด (Longitude)</label>
-                <input type="number" step="any" min="-180" max="180" v-model="settings.college_longitude" placeholder="เช่น 100.5018" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">รัศมีลงเวลาสูงสุด (เมตร)</label>
-                <input type="number" min="0" max="100000" v-model.number="settings.max_attendance_radius" class="block w-full border border-gray-300 rounded py-1 px-2 sm:text-sm">
-              </div>
-              <label class="flex items-center gap-3 text-sm text-gray-700">
-                <input type="checkbox" v-model="settings.require_attendance_selfie" true-value="1" false-value="0" class="h-5 w-5 rounded border-gray-300 text-red-600">
-                บังคับถ่ายภาพขณะลงเวลา
-              </label>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">ยกเลิกใบลาได้ภายใน (วัน)</label>
-                <input type="number" min="0" max="365" v-model.number="settings.cancel_allowed_days" class="block w-full border border-gray-300 rounded py-1 px-2 sm:text-sm">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">เก็บหลักฐานใบลา (วัน)</label>
-                <input type="number" min="1" max="36500" v-model.number="settings.leave_evidence_retention_days" class="block w-full border border-gray-300 rounded py-1 px-2 sm:text-sm">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm text-gray-700 mb-1">ที่ทำการไปรษณีย์</label>
-                <input type="text" v-model="settings.post_office_branch" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1">เลขไปรษณีย์</label>
-                <input type="text" v-model="settings.postal_code" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1">แหล่งน้ำที่ใช้</label>
-                <input type="text" v-model="settings.water_source" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm text-gray-700 mb-1">จำนวนชั่วโมงในการใช้อินเตอร์เน็ต</label>
-                <input type="number" v-model.number="settings.internet_hours" min="0" max="168" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1">จำนวนคอมพิวเตอร์สำหรับการเรียนการสอน</label>
-                <input type="number" v-model.number="settings.teaching_computers" min="0" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1">จำนวนคอมพิวเตอร์สำหรับการบริหารจัดการ</label>
-                <input type="number" v-model.number="settings.admin_computers" min="0" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm text-gray-700 mb-1 text-red-500">เลือกระบบไฟฟ้า *</label>
-                <select v-model="settings.electricity_system" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-                  <option value="มีไฟฟ้าจากหน่วยงานรัฐ-รัฐวิสาหกิจ">มีไฟฟ้าจากหน่วยงานรัฐ-รัฐวิสาหกิจ</option>
-                  <option value="ไม่มีไฟฟ้า">ไม่มีไฟฟ้า</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1 text-red-500">เลือกระบบโทรศัพท์ *</label>
-                <select v-model="settings.telephone_system" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-                  <option value="มีโทรศัพท์พื้นฐาน">มีโทรศัพท์พื้นฐาน</option>
-                  <option value="ไม่มีโทรศัพท์พื้นฐาน">ไม่มีโทรศัพท์พื้นฐาน</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm text-gray-700 mb-1 text-red-500">เลือกระบบอินเตอร์เน็ต *</label>
-                <select v-model="settings.internet_system" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-                  <option value="มีการเชื่อมต่ออินเตอร์เน็ตด้วย ADSL (Broadband)">มีการเชื่อมต่ออินเตอร์เน็ตด้วย ADSL (Broadband)</option>
-                  <option value="ไม่มีการเชื่อมต่อ">ไม่มีการเชื่อมต่อ</option>
-                </select>
-              </div>
-            </div>
-
           </div>
+
+          <div class="border rounded-md p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm text-gray-700 mb-1">แบบอักษรมาตรฐานของเอกสาร</label>
+              <select v-model="settings.default_font" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 sm:text-sm">
+                <option value="TH Sarabun New">TH Sarabun New</option>
+                <option value="TH Sarabun PSK">TH Sarabun PSK</option>
+                <option value="Sarabun">Sarabun</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-gray-700 mb-1">เลขที่หนังสือออก</label>
+              <input type="text" v-model="settings.document_number_out" placeholder="เช่น ศธ 0584.1" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 sm:text-sm">
+            </div>
+          </div>
+
+          <p class="text-xs text-gray-500">
+            ตราครุฑและรูปแบบเลขทะเบียนหนังสือรับ-ส่ง ตั้งค่าได้ที่เมนู "ตั้งค่าระบบสารบรรณ"
+          </p>
         </div>
 
-
-        
       </form>
     </div>
   </div>
@@ -255,16 +232,18 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
 
 const alertStore = useAlertStore()
+const route = useRoute()
 
 const tabs = [
-  { id: 'basic', name: 'ข้อมูลพื้นฐานของสถานศึกษา' },
-  { id: 'additional', name: 'ข้อมูลเพิ่มเติม' }
+  { id: 'basic', name: 'ข้อมูลสถานศึกษา' },
+  { id: 'executives', name: 'ผู้บริหารและผู้ลงนาม' },
+  { id: 'export', name: 'แบบฟอร์มและการส่งออก' }
 ]
 
 const executiveFields = [
@@ -285,7 +264,8 @@ const executiveFields = [
   { label: 'หัวหน้างานศูนย์ข้อมูล', key: 'head_data_center_name' },
 ]
 
-const currentTab = ref('basic')
+// รองรับลิงก์เดิม /admin/export-settings ที่ถูก redirect มาพร้อม ?tab=export
+const currentTab = ref(tabs.some(tab => tab.id === route.query.tab) ? String(route.query.tab) : 'basic')
 const isSaving = ref(false)
 const isDeletingLogo = ref(false)
 const users = ref([])
@@ -312,10 +292,16 @@ const settings = ref({
   institution_code: '',
   institution_type: '',
   institution_name: '',
+  school_affiliation: '',
   vocational_province: '',
   vocational_institute: '',
   organization_logo: '',
+  school_address: '',
+  school_phone: '',
+  school_email: '',
+  postal_code: '',
   director_name: '',
+  director_position: '',
   deputy_acting_name: '',
   deputy_academic_name: '',
   deputy_development_name: '',
@@ -335,41 +321,16 @@ const settings = ref({
   full_name_en: '',
   school_type: 'ในระบบ',
   teaching_language: 'ภาษาไทย',
-  document_number_out: '',
   founding_date: '',
   start_time: '',
   end_time: '',
-  post_office_branch: '',
-  postal_code: '',
-  water_source: '',
-  internet_hours: '',
-  teaching_computers: '',
-  admin_computers: '',
-  electricity_system: 'มีไฟฟ้าจากหน่วยงานรัฐ-รัฐวิสาหกิจ',
-  telephone_system: 'มีโทรศัพท์พื้นฐาน',
-  internet_system: 'มีการเชื่อมต่ออินเตอร์เน็ตด้วย ADSL (Broadband)',
-  college_latitude: '',
-  college_longitude: '',
-  default_work_start_time: '',
-  default_work_end_time: '',
-  max_attendance_radius: '',
-  require_attendance_selfie: '0',
-  cancel_allowed_days: 5,
-  leave_evidence_retention_days: 2555
+  document_number_out: '',
+  default_font: 'TH Sarabun New',
+  margin_top: '2.5',
+  margin_bottom: '2.0',
+  margin_left: '3.0',
+  margin_right: '2.0'
 })
-
-const formatThaiDate = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  if (isNaN(date.getTime())) return dateString
-  
-  const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
-  const d = date.getDate()
-  const m = months[date.getMonth()]
-  const y = date.getFullYear() + 543
-  
-  return `${d} ${m} ${y}`
-}
 
 const fetchSettings = async () => {
   try {
@@ -457,5 +418,3 @@ onMounted(() => {
 
 onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
 </script>
-
-

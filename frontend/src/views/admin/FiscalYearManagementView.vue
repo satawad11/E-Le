@@ -38,7 +38,9 @@
               <td class="px-4 py-3 text-gray-700">{{ formatThaiDate(fy.end_date) }}</td>
               <td class="px-4 py-3 text-center">
                 <span v-if="fy.is_current" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                  <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.check"/>
+                  </svg>
                   ปีปัจจุบัน
                 </span>
                 <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
@@ -134,6 +136,7 @@ import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
 import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
+import { ICONS } from '../../utils/icons'
 
 const alertStore = useAlertStore()
 

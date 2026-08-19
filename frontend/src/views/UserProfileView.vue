@@ -8,7 +8,7 @@
       <!-- สิทธิของเจ้าของข้อมูลตาม ม.30 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล -->
       <div class="flex flex-wrap gap-2">
         <router-link
-          to="/my-access-history"
+          to="/profile/access-history"
           class="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           title="ดูว่าใครเปิดดูข้อมูลส่วนบุคคลของท่านบ้าง"
         >
@@ -45,10 +45,14 @@
             >
               <img v-if="imagePreview" :src="imagePreview" alt="ตัวอย่างรูปโปรไฟล์ใหม่" class="w-full h-full object-cover" />
               <img v-else-if="form.profile.profile_photo_path" v-secure-src="form.profile.profile_photo_path" alt="รูปโปรไฟล์ปัจจุบัน" class="w-full h-full object-cover" />
-              <svg v-else class="w-20 h-20 text-gray-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+              <svg v-else class="w-20 h-20 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" :d="ICONS.user"/>
+              </svg>
               
               <div class="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true">
-                <i class="fas fa-camera text-white text-2xl mb-2"></i>
+                <svg class="w-7 h-7 text-white mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.camera"/>
+                </svg>
                 <span class="text-white text-sm">อัปโหลดรูป</span>
               </div>
             </div>
@@ -170,7 +174,12 @@
                 <button type="button" @click="clearCanvas" class="px-3 py-1.5 text-xs font-semibold bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors">ล้างลายเซ็น</button>
                 <button type="button" @click="saveCanvas" class="px-3 py-1.5 text-xs font-semibold bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition-colors">ใช้ลายเซ็นที่วาด</button>
               </div>
-              <p v-if="canvasSaved" class="text-xs text-green-600 mt-2 font-medium"><i class="fas fa-check-circle"></i> ภาพวาดพร้อมบันทึก (อย่าลืมกดปุ่มบันทึกด้านล่าง)</p>
+              <p v-if="canvasSaved" class="flex items-center gap-1 text-xs text-green-600 mt-2 font-medium">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.check"/>
+                </svg>
+                ภาพวาดพร้อมบันทึก (อย่าลืมกดปุ่มบันทึกด้านล่าง)
+              </p>
             </div>
           </div>
 
@@ -209,7 +218,9 @@
         <div class="mt-8 flex justify-end">
           <button type="submit" :disabled="submitting" class="px-6 py-2.5 bg-red-700 hover:bg-red-800 text-white font-semibold rounded-xl text-sm transition-all shadow-md flex items-center gap-2">
             <span v-if="submitting" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-            <i v-else class="fas fa-save"></i>
+            <svg v-else class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.save"/>
+            </svg>
             บันทึกการเปลี่ยนแปลง
           </button>
         </div>
@@ -223,6 +234,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
 import api from '../axios'
+import { ICONS } from '../utils/icons'
 
 const authStore = useAuthStore()
 const alertStore = useAlertStore()

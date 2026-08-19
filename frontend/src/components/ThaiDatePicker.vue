@@ -73,7 +73,10 @@
         <!-- "Today" shortcut -->
         <div class="today-bar">
           <button type="button" class="today-btn focus-visible:ring-2 focus-visible:ring-[#800000]" @click.stop="selectToday" aria-label="เลือกวันปัจจุบัน">
-            📅 วันนี้ ({{ todayDisplay }})
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.calendar"/>
+            </svg>
+            วันนี้ ({{ todayDisplay }})
           </button>
         </div>
 
@@ -119,6 +122,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ICONS } from '../utils/icons';
 
 const props = defineProps({
   modelValue: {
@@ -500,6 +504,10 @@ onUnmounted(() => {
 }
 .cal-popover .today-btn {
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
   padding: 0.375rem 0.75rem;
   background: #fff;
   border: 1.5px solid #fca5a5;

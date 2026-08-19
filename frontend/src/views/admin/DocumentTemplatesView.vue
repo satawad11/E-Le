@@ -10,9 +10,12 @@
         <button
           @click="seedDefaults"
           :disabled="seeding"
-          class="px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium hover:bg-gray-50 text-sm transition-all"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium hover:bg-gray-50 text-sm transition-all"
         >
-          {{ seeding ? 'กำลังซิงค์...' : '🔄 ซิงค์แม่แบบตั้งต้น' }}
+          <svg v-if="!seeding" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.refresh"/>
+          </svg>
+          {{ seeding ? 'กำลังซิงค์...' : 'ซิงค์แม่แบบตั้งต้น' }}
         </button>
         <button
           @click="openModal(null)"
@@ -65,8 +68,11 @@
         </div>
 
         <div class="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between gap-2">
-          <button @click="previewTemplate(tpl)" class="px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-lg">
-            👁️ พรีวิว A4
+          <button @click="previewTemplate(tpl)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-lg">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.eye"/>
+            </svg>
+            พรีวิว A4
           </button>
           <div class="flex gap-2">
             <button @click="openModal(tpl)" class="px-3 py-1.5 text-xs font-semibold text-[#800000] hover:bg-[#800000]/5 rounded-lg border border-[#800000]/20">
@@ -87,7 +93,11 @@
         <!-- Modal Header -->
         <div class="px-6 py-4 bg-[#800000] text-white flex items-center justify-between">
           <h3 class="font-bold text-base">{{ editingTpl ? 'แก้ไขแม่แบบเอกสาร' : 'สร้างแม่แบบเอกสารใหม่' }}</h3>
-          <button @click="showModal = false" class="text-white/80 hover:text-white text-xl">✕</button>
+          <button @click="showModal = false" aria-label="ปิด" class="text-white/80 hover:text-white">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.x"/>
+            </svg>
+          </button>
         </div>
 
         <!-- Modal Body -->
@@ -145,7 +155,12 @@
       <div class="bg-gray-200 rounded-2xl shadow-2xl w-full max-w-4xl p-6 relative max-h-[90vh] flex flex-col">
         <div class="flex justify-between items-center mb-4 text-gray-800">
           <h3 class="font-bold text-base">พรีวิวแม่แบบกระดาษ A4: {{ previewTpl.name }}</h3>
-          <button @click="previewTpl = null" class="px-3 py-1 bg-white rounded-lg text-sm font-bold shadow-sm">✕ ปิด</button>
+          <button @click="previewTpl = null" class="inline-flex items-center gap-1.5 px-3 py-1 bg-white rounded-lg text-sm font-bold shadow-sm">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.x"/>
+            </svg>
+            ปิด
+          </button>
         </div>
         <!-- Simulated A4 Paper -->
         <iframe
@@ -163,6 +178,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useAlertStore } from '../../stores/alert'
+import { ICONS } from '../../utils/icons'
 
 const alertStore = useAlertStore()
 const templates = ref([])
@@ -265,10 +281,10 @@ const saveTemplate = async () => {
   try {
     if (editingTpl.value) {
       await axios.put(`/api/admin/document-templates/${editingTpl.value.id}`, form.value)
-      message.value = 'ปรับปรุงแม่แบบเอกสารเรียบร้อยแล้ว 🎉'
+      message.value = 'ปรับปรุงแม่แบบเอกสารเรียบร้อยแล้ว'
     } else {
       await axios.post('/api/admin/document-templates', form.value)
-      message.value = 'สร้างแม่แบบเอกสารใหม่เรียบร้อยแล้ว 🎉'
+      message.value = 'สร้างแม่แบบเอกสารใหม่เรียบร้อยแล้ว'
     }
     showModal.value = false
     await fetchTemplates()
@@ -300,7 +316,7 @@ const seedDefaults = async () => {
   seeding.value = true
   try {
     await axios.post('/api/admin/document-templates/seed-defaults')
-    message.value = 'ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว 🎉'
+    message.value = 'ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว'
     alertStore.success('ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว')
     await fetchTemplates()
   } catch (err) {

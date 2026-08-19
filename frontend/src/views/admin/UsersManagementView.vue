@@ -12,14 +12,20 @@
           class="flex items-center gap-2 px-4 py-2.5 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md hover:shadow-lg"
           title="ดาวน์โหลดรูปแบบไฟล์ CSV สำหรับนำเข้า"
         >
-          <i class="fas fa-download"></i> ฟอร์ม CSV
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.download"/>
+          </svg>
+          ฟอร์ม CSV
         </button>
 
         <button
           @click="triggerCsvUpload"
           class="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md hover:shadow-lg"
         >
-          <i class="fas fa-file-csv"></i> นำเข้าด้วย CSV
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.upload"/>
+          </svg>
+          นำเข้าด้วย CSV
         </button>
         <input type="file" ref="csvInput" @change="handleCsvUpload" accept=".csv" class="hidden" />
 
@@ -132,17 +138,29 @@
                 </td>
                 <td class="px-4 py-3 text-center">
                   <div class="flex flex-wrap items-center justify-center gap-2">
-                    <button @click="toggleStatus(user)" class="px-3 py-1 rounded text-xs transition" :class="user.is_active ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'" :disabled="submitting" title="เปิด-ปิด การใช้งาน">
-                      <i class="fas" :class="user.is_active ? 'fa-ban' : 'fa-check'"></i> {{ user.is_active ? 'ระงับ' : 'เปิดใช้งาน' }}
+                    <button @click="toggleStatus(user)" class="inline-flex items-center gap-1 px-3 py-1 rounded text-xs transition" :class="user.is_active ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'" :disabled="submitting" title="เปิด-ปิด การใช้งาน">
+                      <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="user.is_active ? ICONS.ban : ICONS.check"/>
+                      </svg>
+                      {{ user.is_active ? 'ระงับ' : 'เปิดใช้งาน' }}
                     </button>
-                    <button @click="openPermissionModal(user)" class="px-3 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 transition" title="จัดการสิทธิ์การเข้าถึงรายบุคคล">
-                      <i class="fas fa-shield-alt mr-1"></i> สิทธิ์
+                    <button @click="openPermissionModal(user)" class="inline-flex items-center gap-1 px-3 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 transition" title="จัดการสิทธิ์การเข้าถึงรายบุคคล">
+                      <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.shieldCheck"/>
+                      </svg>
+                      สิทธิ์
                     </button>
-                    <button @click="openEditModal(user)" class="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition">
-                      <i class="fas fa-edit mr-1"></i> แก้ไข
+                    <button @click="openEditModal(user)" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition">
+                      <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.pencil"/>
+                      </svg>
+                      แก้ไข
                     </button>
-                    <button v-if="user.id !== authStore.user?.id" @click="confirmDelete(user)" class="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition">
-                      <i class="fas fa-trash mr-1"></i> ลบ
+                    <button v-if="user.id !== authStore.user?.id" @click="confirmDelete(user)" class="inline-flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition">
+                      <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.trash"/>
+                      </svg>
+                      ลบ
                     </button>
                   </div>
                 </td>
@@ -164,7 +182,10 @@
             <div class="flex gap-2">
               <button @click="modal.show = false" class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 transition">ย้อนกลับ</button>
               <button @click="submitForm" :disabled="submitting" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition flex items-center gap-2">
-                <i class="fas fa-save"></i> บันทึก
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.save"/>
+                </svg>
+                บันทึก
               </button>
             </div>
           </div>
@@ -176,10 +197,14 @@
                 <div class="w-32 h-32 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-4 overflow-hidden border-4 border-white shadow cursor-pointer group" @click="$refs.imageInput.click()">
                   <img v-if="imagePreview" :src="imagePreview" class="w-full h-full object-cover" />
                   <img v-else-if="form.profile.profile_photo_path" v-secure-src="form.profile.profile_photo_path" class="w-full h-full object-cover" />
-                  <svg v-else class="w-16 h-16 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+                  <svg v-else class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" :d="ICONS.user"/>
+                  </svg>
                   
                   <div class="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full w-32 h-32 mx-auto border-4 border-transparent mt-4">
-                    <i class="fas fa-camera text-white text-xl mb-1"></i>
+                    <svg class="w-6 h-6 text-white mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.camera"/>
+                    </svg>
                     <span class="text-white text-xs">อัปโหลดรูป</span>
                   </div>
                 </div>
@@ -410,14 +435,19 @@
                 <!-- Tab: Permissions (Custom Individual Direct Permissions) -->
                 <div v-show="activeTab === 'permissions'" class="space-y-4 max-h-[450px] overflow-y-auto pr-2">
                   <div>
-                    <p class="text-xs text-gray-600 bg-amber-50 border-l-4 border-amber-400 p-3 rounded mb-3">
-                      <i class="fas fa-info-circle text-amber-500 mr-2"></i> กำหนดสิทธิ์การเข้าถึงระบบเพิ่มเติมให้กับผู้ใช้งานคนนี้เป็นกรณีพิเศษ (Direct Custom Permissions)
+                    <p class="flex items-start gap-2 text-xs text-gray-600 bg-amber-50 border-l-4 border-amber-400 p-3 rounded mb-3">
+                      <svg class="w-4 h-4 flex-shrink-0 text-amber-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.info"/>
+                      </svg>
+                      <span>กำหนดสิทธิ์การเข้าถึงระบบเพิ่มเติมให้กับผู้ใช้งานคนนี้เป็นกรณีพิเศษ (Direct Custom Permissions)</span>
                     </p>
                   </div>
                   
                   <div v-for="(groupPerms, groupName) in groupedPermissions" :key="groupName" class="border border-gray-200 rounded-lg p-3 bg-gray-50">
                     <h5 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                      <span>📌</span>
+                      <svg class="w-4 h-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.folder"/>
+                      </svg>
                       <span>{{ groupName }}</span>
                     </h5>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -481,6 +511,7 @@ import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
 import UserPermissionModal from '../../components/admin/UserPermissionModal.vue'
 import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 import { getErrorMessage } from '../../utils/errorHandler'
+import { ICONS } from '../../utils/icons'
 import LoadingState from '../../components/ui/LoadingState.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ErrorState from '../../components/ui/ErrorState.vue'
@@ -513,23 +544,23 @@ const onPermissionsSaved = async () => {
 
 const roleLabel = (name) => {
   const map = {
-    'ผู้ดูแลระบบสูงสุด': '👑 ผู้ดูแลระบบสูงสุด',
-    'Super Admin': '👑 ผู้ดูแลระบบสูงสุด',
-    'SuperAdmin':  '👑 ผู้ดูแลระบบสูงสุด',
-    'ผู้อำนวยการ': '🏢 ผู้อำนวยการ',
-    'Director':    '🏢 ผู้อำนวยการ',
-    'รองผู้อำนวยการ': '👔 รองผู้อำนวยการ',
-    'Deputy Director': '👔 รองผู้อำนวยการ',
-    'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย': '💼 หัวหน้าแผนกวิชา / หัวหน้าฝ่าย',
-    'HeadOfDepartment': '💼 หัวหน้าแผนกวิชา / หัวหน้าฝ่าย',
-    'เจ้าหน้าที่บุคลากร (HR)': '📋 เจ้าหน้าที่บุคลากร (HR)',
-    'HROfficer':   '📋 เจ้าหน้าที่บุคลากร (HR)',
-    'HR Head':     '📋 เจ้าหน้าที่บุคลากร (HR)',
-    'เจ้าหน้าที่สารบรรณกลาง': '📑 เจ้าหน้าที่สารบรรณกลาง',
-    'SarabanOfficer': '📑 เจ้าหน้าที่สารบรรณกลาง',
-    'Document Officer': '📑 เจ้าหน้าที่สารบรรณกลาง',
-    'บุคลากร / ครู / เจ้าหน้าที่': '👤 บุคลากร / ครู / เจ้าหน้าที่',
-    'Employee':    '👤 บุคลากร / ครู / เจ้าหน้าที่',
+    'ผู้ดูแลระบบสูงสุด': 'ผู้ดูแลระบบสูงสุด',
+    'Super Admin': 'ผู้ดูแลระบบสูงสุด',
+    'SuperAdmin':  'ผู้ดูแลระบบสูงสุด',
+    'ผู้อำนวยการ': 'ผู้อำนวยการ',
+    'Director':    'ผู้อำนวยการ',
+    'รองผู้อำนวยการ': 'รองผู้อำนวยการ',
+    'Deputy Director': 'รองผู้อำนวยการ',
+    'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย': 'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย',
+    'HeadOfDepartment': 'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย',
+    'เจ้าหน้าที่บุคลากร (HR)': 'เจ้าหน้าที่บุคลากร (HR)',
+    'HROfficer':   'เจ้าหน้าที่บุคลากร (HR)',
+    'HR Head':     'เจ้าหน้าที่บุคลากร (HR)',
+    'เจ้าหน้าที่สารบรรณกลาง': 'เจ้าหน้าที่สารบรรณกลาง',
+    'SarabanOfficer': 'เจ้าหน้าที่สารบรรณกลาง',
+    'Document Officer': 'เจ้าหน้าที่สารบรรณกลาง',
+    'บุคลากร / ครู / เจ้าหน้าที่': 'บุคลากร / ครู / เจ้าหน้าที่',
+    'Employee':    'บุคลากร / ครู / เจ้าหน้าที่',
   }
   return map[name] || name || ''
 }

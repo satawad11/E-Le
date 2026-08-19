@@ -146,8 +146,8 @@
               <td class="p-4 border-b">
                 <div class="flex flex-col gap-1">
                   <span class="font-medium flex items-center gap-2">
-                    <svg v-if="doc.is_pinned" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                    <svg v-if="doc.is_pinned" class="h-4 w-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.pin"/>
                     </svg>
                     {{ doc.title }}
                   </span>
@@ -257,6 +257,7 @@ import { getErrorMessage } from '../../utils/errorHandler'
 import LoadingState from '../../components/ui/LoadingState.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ErrorState from '../../components/ui/ErrorState.vue'
+import { ICONS } from '../../utils/icons'
 
 const store = useSarabanDocumentStore()
 const authStore = useAuthStore()

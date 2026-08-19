@@ -1,7 +1,9 @@
 <template>
   <div class="flex flex-col items-center justify-center p-8 sm:p-16 text-center my-6 bg-white rounded-3xl border border-gray-100 shadow-sm max-w-xl mx-auto">
     <div class="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center text-amber-600 mb-6 ring-8 ring-amber-50/50">
-      <i class="fas fa-shield-alt text-3xl"></i>
+      <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" :d="ICONS.shieldWarning"/>
+      </svg>
     </div>
     
     <span class="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full uppercase tracking-wider mb-3">
@@ -22,7 +24,9 @@
         to="/"
         class="inline-flex items-center gap-2 px-6 py-2.5 bg-[#800000] hover:bg-[#660000] text-white font-medium rounded-xl text-sm shadow-sm transition-all duration-200"
       >
-        <i class="fas fa-home"></i>
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.home"/>
+        </svg>
         <span>{{ homeText }}</span>
       </router-link>
       
@@ -30,7 +34,9 @@
         @click="goBack"
         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl text-sm transition-colors"
       >
-        <i class="fas fa-arrow-left"></i>
+        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.arrowLeft"/>
+        </svg>
         <span>ย้อนกลับ</span>
       </button>
     </div>
@@ -39,6 +45,7 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { ICONS } from '../../utils/icons'
 
 const router = useRouter()
 

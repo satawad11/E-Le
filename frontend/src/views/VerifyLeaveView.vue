@@ -17,8 +17,11 @@
 
       <div v-else-if="result" class="overflow-hidden rounded-2xl border bg-white">
         <div class="px-6 py-5 text-center" :class="result.is_valid ? 'bg-emerald-50' : 'bg-amber-50'">
-          <p class="text-2xl font-extrabold" :class="result.is_valid ? 'text-emerald-700' : 'text-amber-800'">
-            {{ result.is_valid ? '✓ เอกสารถูกต้อง' : '⚠ เอกสารใช้อ้างอิงไม่ได้' }}
+          <p class="flex items-center justify-center gap-2 text-2xl font-extrabold" :class="result.is_valid ? 'text-emerald-700' : 'text-amber-800'">
+            <svg class="w-7 h-7 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="result.is_valid ? ICONS.check : ICONS.warning"/>
+            </svg>
+            {{ result.is_valid ? 'เอกสารถูกต้อง' : 'เอกสารใช้อ้างอิงไม่ได้' }}
           </p>
           <p class="mt-1 text-sm" :class="result.is_valid ? 'text-emerald-700' : 'text-amber-800'">
             สถานะ: {{ result.status_label }}
@@ -68,6 +71,7 @@
 </template>
 
 <script setup>
+import { ICONS } from '../utils/icons'
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../axios'
