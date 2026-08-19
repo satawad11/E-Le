@@ -167,7 +167,20 @@
       </section>
 
       <!-- การผูกแบบฟอร์ม -->
-      <section v-else-if="activeTab === 'bindings'" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+      <section v-else-if="activeTab === 'bindings'" class="space-y-4">
+        <div v-if="unboundLeaveTypes.length" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p class="font-bold mb-1">ประเภทการลาที่ยังไม่มีแบบฟอร์มเฉพาะ ({{ unboundLeaveTypes.length }} ประเภท)</p>
+          <p class="mb-2 text-amber-800">
+            ประเภทเหล่านี้ยังพิมพ์เอกสารได้ตามปกติด้วยแบบฟอร์มเดิมของระบบ — อัปโหลดแบบฟอร์มเมื่อพร้อมแล้วค่อยผูกได้ภายหลัง
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <span v-for="type in unboundLeaveTypes" :key="type.id" class="px-2.5 py-1 rounded-full bg-white/70 border border-amber-200 text-xs font-medium">
+              {{ type.name }}
+            </span>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
         <table class="w-full text-sm min-w-[760px]">
           <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
             <tr>
@@ -194,7 +207,8 @@
               <td colspan="6" class="px-5 py-10 text-center text-gray-400">ยังไม่มีการผูกแบบฟอร์ม</td>
             </tr>
           </tbody>
-        </table>
+          </table>
+        </div>
       </section>
 
       <!-- เอกสารที่สร้างแล้ว -->
@@ -430,6 +444,7 @@ const generated = ref([])
 const calibrations = ref([])
 const reports = ref([])
 const reportResult = ref(null)
+const unboundLeaveTypes = ref([])
 
 const tabs = [
   { value: 'templates', label: 'แบบฟอร์มเอกสาร' },
@@ -538,6 +553,7 @@ const loadAll = async () => {
     dataSources.value = src.data
     bindings.value = bnd.data.rules
     bindingEntities.value = bnd.data.entities
+    unboundLeaveTypes.value = bnd.data.unbound_leave_types || []
     generated.value = gen.data.data || gen.data
     calibrations.value = cal.data
     reports.value = rep.data

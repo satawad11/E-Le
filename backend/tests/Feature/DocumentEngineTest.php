@@ -451,6 +451,39 @@ class DocumentEngineTest extends TestCase
         );
     }
 
+    public function test_uploading_a_form_does_not_spawn_an_extra_version(): void
+    {
+        $admin = $this->admin();
+
+        $templateId = $this->actingAs($admin)->postJson('/api/admin/document-engine/templates', [
+            'code' => 'no_phantom_form', 'name' => 'แบบฟอร์มทดสอบเวอร์ชันเปล่า', 'module' => 'leave',
+            'document_type' => 'FORM', 'render_mode' => 'pdf_overlay',
+        ])->assertCreated()->json('template.id');
+
+        $version = $this->actingAs($admin)
+            ->postJson("/api/admin/document-engine/templates/{$templateId}/versions")
+            ->assertCreated()->json('version');
+
+        $before = DocumentTemplateVersion::where('document_template_id', $templateId)->count();
+
+        $this->actingAs($admin)->post("/api/admin/document-engine/versions/{$version['id']}/pdf", [
+            'file' => new UploadedFile($this->sourceForm(), 'form.pdf', 'application/pdf', null, true),
+        ])->assertOk();
+
+        // การอัปโหลดไฟล์ลงฉบับร่างต้องไม่ทำให้ระบบออกเวอร์ชันใหม่ตามมา
+        $this->assertSame($before, DocumentTemplateVersion::where('document_template_id', $templateId)->count());
+    }
+
+    public function test_publishing_makes_the_template_follow_the_published_render_mode(): void
+    {
+        $admin = $this->admin();
+        $version = $this->pdfTemplate('render_mode_form', DocumentTemplateVersion::STATUS_DRAFT);
+
+        $this->actingAs($admin)->postJson("/api/admin/document-engine/versions/{$version->id}/publish")->assertOk();
+
+        $this->assertSame(DocumentTemplate::RENDER_PDF_OVERLAY, $version->template->fresh()->render_mode);
+    }
+
     public function test_a_published_version_cannot_have_its_fields_moved(): void
     {
         $admin = $this->admin();

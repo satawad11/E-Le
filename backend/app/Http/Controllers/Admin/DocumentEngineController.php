@@ -189,7 +189,13 @@ class DocumentEngineController extends Controller
             'page_count' => $this->pageCount($path),
         ]);
 
-        $version->template->update(['render_mode' => DocumentTemplate::RENDER_PDF_OVERLAY]);
+        /*
+         * บันทึกแบบเงียบ ๆ โดยตั้งใจ
+         *
+         * `DocumentTemplate` มี hook ที่ออกเวอร์ชันใหม่ทุกครั้งที่คุณสมบัติของแม่แบบเปลี่ยน
+         * ถ้าปล่อยให้ hook ทำงานตรงนี้ การอัปโหลดไฟล์ลงฉบับร่างจะไปสร้างเวอร์ชันเปล่าเพิ่มอีกใบทุกครั้ง
+         */
+        $version->template->forceFill(['render_mode' => DocumentTemplate::RENDER_PDF_OVERLAY])->saveQuietly();
 
         $this->audit->log('document_version_pdf_uploaded', 'DocumentTemplateVersion', $version->id, after: ['path' => $path]);
 
@@ -233,6 +239,9 @@ class DocumentEngineController extends Controller
                 'published_by' => $request->user()?->id,
                 'published_at' => now(),
             ]);
+
+            // แม่แบบสะท้อนวิธีเรนเดอร์ของเวอร์ชันที่ใช้งานอยู่ (saveQuietly กัน hook ออกเวอร์ชันเปล่า)
+            $version->template->forceFill(['render_mode' => $version->render_mode])->saveQuietly();
         }, 5);
 
         $this->audit->log('document_version_published', 'DocumentTemplateVersion', $version->id, after: ['version' => $version->version]);
@@ -365,15 +374,26 @@ class DocumentEngineController extends Controller
             ->orderBy('module')->orderBy('entity_type')->orderBy('priority')
             ->get();
 
+        $leaveTypes = LeaveType::orderBy('id')->get(['id', 'name']);
+        $boundTypeIds = $rules->where('module', 'LEAVE')->where('entity_type', 'LEAVE_TYPE')->pluck('entity_id')->filter()->all();
+        $hasCatchAll = $rules->where('module', 'LEAVE')->where('entity_type', 'LEAVE_TYPE')->whereNull('entity_id')->isNotEmpty();
+
         return response()->json([
             'rules' => $rules,
             // ตัวเลือกของ entity ที่ผูกได้ในตอนนี้ — ประเภทการลาของโมดูล E-Leave
             'entities' => [
                 'LEAVE' => [
-                    'LEAVE_TYPE' => LeaveType::orderBy('name')->get(['id', 'name']),
-                    'LEAVE_CANCELLATION' => LeaveType::orderBy('name')->get(['id', 'name']),
+                    'LEAVE_TYPE' => $leaveTypes,
+                    'LEAVE_CANCELLATION' => $leaveTypes,
                 ],
             ],
+            /*
+             * ประเภทการลาที่ยังไม่มีแบบฟอร์ม — ผู้ดูแลจะได้รู้ว่ายังต้องอัปโหลดแบบฟอร์มของประเภทใดบ้าง
+             * ประเภทเหล่านี้ยังพิมพ์เอกสารได้ตามปกติด้วยเส้นทางเดิม เพียงแต่ยังไม่มีแบบฟอร์มเฉพาะของตน
+             */
+            'unbound_leave_types' => $hasCatchAll
+                ? []
+                : $leaveTypes->whereNotIn('id', $boundTypeIds)->values(),
         ]);
     }
 
