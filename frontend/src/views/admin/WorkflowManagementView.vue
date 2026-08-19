@@ -27,7 +27,7 @@
 
         <button
           @click="openPreview"
-          :disabled="loading || saving || steps.length === 0"
+          :disabled="loading || saving || (steps.length === 0 && !isCancellationChain)"
           class="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl text-sm transition-all shadow-sm disabled:opacity-50 min-h-[44px]"
           title="ทดลองว่าใครคือผู้อนุมัติจริงของแต่ละขั้น"
         >
@@ -40,7 +40,7 @@
 
         <button
           @click="saveWorkflow"
-          :disabled="saving || loading || steps.length === 0"
+          :disabled="saving || loading || (steps.length === 0 && !isCancellationChain)"
           class="flex items-center gap-2 px-5 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50 min-h-[44px]"
         >
           <div v-if="saving" class="animate-spin h-4 w-4 rounded-full border-2 border-white border-t-transparent"></div>
@@ -50,6 +50,22 @@
           {{ saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า' }}
         </button>
       </div>
+    </div>
+
+    <!-- Chain switcher -->
+    <div class="mb-6 flex flex-wrap gap-2 border-b border-gray-200">
+      <button
+        v-for="c in chains"
+        :key="c.value"
+        @click="switchChain(c.value)"
+        :disabled="saving"
+        class="px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors min-h-[44px] disabled:opacity-50"
+        :class="activeChain === c.value
+          ? 'border-[#800000] text-[#800000]'
+          : 'border-transparent text-gray-500 hover:text-gray-800'"
+      >
+        {{ c.label }}
+      </button>
     </div>
 
     <!-- Loading State -->
@@ -89,8 +105,27 @@
 
       <!-- Workflow Timeline / Steps Builder -->
       <div class="lg:col-span-2 space-y-4">
+        <!-- สายยกเลิกที่ยังไม่ได้ตั้งค่าแยก = ใช้สายเดียวกับใบลา -->
+        <div v-if="isCancellationChain" class="rounded-2xl border p-4 text-sm"
+          :class="steps.length === 0 ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-white border-gray-100 text-gray-600 shadow-sm'">
+          <p v-if="steps.length === 0">
+            <span class="font-bold">ขณะนี้คำขอยกเลิกใบลาใช้สายอนุมัติเดียวกับใบลา</span> —
+            เพิ่มขั้นตอนด้านล่างเมื่อต้องการให้การยกเลิกใช้สายที่ต่างออกไป เช่นสั้นกว่าหรือเสนอผู้อนุมัติคนละคน
+          </p>
+          <div v-else class="flex flex-wrap items-center justify-between gap-3">
+            <span>คำขอยกเลิกใช้สายอนุมัติเฉพาะของตัวเองตามที่ตั้งค่าไว้ด้านล่าง</span>
+            <button
+              @click="useLeaveChainForCancellation"
+              :disabled="saving"
+              class="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 font-semibold text-xs hover:bg-gray-50 disabled:opacity-50 min-h-[40px]"
+            >
+              กลับไปใช้สายเดียวกับใบลา
+            </button>
+          </div>
+        </div>
+
         <!-- Empty State -->
-        <div v-if="steps.length === 0" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+        <div v-if="steps.length === 0 && !isCancellationChain" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <svg class="mx-auto h-12 w-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
           </svg>
@@ -107,7 +142,7 @@
           </button>
         </div>
 
-        <div v-else class="space-y-4">
+        <div v-if="steps.length > 0 || isCancellationChain" class="space-y-4">
           <!-- Steps Loop -->
           <div
             v-for="(step, index) in steps"
@@ -429,6 +464,34 @@ const previewModal = ref({
   result: null
 })
 
+/*
+ * สายอนุมัติที่กำลังจัดการอยู่
+ *
+ * สายของคำขอยกเลิกที่ "ไม่มีขั้นตอนเลย" หมายถึงใช้สายเดียวกับใบลา ซึ่งเป็นค่าเริ่มต้น
+ * ของระบบ ผู้ดูแลที่ไม่ต้องการแยกสายจึงไม่ต้องตั้งค่าอะไรเพิ่ม
+ */
+const chains = [
+  { value: 'leave', label: 'สายอนุมัติใบลา' },
+  { value: 'cancellation', label: 'สายอนุมัติคำขอยกเลิกใบลา' },
+]
+const activeChain = ref('leave')
+const inheritsLeaveChain = ref(false)
+
+const isCancellationChain = computed(() => activeChain.value === 'cancellation')
+
+const switchChain = async (chain) => {
+  if (chain === activeChain.value) return
+  if (hasUnsavedChanges.value && ! window.confirm('มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก ต้องการสลับสายอนุมัติหรือไม่?')) return
+  activeChain.value = chain
+  await fetchWorkflow()
+}
+
+// ล้างขั้นตอนของสายยกเลิกทั้งหมด = กลับไปใช้สายเดียวกับใบลา
+const useLeaveChainForCancellation = () => {
+  steps.value = []
+  saveWorkflow()
+}
+
 const resolverOptions = [
   { value: 'DEPARTMENT_HEAD', label: 'หัวหน้าแผนกวิชา / หัวหน้างาน (ต้นสังกัดผู้ยื่น)' },
   { value: 'REQUESTER_SUPERVISOR', label: 'ผู้บังคับบัญชาชั้นต้น' },
@@ -453,6 +516,7 @@ const runPreview = async () => {
   previewModal.value.loading = true
   try {
     const res = await api.post('/admin/workflow-steps/preview', {
+      chain: activeChain.value,
       requester_id: Number(previewModal.value.requesterId),
       steps: steps.value.map(s => ({
         name: (s.name || '').trim(),
@@ -520,7 +584,7 @@ const fetchWorkflow = async () => {
   try {
     const [rolesRes, stepsRes, usersRes] = await Promise.all([
       api.get('/admin/roles'),
-      api.get('/admin/workflow-steps'),
+      api.get('/admin/workflow-steps', { params: { chain: activeChain.value, with_meta: 1 } }),
       api.get('/users/list')
     ])
     roles.value = Array.isArray(rolesRes.data) ? rolesRes.data : (rolesRes.data?.data || [])
@@ -531,6 +595,7 @@ const fetchWorkflow = async () => {
       : (stepsRes.data?.steps || stepsRes.data?.data || [])
 
     currentFingerprint.value = stepsRes.headers?.['x-workflow-fingerprint'] || stepsRes.data?.fingerprint || ''
+    inheritsLeaveChain.value = !!stepsRes.data?.inherits_leave_chain
 
     steps.value = rawSteps.map((s, idx) => ({
       id: s.id,
@@ -627,7 +692,8 @@ const resolveConflictReload = () => {
 }
 
 const saveWorkflow = async () => {
-  if (steps.value.length === 0) {
+  // สายยกเลิกบันทึกว่างได้ = ใช้สายเดียวกับใบลา ส่วนสายใบลาต้องมีอย่างน้อยหนึ่งขั้น
+  if (steps.value.length === 0 && !isCancellationChain.value) {
     alertStore.error('กรุณาระบุขั้นตอนการอนุมัติอย่างน้อย 1 ขั้นตอน')
     return
   }
@@ -653,6 +719,7 @@ const saveWorkflow = async () => {
 
   try {
     const payload = {
+      chain: activeChain.value,
       steps: steps.value.map(s => ({
         role_id: s.role_id ? Number(s.role_id) : null,
         approver_type: s.approver_type || 'ROLE',
@@ -668,17 +735,17 @@ const saveWorkflow = async () => {
     
     currentFingerprint.value = res.headers?.['x-workflow-fingerprint'] || res.data?.fingerprint || ''
     
+    inheritsLeaveChain.value = !!res.data?.inherits_leave_chain
+
     const returnedSteps = res.data?.steps || []
-    if (returnedSteps.length > 0) {
-      steps.value = returnedSteps.map((s, idx) => ({
-        id: s.id,
-        role_id: s.role_id || '',
-        approver_type: s.approver_type || 'ROLE',
-        specific_user_id: s.specific_user_id || '',
-        name: s.name,
-        step_order: s.step_order || (idx + 1)
-      }))
-    }
+    steps.value = returnedSteps.map((s, idx) => ({
+      id: s.id,
+      role_id: s.role_id || '',
+      approver_type: s.approver_type || 'ROLE',
+      specific_user_id: s.specific_user_id || '',
+      name: s.name,
+      step_order: s.step_order || (idx + 1)
+    }))
 
     reindexSteps()
     initialStepsSnapshot.value = serializeSteps(steps.value)

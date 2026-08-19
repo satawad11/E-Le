@@ -308,6 +308,12 @@
   - [x] แก้บั๊กอนุมัติยกเลิกแล้ววันลาไม่ถูกคืนเข้าสิทธิ์
   - [x] รายการรออนุมัติตัดสินสิทธิ์ด้วยสายของคำขอยกเลิก และหน้าจอแสดงลำดับการอนุมัติยกเลิก
   - [x] Automated test suite `LeaveCancellationChainTest.php` (9 tests, 86 assertions) + regression 533 tests
+- [x] APPROVAL-05 ตั้งค่าสายอนุมัติคำขอยกเลิกแยกได้ — **PASS 2026-08-19** · `docs/DECISION-LOG.md` ADR-APPROVAL-05
+  - [x] Migration `approval_steps.chain` (`leave` / `cancellation`)
+  - [x] สายยกเลิกที่ยังไม่ตั้งค่า = ใช้สายเดียวกับใบลา (`ApprovalStep::stepsFor()`)
+  - [x] Admin API + fingerprint + preview แยกตามสาย และบันทึกสายหนึ่งไม่กระทบอีกสาย
+  - [x] แท็บสลับสายในหน้าจัดการลำดับการอนุมัติ พร้อมปุ่มกลับไปใช้สายเดียวกับใบลา
+  - [x] ขยายเทสต์เป็น 14 tests, 122 assertions + regression 538 tests
 
 
 

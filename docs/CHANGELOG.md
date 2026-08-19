@@ -24,6 +24,17 @@ All notable changes to the E-la project will be documented in this file.
 #### Removed
 - `ApprovalController::approve()` / `reject()` ที่ไม่มี route ชี้ถึงตั้งแต่ย้ายไป `routes/leave_government.php` (รวมตรรกะ auto-approve ของ Super Admin ที่ไม่ถูกเรียกใช้แล้ว)
 
+### [APPROVAL-05] - 2026-08-19
+#### Added
+- ตั้งค่า "สายอนุมัติคำขอยกเลิกใบลา" แยกจากสายของใบลาได้ — migration `2026_08_19_170000_add_chain_to_approval_steps.php` เพิ่ม `approval_steps.chain` (`leave` / `cancellation`)
+- `GET|POST /api/admin/workflow-steps` และ `/preview` รับพารามิเตอร์ `chain` (ค่าเริ่มต้น `leave`) พร้อมธง `inherits_leave_chain`
+- แท็บสลับสายอนุมัติในหน้าจัดการลำดับการอนุมัติ พร้อมปุ่ม "กลับไปใช้สายเดียวกับใบลา"
+
+#### Changed
+- **สายยกเลิกที่ยังไม่ได้ตั้งค่า = ใช้สายเดียวกับใบลา** (`ApprovalStep::stepsFor()`) ระบบที่ติดตั้งอยู่แล้วจึงทำงานเหมือนเดิมทุกประการ
+- บันทึกสายใดสายหนึ่งไม่กระทบอีกสาย (ลบ/สร้างใหม่และ fingerprint แยกตามสาย) และ workflow engine (shadow) สะท้อนเฉพาะสายของใบลา
+- สายของใบลายังต้องมีอย่างน้อย 1 ขั้นเสมอ ส่วนสายยกเลิกบันทึกเป็นค่าว่างได้ = ใช้สายของใบลา
+
 ### [APPROVAL-04] - 2026-08-19
 #### Added
 - สายอนุมัติของ "คำขอยกเลิกใบลา" แบบเดียวกับการขอลา — migration `2026_08_19_140000_add_cancellation_approval_chain.php` เพิ่ม `leave_approvals.stage` (`request` / `cancellation`) และ `leaves.cancellation_approval_level` พร้อม backfill คำขอยกเลิกที่ค้างอยู่

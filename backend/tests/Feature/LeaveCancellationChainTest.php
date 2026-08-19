@@ -236,6 +236,109 @@ class LeaveCancellationChainTest extends TestCase
         $this->actingAs($approverOne)->postJson("/api/leaves/{$leave['id']}/approve-cancellation")->assertOk();
     }
 
+    public function test_a_separately_configured_cancellation_chain_is_used_instead_of_the_leave_chain(): void
+    {
+        [$approverOne, $approverTwo] = $this->twoStepChain();
+        [$requester, $type] = $this->requesterWithPolicy();
+
+        // ผู้ดูแลตั้งสายยกเลิกให้สั้นกว่า: ขั้นเดียว เสนอผู้อนุมัติขั้นสุดท้ายโดยตรง
+        ApprovalStep::create([
+            'chain' => ApprovalStep::CHAIN_CANCELLATION,
+            'name' => 'ผู้อำนวยการอนุมัติการยกเลิก', 'step_order' => 1,
+            'approver_type' => ApprovalStep::RESOLVER_SPECIFIC_USER, 'specific_user_id' => $approverTwo->id,
+        ]);
+
+        $leave = $this->approvedLeave($requester, $type, $approverOne, $approverTwo);
+        $this->requestCancellation($requester, $leave['id']);
+
+        // ผู้อนุมัติขั้นแรกของสายใบลาไม่เกี่ยวกับสายยกเลิกอีกต่อไป
+        $this->actingAs($approverOne)->postJson("/api/leaves/{$leave['id']}/approve-cancellation")->assertForbidden();
+
+        // ขั้นเดียวจบ
+        $this->actingAs($approverTwo)->postJson("/api/leaves/{$leave['id']}/approve-cancellation")->assertOk();
+        $this->assertDatabaseHas('leaves', ['id' => $leave['id'], 'status' => 'Cancelled', 'cancellation_status' => 'Approved']);
+        $this->assertSame(1, LeaveApproval::where('leave_id', $leave['id'])->where('stage', LeaveApproval::STAGE_CANCELLATION)->count());
+    }
+
+    public function test_the_cancellation_chain_falls_back_to_the_leave_chain_when_not_configured(): void
+    {
+        [$approverOne, $approverTwo] = $this->twoStepChain();
+        [$requester, $type] = $this->requesterWithPolicy();
+        $leave = $this->approvedLeave($requester, $type, $approverOne, $approverTwo);
+
+        $this->assertFalse(ApprovalStep::cancellationChainIsConfigured());
+
+        $this->requestCancellation($requester, $leave['id']);
+
+        // ไม่ได้ตั้งค่าไว้ จึงได้สองขั้นเท่ากับสายของใบลา
+        $this->assertSame(2, LeaveApproval::where('leave_id', $leave['id'])->where('stage', LeaveApproval::STAGE_CANCELLATION)->count());
+    }
+
+    public function test_saving_one_chain_does_not_touch_the_other(): void
+    {
+        $admin = User::factory()->create(['is_active' => true]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']));
+        $role = Role::firstOrCreate(['name' => 'ผู้อนุมัติทดสอบ', 'guard_name' => 'web']);
+
+        $this->actingAs($admin)->postJson('/api/admin/workflow-steps', [
+            'steps' => [
+                ['name' => 'หัวหน้าแผนก', 'approver_type' => 'DEPARTMENT_HEAD', 'role_id' => null],
+                ['name' => 'ผู้อำนวยการ', 'approver_type' => 'DIRECTOR', 'role_id' => null],
+            ],
+        ])->assertOk();
+
+        $this->actingAs($admin)->postJson('/api/admin/workflow-steps', [
+            'chain' => 'cancellation',
+            'steps' => [['name' => 'ผู้อำนวยการอนุมัติการยกเลิก', 'approver_type' => 'ROLE', 'role_id' => $role->id]],
+        ])->assertOk()->assertJsonPath('chain', 'cancellation')->assertJsonCount(1, 'steps');
+
+        // สายของใบลายังครบสองขั้นเหมือนเดิม
+        $this->actingAs($admin)->getJson('/api/admin/workflow-steps')->assertOk()->assertJsonCount(2);
+        $this->actingAs($admin)->getJson('/api/admin/workflow-steps?chain=cancellation')->assertOk()->assertJsonCount(1);
+
+        $this->assertSame(2, ApprovalStep::query()->chain(ApprovalStep::CHAIN_LEAVE)->count());
+        $this->assertSame(1, ApprovalStep::query()->chain(ApprovalStep::CHAIN_CANCELLATION)->count());
+    }
+
+    public function test_clearing_the_cancellation_chain_returns_it_to_the_leave_chain(): void
+    {
+        $admin = User::factory()->create(['is_active' => true]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']));
+        $role = Role::firstOrCreate(['name' => 'ผู้อนุมัติทดสอบ', 'guard_name' => 'web']);
+        ApprovalStep::create(['name' => 'ขั้นเดียวของใบลา', 'step_order' => 1, 'approver_type' => 'ROLE', 'role_id' => $role->id]);
+        ApprovalStep::create(['chain' => ApprovalStep::CHAIN_CANCELLATION, 'name' => 'ขั้นของการยกเลิก', 'step_order' => 1, 'approver_type' => 'ROLE', 'role_id' => $role->id]);
+
+        $this->actingAs($admin)->postJson('/api/admin/workflow-steps', ['chain' => 'cancellation', 'steps' => []])
+            ->assertOk()->assertJsonPath('inherits_leave_chain', true);
+
+        $this->assertFalse(ApprovalStep::cancellationChainIsConfigured());
+        // สายของใบลาห้ามบันทึกว่าง
+        $this->actingAs($admin)->postJson('/api/admin/workflow-steps', ['steps' => []])->assertStatus(422);
+    }
+
+    public function test_preview_answers_per_chain(): void
+    {
+        $admin = User::factory()->create(['is_active' => true]);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']));
+        [$approverOne, $approverTwo] = $this->twoStepChain();
+        [$requester] = $this->requesterWithPolicy();
+
+        ApprovalStep::create([
+            'chain' => ApprovalStep::CHAIN_CANCELLATION,
+            'name' => 'ผู้อำนวยการอนุมัติการยกเลิก', 'step_order' => 1,
+            'approver_type' => ApprovalStep::RESOLVER_SPECIFIC_USER, 'specific_user_id' => $approverTwo->id,
+        ]);
+
+        $this->actingAs($admin)->postJson('/api/admin/workflow-steps/preview', ['requester_id' => $requester->id])
+            ->assertOk()->assertJsonCount(2, 'steps');
+
+        $this->actingAs($admin)->postJson('/api/admin/workflow-steps/preview', ['requester_id' => $requester->id, 'chain' => 'cancellation'])
+            ->assertOk()
+            ->assertJsonCount(1, 'steps')
+            ->assertJsonPath('steps.0.approvers.0.id', $approverTwo->id)
+            ->assertJsonPath('inherits_leave_chain', false);
+    }
+
     public function test_a_pending_cancellation_request_cannot_be_submitted_twice(): void
     {
         [$approverOne, $approverTwo] = $this->twoStepChain();

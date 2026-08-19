@@ -7,7 +7,6 @@ use App\Models\Leave;
 use App\Models\User;
 use App\Services\Workflow\ApproverResolverService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 
 /**
  * รายการใบลาที่ "ฉัน" ต้องอนุมัติ
@@ -56,8 +55,11 @@ class ApprovalController extends Controller
          * จะรั่วไปให้ผู้ใช้คนถัดไปเห็นใบลาที่ตนไม่มีสิทธิ์อนุมัติ
          */
         $cache = [];
-        // ใบลาเก่าที่ยื่นก่อนระบบเก็บ snapshot ต้องถอยไปอ่านสายอนุมัติปัจจุบัน
-        $legacySteps = ApprovalStep::orderBy('step_order')->get();
+        // ใบลาเก่าที่ยื่นก่อนระบบเก็บ snapshot ต้องถอยไปอ่านสายอนุมัติปัจจุบัน — คนละสายกัน
+        $legacySteps = [
+            ApprovalStep::CHAIN_LEAVE => ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE),
+            ApprovalStep::CHAIN_CANCELLATION => ApprovalStep::stepsFor(ApprovalStep::CHAIN_CANCELLATION),
+        ];
 
         $leaves = $query
             // ห้ามอนุมัติใบลาของตนเอง จึงไม่ต้องแสดงในรายการที่ต้องอนุมัติ
@@ -75,7 +77,7 @@ class ApprovalController extends Controller
      * ใช้ snapshot ของใบลาเป็นหลัก (กติกา ณ วันยื่น) และถอยไปใช้สายอนุมัติปัจจุบัน
      * เฉพาะใบเก่าที่ยังไม่มี snapshot — ตรงกับที่ GovernmentApprovalController ทำ
      */
-    private function canActAtCurrentStep(User $user, Leave $leave, Collection $legacySteps, array &$cache): bool
+    private function canActAtCurrentStep(User $user, Leave $leave, array $legacySteps, array &$cache): bool
     {
         /*
          * ใบที่มีคำขอยกเลิกรออนุมัติ ต้องถามสายอนุมัติ "ของคำขอยกเลิก" ไม่ใช่สายของการขอลา
@@ -91,7 +93,8 @@ class ApprovalController extends Controller
             ? $leave->cancellationApprovals->firstWhere('step_order', $level)
             : $leave->approvals->firstWhere('step_order', $level);
 
-        $step = $snapshot ?? $legacySteps->firstWhere('step_order', $level);
+        $chain = $isCancellation ? ApprovalStep::CHAIN_CANCELLATION : ApprovalStep::CHAIN_LEAVE;
+        $step = $snapshot ?? $legacySteps[$chain]->firstWhere('step_order', $level);
 
         if ($step === null || $leave->user === null) {
             return false;

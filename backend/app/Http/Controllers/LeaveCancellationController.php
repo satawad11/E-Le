@@ -53,7 +53,8 @@ class LeaveCancellationController extends Controller
             }
             $request->validate(['cancellation_reason' => 'required|string|max:1000']);
 
-            $steps = ApprovalStep::orderBy('step_order')->get();
+            // สายของคำขอยกเลิกโดยเฉพาะ — ถ้าผู้ดูแลยังไม่ได้ตั้งค่าไว้ จะได้สายของใบลามาแทน
+            $steps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_CANCELLATION);
             if ($steps->isEmpty()) {
                 return response()->json(['message' => 'ยังไม่ได้ตั้งค่าลำดับการอนุมัติในระบบ กรุณาตั้งค่าที่เมนูจัดการลำดับการอนุมัติก่อน'], 422);
             }
@@ -231,7 +232,7 @@ class LeaveCancellationController extends Controller
             return $step;
         }
 
-        $legacy = ApprovalStep::where('step_order', $level)->first();
+        $legacy = ApprovalStep::stepsFor(ApprovalStep::CHAIN_CANCELLATION)->firstWhere('step_order', $level);
         if ($legacy === null) {
             return null;
         }

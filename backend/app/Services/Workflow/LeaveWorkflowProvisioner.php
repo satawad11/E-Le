@@ -63,7 +63,7 @@ class LeaveWorkflowProvisioner
     public function publishCurrentVersion(): WorkflowVersion
     {
         $definition = $this->definition();
-        $legacySteps = ApprovalStep::orderBy('step_order')->get();
+        $legacySteps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE);
 
         if ($legacySteps->isEmpty()) {
             throw new \RuntimeException('ยังไม่ได้ตั้งค่าลำดับการอนุมัติใน approval_steps จึงแปลงเป็น workflow ไม่ได้');

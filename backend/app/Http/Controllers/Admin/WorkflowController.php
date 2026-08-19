@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\AuditService;
 use App\Services\Workflow\ApproverResolverService;
 use App\Services\Workflow\LeaveWorkflowProvisioner;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,20 +24,45 @@ class WorkflowController extends Controller
         return md5($steps->map(fn ($s) => $s->step_order.':'.($s->approver_type ?? 'ROLE').':'.($s->role_id ?? '0').':'.($s->specific_user_id ?? '0').':'.trim($s->name))->implode('|'));
     }
 
+    /**
+     * สายที่กำลังจัดการอยู่ — ค่าเริ่มต้นคือสายของใบลา เพื่อให้ผู้เรียกเดิมได้ผลเท่าเดิม
+     */
+    private function chainOf(Request $request): string
+    {
+        $chain = (string) ($request->input('chain') ?? ApprovalStep::CHAIN_LEAVE);
+
+        abort_unless(in_array($chain, ApprovalStep::CHAINS, true), 422, 'ไม่รู้จักสายอนุมัติที่ระบุ');
+
+        return $chain;
+    }
+
+    /** @return Collection<int,ApprovalStep> */
+    private function stepsOf(string $chain)
+    {
+        return ApprovalStep::with(['role', 'specificUser:id,name,email'])
+            ->chain($chain)->orderBy('step_order', 'asc')->get();
+    }
+
     public function index(Request $request)
     {
-        $steps = ApprovalStep::with(['role', 'specificUser:id,name,email'])->orderBy('step_order', 'asc')->get();
+        $chain = $this->chainOf($request);
+        $steps = $this->stepsOf($chain);
         $fingerprint = $this->computeFingerprint($steps);
 
         if ($request->wantsJson() && $request->has('with_meta')) {
             return response()->json([
+                'chain' => $chain,
                 'steps' => $steps,
                 'fingerprint' => $fingerprint,
                 'count' => $steps->count(),
+                // สายยกเลิกที่ยังไม่ได้ตั้งค่า = ใช้สายของใบลา
+                'inherits_leave_chain' => $chain === ApprovalStep::CHAIN_CANCELLATION && $steps->isEmpty(),
             ]);
         }
 
-        return response()->json($steps)->header('X-Workflow-Fingerprint', $fingerprint);
+        return response()->json($steps)
+            ->header('X-Workflow-Fingerprint', $fingerprint)
+            ->header('X-Workflow-Chain', $chain);
     }
 
     /**
@@ -60,10 +86,11 @@ class WorkflowController extends Controller
             'requester_id.exists' => 'ไม่พบผู้ใช้ที่เลือก',
         ]);
 
+        $chain = $this->chainOf($request);
         $requester = User::with('profile')->findOrFail($request->integer('requester_id'));
         $resolver = app(ApproverResolverService::class);
 
-        // ไม่ส่ง steps มา = ดูตัวอย่างจากสายอนุมัติที่บันทึกไว้จริง
+        // ไม่ส่ง steps มา = ดูตัวอย่างจากสายอนุมัติที่บันทึกไว้จริง (สายยกเลิกที่ยังไม่ตั้งค่าจะได้สายของใบลา)
         $steps = $request->filled('steps')
             ? collect($request->steps)->values()->map(fn ($step, $index) => [
                 'step_order' => $index + 1,
@@ -73,7 +100,7 @@ class WorkflowController extends Controller
                 'specific_user_id' => ! empty($step['specific_user_id']) ? (int) $step['specific_user_id'] : null,
                 'permission_name' => $step['permission_name'] ?? null,
             ])
-            : ApprovalStep::orderBy('step_order')->get()->map(fn ($step) => [
+            : ApprovalStep::stepsFor($chain)->map(fn ($step) => [
                 'step_order' => $step->step_order,
                 'name' => $step->name,
                 'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
@@ -112,6 +139,10 @@ class WorkflowController extends Controller
         })->values();
 
         return response()->json([
+            'chain' => $chain,
+            'inherits_leave_chain' => $chain === ApprovalStep::CHAIN_CANCELLATION
+                && ! $request->filled('steps')
+                && ! ApprovalStep::cancellationChainIsConfigured(),
             'requester' => [
                 'id' => $requester->id,
                 'name' => $requester->full_name_with_title ?? $requester->name,
@@ -123,8 +154,14 @@ class WorkflowController extends Controller
 
     public function store(Request $request)
     {
+        $chain = $this->chainOf($request);
+
+        /*
+         * สายของใบลาต้องมีอย่างน้อยหนึ่งขั้นเสมอ — ไม่มีขั้นตอน = ไม่มีใครอนุมัติใบลาได้
+         * ส่วนสายยกเลิกส่งมาว่างได้ ซึ่งแปลว่า "ใช้สายเดียวกับใบลา" (ค่าเริ่มต้นของระบบ)
+         */
         $request->validate([
-            'steps' => 'required|array|min:1',
+            'steps' => ($chain === ApprovalStep::CHAIN_LEAVE ? 'required|array|min:1' : 'present|array'),
             'steps.*.name' => 'required|string|max:255',
             'steps.*.approver_type' => 'nullable|string|in:HR_OFFICER,REQUESTER_SUPERVISOR,DEPARTMENT_HEAD,DIVISION_DIRECTOR,DIRECTOR,ROLE,SPECIFIC_USER',
             'steps.*.role_id' => 'nullable|integer|exists:roles,id',
@@ -138,7 +175,7 @@ class WorkflowController extends Controller
             'steps.*.specific_user_id.exists' => 'ผู้ใช้ที่ระบุไม่มีอยู่ในระบบ',
         ]);
 
-        $stepDataList = array_values($request->steps);
+        $stepDataList = array_values($request->input('steps', []));
         $roleIds = Role::pluck('id')->all();
 
         foreach ($stepDataList as $index => $step) {
@@ -166,21 +203,22 @@ class WorkflowController extends Controller
             }
         }
 
-        // Optimistic concurrency check
-        $currentSteps = ApprovalStep::orderBy('step_order', 'asc')->get();
+        // Optimistic concurrency check — เทียบเฉพาะสายที่กำลังบันทึก
+        $currentSteps = $this->stepsOf($chain);
         $currentFingerprint = $this->computeFingerprint($currentSteps);
 
         if ($request->filled('fingerprint') && $request->fingerprint !== $currentFingerprint) {
             return response()->json([
                 'message' => 'ข้อมูลลำดับการอนุมัติถูกแก้ไขโดยผู้ดูแลระบบท่านอื่นแล้ว กรุณารีเฟรชเพื่อโหลดข้อมูลล่าสุด',
                 'conflict' => true,
-                'current_steps' => ApprovalStep::with(['role', 'specificUser:id,name,email'])->orderBy('step_order', 'asc')->get(),
+                'chain' => $chain,
+                'current_steps' => $currentSteps,
                 'current_fingerprint' => $currentFingerprint,
             ], 409);
         }
 
-        $savedSteps = DB::transaction(function () use ($stepDataList, $request) {
-            ApprovalStep::query()->delete();
+        $savedSteps = DB::transaction(function () use ($stepDataList, $request, $chain) {
+            ApprovalStep::query()->chain($chain)->delete();
 
             $created = [];
             foreach ($stepDataList as $index => $stepData) {
@@ -199,6 +237,7 @@ class WorkflowController extends Controller
                 $roleId = ! empty($stepData['role_id']) ? (int) $stepData['role_id'] : null;
 
                 $created[] = ApprovalStep::create([
+                    'chain' => $chain,
                     'role_id' => $roleId,
                     'name' => trim($stepData['name']),
                     'step_order' => $index + 1,
@@ -207,10 +246,13 @@ class WorkflowController extends Controller
                 ]);
             }
 
-            try {
-                app(LeaveWorkflowProvisioner::class)->publishCurrentVersion();
-            } catch (\Throwable $e) {
-                report($e);
+            // workflow engine (shadow) สะท้อนเฉพาะสายของใบลา
+            if ($chain === ApprovalStep::CHAIN_LEAVE) {
+                try {
+                    app(LeaveWorkflowProvisioner::class)->publishCurrentVersion();
+                } catch (\Throwable $e) {
+                    report($e);
+                }
             }
 
             if (app()->bound(AuditService::class)) {
@@ -219,7 +261,7 @@ class WorkflowController extends Controller
                         'approval_workflow_updated',
                         'ApprovalStep',
                         null,
-                        ['steps_count' => count($created), 'steps' => $created],
+                        ['chain' => $chain, 'steps_count' => count($created), 'steps' => $created],
                         $request->user()
                     );
                 } catch (\Throwable $e) {
@@ -230,13 +272,18 @@ class WorkflowController extends Controller
             return $created;
         }, 5);
 
-        $freshSteps = ApprovalStep::with(['role', 'specificUser:id,name,email'])->orderBy('step_order', 'asc')->get();
+        $freshSteps = $this->stepsOf($chain);
         $newFingerprint = $this->computeFingerprint($freshSteps);
+        $inherits = $chain === ApprovalStep::CHAIN_CANCELLATION && $freshSteps->isEmpty();
 
         return response()->json([
-            'message' => 'บันทึกลำดับการอนุมัติเรียบร้อยแล้ว',
+            'message' => $inherits
+                ? 'ตั้งค่าให้คำขอยกเลิกใช้สายอนุมัติเดียวกับใบลาเรียบร้อยแล้ว'
+                : 'บันทึกลำดับการอนุมัติเรียบร้อยแล้ว',
+            'chain' => $chain,
             'steps' => $freshSteps,
             'fingerprint' => $newFingerprint,
-        ])->header('X-Workflow-Fingerprint', $newFingerprint);
+            'inherits_leave_chain' => $inherits,
+        ])->header('X-Workflow-Fingerprint', $newFingerprint)->header('X-Workflow-Chain', $chain);
     }
 }

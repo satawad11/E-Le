@@ -63,8 +63,8 @@ class GovernmentApprovalController extends Controller
         $snapshot = $leave->approvals()->where('step_order', $leave->approval_level)->first();
         if ($snapshot) {
             return $snapshot;
-        }$legacy = ApprovalStep::where('step_order', $leave->approval_level)->first();
-        abort_unless($legacy, 422, ApprovalStep::exists() ? 'ไม่พบขั้นตอนอนุมัติลำดับที่ '.$leave->approval_level.' กรุณาตรวจสอบการตั้งค่าลำดับการอนุมัติ' : 'ยังไม่ได้ตั้งค่าลำดับการอนุมัติในระบบ กรุณาตั้งค่าที่เมนูจัดการลำดับการอนุมัติก่อน');
+        }$legacy = ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->firstWhere('step_order', $leave->approval_level);
+        abort_unless($legacy, 422, ApprovalStep::query()->chain(ApprovalStep::CHAIN_LEAVE)->exists() ? 'ไม่พบขั้นตอนอนุมัติลำดับที่ '.$leave->approval_level.' กรุณาตรวจสอบการตั้งค่าลำดับการอนุมัติ' : 'ยังไม่ได้ตั้งค่าลำดับการอนุมัติในระบบ กรุณาตั้งค่าที่เมนูจัดการลำดับการอนุมัติก่อน');
 
         // ใบลาที่ยื่นก่อนมี snapshot — สร้างย้อนหลังจากสายอนุมัติปัจจุบัน โดยคัดลอกวิธีหาตัวผู้อนุมัติมาให้ครบ
         return LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'stage' => LeaveApproval::STAGE_REQUEST, 'step_order' => $legacy->step_order], [

@@ -141,7 +141,7 @@ class LeaveService
              * ไม่ได้ผูกกับ role ใด ๆ ถ้าตกหล่นจะกลายเป็นขั้นตอนแบบ ROLE ทั้งหมด
              * แล้วผู้อนุมัติตัวจริงจะถูกปฏิเสธสิทธิ์ในขั้นของตัวเอง
              */
-            foreach (ApprovalStep::with('role')->orderBy('step_order')->get() as $step) {
+            foreach (ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role') as $step) {
                 LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'stage' => LeaveApproval::STAGE_REQUEST, 'step_order' => $step->step_order], [
                     'step_name' => $step->name, 'required_role_id' => $step->role_id, 'status' => 'Pending',
                     'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
