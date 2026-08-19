@@ -79,7 +79,7 @@ class DatabaseSeeder extends Seeder
         foreach ($leaveTypes as $type) {
             LeaveType::firstOrCreate(['name' => $type['name']], ['description' => $type['description']]);
         }
-        $this->call([NewLeaveTypesSeeder::class]);
+        $this->call([NewLeaveTypesSeeder::class, LeaveFormExtraFieldSeeder::class]);
 
         // Create Users
         $faker = Factory::create('th_TH');

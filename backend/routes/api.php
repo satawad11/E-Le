@@ -247,6 +247,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/admin/document-templates', [DocumentTemplateController::class, 'index']);
         Route::post('/admin/document-templates', [DocumentTemplateController::class, 'store']);
         Route::post('/admin/document-templates/seed-defaults', [DocumentTemplateController::class, 'seedDefaults']);
+        Route::get('/admin/document-templates/fields', [DocumentTemplateController::class, 'fields']);
+        Route::post('/admin/document-templates/preview', [DocumentTemplateController::class, 'preview'])->middleware('throttle:documents');
         Route::get('/admin/document-templates/{template}', [DocumentTemplateController::class, 'show']);
         Route::put('/admin/document-templates/{template}', [DocumentTemplateController::class, 'update']);
         Route::delete('/admin/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);

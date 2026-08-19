@@ -33,8 +33,7 @@ class Leave extends Model
              * การ pin จึงไม่ได้ป้องกันอะไร เพราะเวอร์ชันที่ pin ไม่ใช่ตัวที่ใช้พิมพ์
              */
             $resolver = app(LeaveDocumentTemplateResolver::class);
-            $typeName = $leave->type?->name ?? LeaveType::whereKey($leave->leave_type_id)->value('name');
-            $code = $resolver->templateCodeForLeaveType($typeName);
+            $code = $resolver->templateCodeForLeave($leave);
 
             $version = $code === null ? null : $resolver->activeVersionFor($code);
 

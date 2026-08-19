@@ -4,6 +4,30 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [LEAVE-FORM-01] - 2026-08-19
+#### Fixed
+- พิมพ์ใบลาไม่ได้ (HTTP 429): `throttle:x,y` แบบ inline ของ Laravel ตั้งกุญแจเป็น sha1(user id) เท่านั้น ทุก route ที่ประกาศแบบนี้จึงนับรวมถังเดียวกัน และถูกนับเพิ่มโดย throttle ของกลุ่มใหญ่ทุก request — เปิดหน้าเว็บไม่กี่หน้าก็ทำให้ปุ่มพิมพ์ตอบ 429 ทั้งที่ยังไม่เคยสั่งพิมพ์ (SEC-019)
+- ปุ่ม "ขอยกเลิก" ใบลาที่อนุมัติแล้วหายไปเมื่อคำขอยกเลิกรอบก่อนถูกปฏิเสธ หรือเมื่อ `cancellation_status` เป็น null (ข้อมูลเก่า)
+- ข้อความผิดพลาดของการดาวน์โหลดเอกสารถูกกลบ เพราะ error body เป็น Blob จึงแสดงเพียง "ไม่สามารถดาวน์โหลด PDF ได้"
+- แบบฟอร์มที่ใช้พิมพ์ถูกเลือกจากการเทียบชื่อไทยของประเภทการลาแบบตายตัวในโค้ด
+- ชื่อสถานศึกษา/ผู้อำนวยการถูกเขียนตายในไฟล์ blade และตารางสถิติการลาในแบบฟอร์มถูกส่งเป็นค่าว่างเสมอ
+- ยื่นคำขอยกเลิกซ้ำทับคำขอที่ยังรออนุมัติได้ (เหตุผลเดิมถูกเขียนทับ)
+
+#### Added
+- Named rate limiters แยกถังต่อกลุ่มการใช้งานใน `AppServiceProvider` (`api`, `public-api`, `verify`, `login`, `password`, `token-refresh`, `personal-data`, `documents`, `exports`, `files`)
+- `App\Services\LeaveDocumentFields` — ชุดตัวแปรกลางของแบบฟอร์มใบลา พร้อม `catalog()` (คำอธิบายไทยสำหรับหน้าผู้ดูแล) และ `sample()` (ข้อมูลตัวอย่างสำหรับพรีวิว)
+- Migration `2026_08_19_160000_add_document_binding_to_leave_types.php` เพิ่ม `leave_types.document_template_code` และ `leave_types.extra_fields` พร้อม backfill ตามตรรกะเดิม
+- ช่องกรอกเฉพาะแบบฟอร์ม: ผู้ดูแลกำหนดช่องเองได้ที่หน้าประเภทการลา ผู้ยื่นกรอกในหน้ายื่นใบลา ค่าเก็บใน `leaves.meta_data.extra_fields` และเติมลงแบบฟอร์มผ่าน `$extra[...]`
+- `GET /api/admin/document-templates/fields` (รายการตัวแปร) และ `POST /api/admin/document-templates/preview` (พรีวิว PDF ด้วยข้อมูลตัวอย่าง)
+- แบบฟอร์มตั้งต้นสำหรับฮัจญ์ / ติดตามคู่สมรส / ศึกษาต่อ เข้าสู่ระบบแม่แบบที่แก้ไขได้
+- `Database\Seeders\LeaveFormExtraFieldSeeder` ตั้งช่องกรอกเริ่มต้นของใบลาอุปสมบทและใบลาช่วยเหลือภริยาที่คลอดบุตร
+- Test suites `RateLimitBucketIsolationTest`, `LeaveCancellationRequestTest`, `LeaveFormBindingTest`
+
+#### Changed
+- เขียนแบบฟอร์มใหม่ให้ตรงแบบราชการ 5 ฉบับ (ลาป่วย/ลาคลอด/ลากิจส่วนตัว, ลาพักผ่อน, ขอยกเลิกวันลา, ลาอุปสมบท, ลาไปช่วยเหลือภริยาที่คลอดบุตร) โดยดึงค่าจากชุดตัวแปรกลางทั้งหมด
+- `DefaultDocumentTemplateService::sync()` รองรับ "คืนค่าแบบฟอร์มตั้งต้น" (เขียนทับแบบเก็บเวอร์ชันเดิมไว้)
+- หน้าแม่แบบเอกสารแสดงรายการตัวแปรจริงจาก API แทนรายการที่เขียนตายไว้ และพรีวิวผ่าน dompdf ตัวเดียวกับตอนพิมพ์
+
 ### [APPROVAL-02] - 2026-08-19
 #### Fixed
 - ผู้อนุมัติตัวจริงถูกปฏิเสธสิทธิ์ในขั้นตอนของตนเอง (403): snapshot ใน `leave_approvals` ไม่เคยเก็บ `approver_type` ทำให้ทุกขั้นตอนถูกลดรูปเป็นแบบ `ROLE` ตอนยื่นใบลา

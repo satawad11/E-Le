@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\DocumentTemplateVersion;
 use App\Models\Leave;
+use App\Models\LeaveType;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Blade;
 
@@ -47,6 +48,9 @@ class LeaveDocumentTemplateResolver
         'pdf.leave_ordination' => 'leave_ordination',
         'pdf.leave_cancel' => 'leave_cancel',
         'pdf.official_travel' => 'official_travel',
+        'pdf.leave_hajj' => 'leave_hajj',
+        'pdf.leave_spouse' => 'leave_spouse',
+        'pdf.leave_study' => 'leave_study',
     ];
 
     /**
@@ -101,6 +105,9 @@ class LeaveDocumentTemplateResolver
      */
     public function render(Leave $leave, string $viewName, array $data): string
     {
+        // ตัวแปรมาตรฐานของแบบฟอร์ม (ดู LeaveDocumentFields) ต้องมีให้ทั้ง blade และเทมเพลตในฐานข้อมูล
+        $data = array_merge(app(LeaveDocumentFields::class)->build($leave), $data);
+
         $version = $this->versionFor($leave, $viewName);
 
         if ($version === null || blank($version->content_html)) {
@@ -130,10 +137,41 @@ class LeaveDocumentTemplateResolver
     }
 
     /**
-     * code ของแบบฟอร์มที่ใบลานี้ควรใช้ — ใช้ตอน pin เวอร์ชันตอนสร้างใบลา
+     * แบบฟอร์มที่ใบลาใบนี้ต้องใช้ — ยึด "ค่าที่ตั้งไว้ในประเภทการลา" เป็นหลัก
      *
-     * ยึดตามตรรกะเลือก view ใน `LeaveController::exportPdf()` เพื่อให้ pin
-     * ตรงกับสิ่งที่พิมพ์ออกมาจริง
+     * ใช้ทั้งตอน pin เวอร์ชันขณะสร้างใบลา และตอนเลือก view ที่พิมพ์จริง
+     * จึงรับประกันว่าเวอร์ชันที่ pin ไว้ตรงกับแบบฟอร์มที่ออกมาจริง
+     *
+     * ตกลงมาที่การเดาจากชื่อไทยเฉพาะกรณีที่ยังไม่ได้ตั้งค่า (ข้อมูลเก่าก่อน migration)
+     */
+    public function templateCodeForLeave(Leave $leave): ?string
+    {
+        $type = $leave->type ?? ($leave->leave_type_id ? LeaveType::find($leave->leave_type_id) : null);
+
+        if ($type?->document_template_code) {
+            return $type->document_template_code;
+        }
+
+        return $this->templateCodeForLeaveType($type?->name);
+    }
+
+    /**
+     * ชื่อ view ของแบบฟอร์มตาม code — ใช้เลือกแบบฟอร์มตอนพิมพ์
+     */
+    public function viewForCode(?string $code): ?string
+    {
+        if ($code === null) {
+            return null;
+        }
+
+        return array_flip(self::VIEW_TO_TEMPLATE)[$code] ?? null;
+    }
+
+    /**
+     * เดา code ของแบบฟอร์มจากชื่อไทยของประเภทการลา
+     *
+     * ตรรกะเดิมก่อนมี `leave_types.document_template_code` — เก็บไว้เป็นทางถอย
+     * ให้ประเภทการลาที่ผู้ดูแลยังไม่ได้ผูกแบบฟอร์มไว้เท่านั้น
      */
     public function templateCodeForLeaveType(?string $leaveTypeName): ?string
     {
@@ -143,6 +181,9 @@ class LeaveDocumentTemplateResolver
             str_contains($name, 'พักผ่อน') => 'leave_vacation',
             str_contains($name, 'ช่วยเหลือภริยา') => 'leave_paternity',
             str_contains($name, 'อุปสมบท') => 'leave_ordination',
+            str_contains($name, 'ฮัจญ์') => 'leave_hajj',
+            str_contains($name, 'ติดตามคู่สมรส') => 'leave_spouse',
+            str_contains($name, 'ศึกษาต่อ') => 'leave_study',
             str_contains($name, 'ไปราชการ') => 'official_travel',
             str_contains($name, 'ป่วย'), str_contains($name, 'กิจ'), str_contains($name, 'คลอด') => 'leave_sick_personal',
             default => null,
