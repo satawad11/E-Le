@@ -483,11 +483,12 @@
           </button>
           
           <div v-show="adminMenuOpen && !isSidebarCollapsed" class="mt-1 space-y-1 pl-9">
+            <p class="settings-group-label">ทั่วไป</p>
             <router-link v-if="authStore.canManageSettings" to="/admin/settings" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
-              ข้อมูลสถานศึกษา
+              ข้อมูลสถานศึกษาและแบบฟอร์ม
             </router-link>
-            <router-link v-if="authStore.canManageSettings" to="/admin/export-settings" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
-              ตั้งค่าแบบฟอร์ม & ส่งออก
+            <router-link v-if="authStore.canManageSettings" to="/admin/fiscal-years" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+              ปีงบประมาณ
             </router-link>
             <router-link v-if="authStore.canManageSettings" to="/admin/work-calendar" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               ปฏิทินวันทำการ
@@ -495,17 +496,25 @@
             <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_departments')" to="/admin/departments" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               จัดการแผนกวิชา
             </router-link>
-            <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_workflow_steps')" to="/admin/workflow" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
-              จัดการลำดับการอนุมัติ
-            </router-link>
+
+            <p class="settings-group-label">ระบบลา</p>
             <router-link v-if="authStore.canManageSettings" to="/admin/leave-policies" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               นโยบายสิทธิการลา
             </router-link>
             <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_leave_types')" to="/admin/leave-types" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               ประเภทการลา
             </router-link>
-            <router-link v-if="authStore.canManageSettings" to="/admin/fiscal-years" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
-              ปีงบประมาณ
+
+            <template v-if="settingStore.isAttendanceEnabled && authStore.canManageSettings">
+              <p class="settings-group-label">ระบบลงเวลา</p>
+              <router-link to="/admin/attendance-settings" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+                ตั้งค่าระบบลงเวลา
+              </router-link>
+            </template>
+
+            <p class="settings-group-label">ระบบ</p>
+            <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_workflow_steps')" to="/admin/workflow" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+              จัดการลำดับการอนุมัติ
             </router-link>
             <router-link v-if="authStore.canManageSettings" to="/admin/notifications" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               การแจ้งเตือน
@@ -820,11 +829,12 @@
             </button>
             
             <div v-show="adminMenuOpen" class="mt-1 pl-6 space-y-1">
+              <p class="settings-group-label">ทั่วไป</p>
               <router-link v-if="authStore.canManageSettings" to="/admin/settings" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                ข้อมูลสถานศึกษา
+                ข้อมูลสถานศึกษาและแบบฟอร์ม
               </router-link>
-              <router-link v-if="authStore.canManageSettings" to="/admin/export-settings" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                ตั้งค่าแบบฟอร์ม & ส่งออก
+              <router-link v-if="authStore.canManageSettings" to="/admin/fiscal-years" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+                ปีงบประมาณ
               </router-link>
               <router-link v-if="authStore.canManageSettings" to="/admin/work-calendar" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 ปฏิทินวันทำการ
@@ -832,17 +842,25 @@
               <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_departments')" to="/admin/departments" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 จัดการแผนกวิชา
               </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_workflow_steps')" to="/admin/workflow" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                จัดการลำดับการอนุมัติ
-              </router-link>
+
+              <p class="settings-group-label">ระบบลา</p>
               <router-link v-if="authStore.canManageSettings" to="/admin/leave-policies" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 นโยบายสิทธิการลา
               </router-link>
               <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_leave_types')" to="/admin/leave-types" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 ประเภทการลา
               </router-link>
-              <router-link v-if="authStore.canManageSettings" to="/admin/fiscal-years" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                ปีงบประมาณ
+
+              <template v-if="settingStore.isAttendanceEnabled && authStore.canManageSettings">
+                <p class="settings-group-label">ระบบลงเวลา</p>
+                <router-link to="/admin/attendance-settings" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+                  ตั้งค่าระบบลงเวลา
+                </router-link>
+              </template>
+
+              <p class="settings-group-label">ระบบ</p>
+              <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_workflow_steps')" to="/admin/workflow" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+                จัดการลำดับการอนุมัติ
               </router-link>
               <router-link v-if="authStore.canManageSettings" to="/admin/notifications" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 การแจ้งเตือน
@@ -1032,8 +1050,8 @@ const isAttendanceRouteActive = computed(() => {
 })
 
 const isAdminRouteActive = computed(() => {
-  return ['admin-settings', 'admin-export-settings', 'admin-document-templates', 'admin-modules', 'admin-departments', 'admin-workflow', 'admin-leave-types', 'admin-fiscal-years', 'admin-notifications', 'admin-work-calendar', 'admin-leave-policies'].includes(route.name) ||
-    ['/admin/settings', '/admin/export-settings', '/admin/document-templates', '/admin/modules', '/admin/departments', '/admin/workflow', '/admin/leave-types', '/admin/fiscal-years', '/admin/notifications', '/admin/work-calendar', '/admin/leave-policies'].includes(route.path)
+  return ['admin-settings', 'admin-attendance-settings', 'admin-document-templates', 'admin-modules', 'admin-departments', 'admin-workflow', 'admin-leave-types', 'admin-fiscal-years', 'admin-notifications', 'admin-work-calendar', 'admin-leave-policies'].includes(route.name) ||
+    ['/admin/settings', '/admin/attendance-settings', '/admin/document-templates', '/admin/modules', '/admin/departments', '/admin/workflow', '/admin/leave-types', '/admin/fiscal-years', '/admin/notifications', '/admin/work-calendar', '/admin/leave-policies'].includes(route.path)
 })
 
 const isSarabanRouteActive = computed(() => {
@@ -1169,6 +1187,15 @@ const doLogout = () => {
   background: rgba(255,255,255,0.2) !important;
   color: #fff !important;
   font-weight: 600;
+}
+
+/* หัวข้อคั่นกลุ่มย่อยในเมนูตั้งค่าระบบ */
+.settings-group-label {
+  padding: 0.5rem 0.75rem 0.125rem;
+  font-size: 0.625rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
 }
 
 /* Drawer transitions */
