@@ -177,11 +177,28 @@ class OvertimeCriticalPathTest extends TestCase
     private function createApproveAndAssign(): OvertimeOrder
     {
         $order = $this->createOrder();
-        $this->actingAs($this->reviewer)->postJson("/api/overtime/orders/{$order->uuid}/approve", [
+
+        /*
+         * สายอนุมัติคำสั่ง OT มีสองขั้นตามระเบียบ (เจ้าของระบบกำหนด 2026-08-19):
+         * รอง ผอ. ฝ่ายทรัพยากร "อนุญาต" ก่อน แล้ว ผอ. จึง "อนุมัติ" ปิดท้าย
+         * คำสั่งจะยังเป็น pending จนกว่าจะผ่านครบทั้งสองขั้น
+         */
+        $window = [
             'approved_start' => '2026-08-17 18:00:00',
             'approved_end' => '2026-08-17 20:00:00',
-            'comment' => 'อนุมัติตามคำสั่ง',
-        ])->assertOk();
+        ];
+
+        $this->actingAs($this->reviewer)
+            ->postJson("/api/overtime/orders/{$order->uuid}/approve", $window + ['comment' => 'อนุญาตตามคำขอ'])
+            ->assertOk();
+
+        $this->assertSame('pending', $order->fresh()->status, 'ขั้นแรกยังไม่ทำให้คำสั่งใช้งานได้');
+
+        $this->actingAs($this->reviewer)
+            ->postJson("/api/overtime/orders/{$order->uuid}/approve", $window + ['comment' => 'อนุมัติตามคำสั่ง'])
+            ->assertOk();
+
+        $this->assertSame('approved', $order->fresh()->status);
         $this->actingAs($this->reviewer)->postJson("/api/overtime/orders/{$order->uuid}/assignments", [
             'user_ids' => [$this->employee->id],
         ])->assertOk();

@@ -75,6 +75,9 @@
               <span :class="statusClass(order.status)" class="px-2.5 py-0.5 rounded-full text-xs font-semibold">
                 {{ statusLabel(order.status) }}
               </span>
+              <span v-if="order.status === 'pending' && order.current_step" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
+                รอ{{ order.current_step }}
+              </span>
               <span v-if="order.order_number" class="text-xs text-gray-500">
                 เลขที่คำสั่ง {{ order.order_number }}
               </span>
@@ -100,13 +103,13 @@
                 @click="openApprove(order)"
                 class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
               >
-                อนุมัติ
+                {{ decisionVerb(order) }}
               </button>
               <button
                 @click="openReject(order)"
                 class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors"
               >
-                ไม่อนุมัติ
+                ไม่{{ decisionVerb(order) }}
               </button>
             </template>
             <button
@@ -298,13 +301,16 @@
     <div v-if="approveModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="approveModal.show = false">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg">
         <div class="px-6 py-4 border-b border-gray-100">
-          <h3 class="text-lg font-bold text-gray-900">อนุมัติคำสั่ง OT</h3>
+          <h3 class="text-lg font-bold text-gray-900">{{ decisionVerb(approveModal.order || {}) }}คำสั่ง OT</h3>
           <p class="text-sm text-gray-500 mt-1">{{ approveModal.order?.title }}</p>
         </div>
         <div class="px-6 py-4 space-y-4">
           <p class="text-sm text-gray-600">
-            ปรับช่วงเวลาที่อนุมัติได้ หากไม่แก้ไขจะใช้ช่วงเวลาที่ขอมา
+            ปรับช่วงเวลาได้ หากไม่แก้ไขจะใช้ช่วงเวลาที่ขอมา
             <span class="font-medium text-gray-800">ผู้ปฏิบัติงานจะลงเวลา OT ได้เฉพาะภายในช่วงนี้เท่านั้น</span>
+          </p>
+          <p v-if="decisionVerb(approveModal.order || {}) === 'อนุญาต'" class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            นี่เป็นขั้นแรกของสายอนุมัติ คำสั่งจะยังใช้งานไม่ได้จนกว่าผู้อำนวยการจะอนุมัติ
           </p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -324,7 +330,7 @@
         <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
           <button @click="approveModal.show = false" class="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl">ยกเลิก</button>
           <button :disabled="submitting" @click="submitApprove" class="px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl disabled:opacity-50">
-            {{ submitting ? 'กำลังบันทึก...' : 'ยืนยันอนุมัติ' }}
+            {{ submitting ? 'กำลังบันทึก...' : `ยืนยัน${decisionVerb(approveModal.order || {})}` }}
           </button>
         </div>
       </div>
@@ -334,12 +340,12 @@
     <div v-if="rejectModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="rejectModal.show = false">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg">
         <div class="px-6 py-4 border-b border-gray-100">
-          <h3 class="text-lg font-bold text-gray-900">ไม่อนุมัติคำสั่ง OT</h3>
+          <h3 class="text-lg font-bold text-gray-900">ไม่{{ decisionVerb(rejectModal.order || {}) }}คำสั่ง OT</h3>
           <p class="text-sm text-gray-500 mt-1">{{ rejectModal.order?.title }}</p>
         </div>
         <div class="px-6 py-4">
           <label class="block text-sm font-medium text-gray-700 mb-1">เหตุผล <span class="text-red-500">*</span></label>
-          <textarea v-model="rejectForm.comment" rows="3" maxlength="2000" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]" placeholder="ระบุเหตุผลที่ไม่อนุมัติ"></textarea>
+          <textarea v-model="rejectForm.comment" rows="3" maxlength="2000" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]" placeholder="ระบุเหตุผลที่ไม่เห็นชอบ"></textarea>
         </div>
         <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
           <button @click="rejectModal.show = false" class="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl">ยกเลิก</button>
@@ -491,6 +497,12 @@ const filteredUsers = computed(() => {
   if (!term) return users.value
   return users.value.filter(u => (u.name || '').toLowerCase().includes(term))
 })
+
+/*
+ * สายอนุมัติสองชั้นตามระเบียบ: รอง ผอ. ฝ่ายทรัพยากร "อนุญาต" ก่อน
+ * แล้ว ผอ. จึง "อนุมัติ" ปิดท้าย ใช้คำให้ตรงกับขั้นที่กำลังรออยู่
+ */
+const decisionVerb = (order) => (order.current_step || '').includes('อนุญาต') ? 'อนุญาต' : 'อนุมัติ'
 
 const statusLabel = (status) => ({
   pending: 'รออนุมัติ',

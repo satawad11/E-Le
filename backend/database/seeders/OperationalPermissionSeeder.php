@@ -56,6 +56,10 @@ class OperationalPermissionSeeder extends Seeder
         'saraban.document.manage_types' => 'จัดการประเภทหนังสือและสายงานอนุมัติ',
         'saraban.document.approve' => 'กลั่นกรอง/อนุมัติหนังสือราชการ',
         'saraban.document.sign' => 'ลงนามหนังสือราชการ',
+
+        // สายคำสั่ง OT (เจ้าของระบบกำหนด 2026-08-19)
+        'overtime.operation.execute' => 'ออกคำสั่งปฏิบัติงานล่วงเวลาและลงเวลา OT',
+        'overtime.management.review' => 'อนุญาต/อนุมัติคำสั่ง OT มอบหมายผู้ปฏิบัติงาน และรับรองเวลา',
     ];
 
     /**
@@ -96,10 +100,20 @@ class OperationalPermissionSeeder extends Seeder
          * และ view() ยังจำกัดให้เห็นเฉพาะเอกสารที่ตนเกี่ยวข้องอยู่ดี
          * ส่วนเอกสารชั้นความลับยังต้องมี `view_classified` แยกต่างหากเหมือนเดิม
          */
+        /*
+         * สายคำสั่ง OT ที่เจ้าของระบบกำหนดเมื่อ 2026-08-19:
+         *   หัวหน้าบุคลากร ตั้งคำสั่ง → รอง ผอ. ฝ่ายทรัพยากร อนุญาต → ผอ. อนุมัติ
+         *
+         * ทั้งสองตำแหน่งเป็นผู้พิจารณาในสายเดียวกันจึงได้
+         * `overtime.management.review` เท่ากัน ส่วนการแยกว่าใครทำขั้นไหน
+         * บังคับด้วย workflow step ที่ผูกกับ role ไม่ใช่ด้วยสิทธิ์
+         * (ดู OvertimeOrderWorkflowProvisioner::CHAIN)
+         */
         'Director' => [
             'attendance.checkin',
             'attendance.view_self',
             'attendance.ot_summary',
+            'overtime.management.review',
             'saraban.document.view',
             'saraban.document.approve',
             'saraban.document.sign',
@@ -110,6 +124,7 @@ class OperationalPermissionSeeder extends Seeder
             'attendance.checkin',
             'attendance.view_self',
             'attendance.ot_summary',
+            'overtime.management.review',
             'saraban.document.view',
             'saraban.document.approve',
             'saraban.document.sign',
@@ -118,12 +133,16 @@ class OperationalPermissionSeeder extends Seeder
 
         /*
          * HR เป็นผู้ดูแล OT ตามหน้าที่จริง จึงได้ทั้งบันทึกและดูสรุป
+         *
+         * `overtime.operation.execute` = ผู้ตั้งคำสั่ง OT ตามที่เจ้าของระบบ
+         * กำหนดเมื่อ 2026-08-19 — ตั้งได้อย่างเดียว ไม่ได้สิทธิ์อนุมัติของตนเอง
          */
         'HR Head' => [
             'attendance.checkin',
             'attendance.view_self',
             'attendance.ot',
             'attendance.ot_summary',
+            'overtime.operation.execute',
         ],
 
         /*

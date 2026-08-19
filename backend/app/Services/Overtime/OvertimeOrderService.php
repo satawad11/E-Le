@@ -59,11 +59,43 @@ class OvertimeOrderService
 
         return DB::transaction(function () use ($order, $actor, $action, $approvedWindow, $comment) {
             $order = OvertimeOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+            /*
+             * เดิมคืนคำสั่งเดิมเงียบ ๆ ทำให้ผู้ใช้ได้ 200 พร้อมข้อความ
+             * "อนุมัติคำสั่ง OT แล้ว" ทั้งที่ไม่มีอะไรเกิดขึ้น เช่นกดอนุมัติ
+             * คำสั่งที่ถูกปฏิเสธไปแล้ว หรือสองคนกดพร้อมกัน
+             */
             if ($order->status !== 'pending') {
-                return $order;
+                throw new \DomainException('คำสั่ง OT นี้ถูกพิจารณาไปแล้ว ไม่สามารถพิจารณาซ้ำได้');
             }
             $instance = $this->workflow->instanceFor($order) ?? throw new \RuntimeException('ไม่พบ workflow ของคำสั่ง OT');
-            $this->workflow->perform($instance, $action, $actor, $comment);
+            $outcome = $this->workflow->perform($instance, $action, $actor, $comment);
+
+            /*
+             * สายอนุมัติมีสองขั้น (อนุญาต → อนุมัติ) การกด "อนุญาต" ในขั้นแรก
+             * ยังไม่ทำให้คำสั่งใช้งานได้ ต้องคงสถานะ `pending` ไว้จนกว่าจะจบสาย
+             * มิฉะนั้นจะลงเวลา OT ได้ทั้งที่ ผอ. ยังไม่อนุมัติ
+             *
+             * ช่วงเวลาที่ผู้อนุญาตขั้นแรกปรับไว้ถูกบันทึกเป็นข้อเสนอ
+             * เพื่อให้ผู้อนุมัติขั้นสุดท้ายเห็นและใช้เป็นค่าตั้งต้น
+             */
+            if ($action === WorkflowTransition::APPROVE && ! $outcome['final']) {
+                if ($approvedWindow !== []) {
+                    $order->update(array_filter([
+                        'approved_start' => $approvedWindow['approved_start'] ?? null,
+                        'approved_end' => $approvedWindow['approved_end'] ?? null,
+                    ]));
+                }
+                $this->audit->log('overtime.order.permitted', $order, null, null, [
+                    'step' => $outcome['task']->step?->code,
+                ], $comment, $actor->id);
+
+                $this->notifications->emit('overtime.approval', [$order->creator], $order, [
+                    'status' => 'pending',
+                ], $actor);
+
+                return $order->refresh();
+            }
 
             if ($action === WorkflowTransition::APPROVE) {
                 $start = $approvedWindow['approved_start'] ?? $order->scheduled_start;
