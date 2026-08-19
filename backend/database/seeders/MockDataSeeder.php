@@ -65,15 +65,7 @@ class MockDataSeeder extends Seeder
             'founding_date' => '1979-01-01',
             'start_time' => '08:30',
             'end_time' => '16:30',
-            'post_office_branch' => 'เขตดอนเมือง',
             'postal_code' => '10210',
-            'water_source' => 'การประปานครหลวง',
-            'internet_hours' => '56',
-            'teaching_computers' => '220',
-            'admin_computers' => '40',
-            'electricity_system' => 'มีไฟฟ้าจากหน่วยงานรัฐ-รัฐวิสาหกิจ',
-            'telephone_system' => 'มีโทรศัพท์พื้นฐาน',
-            'internet_system' => 'มีการเชื่อมต่ออินเตอร์เน็ตด้วย ADSL (Broadband)',
         ];
 
         foreach ($settings as $key => $value) {
