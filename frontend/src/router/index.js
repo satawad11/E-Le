@@ -261,13 +261,19 @@ const router = createRouter({
       path: '/admin/settings',
       name: 'admin-settings',
       component: () => import('../views/admin/AdminSettingsView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ข้อมูลสถานศึกษา', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ข้อมูลสถานศึกษาและแบบฟอร์ม', parent: 'ตั้งค่าระบบ' }
     },
     {
+      // เมนู "ตั้งค่าแบบฟอร์ม & ส่งออก" ถูกยุบเข้าเป็นแท็บของ /admin/settings แล้ว
+      // คง path เดิมไว้เป็น redirect เพื่อไม่ให้ลิงก์หรือบุ๊กมาร์กที่บันทึกไว้เสีย
       path: '/admin/export-settings',
-      name: 'admin-export-settings',
-      component: () => import('../views/admin/ExportSettingsView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ตั้งค่าแบบฟอร์ม & ส่งออก', parent: 'ตั้งค่าระบบ' }
+      redirect: { name: 'admin-settings', query: { tab: 'export' } }
+    },
+    {
+      path: '/admin/attendance-settings',
+      name: 'admin-attendance-settings',
+      component: () => import('../views/admin/AttendanceSettingsView.vue'),
+      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ตั้งค่าระบบลงเวลา', parent: 'ตั้งค่าระบบ' }
     },
     {
       path: '/admin/work-calendar',
