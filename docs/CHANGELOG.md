@@ -4,6 +4,25 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [DOC-ENGINE-01..04, 06] - 2026-08-20
+#### Added
+- **Universal Document & Report Engine** — เครื่องมือออกเอกสารและรายงานกลางของระบบ ใช้ได้ทุกโมดูล ไม่ผูกกับ E-Leave
+- Assessment ระบบเดิมก่อนลงมือ: `docs/checkpoints/DOC-ENGINE-00-ASSESSMENT.md` (17 หัวข้อ, ความเสี่ยง breaking change 12 ข้อ, migration/rollback plan)
+- Migration แบบ additive ล้วน `2026_08_20_000100..000500`: `document_templates.document_type/render_mode`, `document_template_versions.status/pdf_file_path/published_*`, ตารางใหม่ `document_field_definitions`, `document_data_sources`, `document_binding_rules`, `document_field_mappings`, `document_generated_files`, `document_print_calibrations`, `document_report_definitions` และ snapshot บน `leaves`
+- Renderer วางฟิลด์บนแบบฟอร์ม PDF ต้นฉบับด้วย FPDI พร้อมฟอนต์ไทยฝังในระบบ (`php artisan document:install-fonts`) รองรับ TEXT/MULTILINE/DATE/NUMBER/CHECKBOX/SIGNATURE/IMAGE
+- Data Provider Layer (`LEAVE_REQUEST_DETAIL`, `LEAVE_MONTHLY_SUMMARY`) + Field Dictionary 84 ตัวแปร — เทมเพลตไม่แตะฐานข้อมูลเอง และไม่มีจุดใดรับ SQL จากหน้าจอ
+- เอกสารฉบับสมบูรณ์เก็บเป็นไฟล์พร้อม sha256 และ revision — แก้ไม่ได้ ลบไม่ได้ ออกซ้ำเป็นฉบับใหม่ ของเดิมเป็น SUPERSEDED
+- ค่าชดเชยเครื่องพิมพ์ (global → แม่แบบ → ผู้ใช้) แยกจากตำแหน่งฟิลด์
+- ศูนย์จัดการเอกสารและรายงาน (frontend): ภาพรวม แม่แบบ การผูกแบบฟอร์ม Field Dictionary แหล่งข้อมูล รายงาน เอกสารที่สร้างแล้ว ตั้งค่าการพิมพ์ และ **หน้าออกแบบวางฟิลด์บน PDF** (ลาก/ปรับขนาด/หลายหน้า/พรีวิว/เผยแพร่)
+- Report Engine: นิยามรายงานเก็บในฐานข้อมูล รองรับ grouping + subtotal + grand total + aggregate (COUNT/SUM/AVG/MIN/MAX) ส่งออก PDF/Excel/CSV พร้อมรายงานตัวอย่าง "สถิติการลาประจำเดือน"
+- คำสั่ง `document:import-forms` นำแบบฟอร์มราชการ 5 ฉบับ (ลาพักผ่อน / ลาป่วย-ลากิจ-ลาคลอด / ยกเลิกวันลา / อุปสมบท / ช่วยเหลือภริยาที่คลอดบุตร) เข้าเป็นแม่แบบฉบับร่าง
+- สิทธิ์ชุดใหม่ `document.template.*`, `document.report.*`, `document.generate`, `document.final.*`, `document.audit.view` และเมนู "ศูนย์จัดการเอกสารและรายงาน"
+- Test suites `DocumentEngineTest` (23 tests) และ `DocumentReportEngineTest` (6 tests)
+
+#### Changed
+- `/api/leaves/{leave}/pdf` ลองใช้ Document Engine ก่อนเมื่อธงเปิดและประเภทการลานั้นถูกเปิดใช้ — นอกนั้นใช้เส้นทางเดิมทั้งหมด
+- Feature flag `DOCUMENT_ENGINE_ENABLED` + `DOCUMENT_ENGINE_LEAVE_TYPES` เปิดทีละประเภทการลาได้ ปิดแล้วกลับเส้นทางเดิมทันทีโดยไม่ต้อง deploy
+
 ### [LEAVE-FORM-01] - 2026-08-19
 #### Fixed
 - พิมพ์ใบลาไม่ได้ (HTTP 429): `throttle:x,y` แบบ inline ของ Laravel ตั้งกุญแจเป็น sha1(user id) เท่านั้น ทุก route ที่ประกาศแบบนี้จึงนับรวมถังเดียวกัน และถูกนับเพิ่มโดย throttle ของกลุ่มใหญ่ทุก request — เปิดหน้าเว็บไม่กี่หน้าก็ทำให้ปุ่มพิมพ์ตอบ 429 ทั้งที่ยังไม่เคยสั่งพิมพ์ (SEC-019)

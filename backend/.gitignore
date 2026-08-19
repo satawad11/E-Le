@@ -28,3 +28,7 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# ฟอนต์ของ Document Engine ถูกสร้างจาก TTF ในโฟลเดอร์เดียวกันด้วย
+# `php artisan document:install-fonts` จึงไม่ต้องเก็บไฟล์ที่ generate ลง repo
+/storage/fonts/fpdf

@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\DocumentEngineController;
+use App\Http\Controllers\Admin\DocumentReportController;
 use App\Http\Controllers\Admin\DocumentTemplateController;
 use App\Http\Controllers\Admin\LeaveTypeController;
 use App\Http\Controllers\Admin\PermissionController;
@@ -254,10 +256,57 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::delete('/admin/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
 
         Route::get('/admin/fiscal-years', [FiscalYearController::class, 'index']);
+
         Route::post('/admin/fiscal-years', [FiscalYearController::class, 'store']);
         Route::put('/admin/fiscal-years/{fiscalYear}', [FiscalYearController::class, 'update']);
         Route::delete('/admin/fiscal-years/{fiscalYear}', [FiscalYearController::class, 'destroy']);
     });
+
+    /*
+     * ศูนย์จัดการเอกสารและรายงาน (Document & Report Engine)
+     *
+     * ยอมรับทั้งสิทธิ์เฉพาะชุดใหม่และสิทธิ์ตั้งค่าระบบเดิม เพื่อให้ผู้ดูแลที่ใช้งานอยู่
+     * ไม่ถูกตัดสิทธิ์ในวันที่อัปเกรด แล้วค่อยถอดสิทธิ์เดิมออกเมื่อกำหนดบทบาทใหม่ครบ
+     */
+    Route::middleware('permission:document.template.view|document.template.manage|manage_settings|system.setting.manage')->group(function () {
+        Route::get('/admin/document-engine/overview', [DocumentEngineController::class, 'overview']);
+        Route::get('/admin/document-engine/templates', [DocumentEngineController::class, 'templates']);
+        Route::get('/admin/document-engine/templates/{template}', [DocumentEngineController::class, 'showTemplate']);
+        Route::get('/admin/document-engine/fields', [DocumentEngineController::class, 'fieldDictionary']);
+        Route::get('/admin/document-engine/data-sources', [DocumentEngineController::class, 'dataSources']);
+        Route::get('/admin/document-engine/bindings', [DocumentEngineController::class, 'bindings']);
+        Route::get('/admin/document-engine/calibrations', [DocumentEngineController::class, 'calibrations']);
+        Route::get('/admin/document-engine/versions/{version}/mappings', [DocumentEngineController::class, 'mappings']);
+        Route::get('/admin/document-engine/versions/{version}/pdf', [DocumentEngineController::class, 'pdfFile'])->middleware('throttle:documents');
+        Route::get('/admin/document-engine/versions/{version}/preview', [DocumentEngineController::class, 'previewVersion'])->middleware('throttle:documents');
+        Route::get('/admin/document-engine/generated', [DocumentEngineController::class, 'generatedFiles']);
+    });
+
+    Route::middleware('permission:document.template.manage|manage_settings|system.setting.manage')->group(function () {
+        Route::post('/admin/document-engine/templates', [DocumentEngineController::class, 'storeTemplate']);
+        Route::post('/admin/document-engine/templates/{template}/versions', [DocumentEngineController::class, 'createVersion']);
+        Route::post('/admin/document-engine/versions/{version}/pdf', [DocumentEngineController::class, 'uploadPdf']);
+        Route::post('/admin/document-engine/versions/{version}/publish', [DocumentEngineController::class, 'publishVersion']);
+        Route::post('/admin/document-engine/versions/{version}/retire', [DocumentEngineController::class, 'retireVersion']);
+        Route::put('/admin/document-engine/versions/{version}/mappings', [DocumentEngineController::class, 'saveMappings']);
+        Route::post('/admin/document-engine/bindings', [DocumentEngineController::class, 'saveBinding']);
+        Route::delete('/admin/document-engine/bindings/{rule}', [DocumentEngineController::class, 'deleteBinding']);
+        Route::post('/admin/document-engine/calibrations', [DocumentEngineController::class, 'saveCalibration']);
+    });
+
+    Route::middleware('permission:document.report.view|document.report.manage|manage_settings|system.setting.manage')->group(function () {
+        Route::get('/admin/document-reports', [DocumentReportController::class, 'index']);
+        Route::get('/admin/document-reports/{report}/run', [DocumentReportController::class, 'run']);
+        Route::get('/admin/document-reports/{report}/export/{format}', [DocumentReportController::class, 'export'])
+            ->whereIn('format', ['pdf', 'xlsx', 'csv'])
+            ->middleware('throttle:exports');
+    });
+
+    Route::post('/admin/document-reports', [DocumentReportController::class, 'store'])
+        ->middleware('permission:document.report.manage|manage_settings|system.setting.manage');
+
+    Route::get('/admin/document-engine/generated/{file}/download', [DocumentEngineController::class, 'downloadGenerated'])
+        ->middleware(['permission:document.final.download|manage_settings|system.setting.manage', 'throttle:documents']);
 
     // Saraban Document routes.
     // Route-level `permission:` middleware is the coarse gate; DocumentPolicy

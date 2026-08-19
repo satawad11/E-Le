@@ -7,6 +7,7 @@ use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveBalance;
 use App\Models\Setting;
+use App\Services\DocumentEngine\LeaveDocumentGateway;
 use App\Services\Export\LeaveWordService;
 use App\Services\LeaveDocumentTemplateResolver;
 use App\Services\LeaveVerificationService;
@@ -26,6 +27,18 @@ class LeaveDocumentController extends Controller
      * ผู้ดูแลจึงเพิ่ม/เปลี่ยนชื่อประเภทการลาไม่ได้โดยไม่ทำให้พิมพ์ผิดแบบฟอร์ม
      * ตอนนี้ยึด `leave_types.document_template_code` ที่ตั้งค่าได้จากหน้าผู้ดูแล
      */
+    /** ชื่อไฟล์เอกสารที่ส่งให้ผู้ใช้ — ใช้ร่วมกันทั้งเส้นทางเดิมและ Document Engine */
+    private function filenameFor(Leave $leave, bool $isCancel, string $extension = 'pdf'): string
+    {
+        $leaveTypeName = $leave->type->name ?? 'การลา';
+        $userName = str_replace(' ', '_', trim((string) $leave->user?->name));
+        $docNumber = $leave->document_number ?? $leave->id;
+
+        $base = str_replace(['/', '\\'], '_', "{$leaveTypeName}_{$userName}_{$docNumber}");
+
+        return ($isCancel ? "cancel_{$base}" : $base).'.'.$extension;
+    }
+
     private function viewFor(Leave $leave, bool $isCancel): string
     {
         if ($isCancel) {
@@ -46,6 +59,26 @@ class LeaveDocumentController extends Controller
         $this->authorize('view', $leave);
 
         $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
+
+        /*
+         * DOC-ENGINE — ถ้าใบลาประเภทนี้ถูกเปิดให้ใช้ Document Engine แล้ว
+         * ให้ engine ออกเอกสารจากแบบฟอร์ม PDF ต้นฉบับ
+         *
+         * gateway คืน null เมื่อธงปิด ยังไม่ได้ผูกแบบฟอร์ม หรือเรนเดอร์ไม่สำเร็จ
+         * ซึ่งแปลว่า "ใช้เส้นทางเดิม" — ผู้ใช้จึงพิมพ์เอกสารได้เสมอไม่ว่าจะเกิดอะไรขึ้น
+         */
+        $engineContent = app(LeaveDocumentGateway::class)->pdfFor(
+            $leave,
+            $request->query('form') === 'cancel',
+            $request->user(),
+        );
+
+        if ($engineContent !== null) {
+            return response($engineContent, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$this->filenameFor($leave, $request->query('form') === 'cancel').'"',
+            ]);
+        }
 
         $lastLeave = Leave::where('user_id', $leave->user_id)
             ->where('leave_type_id', $leave->leave_type_id)

@@ -323,6 +323,29 @@ const router = createRouter({
       component: () => import('../views/admin/DocumentTemplatesView.vue'),
       meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'จัดการแม่แบบเอกสาร', parent: 'ตั้งค่าระบบ' }
     },
+    // === ศูนย์จัดการเอกสารและรายงาน (Document & Report Engine) ===
+    {
+      path: '/admin/document-center',
+      name: 'document-center',
+      component: () => import('../views/admin/DocumentCenterView.vue'),
+      meta: {
+        requiresAuth: true,
+        permissions: ['document.template.view', 'document.template.manage', 'manage_settings', 'system.setting.manage'],
+        title: 'ศูนย์จัดการเอกสารและรายงาน',
+        parent: 'ตั้งค่าระบบ',
+      }
+    },
+    {
+      path: '/admin/document-center/templates/:templateId',
+      name: 'document-designer',
+      component: () => import('../views/admin/DocumentDesignerView.vue'),
+      meta: {
+        requiresAuth: true,
+        permissions: ['document.template.manage', 'manage_settings', 'system.setting.manage'],
+        title: 'ออกแบบแบบฟอร์มเอกสาร',
+        parent: 'ตั้งค่าระบบ',
+      }
+    },
     {
       path: '/admin/modules',
       name: 'admin-modules',

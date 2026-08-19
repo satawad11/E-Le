@@ -173,6 +173,10 @@ class DatabaseSeeder extends Seeder
         // LEGACY-05: แปลงสายอนุมัติด้านบนเป็น Leave Workflow v1 (shadow mode)
         // ต้องอยู่ท้ายสุดเพราะอ่านจาก approval_steps ที่เพิ่งสร้าง
         $this->call([LeaveWorkflowSeeder::class]);
+
+        // DOC-ENGINE: สิทธิ์ Field Dictionary และแหล่งข้อมูลของศูนย์จัดการเอกสาร
+        // ต้องรันหลังประเภทการลาและแม่แบบเอกสาร เพราะสร้างกติกาผูกแบบฟอร์มจากทั้งสองอย่าง
+        $this->call([DocumentEngineSeeder::class]);
     }
 
     private function seedProfile($user, $faker, $fname = 'ทดสอบ', $lname = 'ระบบ', $position = 'นักวิชาการ', $idCard = null)
