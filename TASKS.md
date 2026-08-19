@@ -353,9 +353,9 @@
 - [x] DOC-ENGINE-02 PDF Renderer + Field Mapping — **PASS 2026-08-20** · FPDI overlay + ฟอนต์ไทยฝังในระบบ + print calibration + feature flag
 - [x] DOC-ENGINE-03 Snapshot + Final Document + Versioning — **PASS 2026-08-20** · sha256 + revision + IMMUTABLE + เอกสารย้อนหลังอ่านจากไฟล์ที่เก็บไว้
 - [x] DOC-ENGINE-04 Admin PDF Designer — **PASS 2026-08-20** · ลาก/ปรับขนาดฟิลด์บนแบบฟอร์มจริง พรีวิว เผยแพร่ จัดการเวอร์ชัน
-- [ ] DOC-ENGINE-05 ย้าย Leave Type อื่นเข้า Engine — ต้องวางตำแหน่งฟิลด์ของแต่ละแบบฟอร์มก่อน (งานของผู้ดูแล ไม่ใช่งานโค้ด)
+- [~] DOC-ENGINE-05 ย้าย Leave Type อื่นเข้า Engine — วางชุดฟิลด์ตั้งต้นให้ครบ 5 แบบฟอร์มแล้ว (`document:scaffold-fields`) เหลือจัดตำแหน่งจริงในหน้าออกแบบ (งานผู้ดูแล)
 - [x] DOC-ENGINE-06 Report Engine — **PASS 2026-08-20** · grouping/subtotal/grand total/aggregate + PDF/Excel/CSV
-- [ ] DOC-ENGINE-07 Report Designer แบบลากคอลัมน์ — ปัจจุบันสร้าง/แก้รายงานผ่าน API ได้แล้ว หน้าลากคอลัมน์ยังไม่ทำ
+- [x] DOC-ENGINE-07 Report Designer — **PASS 2026-08-20** · เลือกแหล่งข้อมูล/คอลัมน์/ผลรวม/จัดกลุ่ม และทดลองประมวลผลได้จากหน้าจอ
 - [x] DOC-ENGINE-08 Security / Audit / Test — **PASS 2026-08-20** · สิทธิ์ document.*, audit ครบทุกการกระทำ, 29 tests เฉพาะ engine + regression 572 tests
 - [ ] วางตำแหน่งฟิลด์บนแบบฟอร์มราชการ 5 ฉบับที่นำเข้าแล้ว แล้วกดเผยแพร่ (ต้องทำโดยผู้ดูแลระบบผ่านหน้า PDF Designer)
-- [ ] กรอกข้อมูลสถานศึกษาในหน้าตั้งค่าระบบ เพื่อให้ชื่อหน่วยงาน/ผู้บริหารขึ้นบนเอกสาร
+- [x] กรอกข้อมูลสถานศึกษาในหน้าตั้งค่าระบบ — **เสร็จ 2026-08-20 (ผู้ดูแลกรอกแล้ว)**

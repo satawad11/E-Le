@@ -336,6 +336,17 @@ const router = createRouter({
       }
     },
     {
+      path: '/admin/document-center/reports',
+      name: 'report-designer',
+      component: () => import('../views/admin/ReportDesignerView.vue'),
+      meta: {
+        requiresAuth: true,
+        permissions: ['document.report.manage', 'manage_settings', 'system.setting.manage'],
+        title: 'ออกแบบรายงาน',
+        parent: 'ตั้งค่าระบบ',
+      }
+    },
+    {
       path: '/admin/document-center/templates/:templateId',
       name: 'document-designer',
       component: () => import('../views/admin/DocumentDesignerView.vue'),

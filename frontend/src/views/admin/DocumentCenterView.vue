@@ -234,6 +234,15 @@
 
       <!-- รายงาน -->
       <section v-else-if="activeTab === 'reports'" class="space-y-4">
+        <div class="flex justify-end">
+          <router-link
+            :to="{ name: 'report-designer' }"
+            class="px-5 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm shadow-md min-h-[44px] inline-flex items-center"
+          >
+            + ออกแบบรายงาน
+          </router-link>
+        </div>
+
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
           <table class="w-full text-sm min-w-[720px]">
             <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
