@@ -287,6 +287,15 @@
   - [x] Immutable workflow snapshotting and optimistic concurrency control (409 Conflict)
   - [x] Upgrade `WorkflowManagementView.vue` with resolver selection and hardened mobile UX
   - [x] Automated test suite `ApprovalResolverAndWorkflowHardeningTest.php` (3 tests, 15 assertions, 100% PASS)
+- [x] APPROVAL-02 Approval Chain Snapshot & Worklist Alignment — **PASS 2026-08-19** · `docs/DECISION-LOG.md` ADR-APPROVAL-02
+  - [x] Migration เพิ่ม `approver_type`, `specific_user_id`, `permission_name` ใน `leave_approvals` พร้อม backfill ใบลาที่ยังรออนุมัติ
+  - [x] `LeaveService` / `GovernmentApprovalController` คัดลอกวิธีหาตัวผู้อนุมัติลง snapshot ให้ครบ
+  - [x] `ApproverResolverService` เป็น fail-closed เมื่อไม่มีเกณฑ์คัด (ปิดช่องโหว่ให้ผู้ใช้ทุกคนอนุมัติได้)
+  - [x] `Admin\WorkflowController` เลิกเติม role ให้ขั้นตอนอัตโนมัติโดยอัตโนมัติ
+  - [x] รายการรออนุมัติใช้ resolver ตัวเดียวกับการอนุมัติจริง ("เห็น = อนุมัติได้")
+  - [x] สายอนุมัติคำขอยกเลิกใบลาใช้ snapshot + resolver ชุดเดียวกัน และตรวจสถานะ/ห้ามอนุมัติของตนเอง
+  - [x] ลบ `ApprovalController::approve()/reject()` ที่ไม่มี route ชี้ถึงแล้ว
+  - [x] Automated test suite `LeaveApprovalChainSnapshotTest.php` (7 tests, 31 assertions, 100% PASS) + regression 514 tests
 
 
 

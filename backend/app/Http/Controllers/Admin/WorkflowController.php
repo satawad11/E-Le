@@ -102,12 +102,18 @@ class WorkflowController extends Controller
             $created = [];
             foreach ($stepDataList as $index => $stepData) {
                 $approverType = $stepData['approver_type'] ?? ApprovalStep::RESOLVER_ROLE;
+                /*
+                 * เก็บ role เฉพาะที่ผู้ดูแลเลือกไว้จริงเท่านั้น
+                 *
+                 * เดิมขั้นตอนที่หาตัวผู้อนุมัติอัตโนมัติ (หัวหน้าแผนก/รอง ผอ./ผอ./HR)
+                 * ถูกเติม role Super Admin/Director/HR Head ให้เงียบ ๆ เมื่อไม่ได้เลือก role
+                 * ผลคือสิทธิ์อนุมัติรั่วไปถึงผู้ถือ role เหล่านั้นทั้งที่ไม่ได้ตั้งใจ
+                 * และหน้าจอก็แสดงไม่ตรงกับสิ่งที่ระบบใช้จริง
+                 *
+                 * ขั้นตอนอัตโนมัติมีทางถอยของตัวเองอยู่แล้วใน ApproverResolverService
+                 * (permission + ชื่อบทบาทมาตรฐาน) เมื่อหาตัวจากผังองค์กรไม่พบ
+                 */
                 $roleId = ! empty($stepData['role_id']) ? (int) $stepData['role_id'] : null;
-
-                // Fallback default role for automatic resolvers to maintain backward DB safety
-                if ($roleId === null && $approverType !== ApprovalStep::RESOLVER_SPECIFIC_USER) {
-                    $roleId = Role::whereIn('name', ['Super Admin', 'Director', 'HR Head'])->value('id') ?? Role::first()?->id;
-                }
 
                 $created[] = ApprovalStep::create([
                     'role_id' => $roleId,

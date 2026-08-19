@@ -5,12 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\ApprovalStep;
 use App\Models\Leave;
 use App\Models\LeaveActionLog;
+use App\Models\LeaveApproval;
+use App\Models\User;
 use App\Services\LeaveService;
+use App\Services\Workflow\ApproverResolverService;
 use Illuminate\Http\Request;
 
 class LeaveCancellationController extends Controller
 {
-    public function __construct(private LeaveService $leaveService) {}
+    public function __construct(
+        private LeaveService $leaveService,
+        private ApproverResolverService $resolver,
+    ) {}
 
     public function cancel(Request $request, Leave $leave)
     {
@@ -47,7 +53,13 @@ class LeaveCancellationController extends Controller
     {
         $user = $request->user();
         $isSuperAdmin = $user->can('leave.management.manage');
-        if (! $isSuperAdmin && ! $this->canActAtCurrentStep($user->roles->pluck('id')->unique()->values()->all(), $leave)) {
+        if ($leave->cancellation_status !== 'Pending') {
+            return response()->json(['message' => 'ใบลานี้ไม่มีคำขอยกเลิกที่รออนุมัติ'], 422);
+        }
+        if (! $isSuperAdmin && $leave->user_id === $user->id) {
+            return response()->json(['message' => 'ห้ามอนุมัติคำขอยกเลิกใบลาของตนเอง'], 403);
+        }
+        if (! $isSuperAdmin && ! $this->canActAtCurrentStep($user, $leave)) {
             return response()->json(['message' => 'ไม่มีสิทธิ์อนุมัติในระดับนี้'], 403);
         }
         $nextStep = $isSuperAdmin ? null : ApprovalStep::where('step_order', '>', $leave->approval_level)->orderBy('step_order')->first();
@@ -74,7 +86,14 @@ class LeaveCancellationController extends Controller
     public function reject(Request $request, Leave $leave)
     {
         $user = $request->user();
-        if (! $user->can('leave.management.manage') && ! $this->canActAtCurrentStep($user->roles->pluck('id')->unique()->values()->all(), $leave)) {
+        $isSuperAdmin = $user->can('leave.management.manage');
+        if ($leave->cancellation_status !== 'Pending') {
+            return response()->json(['message' => 'ใบลานี้ไม่มีคำขอยกเลิกที่รออนุมัติ'], 422);
+        }
+        if (! $isSuperAdmin && $leave->user_id === $user->id) {
+            return response()->json(['message' => 'ห้ามปฏิเสธคำขอยกเลิกใบลาของตนเอง'], 403);
+        }
+        if (! $isSuperAdmin && ! $this->canActAtCurrentStep($user, $leave)) {
             return response()->json(['message' => 'ไม่มีสิทธิ์ปฏิเสธในระดับนี้'], 403);
         }
         $leave->cancellation_status = 'Rejected';
@@ -89,10 +108,24 @@ class LeaveCancellationController extends Controller
         return response()->json(['message' => 'ปฏิเสธการยกเลิกใบลาเรียบร้อยแล้ว']);
     }
 
-    private function canActAtCurrentStep(array $roleIds, Leave $leave): bool
+    /**
+     * ใช้เกณฑ์เดียวกับการอนุมัติใบลา — snapshot ของใบนั้นก่อน แล้วค่อยถอยไปสายอนุมัติปัจจุบัน
+     *
+     * เดิมที่นี่เทียบ `approval_steps.role_id` กับ role ของผู้ใช้ตรง ๆ จึงไม่รู้จัก
+     * ขั้นตอนแบบหัวหน้าแผนกต้นสังกัด/ผอ./ผู้ใช้เจาะจง และไม่รองรับการมอบอำนาจ
+     * ผู้อนุมัติตัวจริงจึงกดอนุมัติคำขอยกเลิกไม่ได้ ทั้งที่เห็นรายการอยู่ตรงหน้า
+     */
+    private function canActAtCurrentStep(User $user, Leave $leave): bool
     {
-        $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
+        $step = LeaveApproval::where('leave_id', $leave->id)
+            ->where('step_order', $leave->approval_level)
+            ->first()
+            ?? ApprovalStep::where('step_order', $leave->approval_level)->first();
 
-        return $currentStep !== null && in_array($currentStep->role_id, $roleIds);
+        if ($step === null || $leave->user === null) {
+            return false;
+        }
+
+        return $this->resolver->isAuthorizedApprover($user, $leave->user, $step);
     }
 }

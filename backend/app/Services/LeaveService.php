@@ -135,9 +135,17 @@ class LeaveService
                     'sha256' => hash_file('sha256', $attachment->getRealPath()),
                 ]);
             }
+            /*
+             * snapshot สายอนุมัติ ณ วันยื่น — ต้องคัดลอก "วิธีหาตัวผู้อนุมัติ" ให้ครบ
+             * ไม่ใช่แค่ role เพราะขั้นตอนแบบหัวหน้าแผนกต้นสังกัด/ผอ./ผู้ใช้เจาะจง
+             * ไม่ได้ผูกกับ role ใด ๆ ถ้าตกหล่นจะกลายเป็นขั้นตอนแบบ ROLE ทั้งหมด
+             * แล้วผู้อนุมัติตัวจริงจะถูกปฏิเสธสิทธิ์ในขั้นของตัวเอง
+             */
             foreach (ApprovalStep::with('role')->orderBy('step_order')->get() as $step) {
                 LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'step_order' => $step->step_order], [
                     'step_name' => $step->name, 'required_role_id' => $step->role_id, 'status' => 'Pending',
+                    'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
+                    'specific_user_id' => $step->specific_user_id, 'permission_name' => $step->permission_name,
                 ]);
             }
             $this->audit->log($leave, 'created', null, $leave->toArray());

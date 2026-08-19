@@ -184,6 +184,17 @@ class ApproverResolverService
 
     private function resolveByRoleIdOrPermission(?int $roleId, ?string $permissionName = null, array $roleNameFallbacks = []): array
     {
+        /*
+         * ไม่มีเกณฑ์คัดเลย = ไม่มีใครมีสิทธิ์ (fail-closed)
+         *
+         * เดิมกรณีนี้ปล่อยให้ query เหลือแค่ `is_active = true` ซึ่งคืนผู้ใช้ที่ยัง
+         * ใช้งานอยู่ "ทุกคน" เป็นผู้มีสิทธิ์อนุมัติ — เกิดขึ้นจริงกับขั้นตอนแบบ
+         * ผู้ใช้เจาะจงที่ไม่มี role กำกับ ทำให้ใครก็ได้อนุมัติใบลาแทนผู้อำนวยการได้
+         */
+        if ($roleId === null && $permissionName === null && empty($roleNameFallbacks)) {
+            return [];
+        }
+
         $query = User::query()->where('is_active', true);
 
         $query->where(function ($sub) use ($roleId, $permissionName, $roleNameFallbacks) {
