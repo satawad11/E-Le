@@ -48,12 +48,27 @@ class RouteAuthorizationAuditTest extends TestCase
             'api/leave-evidences/{evidence}/download',
         ];
 
+        /*
+         * SEC-019 — ต้องเป็น named limiter ไม่ใช่ `throttle:10,1` แบบ inline
+         *
+         * inline throttle ตั้งกุญแจเป็น sha1(user id) เท่านั้น ทุก route จึงใช้ถังร่วมกัน
+         * และถูกนับเพิ่มโดย throttle ของกลุ่มใหญ่ด้วย เรียก API ปกติไม่กี่ครั้ง
+         * ก็ทำให้ปุ่มพิมพ์/ส่งออกตอบ 429 ทั้งที่ยังไม่เคยสั่งพิมพ์เลย
+         */
+        $dedicatedLimiters = ['documents', 'exports', 'personal-data'];
+
         foreach ($sensitiveUris as $uri) {
             $route = collect(RouteFacade::getRoutes()->getRoutes())->first(fn (Route $route) => $route->uri() === $uri);
             $this->assertNotNull($route, "ไม่พบ route {$uri}");
-            $this->assertTrue(
-                collect($route->gatherMiddleware())->contains(fn (string $middleware) => str_starts_with($middleware, 'throttle:10,1')),
-                "route {$uri} ไม่มี throttle เฉพาะ"
+
+            $limiters = collect($route->gatherMiddleware())
+                ->filter(fn (string $middleware) => str_starts_with($middleware, 'throttle:'))
+                ->map(fn (string $middleware) => substr($middleware, strlen('throttle:')))
+                ->all();
+
+            $this->assertNotEmpty(
+                array_intersect($dedicatedLimiters, $limiters),
+                "route {$uri} ไม่มี throttle เฉพาะของตัวเอง (พบ: ".implode(', ', $limiters).')'
             );
         }
     }

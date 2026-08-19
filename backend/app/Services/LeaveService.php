@@ -142,7 +142,7 @@ class LeaveService
              * แล้วผู้อนุมัติตัวจริงจะถูกปฏิเสธสิทธิ์ในขั้นของตัวเอง
              */
             foreach (ApprovalStep::with('role')->orderBy('step_order')->get() as $step) {
-                LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'step_order' => $step->step_order], [
+                LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'stage' => LeaveApproval::STAGE_REQUEST, 'step_order' => $step->step_order], [
                     'step_name' => $step->name, 'required_role_id' => $step->role_id, 'status' => 'Pending',
                     'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
                     'specific_user_id' => $step->specific_user_id, 'permission_name' => $step->permission_name,

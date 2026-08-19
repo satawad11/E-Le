@@ -93,6 +93,27 @@
                 <div v-if="leave.cancellation_status === 'Pending'" class="mt-2 bg-orange-50 border border-orange-200 rounded-xl p-3 text-sm text-orange-800">
                   <span class="font-semibold text-orange-600 text-xs block mb-1">เหตุผลการขอยกเลิกใบลา:</span>
                   {{ leave.cancellation_reason }}
+
+                  <!-- สายอนุมัติของคำขอยกเลิก -->
+                  <div v-if="leave.cancellation_approvals?.length" class="mt-3 pt-3 border-t border-orange-200 space-y-1.5">
+                    <span class="font-semibold text-orange-600 text-xs block">ลำดับการอนุมัติยกเลิก:</span>
+                    <div
+                      v-for="step in [...leave.cancellation_approvals].sort((a, b) => a.step_order - b.step_order)"
+                      :key="step.id"
+                      class="flex items-center gap-2 text-xs"
+                    >
+                      <span
+                        class="w-5 h-5 rounded-full flex items-center justify-center font-bold flex-shrink-0"
+                        :class="cancellationStepClass(leave, step)"
+                      >{{ step.step_order }}</span>
+                      <span class="font-medium">{{ step.step_name }}</span>
+                      <span class="text-orange-700">
+                        {{ step.status === 'Approved' ? `— อนุมัติโดย ${step.approver_name || '-'}`
+                          : step.status === 'Rejected' ? `— ไม่อนุมัติโดย ${step.approver_name || '-'}`
+                          : isCurrentCancellationStep(leave, step) ? '— รอพิจารณาขั้นนี้' : '— ยังไม่ถึงคิว' }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div v-if="leave.attachment" class="mt-2">
                   <a href="#" @click.prevent="openSecureFile(leave.attachment)" class="text-xs text-[#800000] hover:underline flex items-center gap-1">
@@ -193,8 +214,8 @@
               : (modal.isApprove ? 'ยืนยันการอนุมัติ' : 'ระบุเหตุผลการปฏิเสธ') }}
         </h3>
         
-        <!-- Signature Block -->
-        <div v-if="modal.isApprove && !modal.isCancelAction" class="mb-4">
+        <!-- Signature Block — ใช้ทั้งการอนุมัติใบลาและการอนุมัติคำขอยกเลิก -->
+        <div v-if="modal.isApprove" class="mb-4">
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">ลายเซ็นผู้อนุมัติ <span class="text-red-500">*</span></label>
           <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col gap-3">
             <div class="flex gap-4 border-b border-gray-200 pb-2">
@@ -362,6 +383,18 @@ const props = defineProps({
   }
 })
 
+const isCurrentCancellationStep = (leave, step) => {
+  const level = leave.cancellation_approval_level || leave.approval_level
+  return step.status === 'Pending' && step.step_order === level
+}
+
+const cancellationStepClass = (leave, step) => {
+  if (step.status === 'Approved') return 'bg-green-600 text-white'
+  if (step.status === 'Rejected') return 'bg-red-600 text-white'
+  if (isCurrentCancellationStep(leave, step)) return 'bg-orange-500 text-white'
+  return 'bg-orange-200 text-orange-700'
+}
+
 const displayApprovals = computed(() => {
   if (props.isCancel) {
     return leaveStore.approvals.filter(l => l.cancellation_status === 'Pending')
@@ -498,7 +531,7 @@ const handleReject = (id) => {
 }
 
 const confirmAction = async () => {
-  if (modal.isApprove && !modal.isCancelAction && sigType.value === 'draw' && !sigBase64.value && !canvasSaved.value) {
+  if (modal.isApprove && sigType.value === 'draw' && !sigBase64.value && !canvasSaved.value) {
     alertStore.error('กรุณาวาดลายเซ็นก่อนอนุมัติ')
     return
   }
@@ -507,7 +540,8 @@ const confirmAction = async () => {
   try {
     if (modal.isCancelAction) {
       if (modal.isApprove) {
-        await leaveStore.approveCancellation(modal.leaveId, modal.comment)
+        const signature = sigType.value === 'draw' && sigBase64.value ? sigBase64.value : null
+        await leaveStore.approveCancellation(modal.leaveId, modal.comment, signature)
         alertStore.success('อนุมัติยกเลิกใบลาแล้ว')
       } else {
         await leaveStore.rejectCancellation(modal.leaveId, modal.comment)

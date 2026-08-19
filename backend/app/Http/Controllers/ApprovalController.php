@@ -29,7 +29,7 @@ class ApprovalController extends Controller
     {
         $user = $request->user();
 
-        $query = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name'])
+        $query = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name', 'cancellationApprovals.approver:id,name'])
             ->where(function ($sub) {
                 $sub->where('status', 'Pending')
                     ->orWhere('cancellation_status', 'Pending');
@@ -77,8 +77,21 @@ class ApprovalController extends Controller
      */
     private function canActAtCurrentStep(User $user, Leave $leave, Collection $legacySteps, array &$cache): bool
     {
-        $step = $leave->approvals->firstWhere('step_order', $leave->approval_level)
-            ?? $legacySteps->firstWhere('step_order', $leave->approval_level);
+        /*
+         * ใบที่มีคำขอยกเลิกรออนุมัติ ต้องถามสายอนุมัติ "ของคำขอยกเลิก" ไม่ใช่สายของการขอลา
+         * (สายขอลาอนุมัติจบไปแล้ว ทุกขั้นเป็น Approved การถามสายนั้นจึงตอบผิดคน)
+         */
+        $isCancellation = $leave->cancellation_status === 'Pending';
+
+        $level = $isCancellation
+            ? ($leave->cancellation_approval_level ?: $leave->approval_level)
+            : $leave->approval_level;
+
+        $snapshot = $isCancellation
+            ? $leave->cancellationApprovals->firstWhere('step_order', $level)
+            : $leave->approvals->firstWhere('step_order', $level);
+
+        $step = $snapshot ?? $legacySteps->firstWhere('step_order', $level);
 
         if ($step === null || $leave->user === null) {
             return false;

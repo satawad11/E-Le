@@ -5,9 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['leave_id', 'approver_id', 'approver_name', 'approver_position', 'signature_path', 'status', 'comment', 'approved_at', 'step_order', 'step_name', 'required_role_id', 'approver_type', 'specific_user_id', 'permission_name', 'delegated_from_user_id', 'acted_at'])]
+#[Fillable(['leave_id', 'stage', 'approver_id', 'approver_name', 'approver_position', 'signature_path', 'status', 'comment', 'approved_at', 'step_order', 'step_name', 'required_role_id', 'approver_type', 'specific_user_id', 'permission_name', 'delegated_from_user_id', 'acted_at'])]
 class LeaveApproval extends Model
 {
+    /** สายอนุมัติของการขอลา */
+    public const STAGE_REQUEST = 'request';
+
+    /** สายอนุมัติของคำขอยกเลิกใบลาที่อนุมัติไปแล้ว */
+    public const STAGE_CANCELLATION = 'cancellation';
+
     protected function casts(): array
     {
         return ['approved_at' => 'datetime', 'acted_at' => 'datetime'];

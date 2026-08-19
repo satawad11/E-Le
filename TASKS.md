@@ -301,6 +301,13 @@
   - [x] เตือนเมื่อขั้นตอนใดไม่มีผู้อนุมัติ หรือได้ผู้ยื่นเป็นผู้อนุมัติของตนเอง
   - [x] ปุ่ม "ดูตัวอย่างผู้อนุมัติจริง" ใน `WorkflowManagementView.vue`
   - [x] เทสต์เพิ่ม 3 เคส (รวมชุดเป็น 10 tests, 38 assertions) + regression 517 tests + frontend build
+- [x] APPROVAL-04 สายอนุมัติของคำขอยกเลิกใบลา — **PASS 2026-08-19** · `docs/DECISION-LOG.md` ADR-APPROVAL-04
+  - [x] Migration `leave_approvals.stage` + `leaves.cancellation_approval_level` พร้อม backfill คำขอที่ค้างอยู่
+  - [x] คำขอยกเลิกผนึก snapshot ของตัวเอง ณ วันที่ขอ และเดินระดับแยกจากสายขอลา
+  - [x] บันทึกผู้อนุมัติ/ตำแหน่ง/ลายเซ็น/ความเห็น/ผู้มอบอำนาจ รายขั้น + audit log
+  - [x] แก้บั๊กอนุมัติยกเลิกแล้ววันลาไม่ถูกคืนเข้าสิทธิ์
+  - [x] รายการรออนุมัติตัดสินสิทธิ์ด้วยสายของคำขอยกเลิก และหน้าจอแสดงลำดับการอนุมัติยกเลิก
+  - [x] Automated test suite `LeaveCancellationChainTest.php` (9 tests, 86 assertions) + regression 533 tests
 
 
 

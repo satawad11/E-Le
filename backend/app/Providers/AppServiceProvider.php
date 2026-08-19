@@ -15,7 +15,10 @@ use App\Services\PermissionEvaluator;
 use App\Services\SystemSettingService;
 use App\Support\ProductionEnvironmentGuard;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
@@ -31,6 +34,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configureRateLimiters();
+
         ResetPassword::createUrlUsing(function (object $notifiable, string $token): string {
             return rtrim((string) config('app.frontend_url'), '/')
                 .'/reset-password?token='.urlencode($token)
@@ -103,5 +108,38 @@ class AppServiceProvider extends ServiceProvider
         } catch (\Throwable $exception) {
             report($exception);
         }
+    }
+
+    /**
+     * SEC-019 — แยก "ถัง" ของ rate limit ให้แต่ละกลุ่มการใช้งาน
+     *
+     * `throttle:10,1` แบบ inline ของ Laravel ตั้งกุญแจเป็น sha1(user id) เพียงอย่างเดียว
+     * ไม่มีชื่อ route อยู่ในกุญแจ ทุก route ที่ประกาศแบบนี้จึงนับรวมถังเดียวกัน
+     * และถังนั้นยังถูกนับเพิ่มโดย `throttle:60,1` ของกลุ่มใหญ่ในทุก request ด้วย
+     *
+     * ผลคือเปิดหน้าเว็บธรรมดาไม่กี่หน้าก็ใช้โควตาครบ 10 ครั้งภายในนาทีเดียว
+     * แล้วปุ่มพิมพ์ใบลา (`/leaves/{leave}/pdf`) ตอบ 429 ทันที ทั้งที่ผู้ใช้ยังไม่เคยสั่งพิมพ์
+     *
+     * named limiter ผูกชื่อ limiter ไว้ในกุญแจ (md5(ชื่อ.กุญแจ)) แต่ละกลุ่มจึงแยกถังกันจริง
+     */
+    private function configureRateLimiters(): void
+    {
+        $perUser = fn (Request $request) => $request->user()?->getAuthIdentifier() ?: $request->ip();
+
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)->by($perUser($request)));
+        RateLimiter::for('public-api', fn (Request $request) => Limit::perMinute(60)->by($request->ip()));
+        RateLimiter::for('verify', fn (Request $request) => Limit::perMinute(30)->by($request->ip()));
+        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+        RateLimiter::for('password', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
+        RateLimiter::for('token-refresh', fn (Request $request) => Limit::perMinute(10)->by($perUser($request)));
+        RateLimiter::for('personal-data', fn (Request $request) => Limit::perMinute(10)->by($perUser($request)));
+
+        // พิมพ์/ดาวน์โหลดเอกสารรายฉบับ (ใบลา ใบยกเลิก บัตรลา ไฟล์แนบ)
+        RateLimiter::for('documents', fn (Request $request) => Limit::perMinute(30)->by($perUser($request)));
+
+        // ส่งออกรายงานทั้งชุด — หนักกว่าเอกสารรายฉบับมาก จึงคุมเข้มกว่า
+        RateLimiter::for('exports', fn (Request $request) => Limit::perMinute(10)->by($perUser($request)));
+
+        RateLimiter::for('files', fn (Request $request) => Limit::perMinute(30)->by($perUser($request)));
     }
 }

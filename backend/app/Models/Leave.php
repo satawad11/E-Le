@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['user_id', 'leave_type_id', 'leave_policy_id', 'fiscal_year_id', 'document_number', 'verification_hash', 'content_hash', 'start_date', 'end_date', 'leave_period', 'total_days', 'paid_days', 'unpaid_days', 'reserved_days', 'reason', 'contact_address', 'attachment', 'status', 'approval_level', 'substitute_id', 'substitute_status', 'substitute_reason', 'hr_verified_by', 'hr_verified_at', 'cancellation_status', 'cancellation_reason', 'cancellation_date', 'meta_data', 'signature_path', 'notified_supervisor_at', 'submitted_at', 'voided_by', 'voided_at', 'void_reason'])]
+#[Fillable(['user_id', 'leave_type_id', 'leave_policy_id', 'fiscal_year_id', 'document_number', 'verification_hash', 'content_hash', 'start_date', 'end_date', 'leave_period', 'total_days', 'paid_days', 'unpaid_days', 'reserved_days', 'reason', 'contact_address', 'attachment', 'status', 'approval_level', 'substitute_id', 'substitute_status', 'substitute_reason', 'hr_verified_by', 'hr_verified_at', 'cancellation_status', 'cancellation_reason', 'cancellation_date', 'cancellation_approval_level', 'meta_data', 'signature_path', 'notified_supervisor_at', 'submitted_at', 'voided_by', 'voided_at', 'void_reason'])]
 class Leave extends Model
 {
     use HasPublicUuid, SoftDeletes;
@@ -83,7 +83,25 @@ class Leave extends Model
         return $this->belongsTo(DocumentTemplateVersion::class);
     }
 
+    /**
+     * สายอนุมัติของการขอลา
+     *
+     * จงใจกรองเฉพาะ stage `request` เพื่อให้ผู้เรียกเดิมทั้งหมด (เอกสาร PDF, timeline,
+     * การตรวจสิทธิ์) ได้ผลเท่าเดิมทุกประการหลังมีสายอนุมัติของคำขอยกเลิกเพิ่มเข้ามา
+     */
     public function approvals()
+    {
+        return $this->hasMany(LeaveApproval::class)->where('stage', LeaveApproval::STAGE_REQUEST);
+    }
+
+    /** สายอนุมัติของคำขอยกเลิกใบลา */
+    public function cancellationApprovals()
+    {
+        return $this->hasMany(LeaveApproval::class)->where('stage', LeaveApproval::STAGE_CANCELLATION);
+    }
+
+    /** ทุกขั้นตอนของทั้งสองสาย ใช้เมื่อต้องตอบว่า "ผู้ใช้คนนี้เกี่ยวข้องกับใบลานี้ไหม" */
+    public function allApprovals()
     {
         return $this->hasMany(LeaveApproval::class);
     }

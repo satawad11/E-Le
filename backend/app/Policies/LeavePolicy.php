@@ -61,7 +61,8 @@ class LeavePolicy
         }
 
         // ผู้อนุมัติที่มีชื่ออยู่ในสายอนุมัติของใบลาฉบับนี้โดยเฉพาะ
-        if ($leave->approvals()->where('approver_id', $user->id)->exists()) {
+        // นับทั้งสายขอลาและสายขอยกเลิก — ผู้ที่ต้องพิจารณาคำขอยกเลิกก็ต้องเปิดใบลาได้
+        if ($leave->allApprovals()->where('approver_id', $user->id)->exists()) {
             return true;
         }
 

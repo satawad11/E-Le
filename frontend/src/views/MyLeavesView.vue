@@ -136,7 +136,7 @@
                   </svg>
                   ยกเลิกใบลา
                 </button>
-                <button v-if="leave.status === 'Approved' && (leave.user_id === authStore.user?.id || isAdminOrHR) && leave.cancellation_status === 'None'"
+                <button v-if="canRequestCancellation(leave)"
                   @click="confirmCancel(leave)"
                   :disabled="cancelLoading === leave.id"
                   class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors min-h-[38px]">
@@ -151,7 +151,7 @@
                 </div>
 
                 <!-- Print Cancellation Form (when cancellation is requested or approved or cancelled) -->
-                <div v-if="leave.cancellation_status !== 'None' || leave.status === 'Cancelled'" class="flex gap-2">
+                <div v-if="hasCancellationForm(leave)" class="flex gap-2">
                   <button @click="downloadCancelPdf(leave)"
                     :disabled="pdfLoading === 'cancel_'+leave.id"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors">
@@ -369,6 +369,23 @@ const canCancel = (leave) => {
   return diffDays <= 5;
 }
 
+/*
+ * ขอยกเลิกใบลาที่อนุมัติแล้ว
+ *
+ * เดิมเงื่อนไขบังคับให้ `cancellation_status === 'None'` เป๊ะ ๆ ใบลาที่คำขอยกเลิก
+ * เคยถูกปฏิเสธ (`Rejected`) หรือแถวเก่าที่คอลัมน์ยังเป็น null จึงไม่มีปุ่มให้กดเลย
+ * ทั้งที่ฝั่ง server ยอมรับคำขอใหม่ได้ — ปุ่มจะซ่อนเฉพาะตอนมีคำขอค้างอยู่จริงเท่านั้น
+ */
+const canRequestCancellation = (leave) => {
+  if (leave.status !== 'Approved') return false
+  if (leave.user_id !== authStore.user?.id && !isAdminOrHR.value) return false
+  return leave.cancellation_status !== 'Pending' && leave.cancellation_status !== 'Approved'
+}
+
+// มีใบยกเลิกให้พิมพ์ก็ต่อเมื่อเคยยื่นคำขอยกเลิกจริง (คอลัมน์เก่าอาจเป็น null)
+const hasCancellationForm = (leave) =>
+  ['Pending', 'Approved', 'Rejected'].includes(leave.cancellation_status) || leave.status === 'Cancelled'
+
 // Show ALL leaves for non-employees if viewMode is 'all', but always ONLY OWN leaves for Employees or viewMode 'mine'
 const myLeaves = computed(() => {
   if (!authStore.user) return []
@@ -413,89 +430,57 @@ const generateFilename = (leave, extension, isCancel = false) => {
   return isCancel ? `cancel_${baseFilename}.${extension}` : `${baseFilename}.${extension}`
 }
 
-const downloadPdf = async (leave) => {
-  if (pdfLoading.value === leave.id) return
-  pdfLoading.value = leave.id
+const MIME = {
+  pdf: 'application/pdf',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
+
+/*
+ * เมื่อขอเป็น blob ตัว error body จะเป็น Blob ไม่ใช่ JSON
+ * ต้องอ่านกลับมาเป็นข้อความก่อน ผู้ใช้จึงจะเห็นสาเหตุจริง
+ * (เช่น 429 "ส่งคำขอถี่เกินไป") แทนข้อความรวม ๆ ว่าดาวน์โหลดไม่สำเร็จ
+ */
+const readBlobError = async (error) => {
+  const body = error?.response?.data
+  if (!(body instanceof Blob)) return
   try {
-    const response = await api.get(`/leaves/${leave.id}/pdf`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', generateFilename(leave, 'pdf'))
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
-  } catch (e) {
-    console.error('PDF error:', e)
-    alertStore.error('ไม่สามารถดาวน์โหลด PDF ได้')
-  } finally {
-    pdfLoading.value = null
+    error.response.data = JSON.parse(await body.text())
+  } catch {
+    error.response.data = null
   }
 }
 
-const downloadWord = async (leave) => {
-  if (wordLoading.value === leave.id) return
-  wordLoading.value = leave.id
+const downloadLeaveDocument = async (leave, { format, isCancel = false }) => {
+  const extension = format === 'pdf' ? 'pdf' : 'docx'
+  const loadingRef = format === 'pdf' ? pdfLoading : wordLoading
+  const loadingKey = isCancel ? 'cancel_' + leave.id : leave.id
+  if (loadingRef.value === loadingKey) return
+  loadingRef.value = loadingKey
   try {
-    const response = await api.get(`/leaves/${leave.id}/word`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }))
+    const path = format === 'pdf' ? 'pdf' : 'word'
+    const response = await api.get(`/leaves/${leave.id}/${path}${isCancel ? '?form=cancel' : ''}`, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: MIME[extension] }))
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', generateFilename(leave, 'docx'))
+    link.setAttribute('download', generateFilename(leave, extension, isCancel))
     document.body.appendChild(link)
     link.click()
     link.remove()
     window.URL.revokeObjectURL(url)
   } catch (e) {
-    console.error('Word error:', e)
-    alertStore.error('ไม่สามารถดาวน์โหลด Word ได้')
+    await readBlobError(e)
+    console.error('Download error:', e)
+    const label = isCancel ? `${format === 'pdf' ? 'PDF' : 'Word'} ใบยกเลิก` : (format === 'pdf' ? 'PDF' : 'Word')
+    alertStore.error(getErrorMessage(e, `ไม่สามารถดาวน์โหลด ${label} ได้`))
   } finally {
-    wordLoading.value = null
+    loadingRef.value = null
   }
 }
 
-const downloadCancelPdf = async (leave) => {
-  if (pdfLoading.value === 'cancel_'+leave.id) return
-  pdfLoading.value = 'cancel_'+leave.id
-  try {
-    const response = await api.get(`/leaves/${leave.id}/pdf?form=cancel`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', generateFilename(leave, 'pdf', true))
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
-  } catch (e) {
-    console.error('PDF error:', e)
-    alertStore.error('ไม่สามารถดาวน์โหลด PDF ใบยกเลิกได้')
-  } finally {
-    pdfLoading.value = null
-  }
-}
-
-const downloadCancelWord = async (leave) => {
-  if (wordLoading.value === 'cancel_'+leave.id) return
-  wordLoading.value = 'cancel_'+leave.id
-  try {
-    const response = await api.get(`/leaves/${leave.id}/word?form=cancel`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', generateFilename(leave, 'docx', true))
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
-  } catch (e) {
-    console.error('Word error:', e)
-    alertStore.error('ไม่สามารถดาวน์โหลด Word ใบยกเลิกได้')
-  } finally {
-    wordLoading.value = null
-  }
-}
+const downloadPdf = (leave) => downloadLeaveDocument(leave, { format: 'pdf' })
+const downloadWord = (leave) => downloadLeaveDocument(leave, { format: 'word' })
+const downloadCancelPdf = (leave) => downloadLeaveDocument(leave, { format: 'pdf', isCancel: true })
+const downloadCancelWord = (leave) => downloadLeaveDocument(leave, { format: 'word', isCancel: true })
 
 const confirmCancel = (leave) => {
   cancelTarget.value = leave
