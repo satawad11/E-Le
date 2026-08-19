@@ -117,3 +117,4 @@
 
 
 | APPROVAL-02-CHAIN-SNAPSHOT | Approval chain fix: resolver snapshot on `leave_approvals`, fail-closed approver resolution, worklist unified with approval authorization, cancellation chain aligned | `2026_08_19_090000_add_resolver_snapshot_to_leave_approvals.php`, `LeaveService.php`, `GovernmentApprovalController.php`, `ApproverResolverService.php`, `ApprovalController.php`, `LeaveCancellationController.php`, `Admin/WorkflowController.php` | `LeaveApprovalChainSnapshotTest.php` (7 tests, 31 assertions) + full regression (514 tests) | Verified |
+| APPROVAL-03-CHAIN-PREVIEW | Approver preview for workflow configuration: resolve real approvers per step for a chosen requester, incl. unsaved chains, with empty/self-approval warnings | `Admin/WorkflowController.php` (`preview`), `routes/api.php`, `WorkflowManagementView.vue` | `LeaveApprovalChainSnapshotTest.php` (preview cases) + full regression (517 tests), frontend build | Verified |

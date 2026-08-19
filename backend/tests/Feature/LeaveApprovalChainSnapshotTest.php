@@ -218,6 +218,52 @@ class LeaveApprovalChainSnapshotTest extends TestCase
         $this->assertDatabaseHas('leaves', ['id' => $leave['id'], 'status' => 'Cancelled', 'cancellation_status' => 'Approved']);
     }
 
+    public function test_preview_shows_who_would_actually_approve_for_a_given_requester(): void
+    {
+        [$requester] = $this->requesterWithPolicy();
+        $head = User::factory()->create();
+        $this->makeDepartmentHead($head, $requester);
+
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']));
+
+        ApprovalStep::create([
+            'name' => 'หัวหน้าแผนกต้นสังกัด', 'step_order' => 1,
+            'approver_type' => ApprovalStep::RESOLVER_DEPARTMENT_HEAD, 'role_id' => null,
+        ]);
+
+        $this->actingAs($admin)->postJson('/api/admin/workflow-steps/preview', ['requester_id' => $requester->id])
+            ->assertOk()
+            ->assertJsonPath('steps.0.approvers.0.id', $head->id)
+            ->assertJsonPath('steps.0.warning', null);
+    }
+
+    public function test_preview_warns_when_a_step_would_leave_the_request_stuck(): void
+    {
+        [$requester] = $this->requesterWithPolicy();
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']));
+
+        // ขั้นตอนหัวหน้าแผนก แต่ยังไม่มีใครถูกแต่งตั้งเป็นหัวหน้าหน่วยงานของผู้ยื่น
+        $response = $this->actingAs($admin)->postJson('/api/admin/workflow-steps/preview', [
+            'requester_id' => $requester->id,
+            'steps' => [['name' => 'หัวหน้าแผนกต้นสังกัด', 'approver_type' => 'DEPARTMENT_HEAD', 'role_id' => null]],
+        ])->assertOk();
+
+        $this->assertSame([], $response->json('steps.0.approvers'));
+        $this->assertNotNull($response->json('steps.0.warning'));
+    }
+
+    public function test_preview_requires_the_workflow_management_permission(): void
+    {
+        [$requester] = $this->requesterWithPolicy();
+        $outsider = User::factory()->create();
+
+        $this->actingAs($outsider)->postJson('/api/admin/workflow-steps/preview', [
+            'requester_id' => $requester->id,
+        ])->assertForbidden();
+    }
+
     public function test_snapshot_without_resolver_information_denies_instead_of_allowing_everyone(): void
     {
         [$requester, $type] = $this->requesterWithPolicy();

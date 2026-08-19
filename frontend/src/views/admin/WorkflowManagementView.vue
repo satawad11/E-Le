@@ -26,6 +26,19 @@
         </button>
 
         <button
+          @click="openPreview"
+          :disabled="loading || saving || steps.length === 0"
+          class="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl text-sm transition-all shadow-sm disabled:opacity-50 min-h-[44px]"
+          title="ทดลองว่าใครคือผู้อนุมัติจริงของแต่ละขั้น"
+        >
+          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          ดูตัวอย่างผู้อนุมัติจริง
+        </button>
+
+        <button
           @click="saveWorkflow"
           :disabled="saving || loading || steps.length === 0"
           class="flex items-center gap-2 px-5 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50 min-h-[44px]"
@@ -235,6 +248,81 @@
       </div>
     </div>
 
+    <!-- Approver Preview Modal -->
+    <div
+      v-if="previewModal.show"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      @click.self="previewModal.show = false"
+    >
+      <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+        <div>
+          <h3 class="text-lg font-bold text-gray-900">ดูตัวอย่างผู้อนุมัติจริง</h3>
+          <p class="text-sm text-gray-500 mt-1">
+            เลือกผู้ยื่นคำขอเพื่อดูว่าระบบจะหาใครเป็นผู้อนุมัติในแต่ละขั้น โดยใช้เกณฑ์เดียวกับตอนกดอนุมัติจริง
+            <span v-if="hasUnsavedChanges" class="text-amber-700 font-semibold">(ทดลองจากการตั้งค่าที่ยังไม่ได้บันทึก)</span>
+          </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <select
+            v-model="previewModal.requesterId"
+            class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#800000] text-sm bg-white text-gray-700"
+          >
+            <option value="" disabled>เลือกผู้ยื่นคำขอที่ต้องการทดลอง</option>
+            <option v-for="u in usersList" :key="u.id" :value="u.id">
+              {{ u.personnel?.full_name || u.name }} ({{ u.email }})
+            </option>
+          </select>
+          <button
+            @click="runPreview"
+            :disabled="!previewModal.requesterId || previewModal.loading"
+            class="px-5 py-2.5 rounded-xl bg-[#800000] text-white font-semibold hover:bg-[#600000] text-sm shadow-md transition min-h-[44px] disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <div v-if="previewModal.loading" class="animate-spin h-4 w-4 rounded-full border-2 border-white border-t-transparent"></div>
+            {{ previewModal.loading ? 'กำลังตรวจสอบ...' : 'ตรวจสอบ' }}
+          </button>
+        </div>
+
+        <div v-if="previewModal.result" class="space-y-3">
+          <div
+            v-for="step in previewModal.result.steps"
+            :key="step.step_order"
+            class="border rounded-2xl p-4"
+            :class="step.warning ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-white'"
+          >
+            <div class="flex items-start gap-3">
+              <div class="w-7 h-7 rounded-full bg-[#800000]/10 text-[#800000] font-bold text-xs flex items-center justify-center flex-shrink-0">
+                {{ step.step_order }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-gray-900 text-sm">{{ step.name }}</p>
+                <p class="text-[11px] text-gray-500 uppercase mt-0.5">{{ resolverLabel(step.approver_type) }}</p>
+
+                <ul v-if="step.approvers.length" class="mt-2 space-y-1">
+                  <li v-for="approver in step.approvers" :key="approver.id" class="text-sm text-gray-700">
+                    • {{ approver.name }}
+                    <span v-if="approver.position" class="text-gray-500">— {{ approver.position }}</span>
+                  </li>
+                </ul>
+
+                <p v-if="step.warning" class="mt-2 text-sm text-amber-800 font-medium">{{ step.warning }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-1">
+          <button
+            type="button"
+            @click="previewModal.show = false"
+            class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 text-sm min-h-[44px]"
+          >
+            ปิด
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Delete Step Confirmation Modal -->
     <div
       v-if="deleteModal.show"
@@ -334,6 +422,13 @@ const conflictModal = ref({
   show: false
 })
 
+const previewModal = ref({
+  show: false,
+  requesterId: '',
+  loading: false,
+  result: null
+})
+
 const resolverOptions = [
   { value: 'DEPARTMENT_HEAD', label: 'หัวหน้าแผนกวิชา / หัวหน้างาน (ต้นสังกัดผู้ยื่น)' },
   { value: 'REQUESTER_SUPERVISOR', label: 'ผู้บังคับบัญชาชั้นต้น' },
@@ -343,6 +438,36 @@ const resolverOptions = [
   { value: 'ROLE', label: 'กำหนดตามบทบาทระบบ (System Role)' },
   { value: 'SPECIFIC_USER', label: 'ระบุตัวบุคคลรายคน (Specific User)' },
 ]
+
+const resolverLabel = (value) => {
+  return resolverOptions.find(o => o.value === value)?.label || value || ''
+}
+
+// ทดลองว่าใครคือผู้อนุมัติจริง โดยใช้ขั้นตอนที่กำลังแก้อยู่บนหน้าจอ (รวมที่ยังไม่บันทึก)
+const openPreview = () => {
+  previewModal.value = { show: true, requesterId: '', loading: false, result: null }
+}
+
+const runPreview = async () => {
+  if (!previewModal.value.requesterId) return
+  previewModal.value.loading = true
+  try {
+    const res = await api.post('/admin/workflow-steps/preview', {
+      requester_id: Number(previewModal.value.requesterId),
+      steps: steps.value.map(s => ({
+        name: (s.name || '').trim(),
+        approver_type: s.approver_type || 'ROLE',
+        role_id: s.role_id ? Number(s.role_id) : null,
+        specific_user_id: s.specific_user_id ? Number(s.specific_user_id) : null
+      }))
+    })
+    previewModal.value.result = res.data
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'ไม่สามารถตรวจสอบผู้อนุมัติได้')
+  } finally {
+    previewModal.value.loading = false
+  }
+}
 
 const roleLabel = (name) => {
   const map = {

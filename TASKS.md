@@ -296,6 +296,11 @@
   - [x] สายอนุมัติคำขอยกเลิกใบลาใช้ snapshot + resolver ชุดเดียวกัน และตรวจสถานะ/ห้ามอนุมัติของตนเอง
   - [x] ลบ `ApprovalController::approve()/reject()` ที่ไม่มี route ชี้ถึงแล้ว
   - [x] Automated test suite `LeaveApprovalChainSnapshotTest.php` (7 tests, 31 assertions, 100% PASS) + regression 514 tests
+- [x] APPROVAL-03 Approver Preview สำหรับหน้าตั้งค่าสายอนุมัติ — **PASS 2026-08-19**
+  - [x] `POST /api/admin/workflow-steps/preview` ตอบรายชื่อผู้อนุมัติจริงรายขั้นตามผู้ยื่นที่เลือก (รองรับสายที่ยังไม่บันทึก)
+  - [x] เตือนเมื่อขั้นตอนใดไม่มีผู้อนุมัติ หรือได้ผู้ยื่นเป็นผู้อนุมัติของตนเอง
+  - [x] ปุ่ม "ดูตัวอย่างผู้อนุมัติจริง" ใน `WorkflowManagementView.vue`
+  - [x] เทสต์เพิ่ม 3 เคส (รวมชุดเป็น 10 tests, 38 assertions) + regression 517 tests + frontend build
 
 
 

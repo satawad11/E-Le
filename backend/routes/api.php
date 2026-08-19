@@ -209,6 +209,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::group(['middleware' => ['can:manage_workflow_steps']], function () {
         Route::get('/admin/workflow-steps', [WorkflowController::class, 'index']);
         Route::post('/admin/workflow-steps', [WorkflowController::class, 'store']);
+        // ทดลองว่าใครคือผู้อนุมัติจริงของแต่ละขั้น ก่อนบันทึกการตั้งค่า
+        Route::post('/admin/workflow-steps/preview', [WorkflowController::class, 'preview']);
     });
 
     // Admin: Leave Types CRUD
