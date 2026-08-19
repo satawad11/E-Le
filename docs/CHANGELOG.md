@@ -10,6 +10,7 @@ All notable changes to the E-la project will be documented in this file.
 - คำสั่ง `document:scaffold-fields` วางชุดฟิลด์ตั้งต้น 23–26 ช่องให้แบบฟอร์มราชการที่นำเข้า (ตำแหน่งโดยประมาณ) เพื่อให้ผู้ดูแลลากจัดตำแหน่งต่อแทนการเพิ่มทีละช่อง
 
 #### Fixed
+- หน้าศูนย์จัดการเอกสารโหลดรายการแม่แบบไม่ได้ (SQLSTATE[23000] `Column 'document_template_id' in field list is ambiguous`) — ความสัมพันธ์ `currentVersion` ใช้ `latestOfMany()` ซึ่ง join ตารางเดียวกันซ้อนกัน การ eager load แบบระบุรายชื่อคอลัมน์โดยไม่มีชื่อตารางนำหน้าจึงกำกวมบน MySQL (SQLite ไม่ error จึงหลุดจากเทสต์ชุดแรก — เพิ่มเทสต์ที่เรียก endpoint จริงแล้ว)
 - เมนู "ศูนย์จัดการเอกสารและรายงาน" ไม่ปรากฏในแถบเมนู — sidebar ของระบบเขียนไว้ใน `App.vue` ไม่ได้อ่านจากตาราง `menus` การ seed เมนูจึงไม่มีผล เพิ่มรายการเมนูทั้งเดสก์ท็อปและมือถือ พร้อม getter สิทธิ์ `canManageDocumentCenter`
 
 ### [DOC-ENGINE-01..04, 06] - 2026-08-20

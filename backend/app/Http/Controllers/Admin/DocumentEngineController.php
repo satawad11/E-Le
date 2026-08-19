@@ -60,7 +60,13 @@ class DocumentEngineController extends Controller
             ->when($request->filled('module'), fn ($query) => $query->where('module', $request->string('module')))
             ->when($request->filled('document_type'), fn ($query) => $query->where('document_type', $request->string('document_type')))
             ->withCount('versions')
-            ->with(['currentVersion:id,document_template_id,version,status,render_mode,pdf_file_path,page_count,effective_from'])
+            /*
+             * โหลดทั้งแถว ไม่ระบุรายชื่อคอลัมน์
+             *
+             * `currentVersion` ใช้ `latestOfMany()` ซึ่งสร้าง subquery join กับตารางเดียวกัน
+             * การระบุคอลัมน์แบบไม่มีชื่อตารางนำหน้าจึงทำให้ `document_template_id` กำกวมและ query ล้ม
+             */
+            ->with('currentVersion')
             ->orderBy('module')->orderBy('code')
             ->get()
             ->map(fn (DocumentTemplate $template) => [

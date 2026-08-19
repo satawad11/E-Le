@@ -480,6 +480,40 @@ class DocumentEngineTest extends TestCase
         $this->assertSame(DocumentTemplateVersion::STATUS_ACTIVE, DocumentTemplateVersion::find($second['id'])->status);
     }
 
+    public function test_an_admin_can_list_templates_with_their_active_version(): void
+    {
+        $admin = $this->admin();
+        $version = $this->pdfTemplate('listed_form');
+        [$leave, $type] = $this->approvedLeave();
+        $this->bind($version->template, $type->id);
+
+        $response = $this->actingAs($admin)->getJson('/api/admin/document-engine/templates')->assertOk();
+
+        $row = collect($response->json())->firstWhere('code', 'listed_form');
+
+        $this->assertNotNull($row);
+        $this->assertSame(DocumentTemplate::RENDER_PDF_OVERLAY, $row['render_mode']);
+        $this->assertSame($version->version, $row['active_version']['version']);
+        $this->assertSame(1, $row['bound_entities']);
+    }
+
+    public function test_the_overview_and_binding_endpoints_answer_for_admins(): void
+    {
+        $admin = $this->admin();
+        $version = $this->pdfTemplate('overview_form');
+        [$leave, $type] = $this->approvedLeave();
+        $this->bind($version->template, $type->id);
+
+        $this->actingAs($admin)->getJson('/api/admin/document-engine/overview')
+            ->assertOk()->assertJsonStructure(['templates', 'versions', 'binding_rules', 'engine_enabled']);
+
+        $this->actingAs($admin)->getJson('/api/admin/document-engine/bindings')
+            ->assertOk()->assertJsonStructure(['rules', 'entities']);
+
+        $this->actingAs($admin)->getJson('/api/admin/document-engine/generated')->assertOk();
+        $this->actingAs($admin)->getJson('/api/admin/document-engine/calibrations')->assertOk();
+    }
+
     public function test_the_field_dictionary_and_data_sources_are_available_to_admins(): void
     {
         $admin = $this->admin();
