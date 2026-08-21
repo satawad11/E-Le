@@ -201,7 +201,7 @@ class DocumentEngineTest extends TestCase
     {
         $version = $this->pdfTemplate('locked_form');
         [$leave] = $this->approvedLeave();
-        $leave->update(['document_template_version_id' => $version->id]);
+        $leave->forceFill(['document_template_version_id' => $version->id])->save();
 
         $this->expectException(\RuntimeException::class);
         $version->delete();
@@ -331,6 +331,63 @@ class DocumentEngineTest extends TestCase
         $this->assertNotNull($stored);
         $this->assertSame($first, $second);
         $this->assertSame(1, DocumentGeneratedFile::where('source_id', (string) $leave->id)->count());
+    }
+
+    // ────────────────── แบบฟอร์มที่ได้ ขึ้นกับเวอร์ชันที่ pin ไว้ตอนยื่น ──────────────────
+
+    public function test_a_leave_submitted_before_the_pdf_form_was_published_keeps_the_old_form(): void
+    {
+        config(['document_engine.enabled' => true, 'document_engine.entities.leave_types' => ['*']]);
+
+        $version = $this->pdfTemplate('published_later_form');
+        $this->map($version);
+        [$leave, $type] = $this->approvedLeave();
+        $this->bind($version->template, $type->id);
+
+        // ใบลายื่นตอนแบบฟอร์มยังเป็น HTML — pin เวอร์ชัน HTML ไว้
+        $html = $version->template->versions()->create([
+            'version' => 99, 'status' => DocumentTemplateVersion::STATUS_RETIRED,
+            'render_mode' => DocumentTemplate::RENDER_HTML, 'paper_size' => 'A4', 'orientation' => 'portrait',
+            'margin_top' => 0, 'margin_bottom' => 0, 'margin_left' => 0, 'margin_right' => 0,
+            'content_html' => '<p>แบบฟอร์มเดิม</p>', 'effective_from' => now()->subYear()->toDateString(), 'is_active' => false,
+        ]);
+        $leave->forceFill(['document_template_version_id' => $html->id])->save();
+
+        // ต้องคืน null = ใช้เส้นทางพิมพ์เดิม ไม่ใช่แบบฟอร์ม PDF ที่เพิ่งเผยแพร่
+        $this->assertNull(app(LeaveDocumentGateway::class)->pdfFor($leave->fresh()));
+    }
+
+    public function test_a_leave_pinned_to_the_pdf_form_is_printed_with_that_exact_version(): void
+    {
+        config(['document_engine.enabled' => true, 'document_engine.entities.leave_types' => ['*']]);
+
+        $version = $this->pdfTemplate('pinned_pdf_form');
+        $this->map($version);
+        [$leave, $type] = $this->approvedLeave();
+        $this->bind($version->template, $type->id);
+        $leave->forceFill(['document_template_version_id' => $version->id])->save();
+
+        $content = app(LeaveDocumentGateway::class)->pdfFor($leave->fresh());
+
+        $this->assertNotNull($content);
+        $this->assertStringStartsWith('%PDF', $content);
+        $this->assertSame(
+            $version->id,
+            DocumentGeneratedFile::where('source_id', (string) $leave->id)->value('document_template_version_id'),
+        );
+    }
+
+    public function test_a_leave_without_a_pinned_version_uses_the_form_in_force_today(): void
+    {
+        config(['document_engine.enabled' => true, 'document_engine.entities.leave_types' => ['*']]);
+
+        $version = $this->pdfTemplate('current_form');
+        $this->map($version);
+        [$leave, $type] = $this->approvedLeave();
+        $this->bind($version->template, $type->id);
+        $leave->forceFill(['document_template_version_id' => null])->save();
+
+        $this->assertNotNull(app(LeaveDocumentGateway::class)->pdfFor($leave->fresh()));
     }
 
     // ─────────────────────────── Legacy compatibility ───────────────────────────

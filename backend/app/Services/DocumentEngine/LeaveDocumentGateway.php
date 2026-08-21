@@ -3,6 +3,7 @@
 namespace App\Services\DocumentEngine;
 
 use App\Models\Document\DocumentGeneratedFile;
+use App\Models\DocumentTemplateVersion;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\User;
@@ -30,6 +31,16 @@ class LeaveDocumentGateway
     public const SOURCE_TYPE_CANCELLATION = 'LeaveCancellation';
 
     public function __construct(private readonly DocumentEngine $engine) {}
+
+    /** เวอร์ชันที่ใบลา pin ไว้เป็นแบบฟอร์ม PDF ที่พร้อมใช้งานจริงหรือไม่ */
+    private function pinnedVersionUsesPdfForm(int $versionId): bool
+    {
+        $version = DocumentTemplateVersion::find($versionId);
+
+        return $version !== null
+            && $version->isPdfOverlay()
+            && filled($version->pdf_file_path);
+    }
 
     /** ใบลาใบนี้ออกเอกสารด้วย engine ใหม่ได้หรือไม่ */
     public function handles(Leave $leave): bool
@@ -72,6 +83,19 @@ class LeaveDocumentGateway
             }
         }
 
+        /*
+         * ใบลาแต่ละใบ pin เวอร์ชันแบบฟอร์มไว้ตั้งแต่ตอนยื่น (`leaves.document_template_version_id`)
+         *
+         * ใบที่ยื่นตอนแบบฟอร์มยังเป็น HTML ต้องพิมพ์ด้วยแบบฟอร์มเดิมตลอดไป แม้ผู้ดูแล
+         * จะเผยแพร่แบบฟอร์ม PDF ในภายหลัง — คืน null เพื่อให้เส้นทางเดิมทำงาน
+         * ส่วนใบที่ยื่นหลังเผยแพร่แล้วจะ pin เวอร์ชัน PDF ไว้เอง จึงได้แบบฟอร์มใหม่
+         */
+        $pinnedVersionId = $isCancel ? null : $leave->document_template_version_id;
+
+        if ($pinnedVersionId !== null && ! $this->pinnedVersionUsesPdfForm($pinnedVersionId)) {
+            return null;
+        }
+
         try {
             $result = $this->engine->generate(
                 module: 'LEAVE',
@@ -82,7 +106,7 @@ class LeaveDocumentGateway
                     'leave' => $leave,
                     'stage' => $isCancel ? LeaveApproval::STAGE_CANCELLATION : LeaveApproval::STAGE_REQUEST,
                 ],
-                pinnedVersionId: null,
+                pinnedVersionId: $pinnedVersionId,
                 actor: $actor,
             );
         } catch (\Throwable $exception) {
