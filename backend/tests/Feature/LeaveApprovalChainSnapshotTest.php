@@ -175,6 +175,23 @@ class LeaveApprovalChainSnapshotTest extends TestCase
         $this->actingAs($original)->postJson("/api/approvals/{$leave['id']}/approve")->assertOk();
     }
 
+    public function test_changing_the_approval_chain_is_written_to_the_audit_log(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']));
+
+        $this->actingAs($admin)->postJson('/api/admin/workflow-steps', [
+            'steps' => [['name' => 'ผู้อำนวยการ', 'approver_type' => 'DIRECTOR', 'role_id' => null]],
+        ])->assertOk();
+
+        // การเปลี่ยนกติกาว่าใครอนุมัติใบลาได้ ต้องตรวจย้อนหลังได้เสมอ
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'approval_workflow_updated',
+            'resource_type' => 'ApprovalStep',
+            'actor_id' => $admin->id,
+        ]);
+    }
+
     public function test_saving_the_chain_keeps_role_empty_for_automatic_steps(): void
     {
         $admin = User::factory()->create();

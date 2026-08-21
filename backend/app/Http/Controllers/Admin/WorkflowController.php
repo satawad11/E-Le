@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ApprovalStep;
 use App\Models\Role;
 use App\Models\User;
-use App\Services\AuditService;
+use App\Services\AuditLogger;
 use App\Services\Workflow\ApproverResolverService;
 use App\Services\Workflow\LeaveWorkflowProvisioner;
 use Illuminate\Database\Eloquent\Collection;
@@ -217,7 +217,7 @@ class WorkflowController extends Controller
             ], 409);
         }
 
-        $savedSteps = DB::transaction(function () use ($stepDataList, $request, $chain) {
+        $savedSteps = DB::transaction(function () use ($stepDataList, $request, $chain, $currentSteps) {
             ApprovalStep::query()->chain($chain)->delete();
 
             $created = [];
@@ -255,18 +255,24 @@ class WorkflowController extends Controller
                 }
             }
 
-            if (app()->bound(AuditService::class)) {
-                try {
-                    app(AuditService::class)->log(
-                        'approval_workflow_updated',
-                        'ApprovalStep',
-                        null,
-                        ['chain' => $chain, 'steps_count' => count($created), 'steps' => $created],
-                        $request->user()
-                    );
-                } catch (\Throwable $e) {
-                    report($e);
-                }
+            /*
+             * บันทึกการแก้สายอนุมัติลงประวัติกลาง
+             *
+             * เดิมโค้ดตรงนี้เรียก `AuditService` ซึ่งไม่มีอยู่จริงในระบบ (ชื่อจริงคือ `AuditLogger`)
+             * และถูกห่อด้วย `app()->bound()` ไว้ การแก้สายอนุมัติจึงไม่เคยถูกบันทึกเลยแม้แต่ครั้งเดียว
+             * ทั้งที่เป็นการเปลี่ยนกติกาว่าใครอนุมัติใบลาได้ — ต้องตรวจย้อนหลังได้ตาม docs/12
+             */
+            try {
+                app(AuditLogger::class)->log(
+                    action: 'approval_workflow_updated',
+                    resource: 'ApprovalStep',
+                    before: ['chain' => $chain, 'steps' => $currentSteps->map->only(['step_order', 'name', 'approver_type', 'role_id', 'specific_user_id'])->all()],
+                    after: ['chain' => $chain, 'steps' => array_map(fn (ApprovalStep $step) => $step->only(['step_order', 'name', 'approver_type', 'role_id', 'specific_user_id']), $created)],
+                    actorId: $request->user()?->id,
+                );
+            } catch (\Throwable $e) {
+                // ประวัติล้มต้องไม่ทำให้การบันทึกสายอนุมัติล้มตาม
+                report($e);
             }
 
             return $created;
