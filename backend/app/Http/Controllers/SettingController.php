@@ -30,7 +30,7 @@ class SettingController extends Controller
         // ลบ cache เพื่อให้ request ถัดไปโหลด settings ใหม่
         Cache::forget('app_settings');
 
-        return response()->json(['message' => 'Settings updated successfully']);
+        return response()->json(['message' => 'บันทึกการตั้งค่าเรียบร้อยแล้ว']);
     }
 
     public function uploadLogo(Request $request)
@@ -55,12 +55,12 @@ class SettingController extends Controller
             Cache::forget('app_settings');
 
             return response()->json([
-                'message' => 'Logo uploaded successfully',
+                'message' => 'อัปโหลดตราสัญลักษณ์เรียบร้อยแล้ว',
                 'url' => $url,
             ]);
         }
 
-        return response()->json(['message' => 'No file uploaded'], 400);
+        return response()->json(['message' => 'ไม่พบไฟล์ที่อัปโหลด'], 400);
     }
 
     public function uploadGarudaLogo(Request $request)
@@ -84,11 +84,11 @@ class SettingController extends Controller
             Cache::forget('app_settings');
 
             return response()->json([
-                'message' => 'Garuda Logo uploaded successfully',
+                'message' => 'อัปโหลดตราครุฑเรียบร้อยแล้ว',
                 'url' => $url,
             ]);
         }
 
-        return response()->json(['message' => 'No file uploaded'], 400);
+        return response()->json(['message' => 'ไม่พบไฟล์ที่อัปโหลด'], 400);
     }
 }

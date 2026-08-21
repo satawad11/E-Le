@@ -30,10 +30,21 @@ return [
 
     'disks' => [
 
+        /*
+         * SEC-021 — ปิด `serve`
+         *
+         * `serve => true` ทำให้ Laravel ลงทะเบียน route `storage/{path}` ที่เสิร์ฟ
+         * ทุกไฟล์ใต้ storage/app/private ออกทาง HTTP โดยไม่ผ่าน authentication
+         * ซึ่งย้อนเจตนาของ SEC-001 ทั้งหมด เพราะลายเซ็น ภาพลงเวลา และไฟล์แนบสารบรรณ
+         * เก็บอยู่ใต้ root นี้ (disk 'private_uploads' คือโฟลเดอร์ย่อยของ root นี้)
+         *
+         * ทางเข้าไฟล์มีทางเดียวคือ `GET /api/files/{path}` (SecureFileController)
+         * ซึ่งบังคับ authentication และ authorization ต่อทรัพยากรที่อ้างถึงไฟล์นั้น
+         */
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

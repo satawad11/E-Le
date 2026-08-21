@@ -77,7 +77,7 @@ class CircularController extends Controller
             'recipient_count' => $usersToNotify->count(),
         ]);
 
-        return response()->json(['message' => 'Circular sent successfully.']);
+        return response()->json(['message' => 'เวียนหนังสือเรียบร้อยแล้ว']);
     }
 
     public function acknowledge(Request $request, $circularId)
@@ -108,7 +108,7 @@ class CircularController extends Controller
             'circular_id' => $circularId,
         ]);
 
-        return response()->json(['message' => 'Acknowledged.']);
+        return response()->json(['message' => 'บันทึกการรับทราบแล้ว']);
     }
 
     public function tracking($id)

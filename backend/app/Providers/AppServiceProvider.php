@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use LogicException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -42,10 +43,24 @@ class AppServiceProvider extends ServiceProvider
                 .'&email='.urlencode((string) $notifiable->getEmailForPasswordReset());
         });
 
-        ProductionEnvironmentGuard::validate(
-            (string) config('app.env'),
-            (bool) config('app.debug'),
-        );
+        /*
+         * SEC-022 — ด่านตรวจ environment
+         *
+         * ทาง HTTP: ปฏิเสธทุกคำขอทันทีเมื่อการตั้งค่าไม่ปลอดภัย
+         *
+         * ทาง console: ไม่โยน เพราะถ้าโยน ผู้ดูแลจะรัน artisan อะไรไม่ได้เลย
+         * รวมถึงคำสั่งที่ใช้ "แก้" ปัญหา (config:clear, key:generate)
+         * ด่านของฝั่ง container คือ `php artisan app:verify-environment`
+         * ซึ่ง docker-compose.yml รันเป็นคำสั่งแรกของทุก service
+         * เมื่อไม่ผ่าน คำสั่งถัดไปจะไม่ถูกรันและ container ออกทันที
+         */
+        if (! $this->app->runningInConsole()) {
+            $problems = ProductionEnvironmentGuard::problemsFromConfig();
+
+            if ($problems !== []) {
+                throw new LogicException(implode('; ', $problems));
+            }
+        }
 
         User::observe(UserObserver::class);
         Personnel::observe(PersonnelObserver::class);

@@ -17,9 +17,11 @@ use App\Services\SystemSettingService;
 use App\Support\StoredFile;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class DocumentController extends Controller
 {
@@ -43,6 +45,50 @@ class DocumentController extends Controller
     private function isRegistrar(User $user): bool
     {
         return $user->can('saraban.document.register');
+    }
+
+    /**
+     * บันทึกไฟล์แนบที่อัปโหลดเข้ามา
+     *
+     * SEC-023 — ชั้นตรวจ (allowlist ของ mime จากเนื้อไฟล์ + นามสกุล) อยู่ที่
+     * StoreDocumentRequest ส่วนที่นี่รับผิดชอบเรื่อง "ชื่อไฟล์บนดิสก์":
+     *
+     *  - ชื่อบนดิสก์เป็น UUID เสมอ ต่อด้วยนามสกุลที่ผ่าน allowlist แล้วเท่านั้น
+     *    ชื่อจากผู้ใช้จึงไม่มีทางกำหนด path หรือ นามสกุลของไฟล์ที่ระบบเก็บ
+     *  - `mime_type` เก็บค่าที่ตรวจจาก **เนื้อไฟล์** (`getMimeType()`) ไม่ใช่
+     *    `getClientMimeType()` ซึ่งเป็นค่าที่ client ส่งมาและปลอมได้
+     *  - ชื่อเดิมของผู้ใช้เก็บไว้ในคอลัมน์ `name` เพื่อแสดงผลและตั้งชื่อตอนดาวน์โหลด
+     *
+     * @param  array<int,UploadedFile>  $files
+     */
+    private function storeUploadedAttachments(Document $document, array $files): void
+    {
+        $allowedExtensions = (array) config('saraban.attachments.allowed_extensions', []);
+
+        foreach ($files as $file) {
+            $extension = strtolower((string) $file->getClientOriginalExtension());
+
+            // ด่านสุดท้ายเผื่อมีเส้นทางอื่นเรียกเข้ามาโดยไม่ผ่าน FormRequest
+            abort_unless(in_array($extension, $allowedExtensions, true), 422, 'ชนิดของไฟล์แนบนี้ไม่ได้รับอนุญาต');
+
+            // ต้องอ่านก่อน storeAs เพราะหลังจากนั้นไฟล์ชั่วคราวถูกย้ายไปแล้ว
+            $originalName = $file->getClientOriginalName();
+            $detectedMimeType = $file->getMimeType();
+
+            $path = $file->storeAs(
+                'saraban/attachments',
+                Str::uuid()->toString().'.'.$extension,
+                StoredFile::DISK,
+            );
+
+            $document->attachments()->create([
+                'name' => $originalName,
+                'type' => 'file',
+                'path' => $path,
+                'mime_type' => $detectedMimeType,
+                'uploaded_by' => Auth::id(),
+            ]);
+        }
     }
 
     /**
@@ -83,7 +129,12 @@ class DocumentController extends Controller
             return response()->json(['url' => $attachment->path]);
         }
 
-        $disk = Storage::disk('public');
+        /*
+         * SEC-024 — เดิมบรรทัดนี้อ่านจาก disk 'public' ขณะที่ทุกจุดที่ "เขียน"
+         * ไฟล์แนบเขียนลง disk 'private_uploads' (SEC-001) ผลคือปุ่มดาวน์โหลด
+         * ตอบ 404 กับไฟล์แนบทุกไฟล์ที่มีอยู่จริง
+         */
+        $disk = Storage::disk(StoredFile::DISK);
         abort_unless($disk->exists($attachment->path), 404);
 
         $this->auditLog->log('attachment.downloaded', $document, [
@@ -91,7 +142,10 @@ class DocumentController extends Controller
             'name' => $attachment->name,
         ]);
 
-        return $disk->download($attachment->path, $attachment->name);
+        return $disk->download($attachment->path, $attachment->name, [
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function index(Request $request)
@@ -197,7 +251,7 @@ class DocumentController extends Controller
             $document->delete();
         }
 
-        return response()->json(['message' => 'Documents deleted successfully'], 200);
+        return response()->json(['message' => 'ลบหนังสือเรียบร้อยแล้ว'], 200);
     }
 
     public function store(StoreDocumentRequest $request)
@@ -263,7 +317,8 @@ class DocumentController extends Controller
                 $pdf = Pdf::loadHTML($fullHtml);
                 $pdf->setPaper('A4', 'portrait');
 
-                $filename = 'edoc_'.time().'.pdf';
+                // SEC-023 — ชื่อไฟล์บนดิสก์เป็น UUID เสมอ ไม่คาดเดาได้และไม่ชนกัน
+                $filename = Str::uuid()->toString().'.pdf';
                 $path = 'saraban/attachments/'.$filename;
 
                 Storage::disk('private_uploads')->put($path, $pdf->output());
@@ -276,16 +331,7 @@ class DocumentController extends Controller
                     'uploaded_by' => Auth::id(),
                 ]);
             } elseif ($request->hasFile('files')) {
-                foreach ($request->file('files') as $file) {
-                    $path = $file->store('saraban/attachments', 'private_uploads');
-                    $document->attachments()->create([
-                        'name' => $file->getClientOriginalName(),
-                        'type' => 'file',
-                        'path' => $path,
-                        'mime_type' => $file->getClientMimeType(),
-                        'uploaded_by' => Auth::id(),
-                    ]);
-                }
+                $this->storeUploadedAttachments($document, $request->file('files'));
             }
 
             // 2. Process links
@@ -403,7 +449,8 @@ class DocumentController extends Controller
                 $pdf = Pdf::loadHTML($fullHtml);
                 $pdf->setPaper('A4', 'portrait');
 
-                $filename = 'edoc_'.time().'.pdf';
+                // SEC-023 — ชื่อไฟล์บนดิสก์เป็น UUID เสมอ ไม่คาดเดาได้และไม่ชนกัน
+                $filename = Str::uuid()->toString().'.pdf';
                 $path = 'saraban/attachments/'.$filename;
                 Storage::disk('private_uploads')->put($path, $pdf->output());
 
@@ -415,16 +462,7 @@ class DocumentController extends Controller
                     'uploaded_by' => Auth::id(),
                 ]);
             } elseif ($request->hasFile('files')) {
-                foreach ($request->file('files') as $file) {
-                    $path = $file->store('saraban/attachments', 'private_uploads');
-                    $document->attachments()->create([
-                        'name' => $file->getClientOriginalName(),
-                        'type' => 'file',
-                        'path' => $path,
-                        'mime_type' => $file->getClientMimeType(),
-                        'uploaded_by' => Auth::id(),
-                    ]);
-                }
+                $this->storeUploadedAttachments($document, $request->file('files'));
             }
 
             // Process new links
@@ -485,8 +523,21 @@ class DocumentController extends Controller
         return response()->json(null, 204);
     }
 
+    /**
+     * ทำเครื่องหมาย "อ่านแล้ว"
+     *
+     * SEC-025 — เดิม endpoint นี้ไม่ตรวจสิทธิ์ใด ๆ นอกจาก `saraban.document.view`
+     * ระดับ route ผู้ใช้ที่ล็อกอินคนใดก็ได้จึงยิงเลข id ไล่ไปเรื่อย ๆ แล้ว
+     * (ก) สร้างแถว `saraban_document_user_states` ผูกตัวเองกับหนังสือของคนอื่น
+     * (ข) เขียน `read_at` ทับบันทึกการรับทราบซึ่งเป็นหลักฐานของงานสารบรรณ
+     * (ค) ยืนยันการมีอยู่ของหนังสือลับจากผลลัพธ์ที่ต่างกัน (IDOR)
+     *
+     * ตอนนี้ผ่าน `DocumentPolicy::view` ด่านเดียวกับการเปิดอ่านหนังสือ
+     */
     public function read(Document $document)
     {
+        $this->authorize('view', $document);
+
         $userId = Auth::id();
 
         // Find if user is a receiver and hasn't read it yet
@@ -500,14 +551,38 @@ class DocumentController extends Controller
             'document_id' => $document->id,
             'user_id' => $userId,
         ]);
+        $wasUnread = ! $state->exists || ! $state->is_read;
+
         $state->is_read = true;
         $state->save();
 
-        return response()->json(['message' => 'Document marked as read']);
+        // AUDIT-007 — "รับทราบ/อ่านแล้ว" เป็นหลักฐานของงานสารบรรณ บันทึกเฉพาะ
+        // ครั้งที่สถานะเปลี่ยนจริง เพื่อไม่ให้ log ท่วมจากการเปิดหน้าซ้ำ ๆ
+        if ($wasUnread) {
+            $this->auditLog->log('document.read', $document, [
+                'document_number' => $document->document_number,
+            ]);
+        }
+
+        return response()->json(['message' => 'บันทึกการอ่านหนังสือแล้ว']);
     }
 
-    public function updateState(Request $request, $id)
+    /**
+     * ปักหมุด / ซ่อน / ทำเครื่องหมายอ่านแล้ว เฉพาะของผู้ใช้คนนั้น
+     *
+     * SEC-025 — เดิมเมธอดนี้รับ `$id` ดิบแล้วสร้างแถวสถานะจาก id นั้นตรง ๆ
+     * โดยไม่ตรวจว่าหนังสือมีอยู่จริงหรือผู้ใช้มีสิทธิ์เห็นหรือไม่ ผลคือ
+     * (ก) IDOR — ยิง id ใดก็ได้เพื่อผูกตัวเองกับหนังสือของหน่วยงานอื่น
+     * (ข) แถวสถานะชี้ไปยัง document_id ที่ไม่มีอยู่จริง
+     * (ค) เส้นทางนี้ข้าม middleware `saraban.classified` ของหนังสือลับ
+     *
+     * ตอนนี้ใช้ route model binding (ไม่พบ = 404) และผ่าน `DocumentPolicy::view`
+     * (ไม่มีสิทธิ์ = 403) เหมือนทุก endpoint ของหนังสือ
+     */
+    public function updateState(Request $request, Document $document)
     {
+        $this->authorize('view', $document);
+
         $request->validate([
             'is_read' => 'nullable|boolean',
             'is_pinned' => 'nullable|boolean',
@@ -516,23 +591,35 @@ class DocumentController extends Controller
 
         $user = Auth::user();
         $state = DocumentUserState::firstOrNew([
-            'document_id' => $id,
+            'document_id' => $document->id,
             'user_id' => $user->id,
         ]);
 
         if ($request->has('is_read')) {
-            $state->is_read = $request->is_read;
+            $state->is_read = $request->boolean('is_read');
         }
         if ($request->has('is_pinned')) {
-            $state->is_pinned = $request->is_pinned;
+            $state->is_pinned = $request->boolean('is_pinned');
         }
         if ($request->has('is_hidden')) {
-            $state->is_hidden = $request->is_hidden;
+            $state->is_hidden = $request->boolean('is_hidden');
         }
 
         $state->save();
 
-        return response()->json(['message' => 'State updated', 'state' => $state]);
+        /*
+         * AUDIT-007 — บันทึกเฉพาะการเปลี่ยนที่มีนัยสำคัญ
+         *
+         * `is_hidden` ทำให้หนังสือหายไปจากทะเบียนของผู้ใช้คนนั้น จึงต้องตามรอยได้
+         * ว่าใครซ่อนเมื่อไร ส่วน `is_read` ล้วน ๆ ไม่ถือว่ามีนัยสำคัญพอ
+         */
+        if ($request->has('is_hidden')) {
+            $this->auditLog->log('document.state.hidden', $document, [
+                'is_hidden' => $state->is_hidden,
+            ]);
+        }
+
+        return response()->json(['message' => 'บันทึกสถานะแล้ว', 'state' => $state]);
     }
 
     public function stats()

@@ -48,8 +48,8 @@ class ClassifiedDocumentTest extends SarabanTestCase
 
     public function test_attachment_download_requires_authorization(): void
     {
-        Storage::fake('public');
-        Storage::disk('public')->put('saraban/attachments/secret.pdf', 'pdf-bytes');
+        Storage::fake('private_uploads');
+        Storage::disk('private_uploads')->put('saraban/attachments/secret.pdf', 'pdf-bytes');
 
         $document = $this->makeDocument([
             'secrecy' => 'secret',
@@ -77,8 +77,8 @@ class ClassifiedDocumentTest extends SarabanTestCase
 
     public function test_download_is_blocked_when_allow_download_is_off(): void
     {
-        Storage::fake('public');
-        Storage::disk('public')->put('saraban/attachments/open.pdf', 'pdf-bytes');
+        Storage::fake('private_uploads');
+        Storage::disk('private_uploads')->put('saraban/attachments/open.pdf', 'pdf-bytes');
 
         $document = $this->makeDocument([
             'allow_download' => false,

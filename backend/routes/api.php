@@ -350,8 +350,14 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
             Route::get('/documents/stats', [DocumentController::class, 'stats']);
             Route::get('/documents/{document}', [DocumentController::class, 'show'])
                 ->middleware('saraban.classified');
-            Route::post('/documents/{document}/read', [DocumentController::class, 'read']);
-            Route::post('/documents/{id}/state', [DocumentController::class, 'updateState']);
+            /*
+             * SEC-025 — read/state ใช้ route model binding และผ่านด่านชั้นความลับ
+             * เหมือน `show` เดิม `/documents/{id}/state` รับ id ดิบและไม่ตรวจอะไรเลย
+             */
+            Route::post('/documents/{document}/read', [DocumentController::class, 'read'])
+                ->middleware('saraban.classified');
+            Route::post('/documents/{document}/state', [DocumentController::class, 'updateState'])
+                ->middleware('saraban.classified');
             Route::get('/attachments/{attachment}/download', [DocumentController::class, 'downloadAttachment'])->middleware('throttle:documents');
         });
 

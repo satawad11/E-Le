@@ -52,8 +52,13 @@ services:
       - MODULE_NOTIFICATION_ENABLED=${MODULE_NOTIFICATION_ENABLED:-true}
       - MODULE_REPORTING_ENABLED=${MODULE_REPORTING_ENABLED:-true}
     # `exec php-fpm` เพื่อให้ php-fpm เป็น PID 1 และรับสัญญาณ stop/restart ได้ตรง ๆ
+    #
+    # SEC-022 — `app:verify-environment` เป็นคำสั่งแรกเสมอ ถ้าค่า APP_ENV/APP_DEBUG
+    # (หรือ APP_KEY/APP_URL/serve ของ disk local) ไม่ปลอดภัย คำสั่งนี้คืน exit code 1
+    # คำสั่งถัดไปจึงไม่ถูกรัน และ container ออกโดยไม่เริ่มให้บริการเลย
     command: >
       bash -c "if [ ! -f vendor/autoload.php ]; then composer install --ignore-platform-reqs; fi;
+               php artisan app:verify-environment &&
                php artisan migrate --force &&
                php artisan optimize:clear &&
                exec php-fpm"
@@ -110,6 +115,7 @@ services:
       - MODULE_REPORTING_ENABLED=${MODULE_REPORTING_ENABLED:-true}
     command: >
       bash -c "until [ -f vendor/autoload.php ]; do sleep 2; done;
+               php artisan app:verify-environment &&
                exec php artisan queue:work --sleep=3 --tries=3 --timeout=120"
     depends_on:
       db:
@@ -143,6 +149,7 @@ services:
       - MODULE_REPORTING_ENABLED=${MODULE_REPORTING_ENABLED:-true}
     command: >
       bash -c "until [ -f vendor/autoload.php ]; do sleep 2; done;
+               php artisan app:verify-environment &&
                exec php artisan schedule:work"
     depends_on:
       db:
@@ -151,24 +158,34 @@ services:
       backend:
         condition: service_started
 
-  frontend:
+  # DEPLOY-006 — สร้างไฟล์หน้าเว็บสำหรับ production
+  #
+  # เดิมไฟล์นี้มี service `frontend` ที่รัน `npm run dev -- --host 0.0.0.0`
+  # และ publish พอร์ต 5173 ออกทุกอินเทอร์เฟซ ซึ่งเป็น **dev server ของ Vite**
+  # ที่ไม่มี authentication, เสิร์ฟ source map และ module ดิบทั้งโครงการ,
+  # เปิด websocket HMR ให้เชื่อมจากภายนอก และมีทางเข้าอ่านไฟล์ในโปรเจกต์
+  # ทั้งที่ compose ชุดนี้คือชุดเดียวกับที่เอกสาร deploy สั่งให้ใช้บน production
+  #
+  # ชุดนี้เหลือเฉพาะ job สร้าง `frontend/dist` ที่ nginx เสิร์ฟ (mount แบบ read-only)
+  # แล้วจบการทำงาน ไม่มีพอร์ตเปิดออก
+  # dev server ย้ายไป `docker-compose.dev.yml` ซึ่งต้องสั่งใช้อย่างชัดเจน
+  #
+  #   docker compose --profile build run --rm frontend_build
+  frontend_build:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: eleave_frontend
-    restart: unless-stopped
+    container_name: eleave_frontend_build
+    profiles: ["build"]
+    restart: "no"
     working_dir: /app
     volumes:
       - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "5173:5173"
+      - frontend_node_modules:/app/node_modules
     command: >
-      sh -c "npm ci && 
-             npm run dev -- --host 0.0.0.0"
-    depends_on:
-      - backend
+      sh -c "npm ci && npm run build"
 
 volumes:
+  frontend_node_modules:
   eleave_mysql_data:
   backend_vendor:
