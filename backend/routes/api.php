@@ -288,6 +288,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/admin/document-engine/versions/{version}/pdf', [DocumentEngineController::class, 'uploadPdf']);
         Route::post('/admin/document-engine/versions/{version}/publish', [DocumentEngineController::class, 'publishVersion']);
         Route::post('/admin/document-engine/versions/{version}/retire', [DocumentEngineController::class, 'retireVersion']);
+        Route::delete('/admin/document-engine/versions/{version}', [DocumentEngineController::class, 'deleteVersion']);
         Route::put('/admin/document-engine/versions/{version}/mappings', [DocumentEngineController::class, 'saveMappings']);
         Route::post('/admin/document-engine/bindings', [DocumentEngineController::class, 'saveBinding']);
         Route::delete('/admin/document-engine/bindings/{rule}', [DocumentEngineController::class, 'deleteBinding']);

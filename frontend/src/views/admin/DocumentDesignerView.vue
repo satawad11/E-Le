@@ -41,6 +41,16 @@
         <button v-if="isDraft" @click="publish" :disabled="saving" class="px-5 py-2.5 bg-green-700 hover:bg-green-800 text-white font-semibold rounded-xl text-sm shadow-md min-h-[44px] disabled:opacity-50">
           เผยแพร่เวอร์ชันนี้
         </button>
+
+        <button
+          v-if="isDraft && versions.length > 1"
+          @click="removeDraft"
+          :disabled="saving"
+          class="px-4 py-2.5 bg-white border border-red-200 hover:bg-red-50 text-red-600 font-semibold rounded-xl text-sm min-h-[44px] disabled:opacity-50"
+          title="ลบฉบับร่างนี้ทิ้ง"
+        >
+          ลบฉบับร่าง
+        </button>
       </div>
     </div>
 
@@ -441,6 +451,22 @@ const createVersion = async () => {
     await loadTemplate()
   } catch (error) {
     alertStore.error(error.response?.data?.message || 'สร้างเวอร์ชันใหม่ไม่สำเร็จ')
+  } finally {
+    saving.value = false
+  }
+}
+
+const removeDraft = async () => {
+  if (!window.confirm('ลบฉบับร่างนี้ทิ้ง? ตำแหน่งฟิลด์ที่วางไว้ในฉบับร่างนี้จะหายไปด้วย (เวอร์ชันที่เผยแพร่แล้วไม่ถูกแตะ)')) return
+
+  saving.value = true
+  try {
+    const res = await api.delete(`/admin/document-engine/versions/${version.value.id}`)
+    alertStore.success(res.data.message)
+    selectedVersionId.value = null
+    await loadTemplate()
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'ลบฉบับร่างไม่สำเร็จ')
   } finally {
     saving.value = false
   }

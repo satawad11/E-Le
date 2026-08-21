@@ -249,6 +249,38 @@ class DocumentEngineController extends Controller
         return response()->json(['message' => 'เผยแพร่เวอร์ชันเรียบร้อยแล้ว', 'version' => $version->fresh()]);
     }
 
+    /**
+     * ลบฉบับร่างที่ไม่ได้ใช้
+     *
+     * ลบได้เฉพาะ DRAFT ที่ไม่มีเอกสารใดอ้างถึงเท่านั้น — เวอร์ชันที่เผยแพร่แล้วหรือมีใบลา
+     * อ้างอยู่ต้องคงไว้ตลอดไป (ใช้ "ปลดการใช้งาน" แทน) ตามกฎเอกสารย้อนหลังของระบบ
+     */
+    public function deleteVersion(DocumentTemplateVersion $version)
+    {
+        abort_unless(
+            $version->status === DocumentTemplateVersion::STATUS_DRAFT,
+            422,
+            'ลบได้เฉพาะฉบับร่างเท่านั้น — เวอร์ชันที่เผยแพร่แล้วให้ใช้การปลดการใช้งานแทน',
+        );
+
+        abort_if($version->isReferenced(), 422, 'ลบไม่ได้เพราะมีเอกสารอ้างอิงเวอร์ชันนี้อยู่');
+
+        $templateId = $version->document_template_id;
+        $number = $version->version;
+
+        DB::transaction(function () use ($version) {
+            $version->fieldMappings()->delete();
+            $version->delete();
+        }, 5);
+
+        $this->audit->log('document_version_deleted', 'DocumentTemplateVersion', $version->id, after: [
+            'template_id' => $templateId,
+            'version' => $number,
+        ]);
+
+        return response()->json(['message' => 'ลบฉบับร่างเรียบร้อยแล้ว']);
+    }
+
     public function retireVersion(DocumentTemplateVersion $version)
     {
         $version->update([

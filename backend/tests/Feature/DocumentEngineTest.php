@@ -541,6 +541,44 @@ class DocumentEngineTest extends TestCase
         $this->assertSame(DocumentTemplate::RENDER_PDF_OVERLAY, $version->template->fresh()->render_mode);
     }
 
+    public function test_an_admin_can_delete_an_unused_draft(): void
+    {
+        $admin = $this->admin();
+        $active = $this->pdfTemplate('deletable_draft_form');
+
+        $draft = $this->actingAs($admin)
+            ->postJson("/api/admin/document-engine/templates/{$active->document_template_id}/versions")
+            ->assertCreated()->json('version');
+
+        $this->actingAs($admin)->deleteJson("/api/admin/document-engine/versions/{$draft['id']}")->assertOk();
+
+        $this->assertNull(DocumentTemplateVersion::find($draft['id']));
+        // เวอร์ชันที่เผยแพร่แล้วต้องไม่ถูกแตะ
+        $this->assertNotNull(DocumentTemplateVersion::find($active->id));
+    }
+
+    public function test_a_published_version_cannot_be_deleted(): void
+    {
+        $admin = $this->admin();
+        $version = $this->pdfTemplate('undeletable_form');
+
+        $this->actingAs($admin)->deleteJson("/api/admin/document-engine/versions/{$version->id}")->assertStatus(422);
+
+        $this->assertNotNull(DocumentTemplateVersion::find($version->id));
+    }
+
+    public function test_a_draft_with_documents_attached_cannot_be_deleted(): void
+    {
+        $admin = $this->admin();
+        $version = $this->pdfTemplate('referenced_draft_form', DocumentTemplateVersion::STATUS_DRAFT);
+        [$leave] = $this->approvedLeave();
+        $leave->forceFill(['document_template_version_id' => $version->id])->save();
+
+        $this->actingAs($admin)->deleteJson("/api/admin/document-engine/versions/{$version->id}")->assertStatus(422);
+
+        $this->assertNotNull(DocumentTemplateVersion::find($version->id));
+    }
+
     public function test_a_published_version_cannot_have_its_fields_moved(): void
     {
         $admin = $this->admin();

@@ -180,6 +180,60 @@
           </div>
         </div>
 
+        <!-- เพิ่ม/แก้กติกาผูกแบบฟอร์ม -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <h3 class="font-bold text-gray-800 text-sm mb-3">
+            {{ bindingForm.id ? 'แก้กติกาการผูกแบบฟอร์ม' : 'ผูกแบบฟอร์มกับประเภทการลา' }}
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+            <label class="block">
+              <span class="block text-[11px] font-bold text-gray-500 uppercase mb-1">ใช้กับ</span>
+              <select v-model="bindingForm.entity_type" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
+                <option value="LEAVE_TYPE">ประเภทการลา</option>
+                <option value="LEAVE_CANCELLATION">คำขอยกเลิกวันลา</option>
+              </select>
+            </label>
+
+            <label class="block">
+              <span class="block text-[11px] font-bold text-gray-500 uppercase mb-1">รายการ</span>
+              <select v-model="bindingForm.entity_id" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
+                <option :value="null">ทุกรายการ</option>
+                <option v-for="type in leaveTypeOptions" :key="type.id" :value="type.id">{{ type.name }}</option>
+              </select>
+            </label>
+
+            <label class="block md:col-span-2">
+              <span class="block text-[11px] font-bold text-gray-500 uppercase mb-1">แบบฟอร์ม</span>
+              <select v-model="bindingForm.document_template_id" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
+                <option :value="null">เลือกแบบฟอร์ม</option>
+                <option v-for="t in templates" :key="t.id" :value="t.id">{{ t.name }}</option>
+              </select>
+            </label>
+
+            <div class="flex gap-2">
+              <button
+                @click="saveBinding"
+                :disabled="!bindingForm.document_template_id"
+                class="flex-1 px-4 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm min-h-[44px] disabled:opacity-50"
+              >
+                {{ bindingForm.id ? 'บันทึก' : 'ผูกแบบฟอร์ม' }}
+              </button>
+              <button
+                v-if="bindingForm.id"
+                @click="resetBindingForm"
+                class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm min-h-[44px]"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-gray-400 mt-2">
+            หนึ่งรายการควรใช้แบบฟอร์มเดียว — ถ้าผูกซ้ำ ระบบจะเลือกกติกาที่ลำดับน้อยกว่า
+          </p>
+        </div>
+
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
         <table class="w-full text-sm min-w-[760px]">
           <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
@@ -200,6 +254,7 @@
               <td class="px-5 py-3 font-semibold text-gray-800">{{ rule.template?.name || '—' }}</td>
               <td class="px-5 py-3">{{ rule.priority }}</td>
               <td class="px-5 py-3 text-right">
+                <button @click="editBinding(rule)" class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-xs font-semibold mr-2">แก้ไข</button>
                 <button @click="removeBinding(rule)" class="px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 text-xs font-semibold">ลบ</button>
               </td>
             </tr>
@@ -445,6 +500,7 @@ const calibrations = ref([])
 const reports = ref([])
 const reportResult = ref(null)
 const unboundLeaveTypes = ref([])
+const bindingForm = ref({ id: null, module: 'LEAVE', entity_type: 'LEAVE_TYPE', entity_id: null, document_template_id: null })
 
 const tabs = [
   { value: 'templates', label: 'แบบฟอร์มเอกสาร' },
@@ -585,6 +641,34 @@ const createTemplate = async () => {
 
 const openTemplate = (template) => {
   router.push({ name: 'document-designer', params: { templateId: template.id } })
+}
+
+const leaveTypeOptions = computed(() => bindingEntities.value?.LEAVE?.[bindingForm.value.entity_type] || [])
+
+const resetBindingForm = () => {
+  bindingForm.value = { id: null, module: 'LEAVE', entity_type: 'LEAVE_TYPE', entity_id: null, document_template_id: null }
+}
+
+const editBinding = (rule) => {
+  bindingForm.value = {
+    id: rule.id,
+    module: rule.module,
+    entity_type: rule.entity_type,
+    entity_id: rule.entity_id,
+    document_template_id: rule.document_template_id,
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const saveBinding = async () => {
+  try {
+    const res = await api.post('/admin/document-engine/bindings', bindingForm.value)
+    alertStore.success(res.data.message)
+    resetBindingForm()
+    await loadAll()
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || Object.values(error.response?.data?.errors || {})[0]?.[0] || 'ผูกแบบฟอร์มไม่สำเร็จ')
+  }
 }
 
 const removeBinding = async (rule) => {
