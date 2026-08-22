@@ -374,7 +374,7 @@ const seedDefaults = async (overwrite = false) => {
     message.value = overwrite ? 'คืนค่าแบบฟอร์มตั้งต้นเรียบร้อยแล้ว' : 'ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว'
     alertStore.success(message.value)
     await fetchTemplates()
-  } catch (err) {
+  } catch {
     alertStore.error('ซิงค์ล้มเหลว')
   } finally {
     seeding.value = false

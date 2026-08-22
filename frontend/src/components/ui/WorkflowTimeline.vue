@@ -298,7 +298,7 @@ const workflowSteps = computed(() => {
 
   // Step 1 (optional): Substitute
   if (l.substitute_id || l.substitute) {
-    let subState = 'pending';
+    let subState;
     let subText = 'รอรับทราบ';
     if (l.substitute_status === 'Accepted') {
       subState = 'completed';

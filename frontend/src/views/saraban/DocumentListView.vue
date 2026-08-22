@@ -252,18 +252,19 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import Swal from 'sweetalert2'
+import api from '../../axios'
+import { useSarabanDocumentStore } from '../../stores/useSarabanDocumentStore'
+import { useAuthStore } from '../../stores/auth'
 import { sarabanStatusConfig } from '../../utils/statusHelper'
-import { getErrorMessage } from '../../utils/errorHandler'
 import LoadingState from '../../components/ui/LoadingState.vue'
-import EmptyState from '../../components/ui/EmptyState.vue'
-import ErrorState from '../../components/ui/ErrorState.vue'
 import { ICONS } from '../../utils/icons'
 
 const store = useSarabanDocumentStore()
 const authStore = useAuthStore()
 const route = useRoute()
 const documents = computed(() => store.documents)
-const loadError = ref('')
 
 const stats = ref({ total: 0, unread: 0, urgent: 0, pinned: 0 })
 const documentTypes = ref([])
@@ -455,7 +456,7 @@ const togglePin = async (doc) => {
   try {
     await store.updateDocumentState(doc.id, { is_pinned: !doc.is_pinned })
     fetchStats()
-  } catch (err) {
+  } catch {
     Swal.fire('ผิดพลาด', 'ไม่สามารถเปลี่ยนสถานะปักหมุดได้', 'error')
   }
 }
@@ -476,7 +477,7 @@ const hideDocument = (id) => {
         await store.updateDocumentState(id, { is_hidden: true })
         fetchStats()
         Swal.fire('ลบสำเร็จ', 'ลบออกจากรายการของคุณแล้ว', 'success')
-      } catch (err) {
+      } catch {
         Swal.fire('ผิดพลาด', 'ไม่สามารถลบรายการได้', 'error')
       }
     }

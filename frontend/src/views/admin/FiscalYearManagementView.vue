@@ -173,7 +173,7 @@ const fetchFiscalYears = async () => {
   try {
     const res = await api.get('/admin/fiscal-years')
     fiscalYears.value = res.data
-  } catch (e) {
+  } catch {
     alertStore.error('ไม่สามารถโหลดข้อมูลปีงบประมาณได้')
   } finally {
     loading.value = false

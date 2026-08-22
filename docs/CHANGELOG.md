@@ -4,6 +4,40 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [SEC-HOTFIX-01] - 2026-08-22
+
+Security hotfix รอบ Saraban / runtime / dependency พร้อมตั้งด่านคุณภาพฝั่งหน้าเว็บ
+
+#### Security
+- **SEC-020 Dependency advisory** — `axios` 1.17.0 มี advisory ระดับ high 10 รายการ (DoS จาก recursion ใน `formDataToJSON`, prototype pollution, bypass `maxBodyLength`, NO_PROXY bypass) → pin 1.19.0; `nanoid` และ `postcss` เป็น dependency ทางอ้อมของ vite/@vue/compiler-sfc ที่ยังไม่ปล่อยรุ่นยกเวอร์ชัน → pin ผ่าน `overrides` เป็น 3.3.18 / 8.5.26 ผลลัพธ์ `npm audit` = 0 (composer audit สะอาดอยู่แล้ว) และเพิ่ม `composer audit` / `npm audit --audit-level=high` เข้า CI
+- **SEC-021 `filesystems.disks.local.serve`** — ค่านี้เป็น `true` ทำให้ Laravel ลงทะเบียน route `storage/{path}` ที่เสิร์ฟทุกไฟล์ใต้ `storage/app/private` ออกทาง HTTP **โดยไม่ผ่าน authentication** ซึ่งย้อนเจตนาของ SEC-001 ทั้งหมด (ลายเซ็น ภาพลงเวลา ไฟล์แนบสารบรรณอยู่ใต้ root นี้) — ปิดเป็น `false` ทางเข้าเหลือ `GET /api/files/{path}` ทางเดียว
+- **SEC-022 Production runtime guard** — เดิมตรวจเฉพาะ `APP_DEBUG` ตอน boot ซึ่งมีผลเป็น HTTP 500 รายคำขอ ตัว container ยังขึ้นและ migrate ตามปกติ จึงดูเหมือน deploy สำเร็จทั้งที่ตั้งค่าไม่ปลอดภัย — เพิ่ม `php artisan app:verify-environment` เป็นคำสั่งแรกของ backend/worker/scheduler ใน compose คืน exit code ไม่ใช่ 0 แล้ว container ออกทันทีก่อน migrate ด่านตรวจครอบ `APP_ENV` ที่พิมพ์ผิด, `APP_DEBUG` ใน production, `APP_KEY` ว่าง, `APP_URL` ที่เป็น http และ `local.serve`
+- **SEC-023 ไฟล์แนบสารบรรณ** — กฎตรวจเดิมมีเพียง `file|max:20480` ผู้ที่สร้างหนังสือได้จึงอัปโหลด `.php`, `.html`, `.svg`, `.exe` เข้าสู่ storage ได้ — เพิ่ม allowlist สองชั้นใน `config/saraban.php` (`mimetypes:` ตรวจจาก magic bytes ของเนื้อไฟล์ + `extensions:` ตรวจนามสกุลจริง), ชื่อไฟล์บนดิสก์เป็น UUID เสมอ และ `mime_type` ที่บันทึกมาจาก `getMimeType()` ไม่ใช่ `getClientMimeType()` ที่ปลอมได้
+- **SEC-024 ดาวน์โหลดไฟล์แนบพัง** — ทุกจุดที่เขียนไฟล์เขียนลง `private_uploads` แต่ `downloadAttachment()` อ่านจาก disk `public` ปุ่มดาวน์โหลดจึงตอบ 404 กับไฟล์แนบทุกไฟล์ (เทสต์เดิม `Storage::fake('public')` ผิด disk จึงไม่จับ) — แก้ให้อ่าน disk เดียวกับที่เขียน พร้อม `Cache-Control: private, no-store` และ `X-Content-Type-Options: nosniff`
+- **SEC-025 IDOR ของ read/state** — `POST /documents/{id}/read` และ `/documents/{id}/state` ผ่านเพียง `permission:saraban.document.view` ระดับ route แล้วเขียนแถวสถานะจาก id ที่ส่งมาตรง ๆ ผู้ใช้ที่ล็อกอินคนใดก็ได้จึงไล่เลข id เพื่อผูกตัวเองกับหนังสือของหน่วยงานอื่น เขียนทับ `read_at` ซึ่งเป็นหลักฐานการรับทราบ และยืนยันการมีอยู่ของหนังสือลับได้ — ทั้งสองเส้นทางใช้ route model binding + `DocumentPolicy::view` + middleware `saraban.classified` แล้ว
+- **SEC-026 การเวียนหนังสือ** — `POST /documents/{id}/circular` รับ `user_ids` มาเท่าไรก็สร้างผู้รับเท่านั้นโดยไม่ตรวจสิทธิ์ผู้รับเลย ขณะที่ `/circulars/incoming` ส่งเนื้อหนังสือกลับไปให้ผู้รับ การเวียนจึงเป็นทางลัดส่งหนังสือ (รวมถึงหนังสือชั้นความลับ) ไปให้ใครก็ได้ — ผู้รับต้องมี `saraban.document.view` และต้องมี `saraban.document.view_classified` เมื่อหนังสือเป็นชั้นความลับ มิฉะนั้นตอบ 422 ทั้งคำขอ
+- **SEC-027 บัญชีทดสอบบนหน้าเข้าสู่ระบบ** — หน้า login มีปุ่ม "บัญชีทดสอบ" ที่กรอกทั้งอีเมลและ **รหัสผ่าน** ของบัญชี seed ทั้ง 6 บทบาทให้ทันที รวมถึงผู้ดูแลระบบสูงสุด และถูก build ติดไปกับหน้าเว็บ production ใครก็ตามที่เปิดหน้าเข้าสู่ระบบได้จึงเข้าเป็น Super Admin ได้ในคลิกเดียวหากฐานข้อมูลนั้นยังมีบัญชี seed อยู่ — ปิดไว้หลัง `import.meta.env.DEV` ทั้งแผงและตารางบัญชีถูกตัดออกจาก bundle ของ production และ CI ตรวจซ้ำว่าไม่มีค่าเหล่านี้ใน `dist/`
+- **DEPLOY-006 Vite dev server ใน production compose** — `docker-compose.yml` (ไฟล์เดียวกับที่ `docs/deployment/PRODUCTION-DEPLOYMENT.md` สั่งให้ใช้ deploy) มี service ที่รัน `npm run dev -- --host 0.0.0.0` และ publish พอร์ต 5173 ออกทุกอินเทอร์เฟซ ซึ่งเป็น dev server ที่ไม่มี authentication, เสิร์ฟ source ดิบและ source map ทั้งโครงการ, และเปิด websocket HMR — ย้ายไป `docker-compose.dev.yml` ที่ต้องสั่งใช้อย่างชัดเจนและผูกพอร์ตไว้ที่ 127.0.0.1 เท่านั้น ส่วน compose หลักเหลือ job `frontend_build` (profile `build`) ที่สร้าง `frontend/dist` แล้วจบการทำงาน
+
+#### Fixed
+- **AppButton.vue พัง** — `props.block ? "w-full' : ''` เครื่องหมายคำพูดไม่ตรงกัน เป็น syntax error ที่ทำให้ปุ่มกลางของระบบคอมไพล์ไม่ผ่าน
+- **หน้ารายละเอียดหนังสือสารบรรณเปิดไม่ได้เลย** — `import { ICONS }` ตกค้างอยู่ **ภายใน `<template>`** ไม่ใช่ใน `<script setup>` ทำให้ `ICONS` เป็น undefined และหน้าล้มด้วย `Cannot read properties of undefined (reading 'document')` ตั้งแต่เรนเดอร์แรก
+- **หน้าทะเบียนหนังสือเปิดไม่ได้เลย** — `useSarabanDocumentStore`, `useAuthStore`, `useRoute`, `api`, `Swal` ถูกใช้โดยไม่ได้ import
+- **ลงลายเซ็นแบบวาดใช้ไม่ได้** — `SignaturePad` และ `nextTick` ถูกใช้โดยไม่ได้ import (`signature_pad` เป็น dependency ที่ไม่เคยถูก import ที่ใดเลย)
+- **REPORT-005 รายงานสถิติการลาผูกกับชื่อไทยของประเภทการลา** — SQL เดิมเทียบ `leave_types.name LIKE '%ป่วย%'` ตรง ๆ ผู้ดูแลเปลี่ยนชื่อประเภทการลาจากหน้าจอเมื่อไร ยอดในรายงานก็หายไปเงียบ ๆ เมื่อนั้น และประเภทที่ผู้ดูแลเพิ่มเองไม่มีทางเข้ารายงานได้ — ย้ายมายึด `leave_types.code_prefix` ผ่าน `config/leave_reporting.php` + `LeaveReportCategoryResolver` (ประเภทเก่าที่ยังไม่มีรหัสยังนับได้ผ่านทางถอยด้วยชื่อ)
+
+#### Changed
+- ข้อความตอบกลับ API ที่ยังเป็นภาษาอังกฤษ 20 รายการ (สารบรรณ / หน่วยงาน / การแจ้งเตือน / ตั้งค่า / ออกจากระบบ) แปลเป็นภาษาไทย
+- ป้ายชื่อบทบาทบนแถบเมนูเคยแสดงค่าดิบจากฐานข้อมูล (เช่น `Document Officer`) — แปลงเป็นชื่อไทยที่ชั้นแสดงผล โดยไม่แตะ `roles.name` ที่ server ใช้ตัดสินสิทธิ์
+- ป้าย/หัวข้อภาษาอังกฤษล้วนในหน้าตั้งค่าอีเมล–Telegram, จัดการผู้ใช้, โปรไฟล์, ลงเวลา, จัดการ workflow และหน้าเข้าสู่ระบบ แปลเป็นภาษาไทย และลบคอมโพเนนต์ตัวอย่างของ Vite (`HelloWorld.vue`) ที่ไม่มีใครใช้ทิ้ง
+- `DocumentPolicy::isInvolved()` นับผู้ได้รับหนังสือเวียนเป็นผู้เกี่ยวข้องด้วย — เดิมระบบเวียนหนังสือขัดกันเอง คือส่งเนื้อหนังสือกลับไปให้ผู้รับแต่ผู้รับกดเปิดหน้ารายละเอียดแล้วได้ 403
+
+#### Added
+- **Quality tooling ฝั่งหน้าเว็บ** (เดิมไม่มีเลย มีแต่ `npm run build`) — ESLint 10 + eslint-plugin-vue (flat config ระดับ "จับบั๊กจริง"), `vue-tsc --noEmit` เป็นด่านคอมไพล์ SFC ทั้งโครงการ, Vitest + jsdom พร้อมเทสต์ 14 เคสของ `errorHandler` และ `secureFile` ทั้งหมดถูกผูกเข้า CI
+- ทำความสะอาดโค้ดตายที่ linter จับได้ 97 จุด รวมถึงตัวช่วยที่ยังประกอบ URL `/storage/...` ตรง ๆ (แนวทางที่ SEC-001 เลิกใช้แล้ว)
+- Test suite ใหม่: `DocumentStateAuthorizationTest` (IDOR read/state 8 เคส), `DocumentAttachmentTest` (upload→download round-trip + ไฟล์อันตราย 12 เคส), `CircularAuthorizationTest` (7 เคส), `LeaveReportCategoryTest` (5 เคส), `RuntimeSecurityConfigurationTest` (ตรึงค่าความปลอดภัยระดับ runtime/deployment 8 เคส) และขยาย `ProductionEnvironmentGuardTest`
+
+
 ### [DOC-ENGINE-10] - 2026-08-20
 #### Fixed
 - Document Engine เคยเรนเดอร์ด้วย "เวอร์ชันแบบฟอร์มที่ใช้อยู่ปัจจุบัน" เสมอ ทำให้ใบลาที่ยื่นไว้ก่อนเผยแพร่แบบฟอร์ม PDF จะเปลี่ยนไปพิมพ์บนแบบฟอร์มใหม่ ขัดกับข้อกำหนดเอกสารย้อนหลัง — ปัจจุบันยึดเวอร์ชันที่ใบลา pin ไว้ตอนยื่น (`leaves.document_template_version_id`): ใบที่ยื่นตอนแบบฟอร์มยังเป็น HTML จะพิมพ์ด้วยเส้นทางเดิมตลอดไป ส่วนใบที่ยื่นหลังเผยแพร่จะได้แบบฟอร์ม PDF ตามที่ตั้งค่า

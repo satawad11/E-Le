@@ -78,7 +78,7 @@ const fetchNotifications = async () => {
   try {
     const res = await api.get('/notifications')
     notifications.value = res.data
-  } catch (error) {
+  } catch {
     console.error('Failed to load notifications')
   }
 }
@@ -87,7 +87,7 @@ const markAllAsRead = async () => {
   try {
     await api.post('/notifications/mark-all-read')
     notifications.value.forEach(n => n.read_at = new Date().toISOString())
-  } catch (error) {
+  } catch {
     console.error('Failed to mark all as read')
   }
 }
@@ -98,7 +98,7 @@ const markAsRead = async (id) => {
   try {
     await api.put(`/notifications/${id}/read`)
     notif.read_at = new Date().toISOString()
-  } catch (error) {
+  } catch {
     console.error('Failed to mark as read')
   }
 }

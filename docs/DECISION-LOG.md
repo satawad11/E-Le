@@ -228,3 +228,89 @@
   - เพิ่มแบบฟอร์ม/เวอร์ชัน/รายงานใหม่ได้จากหน้าผู้ดูแลโดยไม่ต้องแก้โค้ด
   - Engine ไม่ผูกกับ E-Leave — โมดูลอื่นใช้ได้ด้วยการเพิ่ม provider + binding rule
   - ยังต้องทำต่อ: ย้าย leave type ที่เหลือเข้า engine (DOC-ENGINE-05) และหน้าออกแบบรายงานแบบลากคอลัมน์ (DOC-ENGINE-07)
+
+## ADR-SEC-HOTFIX-01-A: ด่านตรวจ environment แยกทาง HTTP กับทาง console
+
+- **Status**: Accepted
+- **Date**: 2026-08-22
+- **Context**:
+  `ProductionEnvironmentGuard` เดิมโยน `LogicException` ใน `AppServiceProvider::boot()`
+  ซึ่งมีผลเป็น HTTP 500 รายคำขอเท่านั้น container ยังขึ้น ยัง migrate และดูเหมือน
+  deploy สำเร็จทั้งที่ตั้งค่าไม่ปลอดภัย
+  หากปล่อยให้โยนทาง console ด้วย ผู้ดูแลจะรัน artisan อะไรไม่ได้เลย
+  รวมถึงคำสั่งที่ใช้ "แก้" ปัญหา (`config:clear`, `key:generate`)
+- **Decision**:
+  1. ทาง HTTP: ปฏิเสธทุกคำขอทันทีเมื่อการตั้งค่าไม่ปลอดภัย (เหมือนเดิม)
+  2. ทาง console: ไม่โยน — ใช้คำสั่ง `app:verify-environment` เป็นด่านแทน
+  3. `docker-compose.yml` เรียกคำสั่งนี้เป็นคำสั่งแรกของ backend / worker / scheduler
+     ก่อน `migrate` เมื่อไม่ผ่าน คำสั่งถัดไปไม่ถูกรันและ container ออกทันที
+  4. `problems()` คืนปัญหาทุกข้อพร้อมกัน ไม่หยุดที่ข้อแรก
+- **Consequences**:
+  - ระบบที่ตั้งค่าไม่ปลอดภัยไม่มีทางขึ้นให้บริการ และไม่มีการเปลี่ยน schema ก่อนรู้ตัว
+  - ผู้ดูแลยังแก้ปัญหาจาก CLI ได้
+  - `RuntimeSecurityConfigurationTest` ตรึงลำดับคำสั่งใน compose ไว้
+
+## ADR-SEC-HOTFIX-01-B: การจัดกลุ่มประเภทการลาในรายงานยึดรหัส ไม่ใช่ชื่อ
+
+- **Status**: Accepted
+- **Date**: 2026-08-22
+- **Context**:
+  รายงานสถิติการลาแยกช่องด้วย `leave_types.name LIKE '%ป่วย%'` ที่ฝังอยู่ใน SQL
+  ชื่อประเภทการลาเป็นข้อมูลที่ผู้ดูแลแก้ได้จากหน้าจอ การเปลี่ยนชื่อจึงทำให้ยอด
+  ในรายงานหายไปเงียบ ๆ โดยไม่มีข้อผิดพลาดใด ๆ และประเภทที่ผู้ดูแลเพิ่มเอง
+  ไม่มีทางเข้ารายงานได้เลย
+- **Decision**:
+  1. ยึด `leave_types.code_prefix` ซึ่งเป็นรหัสประจำประเภทการลาที่ไม่เปลี่ยนตามชื่อ
+  2. การจับคู่ "กลุ่มของรายงาน → รหัส" ตั้งค่าได้ที่ `config/leave_reporting.php`
+     (override ผ่าน env ได้สำหรับ deployment ที่ใช้รหัสของตัวเอง)
+  3. `LeaveReportCategoryResolver` เป็นจุดเดียวที่รู้ว่ากลุ่มไหนมีประเภทใดบ้าง
+  4. คงทางถอยด้วยชื่อไว้ **เฉพาะ** ประเภทที่ยังไม่มีรหัส เพื่อไม่ให้ข้อมูลเดิมหาย
+     ตอนอัปเกรด — ประเภทที่มีรหัสแล้วตัดสินด้วยรหัสอย่างเดียว
+- **Consequences**:
+  - เปลี่ยนชื่อประเภทการลาได้โดยรายงานไม่เพี้ยน
+  - เพิ่มกลุ่มใหม่ในรายงานทำได้จาก config ไฟล์เดียว (dataset + catalog ใช้ค่าเดียวกัน)
+  - ยังต้องตั้ง `code_prefix` ให้ประเภทการลาที่ผู้ดูแลเพิ่มเอง มิฉะนั้นจะเข้าเฉพาะยอดรวม
+
+## ADR-SEC-HOTFIX-01-C: ผู้ได้รับหนังสือเวียนนับเป็นผู้เกี่ยวข้องกับหนังสือ
+
+- **Status**: Accepted
+- **Date**: 2026-08-22
+- **Context**:
+  `DocumentPolicy::isInvolved()` นับเฉพาะผู้สร้างและผู้รับที่ระบุบนหนังสือ
+  แต่ `/api/saraban/circulars/incoming` ส่งเนื้อหนังสือกลับไปให้ผู้รับหนังสือเวียน
+  (eager load `circular.document`) ระบบจึงขัดกันเอง: ผู้รับเห็นข้อมูลที่ policy
+  ไม่อนุญาต แต่พอกดเปิดหน้ารายละเอียดกลับได้ 403 — ทั้งรั่วและใช้งานไม่ได้พร้อมกัน
+  ขณะเดียวกัน `CircularController::send()` ไม่ตรวจสิทธิ์ผู้รับเลย การเวียนจึงเป็น
+  ทางลัดส่งหนังสือ (รวมหนังสือชั้นความลับ) ไปให้ใครก็ได้ในระบบ
+- **Decision**:
+  1. `isInvolved()` นับผู้ได้รับหนังสือเวียนด้วย — การเวียนคือการอนุญาตให้อ่าน
+  2. ด่านคัดกรองย้ายไปอยู่ที่ "ตอนเวียน": ผู้รับต้องมี `saraban.document.view`
+     และต้องมี `saraban.document.view_classified` เมื่อหนังสือเป็นชั้นความลับ
+  3. ผู้รับรายเดียวที่ไม่ผ่านทำให้ทั้งคำขอตกไป (422) ไม่ส่งบางส่วนเงียบ ๆ
+  4. ตรวจที่ "สิทธิ์" ไม่ใช่ `can('view', $document)` เพราะการเวียนนี่เองคือสิ่งที่
+     ทำให้ผู้รับกลายเป็นผู้เกี่ยวข้อง
+- **Consequences**:
+  - ฟีเจอร์เวียนหนังสือใช้งานได้จริงเป็นครั้งแรก
+  - ชั้นความลับยังถูกบังคับใน `view()` อีกชั้นหนึ่งเสมอ
+  - `CircularAuthorizationTest` ตรึงพฤติกรรมทั้งด้านอนุญาตและด้านปฏิเสธ
+
+## ADR-SEC-HOTFIX-01-D: แยก compose ของการพัฒนาออกจาก compose ที่ใช้ deploy
+
+- **Status**: Accepted
+- **Date**: 2026-08-22
+- **Context**:
+  `docker-compose.yml` เป็นไฟล์เดียวกับที่ `docs/deployment/PRODUCTION-DEPLOYMENT.md`
+  สั่งให้ใช้ deploy แต่มี service ที่รัน `npm run dev -- --host 0.0.0.0`
+  และ publish พอร์ต 5173 ออกทุกอินเทอร์เฟซ ซึ่งเป็น dev server ที่ไม่มี
+  authentication เสิร์ฟ source ดิบและ source map ทั้งโครงการ และเปิด websocket HMR
+  ไม่เลือกใช้ `docker-compose.override.yml` เพราะ compose โหลดให้อัตโนมัติ
+  production ที่ `git pull` repo เดียวกันจะได้ dev server กลับมาเงียบ ๆ
+- **Decision**:
+  1. dev server ย้ายไป `docker-compose.dev.yml` ซึ่งต้องระบุด้วย `-f` อย่างชัดเจน
+     และผูกพอร์ตไว้ที่ `127.0.0.1` เท่านั้น
+  2. compose หลักเหลือ job `frontend_build` (profile `build`) ที่สร้าง
+     `frontend/dist` ให้ nginx เสิร์ฟ แล้วจบการทำงาน ไม่มีพอร์ตเปิดออก
+- **Consequences**:
+  - `docker compose up -d` บน production ไม่มีทางได้ dev server
+  - นักพัฒนาต้องเปลี่ยนคำสั่งเป็น `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d`
+  - `RuntimeSecurityConfigurationTest` ล้มทันทีถ้ามีใครใส่พอร์ต 5173 กลับเข้า compose หลัก

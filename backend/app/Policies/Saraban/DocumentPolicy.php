@@ -30,11 +30,24 @@ class DocumentPolicy
 
     /**
      * A document is visible to its creator, its receivers, and to registrars.
+     *
+     * SEC-026 — ผู้ที่ได้รับหนังสือเวียนนับเป็นผู้เกี่ยวข้องด้วย
+     *
+     * เดิมไม่นับ ผลคือระบบเวียนหนังสือขัดกันเอง: `/circulars/incoming` ส่งเนื้อ
+     * หนังสือกลับไปให้ผู้รับ (eager load `circular.document`) แต่พอผู้รับกดเปิด
+     * หน้ารายละเอียดกลับได้ 403 — ทั้งเห็นข้อมูลที่ policy ไม่อนุญาต
+     * และใช้งานฟีเจอร์ไม่ได้ไปพร้อมกัน
+     *
+     * ชั้นความลับยังถูกบังคับแยกต่างหากใน view() และผู้ส่งก็เลือกผู้รับที่ไม่มี
+     * สิทธิ์เห็นไม่ได้ตั้งแต่ต้น (CircularController::send)
      */
     private function isInvolved(User $user, Document $document): bool
     {
         return $document->created_by === $user->id
-            || $document->receivers()->where('users.id', $user->id)->exists();
+            || $document->receivers()->where('users.id', $user->id)->exists()
+            || $document->circulars()
+                ->whereHas('recipients', fn ($query) => $query->where('user_id', $user->id))
+                ->exists();
     }
 
     public function viewAny(User $user): bool

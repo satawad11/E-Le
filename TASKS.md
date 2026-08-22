@@ -360,3 +360,23 @@
 - [x] DOC-ENGINE-REPORT รายงานปิดเฟส — **PASS 2026-08-20** · `docs/checkpoints/DOC-ENGINE-REPORT.md`
 - [ ] วางตำแหน่งฟิลด์บนแบบฟอร์มราชการ 5 ฉบับที่นำเข้าแล้ว แล้วกดเผยแพร่ (ต้องทำโดยผู้ดูแลระบบผ่านหน้า PDF Designer)
 - [x] กรอกข้อมูลสถานศึกษาในหน้าตั้งค่าระบบ — **เสร็จ 2026-08-20 (ผู้ดูแลกรอกแล้ว)**
+
+## SEC-HOTFIX-01 — Security hotfix (Saraban / runtime / dependency) ✅ เสร็จ 2026-08-22
+
+- [x] SEC-020 อัปเดต dependency ที่มี advisory โดย pin เวอร์ชัน — axios 1.19.0, overrides nanoid 3.3.18 / postcss 8.5.26 (`npm audit` = 0, `composer audit` สะอาด) + เพิ่ม audit ทั้งสองฝั่งเข้า CI
+- [x] SEC-021 ปิด `filesystems.disks.local.serve` — ตัด route ที่เสิร์ฟไฟล์ใต้ `storage/app/private` โดยไม่ผ่าน authentication
+- [x] SEC-022 Production runtime guard — `php artisan app:verify-environment` เป็นคำสั่งแรกของ backend/worker/scheduler container หยุดก่อน migrate เมื่อ `APP_ENV`/`APP_DEBUG`/`APP_KEY`/`APP_URL`/`local.serve` ไม่ปลอดภัย
+- [x] DEPLOY-006 เลิก expose Vite dev server ใน production compose — ย้ายไป `docker-compose.dev.yml` (ผูก 127.0.0.1), compose หลักเหลือ job `frontend_build`
+- [x] SEC-025 authorize `read()` และ `updateState()` ด้วย `DocumentPolicy::view` + route model binding + `saraban.classified` (403/404 สม่ำเสมอ)
+- [x] AUDIT-007 audit สำหรับ read ครั้งแรก และการซ่อนหนังสือ (`document.read`, `document.state.hidden`)
+- [x] SEC-024 แก้ download ให้อ่านจาก `private_uploads` (เดิมอ่าน disk `public` จึง 404 ทุกไฟล์) + `no-store` / `nosniff`
+- [x] SEC-023 MIME allowlist จากเนื้อไฟล์ + allowlist นามสกุล + ชื่อไฟล์ UUID (`config/saraban.php`)
+- [x] SEC-026 ตรวจ actions Saraban ทั้งสาย upload → view → download → read → pin/hide → circulate — พบและปิดช่องเวียนหนังสือให้ผู้ไม่มีสิทธิ์ และแก้ให้ผู้รับหนังสือเวียนเปิดอ่านได้จริง
+- [x] REPORT-005 รายงานเลิก match ชื่อไทยของประเภทการลา — ยึด `leave_types.code_prefix` ผ่าน `config/leave_reporting.php`
+- [x] UI-THAI-02 แปลข้อความ API 20 รายการ และป้าย/หัวข้อ UI ที่เหลือเป็นภาษาไทย (รวมป้ายบทบาทบนแถบเมนู)
+- [x] Regression tests เพิ่ม 5 ชุด — IDOR read/state, upload/download round-trip + ไฟล์อันตราย, circulate, dependency/runtime assertions, report correctness เมื่อเปลี่ยนชื่อประเภทการลา
+- [x] QUALITY-002/003/004 ESLint + `vue-tsc` typecheck + Vitest ฝั่งหน้าเว็บ ผูกเข้า CI (เดิมมีแต่ `npm run build`)
+- [x] แก้บั๊กที่ linter/typecheck เพิ่งเปิดโปง — `AppButton.vue` syntax error, หน้าทะเบียนหนังสือและหน้ารายละเอียดหนังสือเปิดไม่ได้เลยจาก import ตกหล่น, ลงลายเซ็นแบบวาดใช้ไม่ได้
+- [x] Verification — backend 629 tests ผ่าน (5 skipped เป็นเทสต์ระดับ repo ที่รันจริงบน CI) · Pint ผ่าน · frontend lint/typecheck/test(14)/build ผ่าน · E2E ตาม role ผ่าน nginx จริง และ Desktop 1440 / Tablet 768 / Mobile 375 ไม่มี horizontal overflow
+- [ ] ทบทวนป้ายกำกับที่เป็น "ไทย (English)" ในหน้าผู้ดูแลราว 30 จุด (เช่น `รวม (SUM)`, `พิกัด GPS ละติจูด (Latitude)`) ว่าจะคงไว้เป็นคำอธิบายทางเทคนิคหรือถอดออกให้เป็นไทยล้วนตาม AGENTS.md — เป็นแบบแผนเดิมทั้งระบบ จึงควรตัดสินเป็นนโยบายครั้งเดียว
+- [x] SEC-027 แผง "บัญชีทดสอบ" บนหน้าเข้าสู่ระบบกรอกทั้งอีเมลและรหัสผ่านของบัญชี seed รวมถึง Super Admin และถูก build ติดไปกับหน้าเว็บ production — ปิดไว้หลัง `import.meta.env.DEV` แล้ว bundle จริงไม่มีค่าเหล่านี้อีก และ CI ตรวจซ้ำทุกครั้ง

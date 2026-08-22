@@ -51,6 +51,6 @@ const classes = computed(() => [
   variantClasses[props.variant],
   sizeClasses[props.size],
   (props.disabled || props.loading) ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer',
-  props.block ? "w-full' : ''
+  props.block ? 'w-full' : ''
 ]);
 </script>

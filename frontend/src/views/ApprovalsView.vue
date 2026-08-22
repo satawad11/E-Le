@@ -291,7 +291,6 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useLeaveStore } from '../stores/leave'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
-import api from '../axios'
 import { openSecureFile } from '../utils/secureFile'
 import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
 import { getErrorMessage } from '../utils/errorHandler'
@@ -326,13 +325,6 @@ let isDrawing = false
 let ctx = null
 const canvasSaved = ref(false)
 
-const getImageUrl = (path) => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  const base = api.defaults.baseURL?.replace('/api', '') || '';
-  return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
-}
-
 const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 10
@@ -365,7 +357,7 @@ const bulkApprove = async () => {
     try {
       await leaveStore.approveLeave(id, 'อนุมัติแบบกลุ่ม')
       successCount++
-    } catch (e) {
+    } catch {
       failCount++
     }
   }
@@ -502,12 +494,6 @@ const saveCanvas = () => {
 const prevPage = () => { if (currentPage.value > 1) currentPage.value-- }
 const nextPage = () => { if (currentPage.value < totalPages.value) currentPage.value++ }
 
-// สร้าง URL เต็มสำหรับไฟล์แนบ
-const attachmentUrl = (path) => {
-  const base = api.defaults.baseURL?.replace('/api', '') || ''
-  return `${base}/storage/${path}`
-}
-
 onMounted(() => loadApprovals())
 
 const loadApprovals = async () => {
@@ -582,7 +568,7 @@ const handleHrVerify = async (id) => {
     await leaveStore.hrVerify(id)
     alertStore.success('บันทึกการตรวจสอบสถิติแล้ว')
     await loadApprovals()
-  } catch (error) {
+  } catch {
     alertStore.error('เกิดข้อผิดพลาด')
   }
 }

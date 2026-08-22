@@ -260,7 +260,7 @@ async function toggleSarabanModule() {
   try {
     await settingStore.updateSetting('enable_saraban_menu', newValue);
     alertStore.showSuccess(newValue !== '0' ? 'เปิดใช้งานโมดูลสารบรรณแล้ว' : 'ปิดใช้งานโมดูลสารบรรณแล้ว');
-  } catch (err) {
+  } catch {
     alertStore.showError('ไม่สามารถเปลี่ยนสถานะโมดูลได้');
   } finally {
     savingModule.value = false;
@@ -273,7 +273,7 @@ async function toggleAttendanceModule() {
   try {
     await settingStore.updateSetting('enable_attendance_menu', newValue);
     alertStore.showSuccess(newValue !== '0' ? 'เปิดใช้งานระบบลงเวลาออนไลน์แล้ว' : 'ปิดใช้งานระบบลงเวลาออนไลน์แล้ว');
-  } catch (err) {
+  } catch {
     alertStore.showError('ไม่สามารถเปลี่ยนสถานะระบบลงเวลาได้');
   } finally {
     savingModule.value = false;

@@ -384,13 +384,6 @@ let isDrawing = false
 let ctx = null
 const canvasSaved = ref(false)
 
-const getImageUrl = (path) => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  const base = api.defaults.baseURL?.replace('/api', '') || '';
-  return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
-}
-
 const selectedLeaveTypeName = computed(() => {
   return leaveStore.types.find(t => t.id === form.leave_type_id)?.name || ''
 })
@@ -471,7 +464,7 @@ onMounted(async () => {
     const res = await api.get('/users/list')
     // Exclude self
     users.value = res.data.filter(u => u.id !== authStore.user?.id)
-  } catch (e) {
+  } catch {
     console.error('Failed to load users for substitute dropdown')
   }
 

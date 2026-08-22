@@ -183,7 +183,7 @@
             ></iframe>
 
             <div
-              v-for="(mapping, index) in pageMappings"
+              v-for="mapping in pageMappings"
               :key="mapping._key"
               class="absolute border-2 rounded cursor-move flex items-center px-1 overflow-hidden select-none"
               :class="selected === mapping
@@ -303,7 +303,7 @@ const loadVersion = async () => {
     selected.value = null
     currentPage.value = 1
     await loadPdf()
-  } catch (error) {
+  } catch {
     alertStore.error('โหลดตำแหน่งฟิลด์ไม่สำเร็จ')
   }
 }
@@ -315,7 +315,7 @@ const loadPdf = async () => {
   try {
     const res = await api.get(`/admin/document-engine/versions/${version.value.id}/pdf`, { responseType: 'blob' })
     pdfUrl.value = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
-  } catch (error) {
+  } catch {
     // แสดงกล่องฟิลด์ต่อได้แม้โหลดพื้นหลังไม่ขึ้น
     showBackground.value = false
   }
@@ -436,7 +436,7 @@ const preview = async () => {
   try {
     const res = await api.get(`/admin/document-engine/versions/${version.value.id}/preview`, { responseType: 'blob' })
     window.open(URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })), '_blank')
-  } catch (error) {
+  } catch {
     alertStore.error('สร้างตัวอย่างเอกสารไม่สำเร็จ — ตรวจสอบว่าอัปโหลดแบบฟอร์มต้นฉบับแล้วหรือยัง')
   }
 }

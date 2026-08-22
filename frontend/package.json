@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "@vuepic/vue-datepicker": "14.0.0",
     "@vueup/vue-quill": "1.5.5",
-    "axios": "1.17.0",
+    "axios": "1.19.0",
     "chart.js": "4.5.1",
     "date-fns": "4.4.0",
     "pinia": "3.0.4",
@@ -22,9 +26,23 @@
     "vue-router": "5.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@tailwindcss/vite": "4.3.1",
     "@vitejs/plugin-vue": "6.0.7",
+    "@vue/test-utils": "2.4.6",
+    "eslint": "10.9.0",
+    "eslint-plugin-vue": "10.10.0",
+    "globals": "16.5.0",
+    "jsdom": "30.0.1",
     "tailwindcss": "4.3.1",
-    "vite": "8.0.16"
+    "typescript": "5.9.3",
+    "vite": "8.0.16",
+    "vitest": "4.1.11",
+    "vue-tsc": "3.3.11"
+  },
+  "//overrides": "SEC-020 — advisory ของ dependency ทางอ้อม: nanoid <=3.3.17 (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8) และ postcss <=8.5.22 (GHSA-fxqj-rqcc-2cmp, GHSA-r28c-9q8g-f849) ทั้งคู่มาจาก vite/@vue/compiler-sfc ซึ่งยังไม่ปล่อยรุ่นที่ยกเวอร์ชันให้ จึง pin ผ่าน overrides ทั้งคู่เป็นรุ่นแก้ไขในสาย major เดิม (ไม่มี breaking change)",
+  "overrides": {
+    "nanoid": "3.3.18",
+    "postcss": "8.5.26"
   }
 }

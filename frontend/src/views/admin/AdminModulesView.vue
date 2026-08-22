@@ -74,7 +74,7 @@ const fetchSettings = async () => {
     settings.value.enable_saraban_menu = response.data.enable_saraban_menu ?? '1'
     settings.value.enable_attendance_menu = response.data.enable_attendance_menu ?? '1'
     settings.value.enable_leave_menu = response.data.enable_leave_menu ?? '1'
-  } catch (error) {
+  } catch {
     alertStore.error('โหลดข้อมูลการตั้งค่าล้มเหลว')
   }
 }
@@ -89,7 +89,7 @@ const saveSettings = async () => {
     setTimeout(() => {
         window.location.reload();
     }, 1500)
-  } catch (error) {
+  } catch {
     alertStore.error('เกิดข้อผิดพลาดในการบันทึก')
   } finally {
     isSaving.value = false

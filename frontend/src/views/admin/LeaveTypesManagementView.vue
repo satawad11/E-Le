@@ -354,7 +354,7 @@ const submitForm = async () => {
 
     if (editMode.value) {
       // max_days เป็นค่าตั้งต้นเท่านั้น แก้ไม่ได้หลังสร้าง — สิทธิ์จริงอยู่ที่ leave_policies
-      const { max_days, ...payload } = payloadBase
+      const { max_days: _ignoredMaxDays, ...payload } = payloadBase
       await api.put(`/admin/leave-types/${editId.value}`, payload)
     } else {
       await api.post('/admin/leave-types', payloadBase)

@@ -113,12 +113,10 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useAuthStore } from '../../stores/auth'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 import { openAuthenticatedReport, reportErrorMessage } from '../../utils/secureFile'
 
-const authStore = useAuthStore()
 const alertStore = useAlertStore()
 
 const loading = ref(false)
@@ -127,7 +125,6 @@ const records = ref([])
 const departments = ref([])
 const yearOptions = ref([])
 const users = ref([])
-const yearlyUser = ref(null)
 
 const currentDate = new Date()
 const filters = ref({
@@ -150,13 +147,6 @@ const filteredUsers = computed(() => {
   if (!filters.value.department_id) return users.value
   return users.value.filter(u => u.department_id === filters.value.department_id)
 })
-
-const getStatusColor = (status) => {
-  if (status === 1) return 'text-green-600'
-  if (status === 0) return 'text-red-500'
-  if (['ก', 'ป', 'ร', 'ด'].includes(status)) return 'text-blue-600'
-  return 'text-gray-400'
-}
 
 const fetchDepartments = async () => {
   try {

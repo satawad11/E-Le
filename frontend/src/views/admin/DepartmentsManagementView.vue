@@ -166,15 +166,6 @@ const fetchDepartments = async () => {
   }
 }
 
-const fetchUsers = async () => {
-  try {
-    const res = await api.get('/admin/users')
-    users.value = res.data.data || res.data
-  } catch (error) {
-    console.error('Failed to load users for dropdown')
-  }
-}
-
 onMounted(() => {
   loadData()
 })
@@ -246,7 +237,7 @@ const toggleStatus = async (dept) => {
     const res = await api.put(`/admin/departments/${dept.id}/toggle-status`)
     dept.is_active = res.data.is_active
     alertStore.success('เปลี่ยนสถานะการใช้งานสำเร็จ')
-  } catch (error) {
+  } catch {
     alertStore.error('ไม่สามารถเปลี่ยนสถานะได้')
   }
 }

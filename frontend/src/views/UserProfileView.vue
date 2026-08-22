@@ -94,7 +94,7 @@
             <input v-model="form.phone" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
           </div>
           <div>
-            <label class="block text-xs text-gray-700 mb-1">Telegram Chat ID</label>
+            <label class="block text-xs text-gray-700 mb-1">รหัสห้องแชท Telegram (Chat ID)</label>
             <input v-model="form.telegram_chat_id" type="text" placeholder="เช่น 123456789" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
           </div>
           <div>
@@ -261,13 +261,6 @@ const usersList = ref([])
 const imageInput = ref(null)
 const imageFile = ref(null)
 const imagePreview = ref(null)
-
-const getImageUrl = (path) => {
-  if (!path) return '';
-  if (path.startsWith('http')) return path;
-  const base = api.defaults.baseURL?.replace('/api', '') || '';
-  return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
-}
 
 const sigInput = ref(null)
 const sigFile = ref(null)

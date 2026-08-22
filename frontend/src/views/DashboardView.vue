@@ -247,14 +247,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useLeaveStore } from '../stores/leave'
 import { useAuthStore } from '../stores/auth'
-import { useAlertStore } from '../stores/alert'
 import api from '../axios'
 import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
 import LoadingState from '../components/ui/LoadingState.vue'
 import { statusLabel, statusBadgeClass } from '../utils/statusHelper'
 import { getErrorMessage } from '../utils/errorHandler'
 import ErrorState from '../components/ui/ErrorState.vue'
-import EmptyState from '../components/ui/EmptyState.vue'
 
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
 import { Bar } from 'vue-chartjs'
@@ -263,70 +261,13 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const leaveStore = useLeaveStore()
 const authStore = useAuthStore()
-const alertStore = useAlertStore()
 const loading = ref(true)
 const fetchError = ref('')
-const pdfLoading = ref(null)
-const wordLoading = ref(null)
 const stats = ref({ pending: 0, approved: 0, rejected: 0, total: 0, monthly: [] })
 const activeFilter = ref('all')
-const currentYear = new Date().getFullYear() + 543
 
 const currentPage = ref(1)
 const itemsPerPage = 10
-
-const generateFilename = (leave, extension) => {
-  const leaveTypeName = leave?.type?.name || 'การลา'
-  const userName = (leave?.user?.name || authStore.user?.name || '').trim().replace(/ /g, '_')
-  const docNumber = leave?.document_number || leave?.id
-  
-  let baseFilename = `${leaveTypeName}_${userName}_${docNumber}`
-  baseFilename = baseFilename.replace(/[\/\\]/g, '_')
-  
-  return `${baseFilename}.${extension}`
-}
-
-const downloadPdf = async (leave) => {
-  if (pdfLoading.value === leave.id) return
-  pdfLoading.value = leave.id
-  try {
-    const response = await api.get(`/leaves/${leave.id}/pdf`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', generateFilename(leave, 'pdf'))
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
-  } catch (e) {
-    console.error('PDF download error:', e)
-    alertStore.error('ไม่สามารถดาวน์โหลด PDF ได้ กรุณาลองใหม่')
-  } finally {
-    pdfLoading.value = null
-  }
-}
-
-const downloadWord = async (leave) => {
-  if (wordLoading.value === leave.id) return
-  wordLoading.value = leave.id
-  try {
-    const response = await api.get(`/leaves/${leave.id}/word`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/msword' }))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', generateFilename(leave, 'doc'))
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
-  } catch (e) {
-    console.error('Word error:', e)
-    alertStore.error('ไม่สามารถดาวน์โหลด Word ได้ กรุณาลองใหม่')
-  } finally {
-    wordLoading.value = null
-  }
-}
 
 const filters = [
   { label: 'ทั้งหมด',    value: 'all'       },
@@ -335,11 +276,6 @@ const filters = [
   { label: 'ไม่อนุมัติ', value: 'Rejected'  },
   { label: 'ยกเลิกแล้ว', value: 'Cancelled' },
 ]
-
-const maxMonthly = computed(() => {
-  const max = Math.max(...(stats.value.monthly?.map(m => m.count) || [0]))
-  return max === 0 ? 1 : max
-})
 
 const isManager = computed(() => {
   return authStore.isManager || authStore.isHRHead || authStore.isSuperAdmin

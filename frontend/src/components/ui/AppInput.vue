@@ -35,7 +35,6 @@ const inputId  = "app-input-"  + uid;
 const errorId  = "app-input-err-"  + uid;
 const hintId   = "app-input-hint-" + uid;
 const ariaDescribedBy = computed(() => props.error ? errorId : props.hint ? hintId : undefined);
-const hasPrepend = computed(() => false);
 const inputClasses = computed(() => [
   "w-full px-4 py-2.5 rounded-xl border text-sm text-gray-900 bg-white transition-colors focus:outline-none",
   props.error

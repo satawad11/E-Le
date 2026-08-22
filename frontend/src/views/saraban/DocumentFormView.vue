@@ -208,7 +208,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import api from '../../axios'
 import { useRouter, useRoute } from 'vue-router'
 import { useSarabanDocumentStore } from '../../stores/useSarabanDocumentStore'
@@ -223,40 +223,6 @@ const route = useRoute()
 const store = useSarabanDocumentStore()
 const authStore = useAuthStore()
 const loading = ref(false)
-
-// แสดงวันที่ในรูปแบบไทย (dd ก.ค. yyyyพ.ศ.)
-// รับได้ทั้ง Date object และ string
-const thaiShortMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-const formatThaiDate = (date) => {
-  if (!date) return '';
-  const d = date instanceof Date ? date : new Date(date);
-  if (isNaN(d.getTime())) return '';
-  const day = d.getDate();
-  const month = thaiShortMonths[d.getMonth()];
-  const year = d.getFullYear() + 543;
-  return `${day} ${month} ${year}`;
-}
-
-const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-
-// แปลง Date เป็น yyyy-mm-dd โดยใช้ local date components (หลีก timezone shift)
-const toLocalDateString = (date) => {
-  if (!date) return ''
-  const d = date instanceof Date ? date : new Date(date)
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-// แปลง yyyy-mm-dd string เป็น Date object โดยใช้ local constructor (หลีก UTC midnight shift)
-const parseDateString = (str) => {
-  if (!str) return null
-  const datePart = str.split('T')[0].split(' ')[0] // รองรับ timestamp
-  const [year, month, day] = datePart.split('-').map(Number)
-  if (!year || !month || !day) return null
-  return new Date(year, month - 1, day) // Local date ไม่ใช่ UTC
-}
 
 const isEdit = computed(() => !!route.params.id)
 const docId = computed(() => route.params.id)

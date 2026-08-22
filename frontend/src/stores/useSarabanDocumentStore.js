@@ -175,75 +175,48 @@ export const useSarabanDocumentStore = defineStore('sarabanDocument', {
     },
 
     async updateDocumentState(id, stateData) {
-      try {
-        const response = await api.post(`/saraban/documents/${id}/state`, stateData)
-        // Update local document state if it exists in the list
-        const index = this.documents.findIndex(d => d.id === id)
-        if (index !== -1) {
-          if (stateData.is_hidden) {
-            this.documents.splice(index, 1)
-          } else {
-            this.documents[index] = { ...this.documents[index], ...stateData }
-          }
+      const response = await api.post(`/saraban/documents/${id}/state`, stateData)
+      // Update local document state if it exists in the list
+      const index = this.documents.findIndex(d => d.id === id)
+      if (index !== -1) {
+        if (stateData.is_hidden) {
+          this.documents.splice(index, 1)
+        } else {
+          this.documents[index] = { ...this.documents[index], ...stateData }
         }
-        return response.data
-      } catch (err) {
-        throw err
       }
+
+      return response.data
     },
 
     async submitWorkflow(id, comment = '') {
-      try {
-        const response = await api.post(`/saraban/documents/${id}/workflow/submit`, { comment })
-        return response.data
-      } catch (err) {
-        throw err
-      }
+      const response = await api.post(`/saraban/documents/${id}/workflow/submit`, { comment })
+      return response.data
     },
 
     async approveWorkflow(id, comment = '') {
-      try {
-        const response = await api.post(`/saraban/documents/${id}/workflow/approve`, { comment })
-        return response.data
-      } catch (err) {
-        throw err
-      }
+      const response = await api.post(`/saraban/documents/${id}/workflow/approve`, { comment })
+      return response.data
     },
 
     async rejectWorkflow(id, comment) {
-      try {
-        const response = await api.post(`/saraban/documents/${id}/workflow/reject`, { comment })
-        return response.data
-      } catch (err) {
-        throw err
-      }
+      const response = await api.post(`/saraban/documents/${id}/workflow/reject`, { comment })
+      return response.data
     },
 
     async signDocument(id, data) {
-      try {
-        const response = await api.post(`/saraban/documents/${id}/sign`, data)
-        return response.data
-      } catch (err) {
-        throw err
-      }
+      const response = await api.post(`/saraban/documents/${id}/sign`, data)
+      return response.data
     },
 
     async sendCircular(id, userIds, message = '') {
-      try {
-        const response = await api.post(`/saraban/documents/${id}/circular`, { user_ids: userIds, message })
-        return response.data
-      } catch (err) {
-        throw err
-      }
+      const response = await api.post(`/saraban/documents/${id}/circular`, { user_ids: userIds, message })
+      return response.data
     },
 
     async acknowledgeCircular(circularId) {
-      try {
-        const response = await api.post(`/saraban/circulars/${circularId}/acknowledge`)
-        return response.data
-      } catch (err) {
-        throw err
-      }
+      const response = await api.post(`/saraban/circulars/${circularId}/acknowledge`)
+      return response.data
     }
   }
 })

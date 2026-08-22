@@ -13,7 +13,7 @@
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
         </div>
-        <h2 class="panel-title">E-Leave System</h2>
+        <h2 class="panel-title">ระบบ E-Leave</h2>
         <p class="panel-sub">ระบบบริหารจัดการวันลาออนไลน์<br>สำหรับองค์กรยุคใหม่</p>
 
         <div class="features">
@@ -135,8 +135,18 @@
           </button>
         </form>
 
-        <!-- Quick fill accounts -->
-        <div class="mt-8 pt-6 border-t border-gray-100">
+        <!--
+          ปุ่มกรอกบัญชีทดสอบ — เฉพาะเครื่องพัฒนาเท่านั้น
+
+          SEC-027: ปุ่มเหล่านี้กรอกทั้งอีเมลและ "รหัสผ่าน" ของบัญชี seed ให้เลย
+          รวมถึงบัญชีผู้ดูแลระบบสูงสุด เดิมถูก build ติดไปกับหน้าเว็บ production
+          ด้วย ใครก็ตามที่เปิดหน้าเข้าสู่ระบบได้จึงเข้าเป็น Super Admin ได้ในคลิกเดียว
+          ถ้าฐานข้อมูลนั้นยังมีบัญชี seed อยู่
+
+          `import.meta.env.DEV` เป็นค่าคงที่ตอน build — Vite จะตัดทั้งบล็อกนี้
+          รวมถึงตาราง `testAccounts` ออกจาก bundle ของ production ไปเลย
+        -->
+        <div v-if="isDev" class="mt-8 pt-6 border-t border-gray-100">
           <p class="text-xs text-gray-400 text-center mb-3 font-semibold uppercase tracking-wider">บัญชีทดสอบ</p>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <button
@@ -184,14 +194,17 @@ const features = [
   { icon: ICONS.lock,      text: 'ระบบสิทธิ์ตามตำแหน่งงาน' },
 ]
 
-const testAccounts = [
+// SEC-027 — ดูคำอธิบายในเทมเพลต: ทั้งบล็อกนี้ถูกตัดออกจาก bundle ของ production
+const isDev = import.meta.env.DEV
+
+const testAccounts = isDev ? [
   { email: 'superadmin@example.com', label: 'ผู้ดูแลระบบสูงสุด', icon: ICONS.shieldCheck, id_card: '1111111111111' },
   { email: 'director@example.com',   label: 'ผู้อำนวยการ',     icon: ICONS.building,    id_card: '2222222222222' },
   { email: 'deputy@example.com',     label: 'รองผู้อำนวยการ',   icon: ICONS.briefcase,   id_card: '3333333333333' },
   { email: 'hrhead@example.com',     label: 'เจ้าหน้าที่ HR',    icon: ICONS.clipboard,   id_card: '4444444444444' },
   { email: 'doc@example.com',        label: 'สารบรรณกลาง',    icon: ICONS.documentDuplicate, id_card: 'doc@example.com' },
   { email: 'employee@example.com',   label: 'ครู/เจ้าหน้าที่',    icon: ICONS.user,        id_card: '5555555555555' },
-]
+] : []
 
 const handleLogin = async () => {
   errorMsg.value = ''

@@ -362,14 +362,14 @@
           </button>
         </div>
       </div>
-import { ICONS } from '../../utils/icons'
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
+import SignaturePad from 'signature_pad'
 import api from '../../axios'
 import { useSarabanDocumentStore } from '../../stores/useSarabanDocumentStore'
 import { useAuthStore } from '../../stores/auth'
@@ -377,6 +377,7 @@ import { sarabanStatusConfig } from '../../utils/statusHelper'
 import { userDisplayName } from '../../utils/userName'
 import Swal from 'sweetalert2'
 import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
+import { ICONS } from '../../utils/icons'
 
 const route = useRoute()
 const store = useSarabanDocumentStore()
@@ -471,7 +472,7 @@ const downloadAttachment = async (att) => {
     link.click()
     link.remove()
     window.URL.revokeObjectURL(url)
-  } catch (err) {
+  } catch {
     Swal.fire('ดาวน์โหลดไม่สำเร็จ', 'คุณอาจไม่มีสิทธิ์ดาวน์โหลดไฟล์นี้', 'error')
   }
 }
@@ -502,7 +503,9 @@ onMounted(async () => {
     // Mark as read in background if we are a recipient
     try {
       await api.post(`/saraban/documents/${route.params.id}/read`)
-    } catch(e) {}
+    } catch {
+      // อ่านแล้ว/ยังไม่ได้อ่าน ไม่ใช่สาระของหน้านี้ — ล้มเหลวได้โดยไม่กระทบการแสดงผล
+    }
   } catch (err) {
     console.error(err)
   } finally {

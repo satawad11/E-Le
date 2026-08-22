@@ -348,7 +348,7 @@ const fetchUsers = async () => {
   try {
     const res = await api.get('/admin/users')
     users.value = res.data.data || res.data
-  } catch (error) {
+  } catch {
     console.error('Failed to fetch users')
   }
 }
@@ -382,7 +382,7 @@ const handleLogoChange = async (event) => {
     settings.value.organization_logo = response.data.url
     syncSnapshotField('organization_logo', response.data.url)
     alertStore.success('อัพโหลดรูปภาพสำเร็จ')
-  } catch (error) {
+  } catch {
     alertStore.error('อัพโหลดรูปภาพล้มเหลว')
   }
 }

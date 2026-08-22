@@ -66,8 +66,7 @@ export const useLeaveStore = defineStore('leave', {
       return res.data;
     },
     // fetchApprovals: ใช้ข้อมูลจาก leaves ที่มีอยู่ ไม่ยิง API ซ้ำ
-    // ส่ง currentUserId มาจาก caller เพื่อกรอง
-    async fetchApprovals(currentUserId) {
+    async fetchApprovals() {
       try {
         const res = await api.get('/approvals/pending');
         this.approvals = res.data;

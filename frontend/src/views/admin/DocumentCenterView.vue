@@ -585,7 +585,7 @@ const exportReport = async (report, format) => {
     link.download = `${report.code}.${format}`
     link.click()
     URL.revokeObjectURL(url)
-  } catch (error) {
+  } catch {
     alertStore.error('ส่งออกรายงานไม่สำเร็จ')
   }
 }
@@ -687,7 +687,7 @@ const downloadGenerated = async (file) => {
     const res = await api.get(`/admin/document-engine/generated/${file.id}/download`, { responseType: 'blob' })
     const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
     window.open(url, '_blank')
-  } catch (error) {
+  } catch {
     alertStore.error('ดาวน์โหลดเอกสารไม่สำเร็จ')
   }
 }

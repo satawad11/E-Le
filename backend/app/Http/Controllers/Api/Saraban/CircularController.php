@@ -53,19 +53,47 @@ class CircularController extends Controller
         $document = Document::findOrFail($id);
         $this->authorize('circulate', $document);
 
+        /*
+         * SEC-026 — ผู้รับหนังสือเวียนต้องมีสิทธิ์ระดับโมดูลพอจะเห็นหนังสือฉบับนั้น
+         *
+         * เดิมรับ user_ids มาเท่าไรก็สร้างผู้รับเท่านั้นโดยไม่ตรวจอะไรเลย
+         * การเวียนจึงกลายเป็นทางลัดส่งหนังสือ (รวมถึงหนังสือชั้นความลับ)
+         * ไปให้ใครก็ได้ในระบบ โดยข้าม DocumentPolicy ทั้งหมด
+         *
+         * ตรวจที่ "สิทธิ์" ไม่ใช่ `can('view', $document)` เพราะการเวียนนี่เอง
+         * คือสิ่งที่ทำให้ผู้รับกลายเป็นผู้เกี่ยวข้องกับหนังสือ (ดู DocumentPolicy)
+         */
+        $usersToNotify = User::whereIn('id', $request->input('user_ids'))->get();
+
+        $blocked = $usersToNotify
+            ->reject(function (User $recipient) use ($document): bool {
+                if (! $recipient->can('saraban.document.view')) {
+                    return false;
+                }
+
+                return $document->secrecy === 'normal'
+                    || $recipient->can('saraban.document.view_classified');
+            })
+            ->pluck('name')
+            ->all();
+
+        if ($blocked !== []) {
+            return response()->json([
+                'message' => 'ผู้รับบางรายไม่มีสิทธิ์เข้าถึงหนังสือฉบับนี้: '.implode(', ', $blocked),
+            ], 422);
+        }
+
         $circular = DocumentCircular::create([
             'document_id' => $document->id,
             'sender_id' => $request->user()->id,
             'message' => $request->input('message'),
         ]);
 
-        $usersToNotify = User::whereIn('id', $request->input('user_ids'))->get();
         foreach ($usersToNotify as $user) {
             DocumentCircularRecipient::create([
                 'circular_id' => $circular->id,
                 'user_id' => $user->id,
             ]);
-
         }
 
         $this->notifications->emit('saraban.task', $usersToNotify, $document, [

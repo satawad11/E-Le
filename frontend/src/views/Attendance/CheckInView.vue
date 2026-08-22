@@ -75,8 +75,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
               </svg>
             </div>
-            <span class="font-bold text-lg">เข้างาน</span>
-            <span class="text-xs opacity-80 mt-1">Check In</span>
+            <span class="font-bold text-lg">เข้างาน</span>
           </button>
 
           <button @click="handleCheckOut" 
@@ -89,8 +88,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
               </svg>
             </div>
-            <span class="font-bold text-lg">ออกงาน</span>
-            <span class="text-xs opacity-80 mt-1">Check Out</span>
+            <span class="font-bold text-lg">ออกงาน</span>
           </button>
         </div>
 
@@ -126,11 +124,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import api from '../../axios'
-import { useAuthStore } from '../../stores/auth'
 import { useAlertStore } from '../../stores/alert'
 import { getErrorMessage } from '../../utils/errorHandler'
 
-const authStore = useAuthStore()
 const alertStore = useAlertStore()
 
 const currentTime = ref('')

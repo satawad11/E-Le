@@ -30,6 +30,15 @@ docker-compose build
 docker-compose up -d
 ```
 
+*DEPLOY-006:* ใช้ `docker-compose.yml` **ไฟล์เดียว** เท่านั้นบน production — ห้ามใส่ `-f docker-compose.dev.yml` เพราะไฟล์นั้นเปิด Vite dev server ซึ่งไม่มี authentication และเสิร์ฟ source ทั้งโครงการ
+
+สร้างไฟล์หน้าเว็บที่ nginx เสิร์ฟ (`frontend/dist`) — เป็น job ที่ทำงานแล้วจบ ไม่ใช่ service ที่เปิดพอร์ตค้างไว้:
+```bash
+docker compose --profile build run --rm frontend_build
+```
+
+*SEC-022:* backend / worker / scheduler จะรัน `php artisan app:verify-environment` เป็นคำสั่งแรก ถ้า `APP_ENV`, `APP_DEBUG`, `APP_KEY`, `APP_URL` หรือ `filesystems.disks.local.serve` ตั้งค่าไม่ปลอดภัย container จะออกทันทีก่อน migrate พร้อมบอกเหตุผลเป็นภาษาไทย — ให้แก้ `.env` แล้ว `docker-compose up -d` ใหม่
+
 ### 4. Database Migration Procedure
 อัปเดตโครงสร้างฐานข้อมูลโดยห้ามใช้คำสั่ง Drop หรือ Fresh เด็ดขาด
 ```bash

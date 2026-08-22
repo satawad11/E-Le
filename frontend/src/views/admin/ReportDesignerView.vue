@@ -98,7 +98,7 @@
 
           <div v-else class="space-y-2">
             <div
-              v-for="(column, index) in availableColumns"
+              v-for="column in availableColumns"
               :key="column.key"
               class="flex flex-wrap items-center gap-3 border border-gray-100 rounded-xl px-3 py-2"
             >
@@ -297,7 +297,7 @@ const loadColumns = async () => {
   try {
     const res = await api.get(`/admin/document-reports/${sample.id}/run`)
     availableColumns.value = Object.entries(res.data.columns).map(([key, label]) => ({ key, label }))
-  } catch (error) {
+  } catch {
     availableColumns.value = form.value.columns.map(column => ({ key: column.key, label: column.label }))
   }
 }
@@ -334,7 +334,7 @@ const runPreview = async () => {
   try {
     const res = await api.get(`/admin/document-reports/${form.value.id}/run`)
     preview.value = res.data
-  } catch (error) {
+  } catch {
     alertStore.error('ประมวลผลรายงานไม่สำเร็จ')
   }
 }

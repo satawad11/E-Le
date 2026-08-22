@@ -1,0 +1,32 @@
+{
+  // QUALITY-003 — โครงการนี้เขียนด้วย JavaScript ล้วน ไม่ใช่ TypeScript
+  //
+  // `vue-tsc --noEmit` ที่นี่จึงไม่ได้บังคับให้ใส่ type แต่ทำหน้าที่เป็นด่านคอมไพล์
+  // ของ SFC ทั้งโครงการ: จับ template ที่ผิดไวยากรณ์, <script setup> ที่ประกาศซ้ำ,
+  // import ที่ชี้ไปยังไฟล์ที่ไม่มีอยู่ — ความผิดพลาดที่เดิมรู้ตัวตอน build หรือ
+  // ตอนผู้ใช้เปิดหน้านั้นเท่านั้น
+  //
+  // `checkJs: false` ตั้งใจ — การเปิดจะทำให้ไฟล์เดิมทั้งโครงการฟ้องพร้อมกัน
+  // ซึ่งเป็นงานคนละก้อนกับการตั้งด่าน
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*.js", "src/**/*.vue", "tests/**/*.js"],
+  "exclude": ["node_modules", "dist"]
+}

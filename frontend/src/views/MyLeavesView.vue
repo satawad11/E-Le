@@ -307,7 +307,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useLeaveStore } from '../stores/leave'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
-import { statusLabel, statusBadgeClass, compositeStatusLabel, compositeStatusBadgeClass } from '../utils/statusHelper'
+import { compositeStatusLabel, compositeStatusBadgeClass } from '../utils/statusHelper'
 import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
 import { getErrorMessage } from '../utils/errorHandler'
 import LoadingState from '../components/ui/LoadingState.vue'
@@ -425,7 +425,7 @@ const generateFilename = (leave, extension, isCancel = false) => {
   const docNumber = leave?.document_number || leave?.id
   
   let baseFilename = `${leaveTypeName}_${userName}_${docNumber}`
-  baseFilename = baseFilename.replace(/[\/\\]/g, '_')
+  baseFilename = baseFilename.replace(/[/\\]/g, '_')
   
   return isCancel ? `cancel_${baseFilename}.${extension}` : `${baseFilename}.${extension}`
 }

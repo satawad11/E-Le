@@ -133,7 +133,7 @@ const fetchTeamLeaves = async () => {
   try {
     const res = await api.get('/leaves/team-calendar')
     leaves.value = res.data
-  } catch (e) {
+  } catch {
     console.error('Failed to fetch team leaves')
   } finally {
     loading.value = false

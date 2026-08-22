@@ -1011,7 +1011,6 @@ import { useLeaveStore } from './stores/leave'
 import { useSettingStore } from './stores/settingStore'
 import AlertList from './components/AlertList.vue'
 import NotificationBell from './components/NotificationBell.vue'
-import api from './axios'
 
 const router = useRouter()
 const route  = useRoute()
@@ -1132,10 +1131,32 @@ onUnmounted(() => {
 const pendingBadge = computed(() => leaveStore.approvals?.filter(l => l.cancellation_status !== 'Pending').length || 0)
 const pendingCancelBadge = computed(() => leaveStore.approvals?.filter(l => l.cancellation_status === 'Pending').length || 0)
 
-// Role label for display
+/*
+ * ป้ายบทบาทที่แสดงบนหน้าจอ
+ *
+ * UI-THAI — `roles.name` ในฐานข้อมูลเป็น "ตัวระบุ" ภาษาอังกฤษที่โค้ดฝั่ง server
+ * ใช้ตัดสินสิทธิ์ (Super Admin, Document Officer, …) เปลี่ยนไม่ได้
+ * เดิมหน้าจอเอาค่านั้นมาแสดงตรง ๆ ผู้ใช้จึงเห็นคำว่า "Document Officer"
+ * บนแถบด้านข้าง ทั้งที่ UI ต้องเป็นภาษาไทยทั้งหมด
+ *
+ * แปลงเป็นชื่อไทยตรงนี้ที่เดียว ค่าที่ไม่รู้จักยังแสดงตามเดิมเพื่อไม่ให้ป้ายหาย
+ */
+const ROLE_LABELS_TH = {
+  'Super Admin': 'ผู้ดูแลระบบสูงสุด',
+  SuperAdmin: 'ผู้ดูแลระบบสูงสุด',
+  Director: 'ผู้อำนวยการ',
+  'Deputy Director': 'รองผู้อำนวยการ',
+  Deputy: 'รองผู้อำนวยการ',
+  'HR Head': 'หัวหน้างานบุคลากร',
+  HRHead: 'หัวหน้างานบุคลากร',
+  'Document Officer': 'เจ้าหน้าที่สารบรรณ',
+  'Department Head': 'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย',
+  Employee: 'บุคลากร / ครู / เจ้าหน้าที่',
+}
+
 const roleLabel = computed(() => {
   const role = authStore.user?.role?.name || authStore.roleName || ''
-  if (role) return role
+  if (role) return ROLE_LABELS_TH[role] || role
   return 'บุคลากร'
 })
 
@@ -1155,6 +1176,7 @@ const roleBadgeClass = computed(() => {
     'HR Head':     'bg-green-400/30 text-green-200',
     'HRHead':      'bg-green-400/30 text-green-200',
     'เจ้าหน้าที่สารบรรณกลาง': 'bg-amber-400/30 text-amber-200',
+    'Document Officer': 'bg-amber-400/30 text-amber-200',
     'บุคลากร / ครู / เจ้าหน้าที่': 'bg-white/10 text-white/70',
     'Employee':    'bg-white/10 text-white/70',
   }

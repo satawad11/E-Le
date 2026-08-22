@@ -158,12 +158,10 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useAuthStore } from '../../stores/auth'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 import { openAuthenticatedReport, reportErrorMessage } from '../../utils/secureFile'
 
-const authStore = useAuthStore()
 const alertStore = useAlertStore()
 
 const loading = ref(false)
