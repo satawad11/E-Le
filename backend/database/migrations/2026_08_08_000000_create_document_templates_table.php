@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('code')->unique();
             $table->string('name');
-            $table->string('module')->default('leave'); // 'leave', 'attendance', 'saraban', 'hr'
+            $table->string('module')->default('leave'); // 'leave', 'attendance', 'hr'
             $table->string('paper_size')->default('A4');
             $table->string('orientation')->default('portrait');
             $table->decimal('margin_top', 4, 1)->default(8.0);

@@ -51,7 +51,6 @@ LEGACY-00 สร้าง backup แบบ manual ที่ **พิสูจน
 | `holidays` | 0 | การคำนวณวันทำการไม่ตัดวันหยุดราชการ |
 | `menus` | 0 | sidebar ที่ generate จากตารางนี้ว่างเปล่า |
 | `document_templates` | 0 | การพิมพ์แบบฟอร์ม fallback ไป blade view |
-| `saraban_document_types` | 0 | โมดูลสารบรรณสร้างหนังสือไม่ได้ |
 | `work_calendar_exceptions` | 0 | ไม่มีข้อยกเว้นปฏิทินรายหน่วยงาน |
 
 ### K-05 · ผู้ใช้ 1 คนไม่มี `user_profiles`

@@ -41,23 +41,6 @@ $modules = [
         ],
     ],
 
-    'saraban' => [
-        'id' => 'saraban',
-        'name' => 'ระบบสารบรรณอิเล็กทรอนิกส์ (e-Saraban)',
-        'description' => 'งานรับ-ส่งหนังสือราชการ เดินเรื่องอนุมัติ และลงนามอิเล็กทรอนิกส์',
-        'icon' => 'file-text',
-        'permissions' => [
-            'saraban.view' => 'เข้าถึงโมดูลสารบรรณ',
-            'saraban.document.create' => 'สร้างหนังสือราชการ / เอกสารรับ-ส่ง',
-            'saraban.document.view' => 'เข้าดูหนังสือราชการ',
-            'saraban.document.approve' => 'ตรวจพิจารณา / อนุมัติเดินเรื่องหนังสือ',
-            'saraban.document.sign' => 'ลงนาม ลายมือชื่ออิเล็กทรอนิกส์ (Digital Signature)',
-            'saraban.document.dispatch' => 'ส่ง / เสนอ / เวียนหนังสือราชการ',
-            'saraban.document.archive' => 'จัดเก็บ / เลิกใช้เอกสารสารบรรณ',
-            'saraban.config.manage' => 'ตั้งค่าเลขที่หนังสือ / หมวดหมู่เอกสาร',
-        ],
-    ],
-
     'admin' => [
         'id' => 'admin',
         'name' => 'ระบบบริหารจัดการ (System Admin)',

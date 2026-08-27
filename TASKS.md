@@ -380,3 +380,16 @@
 - [x] Verification — backend 629 tests ผ่าน (5 skipped เป็นเทสต์ระดับ repo ที่รันจริงบน CI) · Pint ผ่าน · frontend lint/typecheck/test(14)/build ผ่าน · E2E ตาม role ผ่าน nginx จริง และ Desktop 1440 / Tablet 768 / Mobile 375 ไม่มี horizontal overflow
 - [ ] ทบทวนป้ายกำกับที่เป็น "ไทย (English)" ในหน้าผู้ดูแลราว 30 จุด (เช่น `รวม (SUM)`, `พิกัด GPS ละติจูด (Latitude)`) ว่าจะคงไว้เป็นคำอธิบายทางเทคนิคหรือถอดออกให้เป็นไทยล้วนตาม AGENTS.md — เป็นแบบแผนเดิมทั้งระบบ จึงควรตัดสินเป็นนโยบายครั้งเดียว
 - [x] SEC-027 แผง "บัญชีทดสอบ" บนหน้าเข้าสู่ระบบกรอกทั้งอีเมลและรหัสผ่านของบัญชี seed รวมถึง Super Admin และถูก build ติดไปกับหน้าเว็บ production — ปิดไว้หลัง `import.meta.env.DEV` แล้ว bundle จริงไม่มีค่าเหล่านี้อีก และ CI ตรวจซ้ำทุกครั้ง
+
+## MODULE-REMOVE-01 — ถอดโมดูลสารบรรณอิเล็กทรอนิกส์ (2026-08-27)
+- [x] ลบ controller / model / service / policy / request / notification / provider / middleware ของโมดูล
+- [x] ลบเส้นทาง `/api/saraban/*` ทั้งหมด รวมเส้นทางสาธารณะ verify ของสารบรรณ
+- [x] ลบหน้าเว็บ เมนู เส้นทาง router store และ helper สถานะของโมดูล
+- [x] ถอดโมดูลออกจาก `config/modules.php` / `config/module_registry.php` / `config/workflow.php` / `config/system_settings.php`
+- [x] ถอดสิทธิ์ `saraban.*` ออกจาก seeder ทุกตัว โดย**คง**บทบาท "เจ้าหน้าที่สารบรรณกลาง" ไว้
+- [x] ถอดรายงาน `saraban` ออกจากศูนย์รายงานกลาง
+- [x] migration ทางเดียว drop ตาราง `saraban_*` 14 ตาราง + ล้างสิทธิ์/เมนู/ค่าตั้งค่า/สายงาน/ประเภทแจ้งเตือนของโมดูล
+- [x] ปรับเทสต์ที่อ้างโมดูล และลบชุดเทสต์เฉพาะของโมดูล
+- [x] Verification — backend 548 tests ผ่าน (5 skipped) · frontend `eslint` สะอาด · `vitest` 14 tests ผ่าน · `vite build` ผ่าน
+- [x] SEC-023R allowlist กลางของไฟล์อัปโหลดที่ `config/uploads.php` + `App\Support\UploadRules` แทน SEC-023 ที่หายไปพร้อมโมดูล — ทุกจุดที่รับไฟล์ตรวจสองชั้น (เนื้อไฟล์ + นามสกุล) และปิดช่อง `svg`/`gif` ที่เปิดอยู่
+- [x] Verification (SEC-023R) — backend 557 tests ผ่าน (5 skipped) · Pint ผ่าน 463 ไฟล์

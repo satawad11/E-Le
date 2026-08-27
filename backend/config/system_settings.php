@@ -7,7 +7,6 @@ return [
         'organization_logo',
         'enable_leave_menu',
         'enable_attendance_menu',
-        'enable_saraban_menu',
     ],
 
     'secret_keys' => [
@@ -20,7 +19,6 @@ return [
     'aliases' => [
         'institution_name' => ['school_name'],
         'organization_logo' => ['school_logo_url'],
-        'saraban_garuda_logo' => ['garuda_logo_url'],
         'document_number_out' => ['doc_number_prefix'],
     ],
 
@@ -65,14 +63,8 @@ return [
         'postal_code' => ['nullable', 'digits:5'],
         'enable_leave_menu' => ['nullable', 'in:0,1'],
         'enable_attendance_menu' => ['nullable', 'in:0,1'],
-        'enable_saraban_menu' => ['nullable', 'in:0,1'],
         'cancel_allowed_days' => ['nullable', 'integer', 'min:0', 'max:365'],
         'leave_evidence_retention_days' => ['nullable', 'integer', 'min:1', 'max:36500'],
-        'require_pin_for_signature' => ['nullable', 'in:0,1'],
-        'require_pin_for_circular_ack' => ['nullable', 'in:0,1'],
-        'saraban_incoming_number_format' => ['nullable', 'string', 'max:255'],
-        'saraban_outgoing_number_format' => ['nullable', 'string', 'max:255'],
-        'saraban_garuda_logo' => ['nullable', 'string', 'max:2048'],
         'telegram_bot_token' => ['nullable', 'string', 'max:4096'],
         'line_channel_access_token' => ['nullable', 'string', 'max:4096'],
         'line_notify_token' => ['nullable', 'string', 'max:4096'],

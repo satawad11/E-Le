@@ -73,14 +73,6 @@ class SystemSettingsTest extends TestCase
         $this->assertDatabaseCount('setting_audit_logs', 1);
     }
 
-    public function test_document_number_formats_require_year_and_running_number_placeholders(): void
-    {
-        $this->actingAs($this->superAdmin())->postJson('/api/admin/settings', [
-            'saraban_outgoing_number_format' => '{dept_code}/missing-placeholders',
-        ])->assertUnprocessable()
-            ->assertJsonValidationErrors('saraban_outgoing_number_format');
-    }
-
     private function superAdmin(): User
     {
         $role = Role::firstOrCreate(['name' => 'Super Admin'], ['guard_name' => 'web']);

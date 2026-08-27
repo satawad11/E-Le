@@ -57,26 +57,6 @@ class RuntimeSecurityConfigurationTest extends TestCase
     }
 
     /**
-     * SEC-023 — allowlist ของไฟล์แนบต้องไม่มีชนิดที่รันได้เมื่อเบราว์เซอร์เปิด
-     */
-    public function test_the_attachment_allowlist_contains_no_executable_types(): void
-    {
-        $mimeTypes = (array) config('saraban.attachments.allowed_mime_types');
-        $extensions = (array) config('saraban.attachments.allowed_extensions');
-
-        $this->assertNotEmpty($mimeTypes);
-        $this->assertNotEmpty($extensions);
-
-        foreach (['text/html', 'image/svg+xml', 'application/x-httpd-php', 'application/x-msdownload'] as $forbidden) {
-            $this->assertNotContains($forbidden, $mimeTypes);
-        }
-
-        foreach (['php', 'phtml', 'html', 'htm', 'svg', 'exe', 'sh', 'js'] as $forbidden) {
-            $this->assertNotContains($forbidden, $extensions);
-        }
-    }
-
-    /**
      * SEC-022 — container ต้องตรวจ environment ก่อนเริ่มทำงาน ไม่ใช่ตรวจตอนมีคำขอเข้ามาแล้ว
      */
     public function test_every_php_service_verifies_its_environment_before_starting_work(): void

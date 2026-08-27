@@ -3,7 +3,6 @@
 use App\Providers\Modules\AttendanceModuleServiceProvider;
 use App\Providers\Modules\LeaveModuleServiceProvider;
 use App\Providers\Modules\NotificationModuleServiceProvider;
-use App\Providers\Modules\SarabanModuleServiceProvider;
 
 return [
     'admin' => [
@@ -69,27 +68,6 @@ return [
         'providers' => [AttendanceModuleServiceProvider::class],
         'route_patterns' => ['api/attendances*', 'api/admin/attendances*', 'api/admin/attendance-corrections*'],
         'legacy_permissions' => ['attendance.checkin', 'attendance.view_self', 'attendance.view_all', 'attendance.export', 'attendance.ot', 'attendance.ot_summary'],
-    ],
-    'saraban' => [
-        'code' => 'saraban',
-        'name_th' => 'ระบบสารบรรณอิเล็กทรอนิกส์',
-        'name_en' => 'Saraban',
-        'version' => '1.0.0',
-        'enabled' => env('MODULE_SARABAN_ENABLED', true),
-        'dependencies' => ['system'],
-        'order' => 30,
-        'routes' => ['saraban'],
-        'route_files' => [],
-        'menus' => ['saraban'],
-        'policies' => ['saraban.document'],
-        'workflow_definitions' => ['saraban.document'],
-        'settings' => ['saraban'],
-        'notifications' => ['saraban.task'],
-        'reports' => ['saraban'],
-        'audit_events' => ['saraban.document.created', 'saraban.document.updated', 'saraban.document.deleted'],
-        'providers' => [SarabanModuleServiceProvider::class],
-        'route_patterns' => ['api/saraban*'],
-        'legacy_permissions' => ['saraban.view'],
     ],
     'overtime' => [
         'id' => 'overtime',
@@ -166,7 +144,7 @@ return [
         'workflow_definitions' => [],
         'settings' => [],
         'notifications' => [],
-        'reports' => ['personnel', 'leave', 'leave_balance', 'attendance', 'late', 'absence', 'ot', 'saraban', 'executive'],
+        'reports' => ['personnel', 'leave', 'leave_balance', 'attendance', 'late', 'absence', 'ot', 'executive'],
         'audit_events' => ['report.exported'],
         'providers' => [],
         'route_patterns' => ['api/reporting*'],

@@ -4,6 +4,36 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [SEC-023R] - 2026-08-27
+
+allowlist กลางของไฟล์อัปโหลด แทน SEC-023 ที่หายไปพร้อมโมดูลสารบรรณ
+
+#### Security
+- **`config/uploads.php`** — แหล่งความจริงเดียวของ allowlist ไฟล์อัปโหลด แยกเป็นสามชุด: `attachments` (หลักฐานประกอบการลา / ไฟล์แนบใบลา), `images` (โลโก้และตราสัญลักษณ์), `document_templates` (PDF ต้นฉบับของ Document Engine) พร้อมรายการ `never_allowed` ที่ห้ามปรากฏใน allowlist ใดเลย
+- **`App\Support\UploadRules`** — ทุกจุดที่รับไฟล์สร้างกฎจากที่นี่ และได้ด่านสองชั้นเสมอ: `mimetypes:` ตรวจจาก magic bytes ของเนื้อไฟล์ + `extensions:` ตรวจนามสกุลจริง ไฟล์ที่เปลี่ยนนามสกุลหลอกจึงไม่ผ่าน
+- **ปิดช่องที่เปิดอยู่** — `ExportSettingController` รับ `svg` (รันสคริปต์ได้เมื่อเบราว์เซอร์เปิด) และ `SettingController` รับ `gif` ทั้งสองถูกจำกัดเหลือ jpg/jpeg/png · จุดที่เคยตรวจด้วย `mimes:` อย่างเดียว (หลักฐานประกอบการลา, ไฟล์แนบใบลา) ได้ด่านเนื้อไฟล์เพิ่ม
+- **`UploadAllowlistTest`** — 9 เคส: allowlist ทุกชุดต้องไม่มีชนิดที่รันได้, กฎที่สร้างต้องมีครบสองชั้น, อัปโหลด `.php` / `.html` / `.svg` / `.exe` / `.sh` เข้าเส้นทางหลักฐานการลาต้องถูกปฏิเสธ, สคริปต์ที่เปลี่ยนนามสกุลเป็น `.pdf` ต้องไม่ผ่าน และ PDF จริงต้องยังอัปโหลดได้
+
+### [MODULE-REMOVE-01] - 2026-08-27
+
+ถอนโมดูลสารบรรณอิเล็กทรอนิกส์ (e-Saraban) ออกจากระบบทั้งหมดตามคำสั่งเจ้าของระบบ
+
+#### Removed
+- **โค้ดโมดูล** — `Api/Saraban/*` (11 controller), `Models/Saraban/*` (13 model), `Services/Saraban/*`, `Policies/Saraban/DocumentPolicy`, `Requests/Saraban/StoreDocumentRequest`, `SarabanDocumentNotification`, `SarabanModuleServiceProvider`, `SarabanWorkflowProvisioner`, middleware `saraban.classified` (`CanViewClassifiedDocument`), `config/saraban.php`, seeder สารบรรณ 3 ตัว และ migration ของโมดูล 23 ไฟล์
+- **หน้าเว็บ** — `views/saraban/*` (6 หน้า), `SarabanSettingsView.vue`, `WorkflowTemplatesView.vue` (สายอนุมัติสารบรรณ), store สารบรรณ 2 ตัว, เมนู sidebar ทั้ง desktop/mobile, เส้นทาง router 11 เส้นทาง, `SARABAN_STATUS_MAP` และสวิตช์เปิด-ปิดโมดูลในหน้าจัดการโมดูล/เมนู
+- **API** — ทุกเส้นทางใต้ `/api/saraban/*` รวมเส้นทางสาธารณะ `/api/saraban/verify/{hash}` (การตรวจสอบใบลาผ่าน QR ที่ `/api/leaves/verify/{hash}` ยังทำงานตามเดิม) และ `POST /api/admin/settings/upload-garuda`
+- **ค่าตั้งค่าระบบ** — `enable_saraban_menu`, `saraban_incoming_number_format`, `saraban_outgoing_number_format`, `saraban_garuda_logo` (รวมช่องอัปโหลดตราครุฑในหน้าตั้งค่าเอกสาร), `require_pin_for_signature`, `require_pin_for_circular_ack`
+- **สิทธิ์** — `saraban.*` ทั้งชุดถูกถอดออกจาก seeder และลบออกจากฐานข้อมูลด้วย migration ตัวบทบาท "เจ้าหน้าที่สารบรรณกลาง" และ `Document Officer` **ยังคงอยู่** ผู้ใช้ไม่หลุดบทบาทและยังใช้ระบบลาและลงเวลาได้ตามปกติ
+- **รายงานกลาง** — รายงาน `saraban` ออกจาก `ReportingDataService` / `ReportingScopeService` และจาก `reports` ของโมดูล reporting
+
+#### Changed
+- `2026_08_27_000000_drop_saraban_module` — migration ทางเดียวที่ drop ตาราง `saraban_*` ทั้ง 14 ตาราง และล้างร่องรอยในตารางกลาง (สิทธิ์ / เมนู / ค่าตั้งค่า / แม่แบบเอกสารของโมดูล / สายงาน `saraban.document` ใน Workflow Engine / ประเภทแจ้งเตือน `saraban.task`) **ต้องสำรองฐานข้อมูลก่อนรัน**
+- `SecureFileAccessService` เลิกอนุญาตไฟล์แนบสารบรรณ เหลือเส้นทางของโปรไฟล์ / ลงเวลา / ใบลา / โลโก้สถานศึกษา
+- `2026_08_13_100000_create_core_data_foundation` และ `2026_08_15_220000_create_notification_center` ตัดส่วนที่อ้าง `saraban_documents` และ `saraban.task` ออก เพื่อให้ติดตั้งใหม่จากศูนย์ผ่าน migration ได้
+
+#### Removed (tests)
+- `tests/Feature/Saraban/*` (10 ไฟล์), `SarabanWorkflowPinningTest` และเคสสารบรรณใน `OperationalPermissionMatrixTest`, `PrivilegeEscalationGuardTest`, `WorkflowAuthorizationTest`, `RuntimeSecurityConfigurationTest` (SEC-023 allowlist ไฟล์แนบเป็นของโมดูลนี้ตัวเดียว), `SystemSettingsTest` (รูปแบบเลขหนังสือ)
+
 ### [SEC-HOTFIX-01] - 2026-08-22
 
 Security hotfix รอบ Saraban / runtime / dependency พร้อมตั้งด่านคุณภาพฝั่งหน้าเว็บ

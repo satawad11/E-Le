@@ -21,7 +21,7 @@ class ModuleRegistryTest extends TestCase
     {
         $registry = app(ModuleRegistry::class);
         $this->assertSame(
-            ['system', 'leave', 'attendance', 'overtime', 'saraban', 'notification', 'reporting'],
+            ['system', 'leave', 'attendance', 'overtime', 'notification', 'reporting'],
             array_keys($registry->all()),
         );
 
@@ -115,7 +115,7 @@ class ModuleRegistryTest extends TestCase
 
     public function test_menu_visibility_comes_from_permission_but_never_authorizes_backend(): void
     {
-        $permission = Permission::findOrCreate('saraban.document.view', 'web');
+        $permission = Permission::findOrCreate('leave.report.view', 'web');
         $menu = Menu::create([
             'code' => 'users', 'title_th' => 'ผู้ใช้งาน', 'module' => 'system',
             'route_path' => '/admin/users', 'sort_order' => 1, 'is_active' => true,
@@ -124,7 +124,7 @@ class ModuleRegistryTest extends TestCase
         $user = User::factory()->create();
 
         $this->assertSame([], app(MenuService::class)->getUserMenuTree($user));
-        $user->givePermissionTo('saraban.document.view');
+        $user->givePermissionTo('leave.report.view');
         Cache::flush();
         $this->assertSame('users', app(MenuService::class)->getUserMenuTree($user)[0]['code']);
 
@@ -145,7 +145,7 @@ class ModuleRegistryTest extends TestCase
             app_path('Services/Workflow/WorkflowEngine.php'),
         ] as $path) {
             $contents = file_get_contents($path);
-            $this->assertDoesNotMatchRegularExpression('/App\\\\(?:Models|Services)\\\\(?:Leave|Attendance|Overtime|Saraban)/', $contents, $path);
+            $this->assertDoesNotMatchRegularExpression('/App\\\\(?:Models|Services)\\\\(?:Leave|Attendance|Overtime)/', $contents, $path);
         }
     }
 

@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
-use App\Models\Saraban\DocumentAttachment;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -33,12 +32,8 @@ class SecureFileAccessService
             return true;
         }
 
-        if ($this->isAccessibleSarabanAttachment($user, $relative, $stored)) {
-            return true;
-        }
-
         return Setting::query()
-            ->whereIn('key', ['organization_logo', 'saraban_garuda_logo'])
+            ->whereIn('key', ['organization_logo'])
             ->where('value', $stored)
             ->exists();
     }
@@ -98,15 +93,5 @@ class SecureFileAccessService
         }
 
         return $leave !== null && Gate::forUser($user)->allows('view', $leave);
-    }
-
-    private function isAccessibleSarabanAttachment(User $user, string $relative, string $stored): bool
-    {
-        $attachment = DocumentAttachment::query()
-            ->whereIn('path', [$relative, $stored])
-            ->first();
-
-        return $attachment !== null
-            && Gate::forUser($user)->allows('download', $attachment->document);
     }
 }

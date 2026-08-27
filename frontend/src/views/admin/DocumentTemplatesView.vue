@@ -124,7 +124,6 @@
               <select v-model="form.module" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm">
                 <option value="leave">การลา (E-Leave)</option>
                 <option value="hr">งานบุคลากร (HR)</option>
-                <option value="saraban">งานสารบรรณ (Saraban)</option>
                 <option value="attendance">เวลาปฏิบัติงาน (Attendance)</option>
                 <option value="custom">แบบฟอร์มอื่นๆ (Custom)</option>
               </select>
@@ -215,7 +214,6 @@ const modules = [
   { label: 'ทั้งหมด', value: 'all' },
   { label: 'การลา (E-Leave)', value: 'leave' },
   { label: 'งานบุคลากร (HR)', value: 'hr' },
-  { label: 'งานสารบรรณ (Saraban)', value: 'saraban' },
   { label: 'เวลาปฏิบัติงาน (Attendance)', value: 'attendance' },
 ]
 

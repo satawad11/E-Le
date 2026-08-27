@@ -60,17 +60,4 @@ class LineNotificationService
 
         $this->sendMessage($msg);
     }
-
-    /**
-     * Format and send Saraban document alert
-     */
-    public function notifySarabanDocument($document, string $action): void
-    {
-        $msg = "\n📄 [e-Saraban] อัปเดตหนังสือราชการ ({$action})\n"
-             ."เลขที่หนังสือ: {$document->document_number}\n"
-             ."เรื่อง: {$document->title}\n"
-             ."สถานะ: {$document->status}";
-
-        $this->sendMessage($msg);
-    }
 }

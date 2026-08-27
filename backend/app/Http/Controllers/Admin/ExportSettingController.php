@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Support\UploadRules;
 use Illuminate\Http\Request;
 
 class ExportSettingController extends Controller
@@ -75,7 +76,8 @@ class ExportSettingController extends Controller
     {
         $request->validate([
             'type' => 'required|in:garuda,school',
-            'logo' => 'required|image|mimes:png,jpg,jpeg,svg|max:4096',
+            // SEC-023R — เดิมรับ `svg` ซึ่งเป็นไฟล์ที่รันสคริปต์ได้เมื่อเบราว์เซอร์เปิด
+            'logo' => array_merge(['required'], UploadRules::image()),
         ]);
 
         $path = $request->file('logo')->store('settings', 'private_uploads');

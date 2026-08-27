@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\AttachRequestContext;
-use App\Http\Middleware\CanViewClassifiedDocument;
 use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
@@ -33,7 +32,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
-            'saraban.classified' => CanViewClassifiedDocument::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

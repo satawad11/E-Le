@@ -17,7 +17,6 @@ class ReportingScopeService
         'late' => 'attendance.view_all',
         'absence' => 'attendance.view_all',
         'ot' => 'overtime.management.review',
-        'saraban' => 'saraban.document.report',
     ];
 
     public function __construct(private OrgScopeResolver $scopes) {}

@@ -61,22 +61,6 @@ export const useAuthStore = defineStore('auth', {
      */
     isSuperAdmin: (state) => isSuperAdminUser(state),
 
-    /**
-     * เจ้าหน้าที่สารบรรณ (เจ้าหน้าที่ทะเบียนรับ-ส่งหนังสือ)
-     *
-     * LEGACY-04 (ปิดงาน) · Decision 2 — เลิกเช็คชื่อ role แล้ว
-     *
-     * เดิมเทียบชื่อ role สี่ชื่อ ซึ่งมีเพียง `Document Officer` ที่มีอยู่จริง
-     * และตอนนั้นบทบาทนั้นก็ไม่ได้ถือ permission `saraban.*` เลยสักตัว
-     * หน้าเว็บจึงแสดงปุ่มที่ backend ปฏิเสธทุกครั้ง
-     *
-     * ตอนนี้ตัดสินจากสิทธิ์ "รับ/ส่งหนังสือ" ตัวเดียวกับที่ DocumentPolicy
-     * ฝั่ง backend ใช้ — หน้าเว็บกับด่านจริงจึงพูดเรื่องเดียวกัน
-     */
-    isSarabanOfficer: (state) => {
-      if (isSuperAdminUser(state)) return true;
-      return getPermissionNames(state).includes('saraban.document.register');
-    },
 
     /** ผู้มีสิทธิ์อนุมัติใบลา — เดิมคือ SuperAdmin/Director/Deputy/HR Head ซึ่งล้วนถือสิทธิ์นี้ */
     isHRHead: (state) => {

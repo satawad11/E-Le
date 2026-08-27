@@ -14,6 +14,7 @@ use App\Models\LeaveType;
 use App\Services\AuditLogger;
 use App\Services\DocumentEngine\DataProviderRegistry;
 use App\Services\DocumentEngine\DocumentEngine;
+use App\Support\UploadRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -173,7 +174,7 @@ class DocumentEngineController extends Controller
     /** อัปโหลด PDF ต้นฉบับให้เวอร์ชัน (ได้เฉพาะฉบับร่าง) */
     public function uploadPdf(Request $request, DocumentTemplateVersion $version)
     {
-        $request->validate(['file' => 'required|file|mimetypes:application/pdf|max:20480']);
+        $request->validate(['file' => array_merge(['required'], UploadRules::documentTemplate())]);
 
         abort_unless(
             $version->status === DocumentTemplateVersion::STATUS_DRAFT,

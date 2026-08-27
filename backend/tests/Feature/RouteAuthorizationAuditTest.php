@@ -13,8 +13,6 @@ class RouteAuthorizationAuditTest extends TestCase
         'api/login',
         'api/forgot-password',
         'api/reset-password',
-        'api/saraban/verify/{hash}',
-        'api/saraban/verify/{hash}/qrcode',
         'api/leaves/verify/{hash}',
         'api/leaves/verify/{hash}/qrcode',
     ];
@@ -43,8 +41,6 @@ class RouteAuthorizationAuditTest extends TestCase
             'api/admin/attendances/export/word',
             'api/reports/export-excel',
             'api/reports/export-pdf',
-            'api/saraban/attachments/{attachment}/download',
-            'api/saraban/reports/export',
             'api/leave-evidences/{evidence}/download',
         ];
 

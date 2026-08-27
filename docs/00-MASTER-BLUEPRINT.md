@@ -14,7 +14,7 @@ Organization, Personnel, Identity, Authorization, Workflow, Module Registry, Aud
 - Evaluation support: สรุปข้อมูลลา/เวลาเพื่อประกอบการประเมินและเลื่อนเงินเดือน/ค่าตอบแทน
 
 ## Future modules
-สารบรรณ, แผนและงบประมาณ, จองห้อง, จองรถ, พัสดุ, การเงิน, ครุภัณฑ์, ซ่อมบำรุง, ประชุม.
+แผนและงบประมาณ, จองห้อง, จองรถ, พัสดุ, การเงิน, ครุภัณฑ์, ซ่อมบำรุง, ประชุม.
 
 ## Architecture principles
 Configuration over Hard-code; Policy-driven; Workflow-driven; Permission-driven; Event-driven; Audit everything; Secure by default; Modular by design.

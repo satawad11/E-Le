@@ -53,11 +53,11 @@ describe('secureFile', () => {
 
     const openSpy = vi.spyOn(globalThis, 'open').mockImplementation(() => null)
 
-    await openAuthenticatedReport('/saraban/reports/export', { from: '2026-01-01' })
+    await openAuthenticatedReport('/reports/export-excel', { from: '2026-01-01' })
 
     const [url, options] = get.mock.calls[0]
 
-    expect(url).toBe('/saraban/reports/export')
+    expect(url).toBe('/reports/export-excel')
     expect(options.params).toEqual({ from: '2026-01-01' })
     expect(JSON.stringify(options.params)).not.toMatch(/token/i)
     expect(openSpy).toHaveBeenCalled()
@@ -80,7 +80,7 @@ describe('secureFile', () => {
       return element
     })
 
-    await openAuthenticatedReport('/saraban/reports/export')
+    await openAuthenticatedReport('/reports/export-excel')
 
     expect(clicked).toEqual(['รายงาน.pdf'])
   })

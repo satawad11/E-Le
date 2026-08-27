@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\LeaveType;
+use App\Support\UploadRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -30,7 +31,8 @@ class StoreLeaveRequest extends FormRequest
             'leave_period' => 'nullable|in:full_day,morning,afternoon',
             'reason' => 'required|string|max:1000',
             'contact_address' => 'nullable|string|max:1000',
-            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            // SEC-023R — allowlist กลางที่ `config/uploads.php` (เพดานของใบลาคือ 5 MB)
+            'attachment' => array_merge(['nullable'], UploadRules::attachment(5120)),
             'substitute_id' => 'nullable|exists:users,id',
             'substitute_reason' => 'nullable|string|max:1000',
             'meta_data' => 'nullable|json',

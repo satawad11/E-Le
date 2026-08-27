@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\LineNotificationService;
 use App\Services\SystemSettingService;
 use App\Services\TelegramService;
+use App\Support\UploadRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Mail;
@@ -36,14 +37,6 @@ class SecureSettingController extends Controller
         }
 
         $validated = $request->validate(Arr::only($rules, array_keys($request->all())));
-        foreach (['saraban_incoming_number_format', 'saraban_outgoing_number_format'] as $formatKey) {
-            if (filled($validated[$formatKey] ?? null)
-                && (! str_contains($validated[$formatKey], '{year}') || ! str_contains($validated[$formatKey], '{running_number}'))) {
-                throw ValidationException::withMessages([
-                    $formatKey => ['รูปแบบเลขหนังสือต้องมีตัวแปร {year} และ {running_number}'],
-                ]);
-            }
-        }
         $changes = $this->settings->updateMany($validated, $request->user(), $request->ip(), $request->userAgent());
 
         return response()->json([
@@ -94,14 +87,9 @@ class SecureSettingController extends Controller
         return response()->json(['message' => 'ลบโลโก้เรียบร้อยแล้ว']);
     }
 
-    public function uploadGarudaLogo(Request $request)
-    {
-        return $this->uploadAsset($request, 'saraban_garuda_logo', 'logos', 'ตราครุฑ');
-    }
-
     private function uploadAsset(Request $request, string $key, string $directory, string $label)
     {
-        $request->validate(['logo' => 'required|image|mimes:jpeg,png,jpg|max:2048']);
+        $request->validate(['logo' => array_merge(['required'], UploadRules::image(2048))]);
         $oldPath = $this->settings->runtimeValues()->get($key);
         $path = $request->file('logo')->store($directory, 'private_uploads');
         $url = '/storage/'.$path;

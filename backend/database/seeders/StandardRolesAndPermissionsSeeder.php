@@ -41,16 +41,6 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                 'overtime.operation.execute' => 'บันทึกและจัดทำคำสั่งปฏิบัติงานล่วงเวลา',
                 'overtime.management.review' => 'อนุมัติ รับรอง และดูรายงานการปฏิบัติงานล่วงเวลา',
             ],
-            'saraban' => [
-                'saraban.document.view' => 'เข้าถึงทะเบียนรับ-ส่งหนังสือราชการ',
-                'saraban.document.create' => 'สร้างร่างหนังสือราชการใหม่',
-                'saraban.document.edit' => 'แก้ไขเนื้อหาหนังสือราชการ',
-                'saraban.document.delete' => 'ลบหนังสือราชการ',
-                'saraban.document.approve' => 'กลั่นกรอง/เสนออนุมัติหนังสือราชการ',
-                'saraban.document.sign' => 'ลงนามดิจิทัล / ลายเซ็นอิเล็กทรอนิกส์',
-                'saraban.circular.broadcast' => 'ออกหนังสือเวียนถึงทุกแผนก',
-                'saraban.setting.manage' => 'ตั้งค่าระบบสารบรรณและสายงานอนุมัติ',
-            ],
             'system' => [
                 'system.user.view' => 'ดูรายการข้อมูลผู้ใช้งาน',
                 'system.user.manage' => 'เพิ่ม/แก้ไข/ระงับผู้ใช้งานระบบ',
@@ -104,7 +94,6 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                     'leave.request.create', 'leave.request.view_my', 'leave.request.cancel',
                     'leave.approval.dept', 'leave.approval.final', 'leave.report.view',
                     'attendance.checkin', 'attendance.view_self', 'attendance.view_all', 'attendance.export', 'attendance.ot_summary',
-                    'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast',
                     'approve_leave', 'approve_leaves', 'view_all_attendances', 'export_reports',
                 ],
             ],
@@ -116,7 +105,6 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                     'leave.request.create', 'leave.request.view_my', 'leave.request.cancel',
                     'leave.approval.dept', 'leave.report.view',
                     'attendance.checkin', 'attendance.view_self', 'attendance.view_all', 'attendance.export', 'attendance.ot_summary',
-                    'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign',
                     'approve_leave', 'approve_leaves', 'view_all_attendances', 'export_reports',
                 ],
             ],
@@ -128,7 +116,6 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                     'leave.request.create', 'leave.request.view_my', 'leave.request.cancel',
                     'leave.approval.dept', 'leave.report.view',
                     'attendance.checkin', 'attendance.view_self',
-                    'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign',
                     'approve_leave', 'approve_leaves',
                 ],
             ],
@@ -150,8 +137,6 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                 'permissions' => [
                     'leave.request.create', 'leave.request.view_my', 'leave.request.cancel',
                     'attendance.checkin', 'attendance.view_self', 'attendance.record.create', 'attendance.record.view_my',
-                    'saraban.document.view', 'saraban.document.create', 'saraban.document.edit', 'saraban.document.delete',
-                    'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast', 'saraban.setting.manage',
                 ],
             ],
 
@@ -161,7 +146,6 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                 'permissions' => [
                     'leave.request.create', 'leave.request.view_my', 'leave.request.cancel',
                     'attendance.checkin', 'attendance.view_self', 'attendance.record.create', 'attendance.record.view_my',
-                    'saraban.document.view', 'saraban.document.create',
                 ],
             ],
         ];

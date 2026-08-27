@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use Database\Seeders\DocumentEngineSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
-use Database\Seeders\SarabanPermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -33,7 +32,6 @@ class AuthorizationMatrixTest extends TestCase
 
         // ใช้ชุดสิทธิ์ชุดเดียวกับที่ระบบจริงติดตั้ง
         $this->seed(RolesAndPermissionsSeeder::class);
-        $this->seed(SarabanPermissionSeeder::class);
         // ศูนย์จัดการเอกสารมีสิทธิ์ชุดของตัวเอง (document.*) ที่ route บังคับใช้จริง
         $this->seed(DocumentEngineSeeder::class);
     }

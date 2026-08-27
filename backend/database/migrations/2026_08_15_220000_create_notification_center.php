@@ -109,7 +109,6 @@ return new class extends Migration
             'attendance.late' => ['attendance', 'แจ้งเตือนการมาสาย', 'มีรายการลงเวลาที่ต้องตรวจสอบ'],
             'attendance.early_leave' => ['attendance', 'แจ้งเตือนออกก่อนเวลา', 'มีรายการลงเวลาที่ต้องตรวจสอบ'],
             'overtime.approval' => ['overtime', 'สถานะคำสั่ง OT', 'สถานะคำสั่งปฏิบัติงานล่วงเวลามีการเปลี่ยนแปลง'],
-            'saraban.task' => ['saraban', 'งานสารบรรณใหม่', 'มีงานสารบรรณที่ต้องดำเนินการในระบบ'],
         ];
         $now = now();
 

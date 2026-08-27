@@ -71,25 +71,7 @@
             </div>
 
             <!-- Module Enable/Disable toggle -->
-            <div v-if="moduleId === 'saraban' || moduleId === 'attendance'" class="flex items-center gap-2 flex-shrink-0">
-              <!-- Saraban toggle -->
-              <template v-if="moduleId === 'saraban'">
-                <span class="text-xs text-slate-500">{{ settingStore.isSarabanEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span>
-                <button
-                  @click="toggleSarabanModule"
-                  role="switch"
-                  aria-label="เปิดหรือปิดโมดูลสารบรรณ"
-                  :aria-checked="settingStore.isSarabanEnabled"
-                  :class="settingStore.isSarabanEnabled ? 'bg-emerald-500' : 'bg-slate-300'"
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
-                  :disabled="savingModule"
-                >
-                  <span
-                    :class="settingStore.isSarabanEnabled ? 'translate-x-6' : 'translate-x-1'"
-                    class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
-                  />
-                </button>
-              </template>
+            <div v-if="moduleId === 'attendance'" class="flex items-center gap-2 flex-shrink-0">
               <!-- Attendance toggle -->
               <template v-if="moduleId === 'attendance'">
                 <span class="text-xs text-slate-500">{{ settingStore.isAttendanceEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span>
@@ -215,7 +197,6 @@ const permissionUserCount = ref({});
 
 const moduleColors = {
   leave:      'bg-sky-500',
-  saraban:    'bg-violet-500',
   admin:      'bg-rose-500',
   attendance: 'bg-amber-500',
   finance:    'bg-emerald-500',
@@ -254,18 +235,6 @@ async function loadData() {
   }
 }
 
-async function toggleSarabanModule() {
-  savingModule.value = true;
-  const newValue = settingStore.isSarabanEnabled ? '0' : '1';
-  try {
-    await settingStore.updateSetting('enable_saraban_menu', newValue);
-    alertStore.showSuccess(newValue !== '0' ? 'เปิดใช้งานโมดูลสารบรรณแล้ว' : 'ปิดใช้งานโมดูลสารบรรณแล้ว');
-  } catch {
-    alertStore.showError('ไม่สามารถเปลี่ยนสถานะโมดูลได้');
-  } finally {
-    savingModule.value = false;
-  }
-}
 
 async function toggleAttendanceModule() {
   savingModule.value = true;

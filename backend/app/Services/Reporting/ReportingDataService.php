@@ -6,7 +6,6 @@ use App\Models\Attendance;
 use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\Overtime\OvertimeTimeRecord;
-use App\Models\Saraban\Document;
 use App\Models\User;
 use App\Services\Modules\ModuleRegistry;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -15,12 +14,12 @@ use Illuminate\Support\Facades\DB;
 
 class ReportingDataService
 {
-    public const REPORTS = ['personnel', 'leave', 'leave_balance', 'attendance', 'late', 'absence', 'ot', 'saraban', 'executive'];
+    public const REPORTS = ['personnel', 'leave', 'leave_balance', 'attendance', 'late', 'absence', 'ot', 'executive'];
 
     private const SOURCE_MODULES = [
         'personnel' => 'system', 'leave' => 'leave', 'leave_balance' => 'leave',
         'attendance' => 'attendance', 'late' => 'attendance', 'absence' => 'attendance',
-        'ot' => 'overtime', 'saraban' => 'saraban',
+        'ot' => 'overtime',
     ];
 
     public function __construct(private ReportingScopeService $scope, private ModuleRegistry $modules) {}
@@ -43,7 +42,6 @@ class ReportingDataService
             'late' => $this->late($filter, $viewer, $ability),
             'absence' => $this->absence($filter, $viewer, $ability),
             'ot' => $this->overtime($filter, $viewer, $ability),
-            'saraban' => $this->saraban($filter, $viewer, $ability),
             default => throw new \InvalidArgumentException("Unknown report: {$report}"),
         };
     }
@@ -207,28 +205,6 @@ class ReportingDataService
             'actual_minutes' => array_sum(array_column($rows, 'actual_minutes')),
             'certified_minutes' => array_sum(array_column($rows, 'certified_minutes')),
         ], $filter);
-    }
-
-    private function saraban(ReportFilter $filter, User $viewer, string $ability): ReportDataset
-    {
-        $query = Document::query()
-            ->join('users', 'users.id', '=', 'saraban_documents.created_by')
-            ->leftJoin('org_units', 'org_units.id', '=', 'users.org_unit_id')
-            ->whereIn('saraban_documents.created_by', $this->scope->users($viewer, $ability, $filter))
-            ->whereBetween('saraban_documents.created_at', [$filter->from, $filter->to])
-            ->when(! $viewer->can('saraban.document.view_classified'), fn ($documents) => $documents->where('saraban_documents.secrecy', 'normal'));
-        $rows = $query
-            ->selectRaw('org_units.name as organization, saraban_documents.status, saraban_documents.priority, COUNT(saraban_documents.id) as documents')
-            ->groupBy('org_units.name', 'saraban_documents.status', 'saraban_documents.priority')
-            ->orderBy('org_units.name')->orderBy('saraban_documents.status')->get()
-            ->map(fn ($row): array => [
-                'organization' => $row->organization, 'status' => $row->status,
-                'priority' => $row->priority, 'documents' => (int) $row->documents,
-            ])->all();
-
-        return $this->dataset('saraban', 'Saraban Report', [
-            'organization' => 'Organization', 'status' => 'Status', 'priority' => 'Priority', 'documents' => 'Documents',
-        ], $rows, ['documents' => array_sum(array_column($rows, 'documents'))], $filter);
     }
 
     private function executive(ReportFilter $filter, User $viewer): ReportDataset

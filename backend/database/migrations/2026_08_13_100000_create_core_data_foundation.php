@@ -44,10 +44,6 @@ return new class extends Migration
             $table->uuid('uuid')->nullable()->unique()->after('id');
         });
 
-        Schema::table('saraban_documents', function (Blueprint $table) {
-            $table->uuid('uuid')->nullable()->unique()->after('id');
-        });
-
         $rootId = DB::table('org_units')->insertGetId([
             'uuid' => (string) Str::uuid(),
             'parent_id' => null,
@@ -86,7 +82,6 @@ return new class extends Migration
         DB::table('users')->whereNull('uuid')->orderBy('id')->each(fn (object $row) => DB::table('users')->where('id', $row->id)->update(['uuid' => (string) Str::uuid()]));
         DB::table('leaves')->whereNull('uuid')->orderBy('id')->each(fn (object $row) => DB::table('leaves')->where('id', $row->id)->update(['uuid' => (string) Str::uuid()]));
         DB::table('attendances')->whereNull('uuid')->orderBy('id')->each(fn (object $row) => DB::table('attendances')->where('id', $row->id)->update(['uuid' => (string) Str::uuid()]));
-        DB::table('saraban_documents')->whereNull('uuid')->orderBy('id')->each(fn (object $row) => DB::table('saraban_documents')->where('id', $row->id)->update(['uuid' => (string) Str::uuid()]));
 
         DB::table('users')->whereNotNull('department_id')->update([
             'org_unit_id' => DB::raw('(SELECT org_unit_id FROM department_org_unit_map WHERE department_org_unit_map.department_id = users.department_id)'),
@@ -128,7 +123,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('personnel_assignments');
-        Schema::table('saraban_documents', fn (Blueprint $table) => $table->dropColumn('uuid'));
         Schema::table('attendances', fn (Blueprint $table) => $table->dropColumn('uuid'));
         Schema::table('leaves', fn (Blueprint $table) => $table->dropColumn('uuid'));
         Schema::table('users', function (Blueprint $table) {

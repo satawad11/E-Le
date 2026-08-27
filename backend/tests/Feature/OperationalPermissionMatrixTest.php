@@ -48,7 +48,6 @@ class OperationalPermissionMatrixTest extends TestCase
             'attendance.ot_summary',
             'system.menu.manage',
             'admin.users.manage_permissions',
-            'saraban.setting.manage',
         ];
 
         $catalogue = Permission::pluck('name')->all();
@@ -98,10 +97,6 @@ class OperationalPermissionMatrixTest extends TestCase
             'attendance.ot_summary',
             'system.menu.manage',
             'admin.users.manage_permissions',
-            'saraban.setting.manage',
-            'saraban.document.view',
-            'saraban.document.delete',
-            'saraban.document.view_classified',
         ];
 
         foreach ($mustNotHave as $ability) {
@@ -145,83 +140,6 @@ class OperationalPermissionMatrixTest extends TestCase
     }
 
     /**
-     * CORE CHECKPOINT — ผู้บริหารต้องกลั่นกรองและลงนามหนังสือราชการได้
-     *
-     * เดิม `saraban.document.approve` / `.sign` เป็นของ Super Admin เท่านั้น
-     * สายงานหนังสือราชการจึงเดินไม่ครบ และเป็นเหตุให้ CORE-WF-002 ปิดไม่ได้
-     */
-    public function test_executives_can_screen_and_sign_official_documents(): void
-    {
-        foreach (['Director', 'Deputy Director'] as $role) {
-            $user = $this->userWithRole($role);
-
-            foreach (['saraban.document.view', 'saraban.document.approve', 'saraban.document.sign'] as $ability) {
-                $this->assertTrue($user->can($ability), "role `{$role}` ต้องมีสิทธิ์ `{$ability}`");
-            }
-        }
-    }
-
-    /**
-     * แต่การให้สิทธิ์อนุมัติต้องไม่พาสิทธิ์อันตรายติดมาด้วย
-     */
-    public function test_executives_still_do_not_get_the_dangerous_saraban_powers(): void
-    {
-        foreach (['Director', 'Deputy Director'] as $role) {
-            $user = $this->userWithRole($role);
-
-            foreach ([
-                'saraban.document.delete',
-                'saraban.document.view_classified',
-                'saraban.document.manage_types',
-                'saraban.setting.manage',
-                'saraban.document.register',
-            ] as $ability) {
-                $this->assertFalse($user->can($ability), "role `{$role}` ต้องไม่ได้สิทธิ์ `{$ability}`");
-            }
-        }
-    }
-
-    /**
-     * Decision 2 — Document Officer คือเจ้าหน้าที่สารบรรณ และทำงานได้จริง
-     */
-    public function test_document_officer_can_actually_run_the_register(): void
-    {
-        $officer = $this->userWithRole('Document Officer');
-
-        foreach ([
-            'saraban.document.view',
-            'saraban.document.create',
-            'saraban.document.edit',
-            'saraban.document.register',
-            'saraban.circular.broadcast',
-            'saraban.document.report',
-        ] as $ability) {
-            $this->assertTrue($officer->can($ability), "เจ้าหน้าที่สารบรรณต้องมีสิทธิ์ `{$ability}`");
-        }
-    }
-
-    /**
-     * Decision 2 — "ไม่ควรได้สิทธิ์เอกสารลับหรือลบทั้งหมดโดยอัตโนมัติ
-     * เว้นแต่มี permission นั้นจริง"
-     */
-    public function test_document_officer_does_not_get_the_dangerous_saraban_powers(): void
-    {
-        $officer = $this->userWithRole('Document Officer');
-
-        foreach ([
-            'saraban.document.delete',
-            'saraban.document.view_classified',
-            'saraban.document.manage_types',
-            'saraban.setting.manage',
-        ] as $ability) {
-            $this->assertFalse(
-                $officer->can($ability),
-                "เจ้าหน้าที่สารบรรณต้องไม่ได้ `{$ability}` มาโดยอัตโนมัติ — ต้องมอบหมายรายบุคคลเท่านั้น",
-            );
-        }
-    }
-
-    /**
      * สิทธิ์ที่กระทบความปลอดภัยของทั้งระบบต้องไม่ตกไปอยู่กับ role ใดนอกจาก Super Admin
      *
      * โดยเฉพาะ `admin.users.manage_permissions` — ถ้า role ที่ไม่ใช่ผู้ดูแลระบบถือไว้
@@ -232,10 +150,6 @@ class OperationalPermissionMatrixTest extends TestCase
         $restricted = [
             'system.menu.manage',
             'admin.users.manage_permissions',
-            'saraban.setting.manage',
-            'saraban.document.delete',
-            'saraban.document.view_classified',
-            'saraban.document.manage_types',
         ];
 
         foreach ($restricted as $ability) {
@@ -254,21 +168,21 @@ class OperationalPermissionMatrixTest extends TestCase
     }
 
     /**
-     * มอบหมายรายบุคคลได้จริง — เป็นทางที่ Decision 1 กำหนดไว้สำหรับ
-     * `saraban.setting.manage` ("เฉพาะผู้ได้รับมอบหมาย")
+     * มอบหมายรายบุคคลได้จริง — เป็นทางที่ Decision 1 กำหนดไว้สำหรับสิทธิ์
+     * ที่ไม่ผูกกับ role ใดเลย ("เฉพาะผู้ได้รับมอบหมาย")
      */
     public function test_restricted_permissions_can_still_be_granted_to_one_person(): void
     {
         $officer = $this->userWithRole('Document Officer');
-        $this->assertFalse($officer->can('saraban.setting.manage'));
+        $this->assertFalse($officer->can('system.menu.manage'));
 
-        $officer->givePermissionTo('saraban.setting.manage');
+        $officer->givePermissionTo('system.menu.manage');
 
-        $this->assertTrue($officer->fresh()->can('saraban.setting.manage'));
+        $this->assertTrue($officer->fresh()->can('system.menu.manage'));
 
         // และต้องไม่หลุดไปทั้ง role
         $this->assertFalse(
-            $this->userWithRole('Document Officer')->can('saraban.setting.manage'),
+            $this->userWithRole('Document Officer')->can('system.menu.manage'),
             'การมอบหมายรายบุคคลต้องไม่กลายเป็นสิทธิ์ของทั้ง role',
         );
     }

@@ -11,12 +11,6 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WorkflowController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\RoleController;
-use App\Http\Controllers\Api\Saraban\CircularController;
-use App\Http\Controllers\Api\Saraban\DocumentController;
-use App\Http\Controllers\Api\Saraban\DocumentTypeController;
-use App\Http\Controllers\Api\Saraban\DocumentWorkflowTemplateController;
-use App\Http\Controllers\Api\Saraban\SettingController as SarabanSettingController;
-use App\Http\Controllers\Api\Saraban\SignatureController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AttendanceCorrectionController;
@@ -47,10 +41,6 @@ Route::middleware('throttle:public-api')->group(function () {
     Route::get('/ping', function () {
         return response()->json(['message' => 'pong']);
     });
-
-    // Public Saraban verify routes
-    Route::get('/saraban/verify/{hash}', [SignatureController::class, 'verify'])->middleware('throttle:verify');
-    Route::get('/saraban/verify/{hash}/qrcode', [SignatureController::class, 'getQrCode'])->middleware('throttle:verify');
 
     // ตรวจสอบใบลาจาก QR บนเอกสารที่พิมพ์ออกไป — จำกัดอัตราเพื่อกันการสุ่มโทเคน
     Route::middleware('throttle:verify')->group(function () {
@@ -227,17 +217,11 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     /*
      * ตั้งค่าระบบ — LEGACY-04 (ปิดงาน)
      *
-     * ถอด `saraban.setting.manage` ออกจากกลุ่มนี้ เพราะกลุ่มนี้ครอบคลุมค่า SMTP,
-     * Telegram/LINE, การล้างค่าลับ, ปีงบประมาณ และเทมเพลตเอกสารทั้งหมด
-     * ผู้ดูแลงานสารบรรณไม่ควรเห็นหรือแก้ค่าเหล่านั้น
-     *
-     * ค่าที่เป็นของงานสารบรรณย้ายไปที่ `/api/saraban/settings` ด้านล่าง
      */
     Route::middleware('permission:manage_settings|system.setting.manage')->group(function () {
         Route::get('/admin/settings', [SecureSettingController::class, 'adminIndex']);
         Route::post('/admin/settings', [SecureSettingController::class, 'update']);
         Route::post('/admin/settings/upload-logo', [SecureSettingController::class, 'uploadLogo']);
-        Route::post('/admin/settings/upload-garuda', [SecureSettingController::class, 'uploadGarudaLogo']);
         Route::delete('/admin/settings/logo', [SecureSettingController::class, 'deleteLogo']);
         Route::delete('/admin/settings/secrets/{key}', [SecureSettingController::class, 'clearSecret']);
         Route::post('/admin/settings/test-notification/{channel}', [SecureSettingController::class, 'testNotification']);
@@ -308,98 +292,6 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     Route::get('/admin/document-engine/generated/{file}/download', [DocumentEngineController::class, 'downloadGenerated'])
         ->middleware(['permission:document.final.download|manage_settings|system.setting.manage', 'throttle:documents']);
-
-    // Saraban Document routes.
-    // Route-level `permission:` middleware is the coarse gate; DocumentPolicy
-    // (checked inside the controllers) enforces per-document rules on top of it.
-    Route::prefix('saraban')->group(function () {
-        /*
-         * ตั้งค่าระบบสารบรรณ — จำกัดเฉพาะค่าของงานสารบรรณ
-         * (Decision 1: `saraban.setting.manage` "เฉพาะผู้ได้รับมอบหมาย")
-         */
-        Route::middleware('permission:saraban.setting.manage')->group(function () {
-            Route::get('/settings', [SarabanSettingController::class, 'index']);
-            Route::post('/settings', [SarabanSettingController::class, 'update']);
-            Route::post('/settings/garuda-logo', [SarabanSettingController::class, 'uploadGarudaLogo']);
-        });
-
-        // Document Types — read for anyone who can see the register, write for registrars.
-        Route::middleware('permission:saraban.document.view')->group(function () {
-            Route::get('/types', [DocumentTypeController::class, 'index']);
-        });
-        Route::middleware('permission:saraban.document.manage_types')->group(function () {
-            Route::post('/types', [DocumentTypeController::class, 'store']);
-            Route::put('/types/{type}', [DocumentTypeController::class, 'update']);
-            Route::delete('/types/{type}', [DocumentTypeController::class, 'destroy']);
-
-            Route::post('/workflow-templates', [DocumentWorkflowTemplateController::class, 'store']);
-            Route::put('/workflow-templates/{id}', [DocumentWorkflowTemplateController::class, 'update']);
-            Route::delete('/workflow-templates/{id}', [DocumentWorkflowTemplateController::class, 'destroy']);
-        });
-
-        Route::middleware('permission:saraban.document.view')->group(function () {
-            Route::get('/workflow-templates', [DocumentWorkflowTemplateController::class, 'index']);
-
-            // Pickers for the document form / circular recipients. Scoped read-only
-            // lists so saraban users do not need the admin `view_users` permission.
-            Route::get('/users-list', [DocumentController::class, 'usersList']);
-            Route::get('/departments-list', [DocumentController::class, 'departmentsList']);
-
-            // Documents — read
-            Route::get('/documents', [DocumentController::class, 'index']);
-            Route::get('/documents/stats', [DocumentController::class, 'stats']);
-            Route::get('/documents/{document}', [DocumentController::class, 'show'])
-                ->middleware('saraban.classified');
-            /*
-             * SEC-025 — read/state ใช้ route model binding และผ่านด่านชั้นความลับ
-             * เหมือน `show` เดิม `/documents/{id}/state` รับ id ดิบและไม่ตรวจอะไรเลย
-             */
-            Route::post('/documents/{document}/read', [DocumentController::class, 'read'])
-                ->middleware('saraban.classified');
-            Route::post('/documents/{document}/state', [DocumentController::class, 'updateState'])
-                ->middleware('saraban.classified');
-            Route::get('/attachments/{attachment}/download', [DocumentController::class, 'downloadAttachment'])->middleware('throttle:documents');
-        });
-
-        Route::post('/documents', [DocumentController::class, 'store'])
-            ->middleware('permission:saraban.document.create');
-
-        Route::put('/documents/{document}', [DocumentController::class, 'update'])
-            ->middleware(['permission:saraban.document.edit', 'saraban.classified']);
-
-        Route::delete('/documents/bulk', [DocumentController::class, 'destroyMultiple'])
-            ->middleware('permission:saraban.document.delete');
-        Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])
-            ->middleware(['permission:saraban.document.delete', 'saraban.classified']);
-
-        // Saraban Workflow
-        Route::middleware('permission:saraban.document.view')->group(function () {
-            Route::post('/documents/{id}/workflow/submit', [App\Http\Controllers\Api\Saraban\WorkflowController::class, 'submit']);
-        });
-        Route::middleware(['permission:saraban.document.approve', 'saraban.classified'])->group(function () {
-            Route::post('/documents/{id}/workflow/approve', [App\Http\Controllers\Api\Saraban\WorkflowController::class, 'approve']);
-            Route::post('/documents/{id}/workflow/reject', [App\Http\Controllers\Api\Saraban\WorkflowController::class, 'reject']);
-        });
-
-        // Saraban Signatures
-        Route::post('/documents/{id}/sign', [SignatureController::class, 'sign'])
-            ->middleware(['permission:saraban.document.sign', 'saraban.classified']);
-
-        // Saraban Circulars
-        Route::middleware('permission:saraban.document.view')->group(function () {
-            Route::get('/circulars/incoming', [CircularController::class, 'incoming']);
-            Route::get('/circulars/outgoing', [CircularController::class, 'outgoing']);
-            Route::post('/documents/{id}/circular', [CircularController::class, 'send']);
-            Route::post('/circulars/{id}/acknowledge', [CircularController::class, 'acknowledge']);
-            Route::get('/documents/{id}/circulars/tracking', [CircularController::class, 'tracking']);
-        });
-
-        // Saraban Reports
-        Route::middleware('permission:saraban.document.report')->group(function () {
-            Route::get('/reports/summary', [App\Http\Controllers\Api\Saraban\ReportController::class, 'summary']);
-            Route::get('/reports/export', [App\Http\Controllers\Api\Saraban\ReportController::class, 'exportCsv'])->middleware('throttle:exports');
-        });
-    });
 
     Route::get('/fiscal-year/current', [FiscalYearController::class, 'current']);
 

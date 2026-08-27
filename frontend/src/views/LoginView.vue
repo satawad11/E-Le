@@ -202,7 +202,6 @@ const testAccounts = isDev ? [
   { email: 'director@example.com',   label: 'ผู้อำนวยการ',     icon: ICONS.building,    id_card: '2222222222222' },
   { email: 'deputy@example.com',     label: 'รองผู้อำนวยการ',   icon: ICONS.briefcase,   id_card: '3333333333333' },
   { email: 'hrhead@example.com',     label: 'เจ้าหน้าที่ HR',    icon: ICONS.clipboard,   id_card: '4444444444444' },
-  { email: 'doc@example.com',        label: 'สารบรรณกลาง',    icon: ICONS.documentDuplicate, id_card: 'doc@example.com' },
   { email: 'employee@example.com',   label: 'ครู/เจ้าหน้าที่',    icon: ICONS.user,        id_card: '5555555555555' },
 ] : []
 

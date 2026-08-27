@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Leave;
 use App\Models\LeaveAuditLog;
 use App\Models\LeaveEvidence;
+use App\Support\UploadRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -50,7 +51,8 @@ class LeaveEvidenceController extends Controller
     public function store(Request $r, Leave $leave)
     {
         $this->authorizeAccess($r, $leave);
-        $data = $r->validate(['files' => 'required|array|max:10', 'files.*' => 'file|mimes:pdf,jpg,jpeg,png|max:10240', 'evidence_type' => 'required|string|max:80', 'issued_date' => 'nullable|date']);
+        // SEC-023R — allowlist กลางที่ `config/uploads.php` (ชนิดไฟล์จริง + นามสกุล)
+        $data = $r->validate(['files' => 'required|array|max:10', 'files.*' => UploadRules::attachment(), 'evidence_type' => 'required|string|max:80', 'issued_date' => 'nullable|date']);
         $created = [];
         foreach ($r->file('files') as $file) {
             $path = Storage::disk('local')->putFile('private/leave-evidences', $file);

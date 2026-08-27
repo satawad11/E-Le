@@ -4,14 +4,12 @@ import api from '../axios';
 export const useSettingStore = defineStore('setting', {
   state: () => ({
     settings: {
-      enable_saraban_menu: '1',
       enable_attendance_menu: '1',
       enable_leave_menu: '1',
     },
     loaded: false,
   }),
   getters: {
-    isSarabanEnabled: (state) => state.settings.enable_saraban_menu !== '0',
     isAttendanceEnabled: (state) => state.settings.enable_attendance_menu !== '0',
     isLeaveEnabled: (state) => state.settings.enable_leave_menu !== '0',
   },

@@ -13,9 +13,7 @@ use App\Models\Workflow\WorkflowInstance;
 use App\Models\Workflow\WorkflowShadowComparison;
 use App\Models\Workflow\WorkflowVersion;
 use App\Services\Workflow\LeaveWorkflowProvisioner;
-use App\Services\Workflow\SarabanWorkflowProvisioner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -315,34 +313,5 @@ class WorkflowAuthorizationTest extends TestCase
             ->assertOk();
 
         $this->assertSame(2, (int) $leave->fresh()->approval_level);
-    }
-
-    // ------------------------------------------------------- Saraban (05-5)
-
-    /**
-     * CORE CHECKPOINT · CORE-WF-002 — สายงานสารบรรณเปิดใช้แล้ว
-     *
-     * LEGACY-05 ปล่อยไว้เป็น `draft` เพราะยังไม่มีผู้อนุมัติในสาย
-     * เมื่อ ผอ./รอง ผอ. ได้สิทธิ์อนุมัติ/ลงนามแล้ว จึงเปิดใช้เพื่อให้เอกสาร
-     * pin เวอร์ชันของตัวเองได้
-     */
-    public function test_the_saraban_workflow_is_active_and_pins_versions(): void
-    {
-        $version = app(SarabanWorkflowProvisioner::class)->publishCurrentVersion();
-
-        $this->assertSame('active', $version->status);
-        $this->assertTrue($version->definition->is_active);
-        $this->assertNotNull($version->definition->activeVersion(), 'ต้องมีเวอร์ชันที่รับ instance ได้');
-    }
-
-    public function test_activating_the_saraban_workflow_changes_no_permission(): void
-    {
-        $before = Permission::orderBy('name')->pluck('name')->all();
-        $beforeRoleGrants = DB::table('role_has_permissions')->count();
-
-        app(SarabanWorkflowProvisioner::class)->publishCurrentVersion();
-
-        $this->assertSame($before, Permission::orderBy('name')->pluck('name')->all(), 'ต้องไม่มี permission เพิ่มหรือหาย');
-        $this->assertSame($beforeRoleGrants, DB::table('role_has_permissions')->count(), 'ต้องไม่มีการแจกสิทธิ์เปลี่ยน');
     }
 }

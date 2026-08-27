@@ -292,114 +292,6 @@
           </div>
         </div>
 
-        <!-- ระบบสารบรรณอิเล็กทรอนิกส์ Collapsible -->
-        <div v-if="settingStore.isSarabanEnabled && (authStore.isAdmin || authStore.hasAnyPermission(['saraban.view', 'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast', 'saraban.setting.manage']))">
-          <button
-            @click="sarabanMenuOpen = !sarabanMenuOpen; if(isSidebarCollapsed) isSidebarCollapsed = false"
-            class="nav-link w-full flex justify-between items-center"
-            :class="[isSarabanRouteActive ? 'bg-white/10 text-white' : '', isSidebarCollapsed ? 'justify-center px-0' : '']"
-            :title="isSidebarCollapsed ? 'ระบบสารบรรณ' : ''"
-          >
-            <div class="flex items-center gap-3">
-              <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-              </svg>
-              <span v-show="!isSidebarCollapsed" class="whitespace-nowrap">ระบบสารบรรณ</span>
-            </div>
-            <svg v-show="!isSidebarCollapsed" class="w-4 h-4 transition-transform duration-200 flex-shrink-0" :class="{ 'rotate-180': sarabanMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
-          </button>
-          
-          <div v-show="sarabanMenuOpen && !isSidebarCollapsed" class="mt-1 space-y-1 pl-9">
-            <!-- ลงทะเบียนหนังสือใหม่ -->
-            <router-link
-              v-if="authStore.isAdmin || authStore.hasPermission('saraban.document.create')"
-              to="/saraban/create"
-              class="nav-link !py-2 !text-sm"
-              active-class="nav-link-active"
-            >
-              ลงทะเบียนหนังสือใหม่
-            </router-link>
-
-            <!-- รายการเอกสารทั้งหมด -->
-            <router-link
-              to="/saraban"
-              class="nav-link !py-2 !text-sm"
-              active-class="nav-link-active"
-              :class="{ 'nav-link-active': $route.path === '/saraban' }"
-            >
-              ทะเบียนรับ-ส่ง (ทั้งหมด)
-            </router-link>
-
-            <!-- หนังสือรับ -->
-            <router-link
-              to="/saraban/incoming"
-              class="nav-link !py-2 !text-sm"
-              active-class="nav-link-active"
-            >
-              หนังสือรับ
-            </router-link>
-
-            <!-- หนังสือส่ง -->
-            <router-link
-              to="/saraban/outgoing"
-              class="nav-link !py-2 !text-sm"
-              active-class="nav-link-active"
-            >
-              หนังสือส่ง
-            </router-link>
-
-            <!-- หนังสือเวียน -->
-            <router-link
-              to="/saraban/circulars"
-              class="nav-link !py-2 !text-sm"
-              active-class="nav-link-active"
-            >
-              หนังสือเวียน
-            </router-link>
-
-            <!-- รายงานสารบรรณ -->
-            <router-link
-              v-if="authStore.hasPermission('saraban.document.report')"
-              to="/saraban/reports"
-              class="nav-link !py-2 !text-sm"
-              active-class="nav-link-active"
-            >
-              รายงานสถิติ
-            </router-link>
-
-            <!-- จัดการหมวดหมู่เอกสาร -->
-            <router-link
-              v-if="authStore.hasPermission('saraban.document.manage_types')"
-              to="/saraban/types"
-              class="nav-link !py-2 !text-sm"
-              active-class="nav-link-active"
-            >
-              จัดการหมวดหมู่เอกสาร
-            </router-link>
-            <!-- สายการอนุมัติ -->
-            <router-link
-              v-if="authStore.isAdmin || authStore.hasPermission('manage_workflow_steps')"
-              to="/saraban/workflow-templates"
-              class="nav-link !py-2 !text-sm"
-              active-class="nav-link-active"
-            >
-              สายการอนุมัติ
-            </router-link>
-            <!-- ตั้งค่าระบบสารบรรณ -->
-            <router-link
-              v-if="authStore.hasPermission('saraban.setting.manage')"
-              to="/saraban/settings"
-              class="nav-link !py-2 !text-sm"
-              active-class="nav-link-active"
-            >
-              ตั้งค่าระบบสารบรรณ
-            </router-link>
-          </div>
-        </div>
-
-
         <!-- Divider for admin section -->
         <div v-if="authStore.hasAnyAdminMenu" class="pt-3 pb-1" :class="isSidebarCollapsed ? 'text-center' : ''">
           <p class="text-white/30 text-[10px] uppercase tracking-widest px-3" v-if="!isSidebarCollapsed">ผู้ดูแลระบบ</p>
@@ -719,56 +611,6 @@
               </router-link>
             </div>
           </div>
-
-          <!-- ระบบสารบรรณ Collapsible (Mobile) -->
-          <div v-if="settingStore.isSarabanEnabled && (authStore.isAdmin || authStore.hasAnyPermission(['saraban.view', 'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast', 'saraban.setting.manage']))">
-            <button
-              @click="sarabanMenuOpen = !sarabanMenuOpen"
-              class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-white/80 hover:bg-white/10"
-              :class="{ 'bg-white/15 text-white font-semibold': isSarabanRouteActive }"
-            >
-              <div class="flex items-center gap-3">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-                <span>ระบบสารบรรณ</span>
-              </div>
-              <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': sarabanMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-              </svg>
-            </button>
-            
-            <div v-show="sarabanMenuOpen" class="mt-1 pl-6 space-y-1">
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('saraban.document.create')" to="/saraban/create" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                ลงทะเบียนหนังสือใหม่
-              </router-link>
-              <router-link to="/saraban" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold" :class="{ '!bg-white/20 !text-white font-semibold': $route.path === '/saraban' }">
-                ทะเบียนรับ-ส่ง (ทั้งหมด)
-              </router-link>
-              <router-link to="/saraban/incoming" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                หนังสือรับ
-              </router-link>
-              <router-link to="/saraban/outgoing" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                หนังสือส่ง
-              </router-link>
-              <router-link to="/saraban/circulars" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                หนังสือเวียน
-              </router-link>
-              <router-link v-if="authStore.hasPermission('saraban.document.report')" to="/saraban/reports" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                รายงานสถิติ
-              </router-link>
-              <router-link v-if="authStore.hasPermission('saraban.document.manage_types')" to="/saraban/types" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                จัดการหมวดหมู่เอกสาร
-              </router-link>
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_workflow_steps')" to="/saraban/workflow-templates" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                สายการอนุมัติ
-              </router-link>
-              <router-link v-if="authStore.hasPermission('saraban.setting.manage')" to="/saraban/settings" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                ตั้งค่าระบบสารบรรณ
-              </router-link>
-            </div>
-          </div>
-
           <!-- Divider for Mobile Admin Section -->
           <div v-if="authStore.hasAnyAdminMenu" class="pt-3 pb-1">
             <p class="text-white/30 text-[10px] uppercase tracking-widest px-3">ผู้ดูแลระบบ</p>
@@ -1030,7 +872,6 @@ const isSidebarCollapsed = ref(false)
 const leaveMenuOpen = ref(false)
 const attendanceMenuOpen = ref(false)
 const adminMenuOpen = ref(false)
-const sarabanMenuOpen = ref(false)
 const userMenuOpen = ref(false)
 
 const canManageDocuments = computed(() => authStore.canManageDocumentCenter)
@@ -1061,10 +902,6 @@ const isAdminRouteActive = computed(() => {
     ['/admin/settings', '/admin/attendance-settings', '/admin/document-templates', '/admin/document-center', '/admin/modules', '/admin/departments', '/admin/workflow', '/admin/leave-types', '/admin/fiscal-years', '/admin/notifications', '/admin/work-calendar', '/admin/leave-policies'].includes(route.path)
 })
 
-const isSarabanRouteActive = computed(() => {
-  return route.path.startsWith('/saraban')
-})
-
 const isUserRouteActive = computed(() => {
   return ['admin-users', 'admin-menus', 'admin-roles', 'admin-personnel-assignments'].includes(route.name) ||
     ['/admin/users', '/admin/menus', '/admin/roles', '/admin/personnel-assignments'].includes(route.path)
@@ -1075,7 +912,6 @@ watch(() => route.path, () => {
   mobileMenu.value = false
   if (isLeaveRouteActive.value) leaveMenuOpen.value = true
   if (isAttendanceRouteActive.value) attendanceMenuOpen.value = true
-  if (isSarabanRouteActive.value) sarabanMenuOpen.value = true
   if (isUserRouteActive.value) userMenuOpen.value = true
   if (isAdminRouteActive.value) adminMenuOpen.value = true
 }, { immediate: true })

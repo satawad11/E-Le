@@ -91,7 +91,7 @@
         </div>
         <div>
           <h3 class="text-lg font-bold text-gray-900">3. การตั้งค่าเซิร์ฟเวอร์ส่งอีเมล (SMTP Email)</h3>
-          <p class="text-xs text-gray-500">สำหรับส่งอีเมลแจ้งเตือนใบลาและเอกสารสารบรรณ</p>
+          <p class="text-xs text-gray-500">สำหรับส่งอีเมลแจ้งเตือนใบลาและการลงเวลา</p>
         </div>
       </div>
 

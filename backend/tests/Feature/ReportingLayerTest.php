@@ -30,7 +30,7 @@ class ReportingLayerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['view_users', 'leave.report.view', 'attendance.view_all', 'attendance.ot_summary', 'saraban.document.report'] as $permission) {
+        foreach (['view_users', 'leave.report.view', 'attendance.view_all', 'attendance.ot_summary'] as $permission) {
             Permission::findOrCreate($permission, 'web');
         }
 
@@ -48,7 +48,6 @@ class ReportingLayerTest extends TestCase
         $this->actingAs($this->viewer)->getJson('/api/reporting/leave')->assertForbidden();
         $this->actingAs($this->viewer)->getJson('/api/reporting/attendance')->assertForbidden();
         $this->actingAs($this->viewer)->getJson('/api/reporting/ot')->assertForbidden();
-        $this->actingAs($this->viewer)->getJson('/api/reporting/saraban')->assertForbidden();
     }
 
     public function test_personnel_leave_and_attendance_reports_never_cross_explicit_scope(): void

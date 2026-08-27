@@ -37,9 +37,6 @@ class DatabaseSeeder extends Seeder
          */
         $this->call([
             RolesAndPermissionsSeeder::class,
-            SarabanPermissionSeeder::class,
-            SarabanDocumentTypeSeeder::class,
-            SarabanSettingSeeder::class,
             FiscalYearSeeder::class,
             ThaiGovernmentHoliday2569Seeder::class,
             DocumentTemplateSeeder::class,

@@ -35,8 +35,8 @@ return new class extends Migration
         Schema::create('workflow_definitions', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
-            $table->string('code', 100)->unique();          // leave.approval, saraban.document
-            $table->string('module', 50);                   // leave | saraban | attendance | ot
+            $table->string('code', 100)->unique();          // leave.approval, attendance.correction
+            $table->string('module', 50);                   // leave | attendance | ot | overtime
             $table->string('name');
             $table->string('subject_type')->nullable();     // Eloquent morph class ของเรื่องที่เดินสาย
             $table->text('description')->nullable();

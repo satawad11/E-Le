@@ -30,9 +30,9 @@ class NotificationCenterTest extends TestCase
         $this->assertEqualsCanonicalizing([
             'leave.submitted', 'leave.approval_requested', 'leave.approved',
             'leave.rejected', 'leave.returned', 'attendance.correction',
-            'attendance.late', 'attendance.early_leave', 'overtime.approval', 'saraban.task',
+            'attendance.late', 'attendance.early_leave', 'overtime.approval',
         ], $codes);
-        $this->assertDatabaseCount('notification_templates', 40);
+        $this->assertDatabaseCount('notification_templates', 36);
     }
 
     public function test_emit_is_atomic_deduplicates_recipients_and_removes_sensitive_payload(): void

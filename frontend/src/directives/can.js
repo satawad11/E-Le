@@ -4,8 +4,8 @@ import { useAuthStore } from '../stores/auth';
  * Vue 3 Directive for Fine-Grained Permission Control
  * 
  * Usage in templates:
- *  v-can="'saraban.document.sign'"
- *  v-can="['saraban.view', 'leave.view']"
+ *  v-can="'leave.approve'"
+ *  v-can="['attendance.view_self', 'leave.view']"
  */
 export const canDirective = {
   mounted(el, binding) {

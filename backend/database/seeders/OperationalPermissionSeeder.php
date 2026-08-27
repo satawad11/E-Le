@@ -27,10 +27,7 @@ class OperationalPermissionSeeder extends Seeder
     /**
      * ชื่อ permission => คำอธิบายภาษาไทย
      *
-     * ทุกชื่อเป็น canonical ที่โค้ดบังคับใช้อยู่แล้ว ยกเว้น
-     * `saraban.document.register` ที่ต้องสร้างใหม่ เพราะ Decision 2 กำหนดให้
-     * "รับ/ส่ง" แยกจากสิทธิ์อื่น ขณะที่ของเดิมฝังรวมอยู่กับ
-     * `saraban.document.manage_types` (ตั้งค่าประเภทหนังสือ) ซึ่งเป็นคนละหน้าที่
+     * ทุกชื่อเป็น canonical ที่โค้ดบังคับใช้อยู่แล้ว
      *
      * @var array<string,string>
      */
@@ -42,20 +39,6 @@ class OperationalPermissionSeeder extends Seeder
         'attendance.ot_summary' => 'ดูสรุปการทำงานล่วงเวลาของทั้งองค์กร',
         'system.menu.manage' => 'จัดการเมนูและบทบาทของระบบ',
         'admin.users.manage_permissions' => 'กำหนดสิทธิ์รายบุคคล',
-        'saraban.setting.manage' => 'ตั้งค่าระบบสารบรรณ',
-
-        // Decision 2 — แยกสิทธิ์งานสารบรรณตามหน้าที่
-        'saraban.document.view' => 'ดูทะเบียนหนังสือราชการ',
-        'saraban.document.create' => 'สร้างหนังสือราชการ',
-        'saraban.document.edit' => 'แก้ไขหนังสือราชการ',
-        'saraban.document.register' => 'รับ/ส่งหนังสือราชการ (เจ้าหน้าที่ทะเบียน)',
-        'saraban.circular.broadcast' => 'ออกหนังสือเวียน',
-        'saraban.document.report' => 'ดูรายงานทะเบียนหนังสือ',
-        'saraban.document.delete' => 'ลบหนังสือราชการ',
-        'saraban.document.view_classified' => 'เข้าถึงหนังสือชั้นความลับ',
-        'saraban.document.manage_types' => 'จัดการประเภทหนังสือและสายงานอนุมัติ',
-        'saraban.document.approve' => 'กลั่นกรอง/อนุมัติหนังสือราชการ',
-        'saraban.document.sign' => 'ลงนามหนังสือราชการ',
 
         // สายคำสั่ง OT (เจ้าของระบบกำหนด 2026-08-19)
         'overtime.operation.execute' => 'ออกคำสั่งปฏิบัติงานล่วงเวลาและลงเวลา OT',
@@ -67,8 +50,7 @@ class OperationalPermissionSeeder extends Seeder
      *
      * role ที่ไม่ปรากฏในตารางนี้ไม่ได้อะไรเพิ่มเลย
      * สิทธิ์ที่ไม่ปรากฏกับ role ใดเลย = Super Admin เท่านั้น และผู้ดูแลมอบหมาย
-     * รายบุคคลเพิ่มได้ผ่านหน้าจัดการสิทธิ์ (เช่น `saraban.setting.manage`
-     * ที่ Decision 1 ระบุว่า "เฉพาะผู้ได้รับมอบหมาย")
+     * รายบุคคลเพิ่มได้ผ่านหน้าจัดการสิทธิ์
      *
      * @var array<string,array<int,string>>
      */
@@ -89,18 +71,6 @@ class OperationalPermissionSeeder extends Seeder
          * ไม่ใช่ข้อมูลชั้นใหม่สำหรับกลุ่มนี้
          */
         /*
-         * ผู้บริหารเป็นผู้กลั่นกรองและลงนามหนังสือราชการ
-         *
-         * CORE CHECKPOINT (2026-08-14): LEGACY-04 ปิดงานโดยยังไม่ให้สิทธิ์ชุดนี้
-         * เพราะการตัดสินใจตอนนั้นครอบคลุมเฉพาะ Document Officer ผลคือหนังสือ
-         * ราชการอนุมัติได้เฉพาะ Super Admin และโมดูลสารบรรณใช้งานจริงไม่ได้
-         * เจ้าของระบบอนุมัติให้เติมเมื่อ 2026-08-14
-         *
-         * `view` จำเป็นเพราะ DocumentPolicy::approve() เรียก view() ก่อนเสมอ
-         * และ view() ยังจำกัดให้เห็นเฉพาะเอกสารที่ตนเกี่ยวข้องอยู่ดี
-         * ส่วนเอกสารชั้นความลับยังต้องมี `view_classified` แยกต่างหากเหมือนเดิม
-         */
-        /*
          * สายคำสั่ง OT ที่เจ้าของระบบกำหนดเมื่อ 2026-08-19:
          *   หัวหน้าบุคลากร ตั้งคำสั่ง → รอง ผอ. ฝ่ายทรัพยากร อนุญาต → ผอ. อนุมัติ
          *
@@ -114,10 +84,6 @@ class OperationalPermissionSeeder extends Seeder
             'attendance.view_self',
             'attendance.ot_summary',
             'overtime.management.review',
-            'saraban.document.view',
-            'saraban.document.approve',
-            'saraban.document.sign',
-            'saraban.document.report',
         ],
 
         'Deputy Director' => [
@@ -125,10 +91,6 @@ class OperationalPermissionSeeder extends Seeder
             'attendance.view_self',
             'attendance.ot_summary',
             'overtime.management.review',
-            'saraban.document.view',
-            'saraban.document.approve',
-            'saraban.document.sign',
-            'saraban.document.report',
         ],
 
         /*
@@ -145,26 +107,9 @@ class OperationalPermissionSeeder extends Seeder
             'overtime.operation.execute',
         ],
 
-        /*
-         * Document Officer = เจ้าหน้าที่สารบรรณ (Decision 2)
-         *
-         * ได้สิทธิ์พอที่จะทำงานสารบรรณได้จริง แต่ **ไม่ได้** สี่ตัวนี้:
-         *   saraban.document.delete           ลบหนังสือ
-         *   saraban.document.view_classified  หนังสือชั้นความลับ
-         *   saraban.document.manage_types     ตั้งค่าประเภทหนังสือ/สายงาน
-         *   saraban.setting.manage            ตั้งค่าระบบสารบรรณ
-         *
-         * ตามที่ Decision 2 สั่งว่าห้ามให้โดยอัตโนมัติ — มอบหมายรายบุคคลได้
-         */
         'Document Officer' => [
             'attendance.checkin',
             'attendance.view_self',
-            'saraban.document.view',
-            'saraban.document.create',
-            'saraban.document.edit',
-            'saraban.document.register',
-            'saraban.circular.broadcast',
-            'saraban.document.report',
         ],
     ];
 
