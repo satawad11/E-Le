@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\OrgUnit;
 use App\Services\AuditLogger;
 use App\Services\Reporting\EvaluationMetricsService;
 use App\Services\Reporting\ReportExportService;
@@ -19,6 +20,43 @@ class ReportingController extends Controller
         private ReportExportService $exports,
         private AuditLogger $audit,
     ) {}
+
+    /**
+     * สารบัญรายงานที่ผู้เรียกเปิดดูได้จริง
+     *
+     * CLEANUP-01 (D3) — หน้าศูนย์รายงานกลางต้องรู้ว่าผู้ใช้คนนี้เปิดรายงานใดได้บ้าง
+     * ก่อนจะวาดเมนู มิฉะนั้นต้องยิงทุกรายงานแล้วรอ 403 ซึ่งทั้งช้าและรก audit log
+     */
+    public function index(Request $request)
+    {
+        $viewer = $request->user();
+
+        $reports = collect(ReportingDataService::REPORTS)
+            ->filter(fn (string $report) => $report === 'executive'
+                ? $this->reports->hasAnyExecutiveSource($viewer)
+                : $this->reports->isAvailableTo($report, $viewer))
+            ->map(fn (string $report): array => [
+                'code' => $report,
+                'title' => ReportingDataService::REPORT_TITLES[$report] ?? $report,
+            ])
+            ->values();
+
+        return response()->json(['reports' => $reports]);
+    }
+
+    /**
+     * หน่วยงานตามโครงสร้างองค์กรสำหรับช่องตัวกรองขอบเขตของศูนย์รายงานกลาง
+     *
+     * ตัวกรอง `org_unit_id` อ้างตาราง `org_units` ไม่ใช่ `departments` — ถ้าไม่มี
+     * รายการให้เลือก ผู้ใช้ก็ใช้ตัวกรองขอบเขตของชั้นรายงานนี้ไม่ได้เลย
+     * ตัวรายงานยังบังคับขอบเขตของผู้เรียกซ้ำอีกชั้นเสมอ รายชื่อนี้จึงไม่ใช่ช่องขยายสิทธิ์
+     */
+    public function orgUnits()
+    {
+        return response()->json(
+            OrgUnit::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'parent_id'])
+        );
+    }
 
     public function show(Request $request, string $report)
     {

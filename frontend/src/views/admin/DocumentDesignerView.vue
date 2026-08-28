@@ -51,6 +51,21 @@
         >
           ลบฉบับร่าง
         </button>
+
+        <!--
+          CLEANUP-02 — เลิกใช้เวอร์ชันที่เผยแพร่แล้ว
+          endpoint `retire` มีมาตั้งแต่ DOC-ENGINE แต่ไม่มีปุ่มใดเรียก
+          ผู้ดูแลจึงหยุดใช้แบบฟอร์มที่เผยแพร่ไปแล้วไม่ได้ นอกจากเผยแพร่ทับด้วยเวอร์ชันใหม่
+        -->
+        <button
+          v-if="!isDraft && version?.status === 'ACTIVE'"
+          :disabled="saving"
+          class="px-4 py-2.5 bg-white border border-amber-200 hover:bg-amber-50 text-amber-700 font-semibold rounded-xl text-sm min-h-[44px] disabled:opacity-50"
+          title="หยุดใช้เวอร์ชันนี้กับเอกสารที่ออกใหม่"
+          @click="retire"
+        >
+          เลิกใช้เวอร์ชันนี้
+        </button>
       </div>
     </div>
 
@@ -482,6 +497,25 @@ const publish = async () => {
     await loadTemplate()
   } catch (error) {
     alertStore.error(error.response?.data?.message || 'เผยแพร่ไม่สำเร็จ')
+  } finally {
+    saving.value = false
+  }
+}
+
+/*
+ * เลิกใช้เวอร์ชันที่เผยแพร่แล้ว (CLEANUP-02)
+ *
+ * เอกสารที่ออกไปแล้วยังอ้างอิงเวอร์ชันนี้ได้ตามเดิม — การเลิกใช้มีผลกับเอกสารที่ออก "ใหม่" เท่านั้น
+ */
+const retire = async () => {
+  if (! window.confirm('เลิกใช้เวอร์ชันนี้? เอกสารที่ออกใหม่จะไม่ใช้เวอร์ชันนี้อีก (เอกสารเก่าที่อ้างอิงไว้ยังพิมพ์ซ้ำได้เหมือนเดิม)')) return
+  saving.value = true
+  try {
+    const res = await api.post(`/admin/document-engine/versions/${version.value.id}/retire`)
+    alertStore.success(res.data.message)
+    await loadTemplate()
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'เลิกใช้เวอร์ชันไม่สำเร็จ')
   } finally {
     saving.value = false
   }

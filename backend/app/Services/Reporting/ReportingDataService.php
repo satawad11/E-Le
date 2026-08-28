@@ -22,7 +22,66 @@ class ReportingDataService
         'ot' => 'overtime',
     ];
 
+    /**
+     * ชื่อรายงานที่แสดงในสารบัญของศูนย์รายงานกลาง
+     *
+     * CLEANUP-01 (D3) — ชั้นรายงานกลางเดิมไม่มีหน้าจอใดเรียกใช้ ข้อความจึงยังเป็น
+     * ภาษาอังกฤษทั้งชุด เมื่อยกให้เป็นชั้นรายงานหลักตามข้อตกลง จึงต้องเป็นไทย 100%
+     * ตาม `AGENTS.md`
+     */
+    public const REPORT_TITLES = [
+        'personnel' => 'รายงานข้อมูลบุคลากร',
+        'leave' => 'รายงานสถิติการลา',
+        'leave_balance' => 'รายงานสิทธิและวันลาคงเหลือ',
+        'attendance' => 'รายงานการลงเวลาปฏิบัติงาน',
+        'late' => 'รายงานการมาสาย',
+        'absence' => 'รายงานการขาดงาน',
+        'ot' => 'รายงานการปฏิบัติงานล่วงเวลา',
+        'executive' => 'รายงานสรุปสำหรับผู้บริหาร',
+    ];
+
+    private const MODULE_LABELS = [
+        'system' => 'ข้อมูลบุคลากร',
+        'leave' => 'ระบบการลา',
+        'attendance' => 'ระบบลงเวลา',
+        'overtime' => 'การปฏิบัติงานล่วงเวลา',
+    ];
+
+    private const METRIC_LABELS = [
+        'personnel' => 'จำนวนบุคลากร',
+        'leave_times' => 'จำนวนครั้งที่ลา',
+        'leave_days' => 'จำนวนวันลา',
+        'available' => 'วันลาคงเหลือรวม',
+        'recorded_days' => 'วันที่บันทึกเวลา',
+        'absence_days' => 'จำนวนวันที่ขาด',
+        'late_times' => 'จำนวนครั้งที่มาสาย',
+        'late_minutes' => 'สายรวม (นาที)',
+        'approved_minutes' => 'ล่วงเวลาที่อนุมัติ (นาที)',
+        'actual_minutes' => 'ล่วงเวลาที่ปฏิบัติจริง (นาที)',
+        'certified_minutes' => 'ล่วงเวลาที่รับรองแล้ว (นาที)',
+        'available_modules' => 'จำนวนโมดูลที่มีข้อมูล',
+    ];
+
     public function __construct(private ReportingScopeService $scope, private ModuleRegistry $modules) {}
+
+    /** ผู้ใช้คนนี้เปิดรายงานนี้ได้หรือไม่ — ทั้งโมดูลต้องเปิดอยู่และต้องมีสิทธิ์ */
+    public function isAvailableTo(string $report, User $viewer): bool
+    {
+        return $this->modules->isEnabled(self::SOURCE_MODULES[$report] ?? '')
+            && $this->scope->canView($viewer, $report);
+    }
+
+    /** รายงานผู้บริหารมีความหมายต่อเมื่อมีรายงานต้นทางอย่างน้อยหนึ่งตัวที่เปิดดูได้ */
+    public function hasAnyExecutiveSource(User $viewer): bool
+    {
+        foreach (array_keys(ReportingScopeService::REPORT_ABILITIES) as $report) {
+            if ($this->isAvailableTo($report, $viewer)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public function build(string $report, ReportFilter $filter, User $viewer): ReportDataset
     {
@@ -63,9 +122,9 @@ class ReportingDataService
             'active' => $user->is_active,
         ])->all();
 
-        return $this->dataset('personnel', 'Personnel Report', [
-            'name' => 'Name', 'position' => 'Position', 'organization' => 'Organization',
-            'personnel_type' => 'Personnel Type', 'active' => 'Active',
+        return $this->dataset('personnel', 'รายงานข้อมูลบุคลากร', [
+            'name' => 'ชื่อ-สกุล', 'position' => 'ตำแหน่ง', 'organization' => 'หน่วยงาน',
+            'personnel_type' => 'ประเภทบุคลากร', 'active' => 'สถานะใช้งาน',
         ], $rows, ['personnel' => count($rows)], $filter);
     }
 
@@ -89,9 +148,9 @@ class ReportingDataService
                 'leave_days' => (float) $row->leave_days,
             ])->all();
 
-        return $this->dataset('leave', 'Leave Report', [
-            'name' => 'Name', 'organization' => 'Organization', 'personnel_type' => 'Personnel Type',
-            'leave_type' => 'Leave Type', 'leave_times' => 'Times', 'leave_days' => 'Days',
+        return $this->dataset('leave', 'รายงานสถิติการลา', [
+            'name' => 'ชื่อ-สกุล', 'organization' => 'หน่วยงาน', 'personnel_type' => 'ประเภทบุคลากร',
+            'leave_type' => 'ประเภทการลา', 'leave_times' => 'จำนวนครั้ง', 'leave_days' => 'จำนวนวัน',
         ], $rows, [
             'leave_times' => array_sum(array_column($rows, 'leave_times')),
             'leave_days' => array_sum(array_column($rows, 'leave_days')),
@@ -116,10 +175,10 @@ class ReportingDataService
                 'available' => (float) $row->quota + (float) $row->carried_forward - (float) $row->used - (float) $row->reserved,
             ])->all();
 
-        return $this->dataset('leave_balance', 'Leave Balance Report', [
-            'name' => 'Name', 'organization' => 'Organization', 'leave_type' => 'Leave Type',
-            'quota' => 'Quota', 'carried_forward' => 'Carried', 'used' => 'Used',
-            'reserved' => 'Reserved', 'available' => 'Available',
+        return $this->dataset('leave_balance', 'รายงานสิทธิและวันลาคงเหลือ', [
+            'name' => 'ชื่อ-สกุล', 'organization' => 'หน่วยงาน', 'leave_type' => 'ประเภทการลา',
+            'quota' => 'สิทธิ', 'carried_forward' => 'ยกมา', 'used' => 'ใช้ไป',
+            'reserved' => 'กันไว้', 'available' => 'คงเหลือ',
         ], $rows, ['available' => array_sum(array_column($rows, 'available'))], $filter);
     }
 
@@ -132,10 +191,10 @@ class ReportingDataService
             'late_minutes' => (int) $row->late_minutes, 'early_leave_minutes' => (int) $row->early_leave_minutes,
         ])->all();
 
-        return $this->dataset('attendance', 'Attendance Report', [
-            'name' => 'Name', 'organization' => 'Organization', 'recorded_days' => 'Recorded Days',
-            'present_days' => 'Present', 'late_days' => 'Late', 'absence_days' => 'Absent',
-            'late_minutes' => 'Late Minutes', 'early_leave_minutes' => 'Early Leave Minutes',
+        return $this->dataset('attendance', 'รายงานการลงเวลาปฏิบัติงาน', [
+            'name' => 'ชื่อ-สกุล', 'organization' => 'หน่วยงาน', 'recorded_days' => 'วันที่บันทึก',
+            'present_days' => 'มาปฏิบัติงาน', 'late_days' => 'มาสาย (วัน)', 'absence_days' => 'ขาดงาน (วัน)',
+            'late_minutes' => 'สายรวม (นาที)', 'early_leave_minutes' => 'กลับก่อนรวม (นาที)',
         ], $rows, [
             'recorded_days' => array_sum(array_column($rows, 'recorded_days')),
             'absence_days' => array_sum(array_column($rows, 'absence_days')),
@@ -153,8 +212,8 @@ class ReportingDataService
                 'late_times' => (int) $row->late_times, 'late_minutes' => (int) $row->late_minutes,
             ])->all();
 
-        return $this->dataset('late', 'Late Report', [
-            'name' => 'Name', 'organization' => 'Organization', 'late_times' => 'Times', 'late_minutes' => 'Minutes',
+        return $this->dataset('late', 'รายงานการมาสาย', [
+            'name' => 'ชื่อ-สกุล', 'organization' => 'หน่วยงาน', 'late_times' => 'จำนวนครั้ง', 'late_minutes' => 'รวม (นาที)',
         ], $rows, ['late_times' => array_sum(array_column($rows, 'late_times')), 'late_minutes' => array_sum(array_column($rows, 'late_minutes'))], $filter);
     }
 
@@ -169,8 +228,8 @@ class ReportingDataService
                 'organization' => $row->organization, 'absence_days' => (int) $row->absence_days,
             ])->all();
 
-        return $this->dataset('absence', 'Absence Report', [
-            'name' => 'Name', 'organization' => 'Organization', 'absence_days' => 'Absent Days',
+        return $this->dataset('absence', 'รายงานการขาดงาน', [
+            'name' => 'ชื่อ-สกุล', 'organization' => 'หน่วยงาน', 'absence_days' => 'จำนวนวันที่ขาด',
         ], $rows, ['absence_days' => array_sum(array_column($rows, 'absence_days'))], $filter);
     }
 
@@ -196,10 +255,10 @@ class ReportingDataService
                 'actual_minutes' => (int) $row->actual_minutes, 'certified_minutes' => (int) $row->certified_minutes,
             ])->all();
 
-        return $this->dataset('ot', 'Overtime Report', [
-            'name' => 'Name', 'organization' => 'Organization', 'assignments' => 'Assignments',
-            'approved_minutes' => 'Approved Minutes', 'actual_minutes' => 'Actual Minutes',
-            'certified_minutes' => 'Certified Minutes',
+        return $this->dataset('ot', 'รายงานการปฏิบัติงานล่วงเวลา', [
+            'name' => 'ชื่อ-สกุล', 'organization' => 'หน่วยงาน', 'assignments' => 'จำนวนครั้งที่ปฏิบัติ',
+            'approved_minutes' => 'อนุมัติ (นาที)', 'actual_minutes' => 'ปฏิบัติจริง (นาที)',
+            'certified_minutes' => 'รับรองแล้ว (นาที)',
         ], $rows, [
             'approved_minutes' => array_sum(array_column($rows, 'approved_minutes')),
             'actual_minutes' => array_sum(array_column($rows, 'actual_minutes')),
@@ -214,7 +273,11 @@ class ReportingDataService
             if ($this->modules->isEnabled(self::SOURCE_MODULES[$report]) && $this->scope->canView($viewer, $report)) {
                 $dataset = $this->build($report, $filter, $viewer);
                 foreach ($dataset->totals as $metric => $value) {
-                    $rows[] = ['module' => $report, 'metric' => $metric, 'value' => $value];
+                    $rows[] = [
+                        'module' => self::MODULE_LABELS[self::SOURCE_MODULES[$report]] ?? $report,
+                        'metric' => self::METRIC_LABELS[$metric] ?? $metric,
+                        'value' => $value,
+                    ];
                 }
             }
         }
@@ -222,8 +285,8 @@ class ReportingDataService
             throw new AuthorizationException;
         }
 
-        return $this->dataset('executive', 'Executive Summary', [
-            'module' => 'Module', 'metric' => 'Metric', 'value' => 'Value',
+        return $this->dataset('executive', 'รายงานสรุปสำหรับผู้บริหาร', [
+            'module' => 'โมดูล', 'metric' => 'ตัวชี้วัด', 'value' => 'ค่า',
         ], $rows, ['available_modules' => count(array_unique(array_column($rows, 'module')))], $filter);
     }
 
@@ -245,8 +308,16 @@ class ReportingDataService
 
     private function dataset(string $report, string $title, array $columns, array $rows, array $totals, ReportFilter $filter): ReportDataset
     {
-        return new ReportDataset($report, $title, $columns, $rows, $totals, [
-            ...$filter->meta(), 'generated_at' => now()->toISOString(), 'row_count' => count($rows),
-        ]);
+        return new ReportDataset(
+            $report,
+            $title,
+            $columns,
+            $rows,
+            $totals,
+            [...$filter->meta(), 'generated_at' => now()->toISOString(), 'row_count' => count($rows)],
+            // ยอดรวมบางตัวไม่มีคอลัมน์คู่กัน (เช่น `personnel`) ถ้าไม่มีชื่อไทยกำกับ
+            // หน้าเว็บกับ PDF จะพิมพ์ชื่อคีย์ภาษาอังกฤษออกมาให้ผู้ใช้เห็น
+            array_intersect_key(self::METRIC_LABELS, $totals),
+        );
     }
 }

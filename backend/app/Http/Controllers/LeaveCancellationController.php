@@ -9,7 +9,7 @@ use App\Models\LeaveApproval;
 use App\Models\LeaveAuditLog;
 use App\Models\User;
 use App\Services\LeaveService;
-use App\Services\Workflow\ApproverResolverService;
+use App\Services\Workflow\LeaveApprovalCoordinator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -28,7 +28,7 @@ class LeaveCancellationController extends Controller
 {
     public function __construct(
         private LeaveService $leaveService,
-        private ApproverResolverService $resolver,
+        private LeaveApprovalCoordinator $coordinator,
     ) {}
 
     public function cancel(Request $request, Leave $leave)
@@ -136,25 +136,32 @@ class LeaveCancellationController extends Controller
             ], 403);
         }
 
-        $step = $this->currentStep($leave);
-        if ($step === null) {
+        // ใบเก่าที่ยังไม่มี snapshot ของสายยกเลิก ต้องสร้างย้อนหลังก่อน engine จะเดินได้
+        if ($this->currentStep($leave) === null) {
             return response()->json(['message' => 'ไม่พบขั้นตอนอนุมัติของคำขอยกเลิก กรุณาตรวจสอบการตั้งค่าลำดับการอนุมัติ'], 422);
-        }
-
-        $delegatedFrom = null;
-        if (! $isLeaveAdmin) {
-            if ($leave->user === null || ! $this->resolver->isAuthorizedApprover($user, $leave->user, $step)) {
-                return response()->json([
-                    'message' => $isApprove ? 'ไม่มีสิทธิ์อนุมัติในระดับนี้' : 'ไม่มีสิทธิ์ปฏิเสธในระดับนี้',
-                ], 403);
-            }
-            $delegatedFrom = $this->resolver->getDelegatedFromId($user, $leave->user, $step);
         }
 
         $signaturePath = $this->resolveSignature($user, $data['signature_base64'] ?? null);
 
-        DB::transaction(function () use ($leave, $user, $step, $decision, $data, $delegatedFrom, $signaturePath, $isApprove, $request) {
+        DB::transaction(function () use ($leave, $user, $decision, $data, $signaturePath, $isApprove, $request) {
             $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
+
+            /*
+             * CLEANUP-02 (D4) — สายยกเลิกตัดสินด้วยผู้ตัดสินคนเดียวกับสายขอลา
+             *
+             * เดิมตรงนี้เรียก `ApproverResolverService` และไล่ขั้นเองทั้งหมด ซึ่งเป็น
+             * ตรรกะเดินสายชุดที่สองที่ไม่เคยถูกครอบด้วย shadow เลย เอกสารปิดเฟส
+             * LEGACY-05 ระบุว่าต้องรวมเข้า engine ก่อนจึงจะ cutover ได้
+             */
+            $outcome = $this->coordinator->decide(
+                $locked,
+                $isApprove ? 'approve' : 'reject',
+                $user,
+                $data['comment'] ?? null,
+                LeaveApproval::STAGE_CANCELLATION,
+            );
+
+            $step = $outcome['step'];
 
             $step->update([
                 'approver_id' => $user->id,
@@ -165,18 +172,16 @@ class LeaveCancellationController extends Controller
                 'comment' => $data['comment'] ?? null,
                 'approved_at' => now(),
                 'acted_at' => now(),
-                'delegated_from_user_id' => $delegatedFrom,
+                'delegated_from_user_id' => $outcome['delegated_from'],
             ]);
 
-            $next = $isApprove
-                ? $locked->cancellationApprovals()->where('step_order', '>', $step->step_order)->orderBy('step_order')->first()
-                : null;
+            $next = $isApprove && ! $outcome['final'] ? $outcome['next_step_order'] : null;
 
             if (! $isApprove) {
                 $locked->cancellation_status = 'Rejected';
                 $action = 'Cancellation Rejected';
             } elseif ($next) {
-                $locked->cancellation_approval_level = $next->step_order;
+                $locked->cancellation_approval_level = $next;
                 $action = 'Cancellation Step Approved';
             } else {
                 /*
@@ -203,7 +208,7 @@ class LeaveCancellationController extends Controller
                 'leave_id' => $locked->id,
                 'user_id' => $user->id,
                 'action' => $isApprove ? 'cancellation_approved' : 'cancellation_rejected',
-                'after' => ['step' => $step->step_order, 'final' => $isApprove ? $next === null : true],
+                'after' => ['step' => $step->step_order, 'final' => $isApprove ? $outcome['final'] : true],
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ]);

@@ -8,13 +8,6 @@ use Illuminate\Http\Request;
 
 class LeaveGovernanceWorklistController extends Controller
 {
-    public function myLeaves(Request $request)
-    {
-        return Leave::withTrashed()->with(['type:id,name', 'evidences.verifier:id,name'])
-            ->with(['approvals' => fn ($query) => $query->orderBy('step_order')])
-            ->where('user_id', $request->user()->id)->latest('start_date')->paginate(50);
-    }
-
     public function worklist(Request $request)
     {
         abort_unless($request->user()->can('leave.management.manage') || $request->user()->can('leave.approval.hr'), 403);

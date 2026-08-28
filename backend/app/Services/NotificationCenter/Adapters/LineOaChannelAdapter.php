@@ -4,14 +4,14 @@ namespace App\Services\NotificationCenter\Adapters;
 
 use App\Contracts\NotificationCenter\NotificationChannelAdapter;
 use App\Models\User;
-use App\Services\LineNotificationService;
 use App\Services\NotificationCenter\DeliveryResult;
 use App\Services\NotificationCenter\NotificationMessage;
+use App\Services\NotificationCenter\Providers\LineGateway;
 use App\Services\SystemSettingService;
 
 class LineOaChannelAdapter implements NotificationChannelAdapter
 {
-    public function __construct(private LineNotificationService $line, private SystemSettingService $settings) {}
+    public function __construct(private LineGateway $line, private SystemSettingService $settings) {}
 
     public function channel(): string
     {

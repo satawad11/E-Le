@@ -157,44 +157,47 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import api from '../../axios'
-import { useAlertStore } from '../../stores/alert'
-import { openAuthenticatedReport, reportErrorMessage } from '../../utils/secureFile'
+/**
+ * สรุปผลการปฏิบัติงาน (รายเดือน และรายบุคคลตลอดทั้งปี)
+ *
+ * CLEANUP-02 (D10) — ตัวกรอง รายชื่ออ้างอิง และปุ่มดาวน์โหลด ใช้ร่วมกับหน้า
+ * "สรุปผลการปฏิบัติงาน (OT)" ผ่าน `useAttendanceSummary` แล้ว
+ * เหลือเฉพาะโหมดรายปีและตารางที่เป็นของหน้านี้จริง ๆ
+ */
+import { computed, onMounted, ref } from 'vue'
+import { useAttendanceSummary } from '../../composables/useAttendanceSummary'
 
-const alertStore = useAlertStore()
+const {
+  loading,
+  errorMessage,
+  records,
+  departments,
+  yearOptions,
+  filters,
+  thaiMonths,
+  daysInMonth,
+  filteredUsers,
+  fetchRecords: loadSummary,
+  loadReferenceData,
+  previewReport,
+  exportPdf,
+  exportWord,
+} = useAttendanceSummary('/admin/attendances/summary')
 
-const loading = ref(false)
-const errorMessage = ref('')
-const records = ref([])
-const departments = ref([])
-const yearOptions = ref([])
-const users = ref([])
+// โหมด "ตลอดทั้งปี (รายบุคคล)" คืนโครงข้อมูลคนละแบบ — เดือนทั้งปีของคนเดียว
 const yearlyUser = ref(null)
-
-const currentDate = new Date()
-const filters = ref({
-  month: currentDate.getMonth() + 1,
-  year: currentDate.getFullYear(),
-  department_id: '',
-  user_id: ''
-})
-
 const isYearlyMode = computed(() => filters.value.month === 'all')
 
-const thaiMonths = [
-  'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
-  'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'
-]
-
-const daysInMonth = computed(() => {
-  return new Date(filters.value.year, filters.value.month, 0).getDate()
-})
-
-const filteredUsers = computed(() => {
-  if (!filters.value.department_id) return users.value
-  return users.value.filter(u => u.department_id === filters.value.department_id)
-})
+const fetchRecords = () =>
+  loadSummary((data) => {
+    if (isYearlyMode.value) {
+      records.value = data.months
+      yearlyUser.value = data.user
+    } else {
+      records.value = data
+      yearlyUser.value = null
+    }
+  })
 
 const getStatusColor = (status) => {
   if (status === 1) return 'text-green-600'
@@ -203,87 +206,7 @@ const getStatusColor = (status) => {
   return 'text-gray-400'
 }
 
-const fetchDepartments = async () => {
-  try {
-    const res = await api.get('/admin/departments')
-    departments.value = res.data
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-const fetchUsers = async () => {
-  try {
-    const res = await api.get('/users/list')
-    users.value = res.data
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-const fetchFiscalYears = async () => {
-  try {
-    const res = await api.get('/admin/fiscal-years')
-    const cur = new Date().getFullYear()
-    yearOptions.value = res.data.map(fy => fy.year > 2500 ? fy.year - 543 : fy.year).sort((a,b) => b - a)
-    
-    if (!yearOptions.value.includes(cur)) {
-      yearOptions.value.push(cur)
-      yearOptions.value.sort((a,b) => b - a)
-    }
-  } catch (error) {
-    console.error(error)
-    const cur = new Date().getFullYear()
-    yearOptions.value = [cur + 1, cur, cur - 1]
-  }
-}
-
-const fetchRecords = async () => {
-  loading.value = true
-  errorMessage.value = ''
-  try {
-    const res = await api.get('/admin/attendances/summary', {
-      params: filters.value
-    })
-    if (isYearlyMode.value) {
-      records.value = res.data.months
-      yearlyUser.value = res.data.user
-    } else {
-      records.value = res.data
-      yearlyUser.value = null
-    }
-  } catch (error) {
-    if (error.response?.data?.error) {
-      errorMessage.value = error.response.data.error
-    }
-    records.value = []
-    yearlyUser.value = null
-  } finally {
-    loading.value = false
-  }
-}
-
-// SEC-009 — เดิมแนบ Sanctum token ทาง query string แล้วเปิดด้วย window.open
-// ทำให้ token ไปโผล่ใน access log และ browser history
-// ตอนนี้ดึงผ่าน axios ที่แนบ Authorization header ให้แล้ว
-const runReport = async (path) => {
-  try {
-    await openAuthenticatedReport(path, filters.value)
-  } catch (error) {
-    alertStore.error(reportErrorMessage(error))
-  }
-}
-
-const previewReport = () => runReport('/admin/attendances/summary/preview')
-const exportPdf = () => runReport('/admin/attendances/summary/export/pdf')
-const exportWord = () => runReport('/admin/attendances/summary/export/word')
-
 onMounted(async () => {
-  await Promise.all([
-    fetchFiscalYears(),
-    fetchDepartments(),
-    fetchUsers(),
-    fetchRecords()
-  ])
+  await Promise.all([loadReferenceData(), fetchRecords()])
 })
 </script>

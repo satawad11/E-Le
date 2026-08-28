@@ -206,12 +206,42 @@
                 >
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
-                <span>{{ expandedLeaveIds.includes(leave.id) ? 'ซ่อนขั้นตอนการอนุมัติ' : 'ดูขั้นตอนการอนุมัติและประวัติ (Workflow Timeline)' }}</span>
+                <span>{{ expandedLeaveIds.includes(leave.id) ? 'ซ่อนขั้นตอนและเอกสารประกอบ' : 'ดูขั้นตอนการอนุมัติ หลักฐาน และประวัติการดำเนินการ' }}</span>
               </button>
 
               <transition name="slide-down">
-                <div v-if="expandedLeaveIds.includes(leave.id)" class="mt-4 pt-4 border-t border-dashed border-gray-200">
+                <div v-if="expandedLeaveIds.includes(leave.id)" class="mt-4 pt-4 border-t border-dashed border-gray-200 space-y-5">
                   <WorkflowTimeline :leave="leave" />
+
+                  <!--
+                    CLEANUP-01 (D10) — บริการและเอกสารใบลา ย้ายมารวมที่นี่
+                    เดิมอยู่ที่หน้า /leave-services ซึ่งแสดง "ใบลาของฉัน" ซ้ำอีกหน้าหนึ่ง
+                    ผู้ใช้ทั่วไปจึงเห็นสองเมนูที่ดูเหมือนกัน
+                  -->
+                  <div class="grid gap-4 lg:grid-cols-2">
+                    <LeaveEvidenceManager :leave-id="leave.id" />
+
+                    <section class="rounded-xl border border-gray-100 p-4">
+                      <h4 class="font-bold text-sm text-gray-800">บริการเพิ่มเติม</h4>
+                      <div class="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          class="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                          @click="showAudit(leave)"
+                        >
+                          ประวัติการดำเนินการ
+                        </button>
+                        <button
+                          v-if="leave.status === 'Approved'"
+                          type="button"
+                          class="rounded-lg border border-amber-300 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50"
+                          @click="openPartialCancel(leave)"
+                        >
+                          ขอยกเลิกบางช่วง
+                        </button>
+                      </div>
+                    </section>
+                  </div>
                 </div>
               </transition>
             </div>
@@ -299,6 +329,56 @@
         </div>
       </div>
     </transition>
+
+    <!-- ประวัติการดำเนินการ (CLEANUP-01 · D10 — ย้ายมาจากหน้า /leave-services) -->
+    <div v-if="auditTarget" class="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4" @click.self="auditTarget = null">
+      <section role="dialog" aria-modal="true" aria-labelledby="audit-title" class="max-h-[85vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 id="audit-title" class="text-xl font-bold text-gray-900">ประวัติการดำเนินการ</h2>
+            <p class="text-sm text-gray-500">{{ auditTarget.document_number || `รายการ #${auditTarget.id}` }}</p>
+          </div>
+          <button type="button" aria-label="ปิด" class="p-2 rounded-lg text-gray-400 hover:bg-gray-100" @click="auditTarget = null">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.x"/>
+            </svg>
+          </button>
+        </div>
+        <ol class="mt-4 space-y-3">
+          <li v-for="log in auditLogs" :key="log.id" class="border-l-2 border-[#800000] pl-4">
+            <p class="font-medium text-gray-800">{{ auditActionLabel(log.action) }}</p>
+            <p class="text-xs text-gray-500">
+              {{ ThaiDateFormatter.toThaiSlash(log.created_at?.slice(0, 10)) }}
+              <span v-if="log.actor?.name" class="text-gray-400">· โดย {{ log.actor.name }}</span>
+            </p>
+          </li>
+          <li v-if="!auditLogs.length" class="text-gray-500 text-sm">ยังไม่มีประวัติ</li>
+        </ol>
+      </section>
+    </div>
+
+    <!-- ขอยกเลิกวันลาบางช่วง (CLEANUP-01 · D10 — ย้ายมาจากหน้า /leave-services) -->
+    <div v-if="partialTarget" class="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4" @click.self="partialTarget = null">
+      <form role="dialog" aria-modal="true" aria-labelledby="partial-title" class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6" @submit.prevent="submitPartialCancel">
+        <h2 id="partial-title" class="text-xl font-bold text-gray-900">ขอยกเลิกวันลาบางช่วง</h2>
+        <label class="block text-sm font-medium text-gray-700">
+          ตั้งแต่วันที่
+          <input v-model="partialForm.cancel_from" required type="date" class="mt-1 w-full rounded-lg border-gray-300 p-2 focus:ring-[#800000] focus:border-[#800000]">
+        </label>
+        <label class="block text-sm font-medium text-gray-700">
+          ถึงวันที่
+          <input v-model="partialForm.cancel_to" required type="date" class="mt-1 w-full rounded-lg border-gray-300 p-2 focus:ring-[#800000] focus:border-[#800000]">
+        </label>
+        <label class="block text-sm font-medium text-gray-700">
+          เหตุผล
+          <textarea v-model="partialForm.reason" required maxlength="1000" rows="3" class="mt-1 w-full rounded-lg border-gray-300 p-2 focus:ring-[#800000] focus:border-[#800000]"></textarea>
+        </label>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700" @click="partialTarget = null">ยกเลิก</button>
+          <button type="submit" class="rounded-lg bg-[#800000] px-4 py-2 text-sm font-semibold text-white">ส่งคำขอ</button>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
 
@@ -315,6 +395,7 @@ import EmptyState from '../components/ui/EmptyState.vue'
 import { ICONS } from '../utils/icons'
 import ErrorState from '../components/ui/ErrorState.vue'
 import WorkflowTimeline from '../components/ui/WorkflowTimeline.vue'
+import LeaveEvidenceManager from '../components/LeaveEvidenceManager.vue'
 import api from '../axios'
 
 const leaveStore = useLeaveStore()
@@ -546,6 +627,81 @@ const loadLeaves = async () => {
     loadError.value = getErrorMessage(e, 'ไม่สามารถโหลดรายการใบลาได้')
   } finally {
     loading.value = false
+  }
+}
+
+/*
+ * บริการและเอกสารใบลา (CLEANUP-01 · D10)
+ *
+ * ย้ายมาจากหน้า `/leave-services` ที่แสดงรายการ "ใบลาของฉัน" ซ้ำอีกหน้าหนึ่ง
+ * ต่างกันแค่ปุ่มบริการ ผู้ใช้ทั่วไปจึงเห็นสองเมนูที่ดูเหมือนกัน
+ */
+const auditTarget = ref(null)
+const auditLogs = ref([])
+const partialTarget = ref(null)
+const partialForm = ref({ cancel_from: '', cancel_to: '', reason: '' })
+
+/*
+ * ชื่อการกระทำในประวัติ (CLEANUP-02 · D6)
+ *
+ * ประวัติอ่านจากทะเบียนกลาง `audit_logs` ซึ่งรวมทั้งสองแหล่งของโมดูลลาไว้แล้ว
+ * ชื่อจึงมีทั้งรูปแบบ `leave.<action>` และ `leave.action.<action>`
+ */
+const AUDIT_ACTION_LABELS = {
+  created: 'ยื่นใบลา',
+  updated: 'แก้ไขใบลา',
+  evidence_uploaded: 'เพิ่มหลักฐาน',
+  evidence_verified: 'ตรวจสอบหลักฐาน',
+  voided: 'ยกเลิกเอกสาร',
+  approval_approved: 'อนุมัติ',
+  approval_rejected: 'ไม่อนุมัติ',
+  cancellation_approved: 'อนุมัติการยกเลิก',
+  cancellation_rejected: 'ไม่อนุมัติการยกเลิก',
+  partial_cancellation_Approved: 'อนุมัติยกเลิกบางช่วง',
+  partial_cancellation_Rejected: 'ไม่อนุมัติยกเลิกบางช่วง',
+  Cancelled: 'ยกเลิกใบลา',
+  'Cancellation Requested': 'ขอยกเลิกใบลา',
+  Submitted: 'ส่งคำขอ',
+  Deleted: 'ลบใบลา',
+}
+
+const auditActionLabel = (action) => {
+  const key = String(action || '').replace(/^leave\.(action\.)?/, '')
+  return AUDIT_ACTION_LABELS[key] || key.replace(/\s*\(Level \d+\)$/, '') || action
+}
+
+const showAudit = async (leave) => {
+  auditTarget.value = leave
+  auditLogs.value = []
+  try {
+    const { data } = await api.get(`/leaves/${leave.id}/audit`)
+    auditLogs.value = data.data || data
+  } catch (e) {
+    alertStore.error(getErrorMessage(e, 'โหลดประวัติการดำเนินการไม่สำเร็จ'))
+  }
+}
+
+const openPartialCancel = (leave) => {
+  partialTarget.value = leave
+  partialForm.value = {
+    cancel_from: String(leave.start_date).slice(0, 10),
+    cancel_to: String(leave.end_date).slice(0, 10),
+    reason: '',
+  }
+}
+
+const submitPartialCancel = async () => {
+  try {
+    await api.post(`/leaves/${partialTarget.value.id}/partial-cancellation`, partialForm.value)
+    alertStore.success('ส่งคำขอยกเลิกบางช่วงแล้ว')
+    partialTarget.value = null
+    // การยกเลิกบางช่วงคืนวันลาที่ตัดไปแล้วบางส่วน ยอดคงเหลือจึงต้องดึงใหม่ด้วย
+    await Promise.all([loadLeaves(), leaveStore.fetchBalances()])
+  } catch (e) {
+    alertStore.error(
+      Object.values(e.response?.data?.errors || {})[0]?.[0]
+        || getErrorMessage(e, 'ส่งคำขอไม่สำเร็จ'),
+    )
   }
 }
 

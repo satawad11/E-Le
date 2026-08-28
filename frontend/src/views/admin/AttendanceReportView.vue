@@ -151,6 +151,74 @@
         </div>
       </div>
     </div>
+
+    <!--
+      คำขอแก้ไขเวลาที่รอพิจารณา (CLEANUP-02)
+      สายอนุมัติและ audit มีครบมาตั้งแต่ LEGACY-08 แต่ไม่มีหน้าจอให้ผู้ตรวจสอบตัดสินเลย
+    -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <header class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center gap-3">
+        <div>
+          <h3 class="font-semibold text-gray-800">คำขอแก้ไขเวลา</h3>
+          <p class="text-sm text-gray-500 mt-0.5">อนุมัติแล้วระบบจะปรับข้อมูลลงเวลาให้ทันที พร้อมบันทึกผู้อนุมัติไว้ในประวัติ</p>
+        </div>
+        <select
+          v-model="correctionStatus"
+          aria-label="กรองสถานะคำขอแก้ไขเวลา"
+          class="ml-auto border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]"
+          @change="fetchCorrections"
+        >
+          <option value="pending">รอพิจารณา</option>
+          <option value="approved">อนุมัติแล้ว</option>
+          <option value="rejected">ไม่อนุมัติ</option>
+          <option value="all">ทั้งหมด</option>
+        </select>
+      </header>
+
+      <div v-if="corrections.length === 0" class="px-5 py-8 text-center text-gray-500 text-sm">
+        ไม่มีคำขอในสถานะนี้
+      </div>
+
+      <ul v-else class="divide-y divide-gray-50">
+        <li v-for="correction in corrections" :key="correction.id" class="px-5 py-4 flex flex-wrap items-start gap-4">
+          <div class="min-w-0 flex-1">
+            <p class="font-medium text-gray-900 text-sm">
+              {{ correction.user?.name }}
+              <span class="text-gray-400 font-normal">· {{ correction.user?.department?.name || '—' }}</span>
+            </p>
+            <p class="text-sm text-gray-600 mt-0.5">
+              {{ formatDate(correction.attendance?.date) }} —
+              <span class="line-through text-gray-400">{{ describeValues(correction.before_values) }}</span>
+              <span class="mx-1">→</span>
+              <span class="font-medium">{{ describeValues(correction.proposed_values) }}</span>
+            </p>
+            <p class="text-xs text-gray-500 mt-0.5">เหตุผล: {{ correction.reason }}</p>
+          </div>
+
+          <div v-if="correction.status === 'pending'" class="flex gap-2">
+            <button
+              type="button"
+              :disabled="decidingId === correction.id"
+              class="px-3 py-1.5 rounded-lg border border-green-200 text-xs font-semibold text-green-700 hover:bg-green-50 disabled:opacity-50"
+              @click="decideCorrection(correction, 'approve')"
+            >
+              อนุมัติ
+            </button>
+            <button
+              type="button"
+              :disabled="decidingId === correction.id"
+              class="px-3 py-1.5 rounded-lg border border-red-200 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+              @click="decideCorrection(correction, 'reject')"
+            >
+              ไม่อนุมัติ
+            </button>
+          </div>
+          <span v-else class="px-2.5 py-1 rounded-full text-xs font-medium" :class="correctionStatusClass(correction.status)">
+            {{ correctionStatusText(correction.status) }}
+          </span>
+        </li>
+      </ul>
+    </section>
   </div>
 </template>
 
@@ -184,7 +252,7 @@ const users = ref([])
 
 const fetchDepartments = async () => {
   try {
-    const res = await api.get('/admin/departments-list')
+    const res = await api.get('/departments')
     departments.value = res.data
   } catch (error) {
     console.error(error)
@@ -289,11 +357,72 @@ const statusText = (status) => {
   return map[status] || status
 }
 
+/*
+ * คำขอแก้ไขเวลา (CLEANUP-02)
+ *
+ * การอนุมัติเดินผ่าน workflow engine และปรับข้อมูลลงเวลาให้เองเมื่ออนุมัติ
+ * (ดู `AttendanceCorrectionService::decide`) หน้านี้เป็นทางเข้าเดียวของผู้ตรวจสอบ
+ */
+const corrections = ref([])
+const correctionStatus = ref('pending')
+const decidingId = ref(null)
+
+const CORRECTION_FIELD_LABELS = {
+  check_in_time: 'เข้า',
+  check_out_time: 'ออก',
+  status: 'สถานะ',
+  notes: 'หมายเหตุ',
+}
+
+const CORRECTION_STATUS = {
+  pending: { text: 'รอพิจารณา', class: 'bg-yellow-100 text-yellow-800' },
+  approved: { text: 'อนุมัติแล้ว', class: 'bg-green-100 text-green-700' },
+  rejected: { text: 'ไม่อนุมัติ', class: 'bg-red-100 text-red-700' },
+}
+
+const correctionStatusText = (status) => CORRECTION_STATUS[status]?.text || status
+const correctionStatusClass = (status) => CORRECTION_STATUS[status]?.class || 'bg-gray-100 text-gray-700'
+
+const describeValues = (values) =>
+  Object.entries(values || {})
+    .map(([key, value]) => `${CORRECTION_FIELD_LABELS[key] || key} ${value ? formatTime(value) : 'ว่าง'}`)
+    .join(' · ') || '—'
+
+const fetchCorrections = async () => {
+  try {
+    const { data } = await api.get('/admin/attendance-corrections', { params: { status: correctionStatus.value } })
+    corrections.value = data.data || data
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const decideCorrection = async (correction, action) => {
+  let comment = null
+
+  if (action === 'reject') {
+    comment = window.prompt('เหตุผลที่ไม่อนุมัติ')
+    if (!comment) return
+  }
+
+  decidingId.value = correction.id
+  try {
+    const { data } = await api.post(`/admin/attendance-corrections/${correction.uuid}/${action}`, { comment })
+    alertStore.success(data.message)
+    await Promise.all([fetchCorrections(), fetchRecords()])
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'บันทึกผลการพิจารณาไม่สำเร็จ')
+  } finally {
+    decidingId.value = null
+  }
+}
+
 onMounted(() => {
   Promise.all([
     fetchDepartments(),
     fetchUsers(),
-    fetchRecords()
+    fetchRecords(),
+    fetchCorrections()
   ])
 })
 </script>

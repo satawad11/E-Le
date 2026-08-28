@@ -82,14 +82,4 @@ class FiscalYearController extends Controller
             'message' => 'ลบปีงบประมาณเรียบร้อยแล้ว',
         ]);
     }
-
-    /**
-     * Get the current active fiscal year (public API for Dashboard, etc.)
-     */
-    public function current()
-    {
-        $current = FiscalYear::current();
-
-        return response()->json($current);
-    }
 }

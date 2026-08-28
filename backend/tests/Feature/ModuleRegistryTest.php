@@ -81,7 +81,15 @@ class ModuleRegistryTest extends TestCase
         Cache::flush();
 
         $this->assertFalse(app(ModuleRegistry::class)->isEnabled('leave'));
-        $this->assertSame([], app(MenuService::class)->getUserMenuTree($user));
+
+        /*
+         * CLEANUP-01 — ตาราง `menus` มีเมนูมาตรฐานอยู่แล้วตั้งแต่ migration
+         * (ก่อนหน้านี้ตารางว่างเสมอเพราะเมนูจริงเขียนตายตัวในหน้าเว็บ)
+         * จึงต้องยืนยันว่า "ไม่มีเมนูของโมดูลที่ปิด" แทนการยืนยันว่าไม่มีเมนูเลย
+         */
+        $modules = array_column(app(MenuService::class)->getUserMenuTree($user), 'module');
+        $this->assertNotContains('leave', $modules);
+
         $this->actingAs($user)->getJson('/api/leaves')->assertNotFound();
     }
 
@@ -116,17 +124,20 @@ class ModuleRegistryTest extends TestCase
     public function test_menu_visibility_comes_from_permission_but_never_authorizes_backend(): void
     {
         $permission = Permission::findOrCreate('leave.report.view', 'web');
+        // CLEANUP-01 — ใช้ code ที่ไม่ชนกับเมนูมาตรฐานที่ migration สร้างไว้แล้ว
         $menu = Menu::create([
-            'code' => 'users', 'title_th' => 'ผู้ใช้งาน', 'module' => 'system',
-            'route_path' => '/admin/users', 'sort_order' => 1, 'is_active' => true,
+            'code' => 'test.users_probe', 'title_th' => 'ผู้ใช้งาน', 'module' => 'system',
+            'route_path' => '/admin/users', 'sort_order' => 99, 'is_active' => true,
         ]);
         $menu->permissions()->attach($permission);
         $user = User::factory()->create();
 
-        $this->assertSame([], app(MenuService::class)->getUserMenuTree($user));
+        $codesFor = fn () => array_column(app(MenuService::class)->getUserMenuTree($user), 'code');
+
+        $this->assertNotContains('test.users_probe', $codesFor());
         $user->givePermissionTo('leave.report.view');
         Cache::flush();
-        $this->assertSame('users', app(MenuService::class)->getUserMenuTree($user)[0]['code']);
+        $this->assertContains('test.users_probe', $codesFor());
 
         // This endpoint requires view_users. Seeing its menu through a different
         // permission cannot grant access to the backend operation.

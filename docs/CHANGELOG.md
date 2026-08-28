@@ -4,6 +4,117 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [CLEANUP-02] - 2026-08-28
+
+ปิดงานที่เหลือให้พร้อมขึ้น production — ทุกฟีเจอร์ ทุกฟังก์ชัน ทุก action ต้องใช้งานได้จริง
+
+#### Added
+- **หน้าจอ "ขอแก้ไขเวลาปฏิบัติงาน"** — ฟีเจอร์นี้มีสายอนุมัติ audit และการแจ้งเตือนครบมาตั้งแต่ LEGACY-08 แต่ไม่มีหน้าจอ และไม่มี endpoint สำหรับดูรายการเลย · เพิ่ม `GET /api/attendance-corrections` และ `GET /api/admin/attendance-corrections` พร้อมปุ่มขอแก้ไขในหน้าประวัติการลงเวลา และรายการพิจารณาในหน้ารายงานการลงเวลา
+- **การตั้งค่าการแจ้งเตือนรายบุคคล** ในหน้าโปรไฟล์ — Notification Center อ่าน preference ตอนส่งจริงมาตั้งแต่ LEGACY-10 แต่ไม่เคยมีหน้าจอให้ตั้งค่า
+- **จัดการประเภทบุคลากร** ในหน้ากำหนดประเภทบุคลากร — endpoint สร้าง/แก้ไขมีมาตลอดแต่ไม่มีหน้าจอ
+- **สถานะคำสั่ง OT บนหน้าลงเวลา** — บอกล่วงหน้าว่ามีคำสั่งที่อนุมัติครอบเวลานี้หรือไม่ แทนที่จะให้กดแล้วเจอข้อความปฏิเสธ
+- **ปุ่ม "เลิกใช้เวอร์ชันนี้"** ในหน้าออกแบบแบบฟอร์ม
+- **`ability:` middleware** — ด่านสิทธิ์แบบ "อย่างน้อยหนึ่งข้อ" ที่เดินผ่าน Gate จึงรู้จักชื่อที่เทียบเท่าและ explicit deny
+- **`ModuleStateResolver`** — เอาค่าตั้งค่าโมดูลมาเติมทับ config ตอน boot ทำให้เปิด-ปิดโมดูลจากหน้าจอได้จริง
+- **`LeaveCancellationWorkflowProvisioner`** — สาย "ขอยกเลิกใบลา" บน Workflow Engine (เงื่อนไขก่อน cutover ตามเอกสารปิดเฟส LEGACY-05)
+- **`useAttendanceSummary`** composable รวมส่วนที่ซ้ำกันของสองหน้าสรุปการลงเวลา
+- **เทสต์ใหม่** — `ApiSurfaceContractTest`, `AbilityMiddlewareTest` (6), `ModuleToggleTest` (7), `LeaveCancellationCutoverTest` (9), คำขอแก้ไขเวลาใน `AttendanceIntegrationTest` (3), ประวัติการดำเนินการใน `CentralAuditLogTest` (2), `ProductionSeedSafetyTest` (4), การติดตั้งครบชุดใน `MenuIntegrityTest` (1)
+
+#### Changed
+- **ด่านสิทธิ์ของ route เหลือทางเดียว** — เลิกใช้ `permission:` ของ Spatie ที่ไม่รู้จักชื่อเทียบเท่าและ explicit deny · ชื่อสิทธิ์ชุดเดิมหายจาก route ทั้งหมด และหน้าเว็บเช็คชื่อมาตรฐานชื่อเดียวได้เพราะ `/api/user` ส่งชื่อเทียบเท่ามาให้แล้ว
+- **หน้า "โมดูลระบบ"** ตั้งค่ากลไกจริงที่เมนูและ API ใช้ พร้อมแสดงการพึ่งพาระหว่างโมดูลและเตือนโมดูลที่จะถูกปิดตาม
+- **ประวัติการดำเนินการของใบลา** อ่านจากทะเบียนกลาง `audit_logs` และแสดงชื่อผู้กระทำ
+- **`MenuService`** ตัดสินสิทธิ์ด้วย Gate แทนการเทียบชื่อดิบ
+
+#### Fixed
+- **ประวัติการดำเนินการแสดงไม่ครบ** — อ่านเฉพาะ `leave_audit_logs` ผู้ใช้จึงไม่เห็นการยื่นใบลาและการขอยกเลิกที่บันทึกไว้อีกตารางหนึ่ง
+- **สวิตช์ในหน้า "โมดูลระบบ" กดแล้วไม่มีอะไรเกิดขึ้น** — เขียนค่าตั้งค่าที่ไม่มีอะไรอ่านอีกแล้วหลังแถบเมนูเปลี่ยนไปอ่านจากตาราง `menus`
+- **explicit deny ถูกหลบได้** — route ที่ใช้ `permission:` ไม่ตรวจ `permission_denies` สิทธิ์ที่ถูกตัดเฉพาะรายจึงยังผ่านด่านได้
+- **ช่องตัวกรอง "หน่วยงาน" ในสองหน้าสรุปการลงเวลาว่างเปล่า** — เรียก `/admin/departments` ที่ต้องมีสิทธิ์ `manage_departments`
+- **หน้าสรุป OT ไม่แสดงข้อความผิดพลาด** — ตารางว่างโดยไม่บอกสาเหตุ
+- **`GET /overtime/my-active`** คืนข้อมูลที่ตอบไม่ได้ว่าลงเวลา OT ได้หรือยัง
+- **เปิดสวิตช์ cutover บนระบบที่ยังไม่ได้ seed workflow แล้วการอนุมัติล้มทั้งหมด** — ระบบออกเวอร์ชันจาก `approval_steps` ให้เองแล้ว
+- **SEC-028 — ติดตั้ง production แล้วได้บัญชีผู้ดูแลระบบสูงสุดที่ใครก็เข้าได้** · `DatabaseSeeder` สร้างผู้ใช้ 6 คนด้วยรหัสผ่านตายตัว (`1111111111111` ถึง `6666666666666`) · SEC-027 เอาค่าเหล่านี้ออกจากหน้าเข้าสู่ระบบไปแล้ว แต่ตัวบัญชียังถูกสร้างอยู่ทุกครั้งที่ `db:seed --force` · ตอนนี้นอก local/testing สร้างผู้ดูแลระบบเพียงบัญชีเดียว รหัสผ่านมาจาก `ADMIN_PASSWORD` ถ้าไม่ตั้งจะสุ่มให้แล้วพิมพ์ครั้งเดียวตอนติดตั้ง ส่วนชุดบัญชีทดลองต้องสั่ง `SEED_DEMO_ACCOUNTS=true` อย่างชัดแจ้งเท่านั้น
+- **วันลาคงเหลือบนหน้าจอไม่ขยับตามการตัดและการคืนวัน** — สามจุดที่ทำให้ผู้ใช้เห็นว่า "ยกเลิกแล้วระบบไม่คืนวันลา" ทั้งที่ตัวเลขในฐานข้อมูลถูกต้องมาตลอด:
+  1. **หน้าจอหาแถวโควตาผิดปี** · แถว `leave_balances` ถูกคีย์ด้วยปีที่ *นโยบายของการลาประเภทนั้น* กำหนด แต่ `LeaveQueryController::balances()` หาด้วยเลขปีงบประมาณตัวเดียวสำหรับทุกประเภท ประเภทที่นับตามปีปฏิทินจึงอ่านคนละแถวกับที่ระบบจอง/ตัดจริงตลอดช่วง 1 ต.ค. – 31 ธ.ค. (หรือหายไปจากหน้าจอทั้งแถว) · ตอนนี้เลือกปีตามเกณฑ์ของนโยบายแต่ละแถว และรวมยอดใบลาในกรอบเวลาของรอบนั้นจริง ๆ
+  2. **หน้าเว็บไม่ดึงโควตาใหม่หลังทำรายการ** · มีแต่ `cancelLeave` ที่ดึง ส่วนการยื่นใบลา อนุมัติ ปฏิเสธ และ **อนุมัติคำขอยกเลิก** ดึงเฉพาะรายการใบลา ตัวเลขคงเหลือจึงค้างจนกว่าจะรีเฟรชทั้งหน้า · รวมเป็น `_refreshAfterBalanceChange()` ที่ทุกคำสั่งซึ่งกระทบโควตาเรียกใช้ และ guard กัน fetch ซ้ำเปลี่ยนไปคืน promise ที่กำลังวิ่งอยู่แทนการ return เปล่า (ของเดิม `await` แล้วได้ค่าชุดเก่า)
+  3. **ประเภทการลาที่ระเบียบไม่จำกัดวันแสดงว่า "เหลือ 0 วัน"** · แถวโควตาที่ seeder สร้างไม่ได้ผูก `leave_policy_id` หน้าจอจึงตัดสินไม่ได้ว่าไม่จำกัดโควตา — ลาเข้ารับการตรวจเลือก ลาไปศึกษาต่อ ลาไปปฏิบัติงานในองค์การระหว่างประเทศ ลาติดตามคู่สมรส และลาไปฟื้นฟูสมรรถภาพ ทั้งห้าประเภทดูเหมือนไม่มีสิทธิ์ลาเลย · ตอนนี้ผูกนโยบายที่ใช้จริงให้เมื่อแถวยังไม่มี
+- **ติดตั้งใหม่ได้กลุ่มเมนูระดับบนสุดเกินมาหนึ่งกลุ่ม** — `DocumentEngineSeeder` เพิ่มเมนู `admin.document_center` เองซ้ำกับ `settings.document_center` ในโครงหลัก และเพราะกิ่งแม่ที่มันหา (`code = 'admin'`) ไม่มีอยู่แล้ว เมนูซ้ำจึงลอยขึ้นไปเป็นกลุ่มบนสุด — เห็นได้ต่อเมื่อรัน seeder ครบชุดเท่านั้น
+
+#### Removed
+- `Admin\SecureExportSettingController` + 3 route `/admin/export-settings` · `GET /admin/permissions/user-counts` · `GET /fiscal-year/current` · `GET /leave-services` + `LeaveGovernanceWorklistController::myLeaves` · `GET /admin/roles/{role}`
+- getter ของ auth store 10 ตัวที่เหลือไว้ช่วยแถบเมนูที่เขียนตายตัว และเงื่อนไข `hasPermission('approvals')` ที่อ้างสิทธิ์ที่ไม่มีอยู่จริง
+- `enable_leave_menu` / `enable_attendance_menu` ออกจาก `config/system_settings.php` และ `settingStore`
+- **`PurgeAndMigrateTo7StandardRolesSeeder`** — เรียก `StandardRolesAndPermissionsSeeder` ที่ถูกลบไปแล้ว รันเมื่อไรก็พัง และงานของมันคือลบ role กับการผูกสิทธิ์ทิ้งทั้งชุด
+- **`UpdateUserNamesSeeder`** — เขียนทับชื่อบุคลากรจริงด้วยชื่อสมมติ เป็น one-off ที่ทำไปแล้ว
+- **`DocumentEngineSeeder::syncMenu()`** — เมนูมีแหล่งความจริงเดียวคือ `MenuSeeder::TREE`
+
+
+### [CLEANUP-01 รอบที่ 3–4] - 2026-08-28
+
+รวมระบบเอกสาร ยุบหน้าที่ซ้อนทับ เปิดทางให้ workflow cutover และรวมสารบัญสิทธิ์
+
+#### Added
+- **`LeaveApprovalCoordinator`** — จุดตัดสินเดียวของสายอนุมัติใบลา อ่านสวิตช์ `workflow.engine_is_source_of_truth` ที่เตรียมไว้ตั้งแต่ LEGACY-05 แต่ไม่เคยมีโค้ดส่วนใดอ่านเลย ทั้งสองเส้นทางเขียนข้อมูลชุดเดียวกัน (`leave_approvals`, `leaves.approval_level`, `leaves.status`, สิทธิ์วันลา, audit log)
+- **`PermissionCatalogSeeder`** — สารบัญชื่อสิทธิ์ที่เดียวของระบบ (มาตรฐาน 39 ชื่อ + ชุดเดิม 10 ชื่อ) สร้างชื่ออย่างเดียวไม่แจกสิทธิ์ พร้อม migration สำหรับระบบที่ติดตั้งแล้ว
+- **แม่แบบชนิด HTML บนศูนย์จัดการเอกสาร** — 5 endpoint ใหม่บน `document-engine` (แก้เนื้อหา, สารบัญตัวแปร, พรีวิว, ชุดตั้งต้น, ลบแม่แบบ) และปุ่ม "แก้เนื้อหา / ลบ / ซิงค์แม่แบบตั้งต้น / คืนค่าแบบฟอร์มตั้งต้น" ในหน้าเดียว
+- **เทสต์ใหม่** — `LeaveApprovalCutoverTest` (14), `PermissionCatalogTest` (5), `DocumentEngineTest` (+4)
+
+#### Changed
+- **หน้า "จัดการแม่แบบเอกสาร" ยุบเข้า "ศูนย์จัดการเอกสารและรายงาน"** — ทั้งสองหน้าอ่านเขียนตาราง `document_templates` ชุดเดียวกันแต่เป็นคนละเมนู คงเส้นทาง `/admin/document-templates` ไว้เป็น redirect
+- **หน้า "บริการและเอกสารใบลา" ยุบเข้า "รายการใบลาของฉัน"** — หลักฐานประกอบการลา ประวัติการดำเนินการ และการขอยกเลิกบางช่วง ย้ายมาอยู่ในแถบขยายของแต่ละใบลา คงเส้นทาง `/leave-services` ไว้เป็น redirect
+- **รายการ "ใบลาที่ต้องอนุมัติ"** ถามผู้ตัดสินคนเดียวกับตอนกดอนุมัติจริง แทนที่จะเรียก `ApproverResolverService` เอง
+- **`config/workflow.php`** อธิบายความหมายของสวิตช์ cutover ตามพฤติกรรมจริง พร้อมระบุขอบเขตว่าครอบเฉพาะสาย "ขอลา"
+
+#### Fixed
+- **แหล่งประกาศ route ที่สาม** — `main.js` ลงทะเบียน 8 เส้นทางด้วย `router.addRoute()` โดยใช้ชื่อ route ซ้ำกับ `router/index.js` ซึ่ง Vue Router ถือว่าแทนที่ ผลคือเงื่อนไขสิทธิ์และชื่อหน้าที่เขียนไว้ถูกทิ้งเงียบ ๆ และ `/profile/access-history` ถูกย้ายไป `/my-access-history` โดยไม่มีใครรู้ — ถอดออกทั้งหมด เหลือไฟล์เดียว พร้อม redirect ของ path เดิม
+- **`/verify-leave` ไม่มีพารามิเตอร์ `:hash`** ในไฟล์ router ทั้งที่ QR บนเอกสารชี้มาที่ `/verify-leave/{hash}` เสมอ — เส้นทางนี้ทำงานได้เพราะถูก `main.js` ทับไว้เท่านั้น
+- **สิทธิ์ของหน้าไม่ตรงกับที่ฝั่ง server บังคับ** — `admin-leave-governance` (ต้องรับ `leave.approval.hr`) และ `admin-leave-policies` (ต้องรับ `leave.policy.manage`)
+- **`leave.management.manage` และ `system.role.manage` ไม่เคยถูกสร้าง** ทั้งที่ route, policy และเมนูอ้างถึง — endpoint และเมนูเหล่านั้นใช้ได้เฉพาะ Super Admin ที่ผ่าน `Gate::before`
+
+#### Removed
+- **`Admin\DocumentTemplateController`** และ 7 route ของ `/admin/document-templates` · **`DocumentTemplatesView.vue`** · **`LeaveServicesView.vue`**
+- **`StandardRolesAndPermissionsSeeder`** — สร้างบทบาทชื่อไทยอีก 7 ตัวที่ระบบไม่ได้ใช้ และถูกกันไม่ให้รันตอนติดตั้งอยู่แล้ว
+
+#### หมายเหตุด้านความปลอดภัยของการ cutover
+สวิตช์ `WORKFLOW_ENGINE_SOURCE_OF_TRUTH` ยังเป็น **false** ตามค่าเริ่มต้น กลไกและหลักฐาน parity พร้อมแล้ว
+แต่ `docs/checkpoints/LEGACY-05-REPORT.md` ข้อ 11 กำหนดให้ต้องมีหลักฐาน shadow จาก **การอนุมัติจริง**
+ตามจำนวนที่ตกลงกันก่อนเปิดใช้ และสาย "ขอยกเลิกใบลา" ยังไม่ถูกนำเข้า engine
+การเปิดสวิตช์บน production จึงเป็นการตัดสินใจของเจ้าของระบบหลังตรวจ `php artisan workflow:shadow-report`
+
+
+### [CLEANUP-01] - 2026-08-28
+
+เก็บกวาดความซ้ำซ้อนตามรายงาน `docs/audits/MENU-FEATURE-INVENTORY-2026-08-27.md` — รอบที่ 1 และ 2
+
+#### Added
+- **`ศูนย์รายงานกลาง` (`/report-center`)** — หน้าจอแรกของชั้นรายงานกลางที่สร้างไว้ตั้งแต่ LEGACY-11 แต่ไม่เคยมีหน้าใดเรียกใช้ เลือกได้ 8 รายงาน (บุคลากร / สถิติการลา / สิทธิและวันลาคงเหลือ / การลงเวลา / มาสาย / ขาดงาน / ล่วงเวลา / สรุปผู้บริหาร) กรองตามช่วงวันที่ หน่วยงาน และประเภทบุคลากร แล้วส่งออก PDF / Excel / Word / CSV
+- **`GET /api/reporting`** สารบัญรายงานที่ผู้เรียกเปิดดูได้จริง และ **`GET /api/reporting-org-units`** รายชื่อหน่วยงานสำหรับตัวกรองขอบเขต
+- **`AppMenuNav.vue`** — แถบเมนูตัวเดียวที่วาดจาก `/api/user/menus` ใช้ร่วมกันทั้งจอใหญ่และมือถือ
+- **`NotificationCenter\ChannelAdapterRegistry` / `NotificationChannelTester`** — ทะเบียนช่องทางส่งกลาง และปุ่มทดสอบที่เดินผ่าน adapter ชุดเดียวกับการส่งจริง
+- **`POST /api/admin/users/import`** — การนำเข้าผู้ใช้จาก CSV ที่หน้าเว็บมีปุ่มมาตลอดแต่ route ชี้ไปยังเมธอดที่ไม่มีอยู่จริง รหัสผ่านสุ่มให้อัตโนมัติและไม่ถูกส่งกลับ ผู้ใช้ใหม่ตั้งรหัสผ่านเองผ่าน "ลืมรหัสผ่าน"
+- **`GET /api/departments`** — รายชื่อหน่วยงานสำหรับช่องตัวกรอง เปิดให้ผู้ใช้ที่ล็อกอินแล้วทุกคน
+- **เทสต์ใหม่** — `DeadCodeGuardTest` (3), `MenuIntegrityTest` (8), `UserImportTest` (6), สารบัญรายงานและปีงบประมาณใน `ReportingLayerTest` (3), ปุ่มทดสอบการแจ้งเตือนใน `SystemSettingsTest` (3)
+
+#### Changed
+- **เมนูมีแหล่งความจริงเดียว** — `MenuSeeder::TREE` (6 กลุ่ม 33 รายการ) ตรงกับ `router/index.js` ทุกเส้นทาง แถบเมนูอ่านจากตาราง `menus` จริง ๆ แล้ว หน้า "จัดการเมนูตามสิทธิ์" จึงมีผลกับสิ่งที่ผู้ใช้เห็นเป็นครั้งแรก `App.vue` ลดจาก 1,097 เหลือ 529 บรรทัด (เดิมเขียนเมนูตายตัวซ้ำ 2 ก๊อป รวม 80 `<router-link>`)
+- **`MenusManagementView`** เปลี่ยนจากหน้าสรุปสิทธิ์รายโมดูลเป็นหน้าจัดการเมนูจริง — เปิด/ปิดเมนู และแก้สิทธิ์ที่ใช้มองเห็นเมนู
+- **ชั้นรายงานกลางเป็นภาษาไทยทั้งชุด** — ชื่อรายงาน คอลัมน์ ยอดรวม และ PDF (ฟอนต์ TH Sarabun แทน DejaVu ที่แสดงภาษาไทยไม่ได้)
+- **`DocumentTemplatesView.vue`** ใช้ api client กลางแทน `axios` ดิบ — เป็นไฟล์เดียวจาก 46 ไฟล์ที่ยังข้าม interceptor แนบ token, refresh token และการจัดการ error กลาง
+- **`ReportsView` / `AttendanceReportView`** ใช้ `GET /api/departments` ร่วมกัน ช่องตัวกรอง "หน่วยงาน" ของทั้งสองหน้ากลับมามีข้อมูล
+
+#### Fixed
+- **ปีงบประมาณเพี้ยน 543 ปี** — `ReportFilter` เอาเลข พ.ศ. ไปประกอบเป็นวันที่ตรง ๆ (`2568-10-01`) ซึ่งถูกอ่านเป็น ค.ศ. ช่วงข้อมูลของรายงานจึงผิดทุกครั้งที่ระบบยังไม่มีข้อมูลปีงบประมาณ
+- **route 3 เส้นที่ชี้ไปยังเมธอดที่ไม่มีอยู่จริง** — `POST /admin/users/import`, `GET /admin/departments-list`, `GET /admin/roles/{role}`
+- **ปุ่มทดสอบการแจ้งเตือน** เดิมเรียก provider ตรง ๆ จึงตอบว่าสำเร็จได้ทั้งที่ช่องทางนั้นส่งของจริงไม่ได้ (ข้าม `isConfiguredFor`)
+- **เมนูในฐานข้อมูลชี้ไปยังหน้าที่ไม่มีอยู่** — `/dashboard`, `/calendar`, `/attendance/me`, `/admin/personnel-types`, `/admin/leave-calendar` ถูกล้างด้วย migration `2026_08_28_090000_resync_menus_with_application_routes`
+
+#### Removed
+- **ชั้นรายงานเดิมที่ไม่มีหน้าใดเรียก** — `ReportController` (`/reports/summary`, `/reports/export-excel`, `/reports/export-pdf`), `Services\Export\LeaveExcelService`, `resources/views/pdf/report.blade.php`
+- **โค้ดตาย** — `LeaveController`, `LeaveAttachmentController`, `SettingController`, `Admin\ExportSettingController`, model `LeaveRequest` / `ApprovalLog` / `Attachment`
+- **`TelegramNotificationService`** (proxy ที่ประกาศตัวเองว่าเลิกใช้แล้วและไม่มีใครเรียก) และเมธอด `LineNotificationService::notifyLeaveCreated` ที่ประกอบข้อความเองแล้วส่งตรง ข้าม template / preference / delivery log ของ Notification Center
+
+
 ### [SEC-023R] - 2026-08-27
 
 allowlist กลางของไฟล์อัปโหลด แทน SEC-023 ที่หายไปพร้อมโมดูลสารบรรณ

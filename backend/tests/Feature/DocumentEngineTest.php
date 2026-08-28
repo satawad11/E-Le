@@ -444,6 +444,67 @@ class DocumentEngineTest extends TestCase
 
     // ───────────────────────────── Authorization / IDOR ─────────────────────────────
 
+    /*
+     * CLEANUP-01 (D2) — แม่แบบชนิด HTML อยู่ใต้ศูนย์จัดการเอกสารทางเดียว
+     *
+     * เดิมแก้ผ่าน `/admin/document-templates` ซึ่งเป็นเมนูแยกที่อ่านเขียนตารางเดียวกัน
+     */
+    public function test_html_template_content_is_edited_through_the_document_engine(): void
+    {
+        $template = DocumentTemplate::create([
+            'code' => 'html_form', 'name' => 'แบบฟอร์ม HTML', 'module' => 'leave',
+            'document_type' => 'FORM', 'render_mode' => DocumentTemplate::RENDER_HTML,
+            'content_html' => '<p>เดิม</p>', 'is_active' => true,
+        ]);
+        $versionsBefore = $template->versions()->count();
+
+        $this->actingAs($this->admin())
+            ->putJson("/api/admin/document-engine/templates/{$template->id}/content", [
+                'name' => 'แบบฟอร์ม HTML',
+                'paper_size' => 'A4',
+                'orientation' => 'portrait',
+                'content_html' => '<p>เนื้อหาใหม่</p>',
+            ])->assertOk();
+
+        $template->refresh();
+        $this->assertSame('<p>เนื้อหาใหม่</p>', $template->content_html);
+        $this->assertSame($versionsBefore + 1, $template->versions()->count(), 'การแก้เนื้อหาต้องออกเวอร์ชันใหม่ ไม่ทับของเดิม');
+    }
+
+    public function test_the_old_document_template_endpoints_are_gone(): void
+    {
+        $this->actingAs($this->admin())->getJson('/api/admin/document-templates')->assertNotFound();
+        $this->actingAs($this->admin())->postJson('/api/admin/document-templates/seed-defaults')->assertNotFound();
+    }
+
+    public function test_html_template_preview_reports_a_broken_template_instead_of_failing(): void
+    {
+        $this->actingAs($this->admin())
+            ->postJson('/api/admin/document-engine/templates/preview', ['content_html' => '{{ $missing->boom() }}'])
+            ->assertStatus(422)
+            ->assertJsonStructure(['message']);
+    }
+
+    public function test_html_template_endpoints_reject_users_without_document_permission(): void
+    {
+        $outsider = User::factory()->create(['is_active' => true]);
+        $template = DocumentTemplate::create([
+            'code' => 'guarded_html', 'name' => 'ป้องกัน', 'module' => 'leave',
+            'document_type' => 'FORM', 'render_mode' => DocumentTemplate::RENDER_HTML,
+            'content_html' => '<p>ป้องกัน</p>', 'is_active' => true,
+        ]);
+
+        $this->actingAs($outsider)
+            ->putJson("/api/admin/document-engine/templates/{$template->id}/content", ['name' => 'x', 'content_html' => 'y'])
+            ->assertForbidden();
+        $this->actingAs($outsider)
+            ->deleteJson("/api/admin/document-engine/templates/{$template->id}")
+            ->assertForbidden();
+        $this->actingAs($outsider)
+            ->postJson('/api/admin/document-engine/templates/seed-defaults')
+            ->assertForbidden();
+    }
+
     public function test_admin_endpoints_reject_users_without_document_permission(): void
     {
         $outsider = User::factory()->create(['is_active' => true]);

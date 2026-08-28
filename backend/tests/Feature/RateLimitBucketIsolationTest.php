@@ -64,7 +64,7 @@ class RateLimitBucketIsolationTest extends TestCase
         $this->actingAs($this->employee);
 
         for ($i = 0; $i < 12; $i++) {
-            $this->getJson('/api/reports/export-pdf');
+            $this->getJson('/api/reporting/leave/export/pdf');
         }
 
         $this->getJson("/api/leaves/{$this->leave->id}/pdf")->assertOk();

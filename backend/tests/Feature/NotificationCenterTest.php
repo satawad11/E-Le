@@ -8,6 +8,7 @@ use App\Models\NotificationCenter\NotificationPreference;
 use App\Models\NotificationCenter\NotificationType;
 use App\Models\User;
 use App\Services\Modules\ModuleRegistry;
+use App\Services\NotificationCenter\ChannelAdapterRegistry;
 use App\Services\NotificationCenter\DeliveryResult;
 use App\Services\NotificationCenter\NotificationCenter;
 use App\Services\NotificationCenter\NotificationDeliveryService;
@@ -178,7 +179,7 @@ class NotificationCenterTest extends TestCase
             }
         };
         $service = new NotificationDeliveryService(
-            ['email' => $adapter],
+            new ChannelAdapterRegistry(['email' => $adapter]),
             app(TemplateRenderer::class),
             app(ModuleRegistry::class),
         );

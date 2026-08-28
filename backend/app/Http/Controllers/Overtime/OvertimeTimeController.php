@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Overtime;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
+use App\Models\Overtime\OvertimeAssignment;
 use App\Models\Overtime\OvertimeTimeRecord;
 use App\Services\Overtime\OvertimeTimeService;
 use App\Services\Time\TimeService;
@@ -70,13 +71,41 @@ class OvertimeTimeController extends Controller
         return response()->json(['message' => 'รับรองเวลาปฏิบัติงาน OT แล้ว', 'ot_time_record' => $result]);
     }
 
+    /**
+     * สถานะ OT ของฉันตอนนี้ — มีคำสั่งที่อนุมัติแล้วครอบเวลานี้อยู่หรือไม่ และลงเวลาไปแล้วแค่ไหน
+     *
+     * CLEANUP-02 — เดิมคืนเฉพาะ "record ล่าสุด" ซึ่งบอกไม่ได้ว่าตอนนี้ลงเวลา OT ได้หรือยัง
+     * หน้าจอจึงไม่มีอะไรให้แสดงและไม่เคยเรียก endpoint นี้เลย ผู้ใช้กดปุ่มแล้วเจอ
+     * ข้อความปฏิเสธโดยไม่รู้ล่วงหน้าว่าไม่มีคำสั่ง OT
+     *
+     * เงื่อนไขตรงกับ `OvertimeTimeService::checkIn` ทุกข้อ เพื่อไม่ให้หน้าจอกับหลังบ้านตอบคนละอย่าง
+     */
     public function active(Request $request)
     {
-        $record = OvertimeTimeRecord::with('assignment.order')
-            ->where('user_id', $request->user()->id)
-            ->latest('id')->first();
+        $user = $request->user();
+        $now = $this->time->now($user);
 
-        return response()->json($record);
+        $assignment = OvertimeAssignment::query()
+            ->with('order:id,uuid,title,approved_start,approved_end,status')
+            ->where('user_id', $user->id)
+            ->where('status', 'assigned')
+            ->whereHas('order', fn ($query) => $query->where('status', 'approved')
+                ->where('approved_start', '<=', $now)
+                ->where('approved_end', '>=', $now))
+            ->orderByDesc('id')
+            ->first();
+
+        $record = OvertimeTimeRecord::with('assignment.order:id,uuid,title')
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
+
+        return response()->json([
+            'can_check_in' => $assignment !== null,
+            'assignment' => $assignment,
+            'order' => $assignment?->order,
+            'latest_record' => $record,
+        ]);
     }
 
     private function compatibilityAttendance(OvertimeTimeRecord $record): Attendance

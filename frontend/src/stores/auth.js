@@ -62,44 +62,30 @@ export const useAuthStore = defineStore('auth', {
     isSuperAdmin: (state) => isSuperAdminUser(state),
 
 
-    /** ผู้มีสิทธิ์อนุมัติใบลา — เดิมคือ SuperAdmin/Director/Deputy/HR Head ซึ่งล้วนถือสิทธิ์นี้ */
+    /** ผู้มีสิทธิ์ตรวจสอบใบลาในฐานะงานบุคลากร */
     isHRHead: (state) => {
       const perms = getPermissionNames(state);
-      return perms.includes('system.user.view') || perms.includes('view_users');
+      return perms.includes('system.user.view');
     },
 
     isManager: (state) => {
       const perms = getPermissionNames(state);
-      return perms.includes('leave.approval.dept')
-        || perms.includes('approve_leave')
-        || perms.includes('approve_leaves');
+      return perms.includes('leave.approval.dept') || perms.includes('leave.approve');
     },
 
-    /** เข้าหน้าตั้งค่าระบบได้ — เดิมคือ Super Admin เท่านั้น */
-    isAdmin: (state) => {
-      const perms = getPermissionNames(state);
-      return perms.includes('system.setting.manage') || perms.includes('manage_settings');
-    },
-
-    /** เข้าหน้าจัดการผู้ใช้ได้ — เดิมคือ Super Admin กับ HR Head */
-    isUserManager: (state) => {
-      const perms = getPermissionNames(state);
-      return perms.includes('view_users')
-        || perms.includes('system.user.view')
-        || perms.includes('edit_users')
-        || perms.includes('system.user.manage');
-    },
+    /** เข้าหน้าตั้งค่าระบบได้ */
+    isAdmin: (state) => getPermissionNames(state).includes('system.setting.manage'),
 
     /**
      * ตรวจสิทธิ์รายตัว
      *
-     * LEGACY-04 (04-8): ถอดตาราง alias 11 ชุดออกแล้ว
+     * CLEANUP-02 (D5) — เทียบ "ชื่อมาตรฐาน" ชื่อเดียวพอ
      *
-     * ตารางนั้นมีไว้ชดเชยกรณีที่โค้ดเช็คชื่อ canonical แต่ผู้ใช้ถือชื่อรุ่นเก่า
-     * ตอนนี้ 04-1 ทำให้ทุก role ถือ **ทั้งชื่อเก่าและชื่อ canonical** พร้อมกัน
-     * การเทียบชื่อตรง ๆ จึงให้ผลเท่าเดิม (ตรวจแล้วกับชื่อทุกตัวที่หน้าเว็บใช้จริง)
+     * `/api/user` ส่ง `permission_names` ที่รวมชื่อที่เทียบเท่ากันมาให้แล้ว
+     * (ผู้ที่ถือ `manage_settings` จะได้ `system.setting.manage` ติดมาด้วย)
+     * หน้าเว็บจึงไม่ต้องเขียนชื่อชุดเดิมคู่กับชุดมาตรฐานทุกจุดอีกต่อไป
      *
-     * ยังคงให้ Super Admin ผ่านทุกข้อ เพื่อให้ตรงกับ Gate::before ฝั่ง backend
+     * หมายเหตุ: ฝั่งหน้าเว็บเป็นเพียง UX ไม่ใช่การควบคุมสิทธิ์ — backend บังคับเสมอ
      */
     hasPermission: (state) => (permissionName) => {
       if (isSuperAdminUser(state)) return true;
@@ -129,80 +115,15 @@ export const useAuthStore = defineStore('auth', {
       return direct.includes(permissionName);
     },
 
-    // === Attendance Module Shortcuts ===
-    // ผู้ที่สามารถลงเวลาเข้า-ออกได้ (check-in / check-out)
-    canCheckIn: (state) => {
-      if (isSuperAdminUser(state)) return true;
-      const perms = getPermissionNames(state);
-      return perms.some(p => ['attendance.checkin', 'attendance.record.create'].includes(p));
-    },
-    // ผู้ที่ดูประวัติการลงเวลาตนเองได้
-    canViewSelfAttendance: (state) => {
-      if (isSuperAdminUser(state)) return true;
-      const perms = getPermissionNames(state);
-      return perms.some(p => ['attendance.view_self', 'attendance.record.view_my'].includes(p));
-    },
-    // ดูรายงานการลงเวลาทั้งหมด (สำหรับ Admin/HR)
-    canViewAllAttendance: (state) => {
-      if (isSuperAdminUser(state)) return true;
-      const perms = getPermissionNames(state);
-      return perms.some(p => ['attendance.view_all', 'view_all_attendances', 'attendance.report.view_all'].includes(p));
-    },
-    // ดู/บันทึก OT
-    canManageOT: (state) => {
-      if (isSuperAdminUser(state)) return true;
-      const perms = getPermissionNames(state);
-      return perms.some(p => ['attendance.ot', 'attendance.ot_summary', 'attendance.summary.export'].includes(p));
-    },
-    // ใช้โมดูล attendance (ใช้แสดง/ซ่อนเมนูหลัก)
-    hasAttendanceAccess: (state) => {
-      if (isSuperAdminUser(state)) return true;
-      const attendancePerms = [
-        'attendance.checkin', 'attendance.view_self', 'attendance.view_all',
-        'attendance.ot', 'attendance.ot_summary', 'attendance.export',
-        'attendance.record.create', 'attendance.record.view_my', 'attendance.report.view_all', 'attendance.summary.export',
-        // คำสั่ง OT อยู่ใต้เมนูนี้ ผู้ที่มีสิทธิ์เฉพาะ OT จึงต้องเห็นกลุ่มเมนูด้วย
-        'overtime.operation.execute', 'overtime.management.review'
-      ];
-      const perms = getPermissionNames(state);
-      return perms.some(p => attendancePerms.includes(p));
-    },
-
-    // Check if user has any admin menu permission
-    hasAnyAdminMenu: (state) => {
-      if (isSuperAdminUser(state)) return true;
-      const adminPerms = ['view_users', 'edit_users', 'manage_departments', 'manage_leave_types', 'manage_settings', 'attendance.view_all', 'view_all_attendances', 'system.user.view', 'system.role.manage', 'system.menu.manage'];
-      const perms = getPermissionNames(state);
-      return perms.some(p => adminPerms.includes(p));
-    },
-
-    // สิทธิ์ตั้งค่าระบบทั่วไป รองรับทั้งชื่อเดิมและชื่อแบบโมดูล ให้ตรงกับ meta.permissions ใน router
-    canManageSettings: (state) => {
-      if (isSuperAdminUser(state)) return true;
-      const perms = getPermissionNames(state);
-      return perms.includes('manage_settings') || perms.includes('system.setting.manage');
-    },
-
     /*
-     * สิทธิ์เข้าศูนย์จัดการเอกสารและรายงาน
+     * CLEANUP-02 — ถอด getter ที่เหลือไว้ช่วยแถบเมนูที่เขียนตายตัวออกทั้งหมด
      *
-     * รับทั้งสิทธิ์ชุดใหม่ (document.*) และสิทธิ์ตั้งค่าระบบเดิม เพื่อให้ผู้ดูแลที่ใช้งานอยู่
-     * ไม่หลุดจากเมนูในวันที่อัปเกรด — ตรงกับที่ route ฝั่งเซิร์ฟเวอร์ยอมรับ
+     * `canCheckIn`, `canViewSelfAttendance`, `canViewAllAttendance`, `canManageOT`,
+     * `hasAttendanceAccess`, `hasAnyAdminMenu`, `canManageSettings`,
+     * `canManageDocumentCenter`, `hasAnySettingsMenu`, `isUserManager`
+     * ทั้งหมดมีไว้ตัดสินว่าจะแสดงเมนูใดใน `App.vue` เมื่อแถบเมนูเปลี่ยนไปอ่านจาก
+     * `/api/user/menus` (ซึ่งกรองด้วยสิทธิ์ฝั่ง server ให้แล้ว) ก็ไม่มีที่ใดเรียกอีกเลย
      */
-    canManageDocumentCenter: (state) => {
-      if (isSuperAdminUser(state)) return true;
-      const documentPerms = ['document.template.view', 'document.template.manage', 'document.report.view', 'document.report.manage', 'manage_settings', 'system.setting.manage'];
-      const perms = getPermissionNames(state);
-      return perms.some(p => documentPerms.includes(p));
-    },
-
-    // Check if user has any settings menu permission
-    hasAnySettingsMenu: (state) => {
-      if (isSuperAdminUser(state)) return true;
-      const settingsPerms = ['manage_departments', 'manage_workflow_steps', 'manage_leave_types', 'manage_settings', 'system.setting.manage'];
-      const perms = getPermissionNames(state);
-      return perms.some(p => settingsPerms.includes(p));
-    },
   },
   actions: {
     async login(email, password) {

@@ -3,6 +3,7 @@
 namespace App\Services\Attendance;
 
 use App\Models\Attendance;
+use App\Models\AttendanceIdentityMap;
 use App\Models\AttendanceRawEvent;
 use App\Models\User;
 use App\Services\Time\TimeService;
@@ -74,7 +75,7 @@ class AttendanceReconciliationService
             return User::findOrFail($event->user_id);
         }
 
-        $userId = DB::table('attendance_identity_maps')
+        $userId = AttendanceIdentityMap::query()
             ->where('attendance_source_id', $event->attendance_source_id)
             ->where('external_person_id', $event->external_person_id)
             ->value('user_id');

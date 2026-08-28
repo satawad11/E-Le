@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Document\DocumentFieldDefinition;
 use App\Models\Document\DocumentReportDefinition;
-use App\Models\Menu;
 use App\Services\DocumentEngine\DataProviderRegistry;
 use App\Services\DocumentEngine\Providers\LeaveRequestDataProvider;
 use App\Services\DocumentEngine\Providers\LeaveStatisticsDataProvider;
@@ -54,7 +53,14 @@ class DocumentEngineSeeder extends Seeder
         app(DataProviderRegistry::class)->sync();
 
         $this->syncFieldDictionary();
-        $this->syncMenu();
+        /*
+         * CLEANUP-02 — เมนูมีแหล่งความจริงเดียวคือ `MenuSeeder::TREE`
+         *
+         * เดิม seeder นี้เพิ่มเมนู `admin.document_center` เองอีกรายการหนึ่ง ทั้งที่หน้าเดียวกัน
+         * มีอยู่แล้วในโครงเมนูหลักในชื่อ `settings.document_center` และเนื่องจากกิ่งแม่ที่มันหา
+         * (`code = 'admin'`) ไม่มีอยู่แล้ว เมนูซ้ำนี้จึงไปโผล่เป็น "กลุ่มเมนูระดับบนสุด"
+         * บนระบบที่ติดตั้งใหม่ทุกครั้ง
+         */
         $this->syncExampleReport();
     }
 
@@ -92,40 +98,6 @@ class DocumentEngineSeeder extends Seeder
                 'paper_size' => 'A4',
                 'is_active' => true,
             ],
-        );
-    }
-
-    /**
-     * เมนู "ศูนย์จัดการเอกสารและรายงาน" ใต้กลุ่มจัดการระบบ
-     *
-     * เมนูของระบบนี้อยู่ในฐานข้อมูลและผูกกับสิทธิ์ ผู้ที่ไม่มีสิทธิ์จึงไม่เห็นเมนู
-     * (แต่การควบคุมจริงอยู่ที่ฝั่งเซิร์ฟเวอร์เสมอ การซ่อนเมนูเป็นเพียงเรื่องการใช้งาน)
-     */
-    private function syncMenu(): void
-    {
-        if (! class_exists(Menu::class)) {
-            return;
-        }
-
-        $parent = Menu::where('code', 'admin')->first();
-
-        $menu = Menu::updateOrCreate(
-            ['code' => 'admin.document_center'],
-            [
-                'title_th' => 'ศูนย์จัดการเอกสารและรายงาน',
-                'title_en' => 'Document & Report Center',
-                'module' => 'system',
-                'icon' => 'FileText',
-                'route_name' => 'document-center',
-                'route_path' => '/admin/document-center',
-                'parent_id' => $parent?->id,
-                'sort_order' => 3,
-                'is_active' => true,
-            ],
-        );
-
-        $menu->permissions()->sync(
-            Permission::whereIn('name', ['document.template.view', 'document.template.manage'])->pluck('id'),
         );
     }
 

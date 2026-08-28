@@ -67,7 +67,27 @@
     <template v-else>
       <!-- แบบฟอร์มเอกสาร -->
       <section v-if="activeTab === 'templates'" class="space-y-4">
-        <div class="flex justify-end">
+        <div class="flex flex-wrap justify-end gap-2">
+          <!--
+            CLEANUP-01 (D2) — ปุ่มชุดแม่แบบตั้งต้นย้ายมาจากหน้า "จัดการแม่แบบเอกสาร"
+            ที่ถูกยุบเข้ามาที่นี่ เพื่อให้เหลือทางเข้าเดียว
+          -->
+          <button
+            type="button"
+            :disabled="seeding"
+            class="px-4 py-2.5 border border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold rounded-xl text-sm min-h-[44px] disabled:opacity-50"
+            @click="seedDefaults(false)"
+          >
+            {{ seeding ? 'กำลังซิงค์…' : 'ซิงค์แม่แบบตั้งต้น' }}
+          </button>
+          <button
+            type="button"
+            :disabled="seeding"
+            class="px-4 py-2.5 border border-amber-200 text-amber-700 hover:bg-amber-50 font-semibold rounded-xl text-sm min-h-[44px] disabled:opacity-50"
+            @click="restoreDefaults"
+          >
+            คืนค่าแบบฟอร์มตั้งต้น
+          </button>
           <button
             @click="showCreate = true"
             class="px-5 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm shadow-md min-h-[44px]"
@@ -116,12 +136,27 @@
                   <span v-else class="text-gray-400">—</span>
                 </td>
                 <td class="px-5 py-3">{{ template.bound_entities }} รายการ</td>
-                <td class="px-5 py-3 text-right">
+                <td class="px-5 py-3 text-right space-x-1 whitespace-nowrap">
+                  <button
+                    v-if="template.render_mode !== 'pdf_overlay'"
+                    type="button"
+                    class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100 text-xs font-semibold"
+                    @click="openContentEditor(template)"
+                  >
+                    แก้เนื้อหา
+                  </button>
                   <button
                     @click="openTemplate(template)"
                     class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100 text-xs font-semibold"
                   >
                     จัดการเวอร์ชัน
+                  </button>
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 text-xs font-semibold"
+                    @click="deleteTemplate(template)"
+                  >
+                    ลบ
                   </button>
                 </td>
               </tr>
@@ -472,6 +507,101 @@
         </div>
       </div>
     </div>
+
+    <!--
+      แก้เนื้อหาแม่แบบชนิด HTML (CLEANUP-01 · D2)
+      ย้ายมาจากหน้า "จัดการแม่แบบเอกสาร" ที่ถูกยุบเข้าศูนย์จัดการเอกสารแล้ว
+    -->
+    <div v-if="contentEditor" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="closeContentEditor">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] flex flex-col">
+        <header class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-gray-900">แก้เนื้อหาแม่แบบ — {{ contentEditor.name }}</h3>
+            <p class="text-xs text-gray-500 font-mono">{{ contentEditor.code }}</p>
+          </div>
+          <button type="button" class="p-2 rounded-lg text-gray-400 hover:bg-gray-100" aria-label="ปิด" @click="closeContentEditor">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto px-6 py-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div class="lg:col-span-2 space-y-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <label class="text-xs font-semibold text-gray-600 col-span-2">
+                ชื่อแม่แบบ
+                <input v-model="contentForm.name" type="text" class="mt-1 w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]">
+              </label>
+              <label class="text-xs font-semibold text-gray-600">
+                ขนาดกระดาษ
+                <select v-model="contentForm.paper_size" class="mt-1 w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]">
+                  <option value="A4">A4</option>
+                  <option value="Letter">Letter</option>
+                  <option value="Legal">Legal</option>
+                </select>
+              </label>
+              <label class="text-xs font-semibold text-gray-600">
+                แนวกระดาษ
+                <select v-model="contentForm.orientation" class="mt-1 w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]">
+                  <option value="portrait">แนวตั้ง</option>
+                  <option value="landscape">แนวนอน</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="block text-xs font-semibold text-gray-600">
+              เนื้อหาแม่แบบ (HTML + ตัวแปร Blade)
+              <textarea
+                v-model="contentForm.content_html"
+                rows="20"
+                spellcheck="false"
+                class="mt-1 w-full border-gray-300 rounded-lg font-mono text-xs leading-relaxed focus:ring-[#800000] focus:border-[#800000]"
+              ></textarea>
+            </label>
+          </div>
+
+          <aside class="space-y-3">
+            <p class="text-xs text-gray-500">คลิกตัวแปรเพื่อแทรกลงท้ายเนื้อหา</p>
+            <div v-for="(fields, group) in contentFieldGroups" :key="group">
+              <h4 class="text-xs font-bold text-gray-700 mb-1">{{ group }}</h4>
+              <div class="flex flex-wrap gap-1">
+                <button
+                  v-for="field in fields"
+                  :key="field.name"
+                  type="button"
+                  :title="field.label"
+                  class="text-[11px] font-mono bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-0.5 rounded"
+                  @click="insertTag(`{{ $${field.name} }}`)"
+                >
+                  {{ field.name }}
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <footer class="px-6 py-4 border-t border-gray-100 flex flex-wrap justify-end gap-3">
+          <button
+            type="button"
+            :disabled="previewing"
+            class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium min-h-[44px] disabled:opacity-50"
+            @click="previewContent"
+          >
+            {{ previewing ? 'กำลังสร้างพรีวิว…' : 'พรีวิวด้วยข้อมูลตัวอย่าง' }}
+          </button>
+          <button type="button" class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium min-h-[44px]" @click="closeContentEditor">ยกเลิก</button>
+          <button
+            type="button"
+            :disabled="saving"
+            class="px-5 py-2.5 rounded-xl bg-[#800000] text-white text-sm font-semibold disabled:opacity-50 min-h-[44px]"
+            @click="saveContent"
+          >
+            {{ saving ? 'กำลังบันทึก…' : 'บันทึกเนื้อหา' }}
+          </button>
+        </footer>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -641,6 +771,136 @@ const createTemplate = async () => {
 
 const openTemplate = (template) => {
   router.push({ name: 'document-designer', params: { templateId: template.id } })
+}
+
+/*
+ * ─────────── แม่แบบชนิด HTML (CLEANUP-01 · D2) ───────────
+ *
+ * ย้ายมาจากหน้า "จัดการแม่แบบเอกสาร" (`/admin/document-templates`) ที่เป็นเมนูแยก
+ * ทั้งที่อ่านเขียนตารางเดียวกับหน้านี้ ตอนนี้เหลือทางเข้าเดียวคือศูนย์จัดการเอกสาร
+ */
+const contentEditor = ref(null)
+const contentForm = ref({ name: '', paper_size: 'A4', orientation: 'portrait', content_html: '' })
+const contentFields = ref([])
+const previewing = ref(false)
+const seeding = ref(false)
+
+// สารบัญตัวแปรมาเป็นรายการแบน { group, name, label } — จัดกลุ่มให้อ่านง่ายตอนแสดง
+const contentFieldGroups = computed(() =>
+  contentFields.value.reduce((groups, field) => {
+    (groups[field.group] ||= []).push(field)
+    return groups
+  }, {}),
+)
+
+const openContentEditor = async (template) => {
+  try {
+    const { data } = await api.get(`/admin/document-engine/templates/${template.id}`)
+    contentEditor.value = template
+    contentForm.value = {
+      name: data.template.name,
+      description: data.template.description,
+      paper_size: data.template.paper_size || 'A4',
+      orientation: data.template.orientation || 'portrait',
+      margin_top: data.template.margin_top,
+      margin_bottom: data.template.margin_bottom,
+      margin_left: data.template.margin_left,
+      margin_right: data.template.margin_right,
+      content_html: data.template.content_html || '',
+      is_active: data.template.is_active,
+    }
+
+    if (!contentFields.value.length) {
+      const fieldsResponse = await api.get('/admin/document-engine/templates/content-fields')
+      contentFields.value = fieldsResponse.data
+    }
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'เปิดแม่แบบไม่สำเร็จ')
+  }
+}
+
+const closeContentEditor = () => {
+  contentEditor.value = null
+}
+
+const insertTag = (tag) => {
+  contentForm.value.content_html += ` ${tag}`
+}
+
+const saveContent = async () => {
+  saving.value = true
+  try {
+    const { data } = await api.put(`/admin/document-engine/templates/${contentEditor.value.id}/content`, contentForm.value)
+    alertStore.success(data.message)
+    closeContentEditor()
+    await loadAll()
+  } catch (error) {
+    alertStore.error(
+      Object.values(error.response?.data?.errors || {}).flat()[0]
+        || error.response?.data?.message
+        || 'บันทึกเนื้อหาแม่แบบไม่สำเร็จ',
+    )
+  } finally {
+    saving.value = false
+  }
+}
+
+/* พรีวิวเรนเดอร์ผ่าน dompdf ตัวเดียวกับตอนพิมพ์จริง จึงเห็นผลตรงกับเอกสารที่จะออกมา */
+const previewContent = async () => {
+  previewing.value = true
+  try {
+    const response = await api.post('/admin/document-engine/templates/preview', {
+      content_html: contentForm.value.content_html,
+      paper_size: contentForm.value.paper_size,
+      orientation: contentForm.value.orientation,
+    }, { responseType: 'blob' })
+    const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  } catch (error) {
+    let detail = error.response?.data?.message
+    if (error.response?.data instanceof Blob) {
+      try {
+        detail = JSON.parse(await error.response.data.text())?.message
+      } catch {
+        detail = null
+      }
+    }
+    alertStore.error(detail || 'สร้างพรีวิวไม่สำเร็จ')
+  } finally {
+    previewing.value = false
+  }
+}
+
+const deleteTemplate = async (template) => {
+  if (!window.confirm(`ต้องการลบแม่แบบ "${template.name}" ใช่หรือไม่?`)) return
+  try {
+    const { data } = await api.delete(`/admin/document-engine/templates/${template.id}`)
+    alertStore.success(data.message)
+    await loadAll()
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'ลบแม่แบบไม่สำเร็จ')
+  }
+}
+
+const seedDefaults = async (overwrite) => {
+  seeding.value = true
+  try {
+    const { data } = await api.post('/admin/document-engine/templates/seed-defaults', { overwrite })
+    alertStore.success(data.message)
+    await loadAll()
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'ซิงค์แม่แบบตั้งต้นไม่สำเร็จ')
+  } finally {
+    seeding.value = false
+  }
+}
+
+const restoreDefaults = async () => {
+  const confirmed = window.confirm(
+    'คืนค่าแบบฟอร์มตั้งต้นทั้งหมด? เนื้อหาที่แก้ไว้จะถูกแทนที่ (เวอร์ชันเดิมยังถูกเก็บไว้ และใบลาเก่ายังพิมพ์ได้เหมือนเดิม)',
+  )
+  if (confirmed) await seedDefaults(true)
 }
 
 const leaveTypeOptions = computed(() => bindingEntities.value?.LEAVE?.[bindingForm.value.entity_type] || [])

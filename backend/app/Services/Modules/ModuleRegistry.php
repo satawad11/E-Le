@@ -97,6 +97,12 @@ class ModuleRegistry
             $data = Arr::except($module->toArray(), ['providers', 'route_patterns', 'legacy_permissions']);
             $data['enabled'] = $this->isEnabled($module->code());
             $data['configured_enabled'] = (bool) config("modules.{$module->configKey}.enabled", $module->enabledByDefault());
+            /*
+             * CLEANUP-02 — หน้าจอ "โมดูลระบบ" ต้องรู้ทั้งคีย์ที่ใช้ตั้งค่าและว่าปิดได้หรือไม่
+             * โมดูลแกน (`system`) ปิดไม่ได้ จึงต้องไม่แสดงสวิตช์ให้กด
+             */
+            $data['config_key'] = $module->configKey;
+            $data['can_disable'] = $module->canDisable();
             $data['disabled_dependencies'] = array_values(array_filter(
                 $module->dependencies(),
                 fn (string $dependency) => ! $this->isEnabled($dependency),

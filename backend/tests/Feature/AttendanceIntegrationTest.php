@@ -163,6 +163,72 @@ class AttendanceIntegrationTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'attendance.manual_correction.applied', 'resource_id' => (string) $attendance->id]);
     }
 
+    /*
+     * CLEANUP-02 — รายการคำขอแก้ไขเวลา
+     *
+     * เดิมมีแต่ endpoint สร้างและตัดสิน ไม่มี endpoint ให้ "ดูรายการ" หน้าจอจึงสร้างไม่ได้
+     * และทั้งฟีเจอร์ไม่มีทางเข้าเลยแม้สายอนุมัติกับ audit จะทำงานได้ครบ
+     */
+    public function test_a_person_sees_only_their_own_correction_requests(): void
+    {
+        $owner = User::factory()->create();
+        $owner->givePermissionTo('attendance.view_self');
+        $someoneElse = User::factory()->create();
+        $someoneElse->givePermissionTo('attendance.view_self');
+
+        $this->requestCorrection($owner);
+        $this->requestCorrection($someoneElse);
+
+        $rows = $this->actingAs($owner)->getJson('/api/attendance-corrections')->assertOk()->json('data');
+
+        $this->assertCount(1, $rows);
+        $this->assertSame($owner->id, $rows[0]['user_id']);
+    }
+
+    public function test_the_reviewer_worklist_lists_pending_requests_and_respects_scope(): void
+    {
+        $unitA = $this->orgUnit('CORR-A');
+        $unitB = $this->orgUnit('CORR-B');
+
+        $reviewer = User::factory()->create(['org_unit_id' => $unitA])->fresh();
+        $reviewer->givePermissionTo('attendance.view_all');
+        DB::table('permission_scopes')->insert([
+            'model_type' => $reviewer->getMorphClass(), 'model_id' => $reviewer->id,
+            'permission_name' => 'attendance.view_all', 'scope' => 'UNIT',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $visible = User::factory()->create(['org_unit_id' => $unitA])->fresh();
+        $visible->givePermissionTo('attendance.view_self');
+        $hidden = User::factory()->create(['org_unit_id' => $unitB])->fresh();
+        $hidden->givePermissionTo('attendance.view_self');
+
+        $this->requestCorrection($visible);
+        $this->requestCorrection($hidden);
+
+        $rows = $this->actingAs($reviewer)->getJson('/api/admin/attendance-corrections')->assertOk()->json('data');
+
+        $this->assertSame([$visible->id], array_column($rows, 'user_id'));
+    }
+
+    public function test_the_reviewer_worklist_requires_the_view_all_permission(): void
+    {
+        $outsider = User::factory()->create();
+        $outsider->givePermissionTo('attendance.view_self');
+
+        $this->actingAs($outsider)->getJson('/api/admin/attendance-corrections')->assertForbidden();
+    }
+
+    private function requestCorrection(User $owner): void
+    {
+        $attendance = Attendance::create(['user_id' => $owner->id, 'date' => '2026-08-14', 'status' => 'Present']);
+
+        $this->actingAs($owner)->postJson("/api/attendances/{$attendance->uuid}/corrections", [
+            'changes' => ['status' => 'Late'],
+            'reason' => 'ทดสอบคำขอ',
+        ])->assertCreated();
+    }
+
     public function test_view_all_scope_filters_other_units(): void
     {
         $unitA = $this->orgUnit('ATT-A');

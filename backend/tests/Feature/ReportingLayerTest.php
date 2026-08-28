@@ -7,6 +7,7 @@ use App\Models\Overtime\OvertimeAssignment;
 use App\Models\Overtime\OvertimeOrder;
 use App\Models\Overtime\OvertimeTimeRecord;
 use App\Models\User;
+use App\Services\Reporting\ReportFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -165,6 +166,55 @@ class ReportingLayerTest extends TestCase
         DB::disableQueryLog();
 
         $this->assertLessThanOrEqual(12, count($queries));
+    }
+
+    /*
+     * CLEANUP-01 (D3) — สารบัญของศูนย์รายงานกลาง
+     *
+     * หน้าเว็บวาดเมนูรายงานจากสารบัญนี้ ถ้าสารบัญคืนรายงานที่ผู้ใช้เปิดไม่ได้
+     * ผู้ใช้จะเห็นเมนูที่กดแล้วเด้ง 403 ทุกครั้ง
+     */
+    public function test_report_index_lists_only_reports_the_viewer_may_open(): void
+    {
+        $this->actingAs($this->viewer)->getJson('/api/reporting')
+            ->assertOk()
+            ->assertJsonPath('reports', []);
+
+        $this->viewer->givePermissionTo('leave.report.view');
+
+        $codes = collect($this->actingAs($this->viewer)->getJson('/api/reporting')->assertOk()->json('reports'))
+            ->pluck('code')->all();
+
+        $this->assertSame(['leave', 'leave_balance', 'executive'], $codes);
+    }
+
+    public function test_report_index_titles_are_thai(): void
+    {
+        $this->viewer->givePermissionTo('view_users');
+
+        $title = $this->actingAs($this->viewer)->getJson('/api/reporting')->assertOk()->json('reports.0.title');
+
+        $this->assertSame('รายงานข้อมูลบุคลากร', $title);
+        $this->assertMatchesRegularExpression('/\p{Thai}/u', $title);
+    }
+
+    /*
+     * CLEANUP-01 — ปีงบประมาณเก็บเป็น พ.ศ.
+     *
+     * ทางถอยเดิมเอาเลข พ.ศ. ไปประกอบเป็นวันที่ตรง ๆ (`2568-10-01`) ซึ่งถูกอ่านเป็น ค.ศ.
+     * ช่วงข้อมูลของรายงานจึงเพี้ยนไป 543 ปีทุกครั้งที่ระบบยังไม่มีข้อมูลปีงบประมาณ
+     */
+    public function test_fiscal_year_fallback_produces_a_sane_date_range(): void
+    {
+        DB::table('fiscal_years')->delete();
+
+        $filter = ReportFilter::from([]);
+
+        $this->assertGreaterThan(2500, $filter->fiscalYear, 'ปีงบประมาณต้องเป็น พ.ศ.');
+        $this->assertSame($filter->fiscalYear - 543, $filter->to->year);
+        $this->assertSame($filter->to->year - 1, $filter->from->year);
+        $this->assertSame(10, $filter->from->month);
+        $this->assertSame(9, $filter->to->month);
     }
 
     private function grantScoped(string $permission): void

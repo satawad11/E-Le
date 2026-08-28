@@ -11,6 +11,7 @@ use App\Models\User;
 use Faker\Factory;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -30,12 +31,19 @@ class DatabaseSeeder extends Seeder
          * ที่ **จงใจไม่ใส่** ไว้ที่นี่:
          *   PurgeAndMigrateTo7StandardRolesSeeder  ลบ role และการผูกสิทธิ์ทิ้ง
          *                                          เป็น one-off migration
-         *   StandardRolesAndPermissionsSeeder      ทับซ้อนกับ RolesAndPermissionsSeeder
          *   UpdateUserNamesSeeder                  แก้ข้อมูลย้อนหลังครั้งเดียว
          *   MockDataSeeder / MockLeaveSeeder       ข้อมูลจำลองสำหรับ dev เท่านั้น
          * ทั้งหมดต้องเรียกด้วยมือเมื่อจำเป็น
          */
         $this->call([
+            /*
+             * CLEANUP-01 (D5) — สร้าง "ชื่อสิทธิ์" ทั้งหมดก่อนใครเสมอ
+             *
+             * ชื่อที่โค้ดบังคับใช้แต่ไม่เคยถูกสร้าง (`leave.management.manage`,
+             * `system.role.manage`) ทำให้ endpoint และเมนูที่อ้างชื่อนั้นใช้ได้เฉพาะ
+             * Super Admin การสร้างชื่อไม่ได้แจกสิทธิ์ให้ใคร จึงปลอดภัยเสมอ
+             */
+            PermissionCatalogSeeder::class,
             RolesAndPermissionsSeeder::class,
             FiscalYearSeeder::class,
             ThaiGovernmentHoliday2569Seeder::class,
@@ -78,50 +86,46 @@ class DatabaseSeeder extends Seeder
         }
         $this->call([NewLeaveTypesSeeder::class, LeaveFormExtraFieldSeeder::class]);
 
-        // Create Users
+        /*
+         * บัญชีเริ่มต้น (SEC-028)
+         *
+         * เดิม seeder นี้สร้างบัญชี 6 ตัว รวมถึง Super Admin ด้วย **รหัสผ่านตายตัว**
+         * (`1111111111111` ถึง `6666666666666`) ระบบที่ติดตั้งจริงจึงมีบัญชีผู้ดูแลระบบ
+         * สูงสุดที่ใครก็เดารหัสผ่านได้ตั้งแต่วินาทีแรก — SEC-027 เอาค่าเหล่านี้ออกจาก
+         * หน้าเข้าสู่ระบบไปแล้ว แต่ตัวบัญชียังถูกสร้างอยู่
+         *
+         * ตอนนี้:
+         *   - นอก local/testing จะสร้างเฉพาะบัญชีผู้ดูแลระบบ **หนึ่งบัญชี** และ
+         *     รหัสผ่านมาจาก `ADMIN_PASSWORD` ถ้าไม่ตั้งไว้จะสุ่มให้แล้วพิมพ์ครั้งเดียว
+         *   - ชุดบัญชีทดลองครบทุกบทบาทสร้างเฉพาะบน local/testing หรือเมื่อสั่ง
+         *     `SEED_DEMO_ACCOUNTS=true` อย่างชัดแจ้ง
+         */
         $faker = Factory::create('th_TH');
+        $withDemoAccounts = app()->environment(['local', 'testing'])
+            || filter_var(env('SEED_DEMO_ACCOUNTS', false), FILTER_VALIDATE_BOOL);
 
-        $superAdmin = User::firstOrCreate(
-            ['email' => 'superadmin@example.com'],
-            ['name' => 'ผู้ดูแลระบบ สูงสุด', 'password' => bcrypt('1111111111111'), 'department_id' => $itDept->id]
-        );
-        $superAdmin->assignRole($superAdminRole);
-        $this->seedProfile($superAdmin, $faker, 'ทดสอบ', 'ระบบ', 'ผู้ดูแลระบบ', '1111111111111');
+        $superAdmin = $this->seedAdministrator($superAdminRole, $itDept, $faker, $withDemoAccounts);
+        $userIds = [$superAdmin->id];
 
-        $director = User::firstOrCreate(
-            ['email' => 'director@example.com'],
-            ['name' => 'สมศักดิ์ ผู้อำนวยการ', 'password' => bcrypt('2222222222222'), 'department_id' => $hrDept->id]
-        );
-        $director->assignRole($directorRole);
-        $this->seedProfile($director, $faker, 'สมศักดิ์', 'ผู้อำนวยการ', 'ผู้อำนวยการ', '2222222222222');
+        if ($withDemoAccounts) {
+            $demoAccounts = [
+                ['director@example.com', 'สมศักดิ์ ผู้อำนวยการ', $directorRole, $hrDept, 'สมศักดิ์', 'ผู้อำนวยการ', 'ผู้อำนวยการ', '2222222222222'],
+                ['deputy@example.com', 'สมชาย รองผู้อำนวยการ', $deputyRole, $hrDept, 'สมชาย', 'รองผู้อำนวยการ', 'รองผู้อำนวยการ', '3333333333333'],
+                ['hrhead@example.com', 'สมปอง หัวหน้าบุคลากร', $hrHeadRole, $hrDept, 'สมปอง', 'หัวหน้าบุคลากร', 'หัวหน้าบุคลากร', '4444444444444'],
+                ['employee@example.com', 'สมหญิง พนักงานทั่วไป', $employeeRole, $hrDept, 'สมหญิง', 'พนักงานทั่วไป', 'พนักงานทั่วไป', '5555555555555'],
+                ['doc@example.com', 'สมเกียรติ เจ้าหน้าที่สารบัญ', $docOfficerRole, $itDept, 'สมเกียรติ', 'เจ้าหน้าที่สารบัญ', 'เจ้าหน้าที่สารบัญ', '6666666666666'],
+            ];
 
-        $deputy = User::firstOrCreate(
-            ['email' => 'deputy@example.com'],
-            ['name' => 'สมชาย รองผู้อำนวยการ', 'password' => bcrypt('3333333333333'), 'department_id' => $hrDept->id]
-        );
-        $deputy->assignRole($deputyRole);
-        $this->seedProfile($deputy, $faker, 'สมชาย', 'รองผู้อำนวยการ', 'รองผู้อำนวยการ', '3333333333333');
-
-        $hrHead = User::firstOrCreate(
-            ['email' => 'hrhead@example.com'],
-            ['name' => 'สมปอง หัวหน้าบุคลากร', 'password' => bcrypt('4444444444444'), 'department_id' => $hrDept->id]
-        );
-        $hrHead->assignRole($hrHeadRole);
-        $this->seedProfile($hrHead, $faker, 'สมปอง', 'หัวหน้าบุคลากร', 'หัวหน้าบุคลากร', '4444444444444');
-
-        $employee = User::firstOrCreate(
-            ['email' => 'employee@example.com'],
-            ['name' => 'สมหญิง พนักงานทั่วไป', 'password' => bcrypt('5555555555555'), 'department_id' => $hrDept->id]
-        );
-        $employee->assignRole($employeeRole);
-        $this->seedProfile($employee, $faker, 'สมหญิง', 'พนักงานทั่วไป', 'พนักงานทั่วไป', '5555555555555');
-
-        $docOfficer = User::firstOrCreate(
-            ['email' => 'doc@example.com'],
-            ['name' => 'สมเกียรติ เจ้าหน้าที่สารบัญ', 'password' => bcrypt('6666666666666'), 'department_id' => $itDept->id]
-        );
-        $docOfficer->assignRole($docOfficerRole);
-        $this->seedProfile($docOfficer, $faker, 'สมเกียรติ', 'เจ้าหน้าที่สารบัญ', 'เจ้าหน้าที่สารบัญ', '6666666666666');
+            foreach ($demoAccounts as [$email, $name, $role, $department, $firstName, $lastName, $position, $idCard]) {
+                $account = User::firstOrCreate(
+                    ['email' => $email],
+                    ['name' => $name, 'password' => bcrypt($idCard), 'department_id' => $department->id]
+                );
+                $account->assignRole($role);
+                $this->seedProfile($account, $faker, $firstName, $lastName, $position, $idCard);
+                $userIds[] = $account->id;
+            }
+        }
 
         // Seed leave balances for current year
         $currentYear = (int) date('Y');
@@ -132,8 +136,6 @@ class DatabaseSeeder extends Seeder
             'ลาคลอดบุตร' => 90,
             'ลาไปช่วยเหลือภริยาที่คลอดบุตร' => 15,
         ];
-
-        $userIds = [$superAdmin->id, $director->id, $deputy->id, $hrHead->id, $employee->id, $docOfficer->id];
 
         foreach ($userIds as $userId) {
             foreach (LeaveType::all() as $lt) {
@@ -174,6 +176,58 @@ class DatabaseSeeder extends Seeder
         // DOC-ENGINE: สิทธิ์ Field Dictionary และแหล่งข้อมูลของศูนย์จัดการเอกสาร
         // ต้องรันหลังประเภทการลาและแม่แบบเอกสาร เพราะสร้างกติกาผูกแบบฟอร์มจากทั้งสองอย่าง
         $this->call([DocumentEngineSeeder::class]);
+    }
+
+    /**
+     * บัญชีผู้ดูแลระบบเริ่มต้น — บัญชีเดียวที่ระบบต้องมีเพื่อเข้าไปตั้งค่าครั้งแรก
+     *
+     * SEC-028 — รหัสผ่านไม่ถูกฝังไว้ในโค้ดอีกต่อไป
+     *   local/testing  ใช้รหัสเดิมเพื่อให้ชุดทดสอบและเครื่องพัฒนาทำงานได้เหมือนเดิม
+     *   นอกจากนั้น    ใช้ `ADMIN_PASSWORD` ถ้ามี ไม่มีก็สุ่มให้แล้วพิมพ์ครั้งเดียวตอนติดตั้ง
+     */
+    private function seedAdministrator($superAdminRole, $department, $faker, bool $withDemoAccounts): User
+    {
+        $email = env('ADMIN_EMAIL', 'superadmin@example.com');
+        $existing = User::where('email', $email)->first();
+
+        if ($existing === null) {
+            $password = $withDemoAccounts
+                ? '1111111111111'
+                : (env('ADMIN_PASSWORD') ?: Str::password(20));
+
+            $existing = User::create([
+                'email' => $email,
+                'name' => 'ผู้ดูแลระบบ สูงสุด',
+                'password' => bcrypt($password),
+                'department_id' => $department->id,
+            ]);
+
+            if (! $withDemoAccounts && ! env('ADMIN_PASSWORD')) {
+                $this->command?->warn('สร้างบัญชีผู้ดูแลระบบ '.$email.' ด้วยรหัสผ่านสุ่ม: '.$password);
+                $this->command?->warn('บันทึกรหัสผ่านนี้ไว้ทันที ระบบจะไม่แสดงอีก และควรเปลี่ยนหลังเข้าสู่ระบบครั้งแรก');
+            }
+        }
+
+        $existing->assignRole($superAdminRole);
+
+        /*
+         * บนระบบจริงผู้ดูแลระบบเป็นคนจริง จึงไม่ยัดเลขบัตรประชาชน วันเกิด และที่อยู่สมมติให้
+         * — ข้อมูลปลอมในทะเบียนบุคลากรของราชการอันตรายกว่าการปล่อยว่างไว้ให้เจ้าตัวกรอกเอง
+         */
+        if ($withDemoAccounts) {
+            $this->seedProfile($existing, $faker, 'ทดสอบ', 'ระบบ', 'ผู้ดูแลระบบ', '1111111111111');
+        } elseif (! $existing->profile) {
+            $existing->profile()->create([
+                'title' => 'นาย',
+                'first_name' => 'ผู้ดูแลระบบ',
+                'last_name' => 'สูงสุด',
+                'position' => 'ผู้ดูแลระบบ',
+                'nationality' => 'ไทย',
+                'status' => 'ปฏิบัติหน้าที่',
+            ]);
+        }
+
+        return $existing;
     }
 
     private function seedProfile($user, $faker, $fname = 'ทดสอบ', $lname = 'ระบบ', $position = 'นักวิชาการ', $idCard = null)

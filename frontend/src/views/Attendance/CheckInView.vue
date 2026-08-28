@@ -75,7 +75,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
               </svg>
             </div>
-            <span class="font-bold text-lg">เข้างาน</span>
+            <span class="font-bold text-lg">เข้างาน</span>
           </button>
 
           <button @click="handleCheckOut" 
@@ -88,16 +88,38 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
               </svg>
             </div>
-            <span class="font-bold text-lg">ออกงาน</span>
+            <span class="font-bold text-lg">ออกงาน</span>
           </button>
         </div>
 
+        <!--
+          สถานะคำสั่ง OT (CLEANUP-02)
+          หลังบ้านปฏิเสธการลงเวลา OT เมื่อไม่มีคำสั่งที่อนุมัติครอบเวลานี้
+          เดิมผู้ใช้รู้ก็ต่อเมื่อกดปุ่มแล้วเจอข้อความปฏิเสธ
+        -->
+        <div
+          v-if="otStatus"
+          class="mb-4 rounded-xl border px-4 py-3 text-sm"
+          :class="otStatus.can_check_in ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-gray-200 bg-gray-50 text-gray-600'"
+        >
+          <template v-if="otStatus.can_check_in">
+            <span class="font-semibold">มีคำสั่งปฏิบัติงานล่วงเวลาในช่วงนี้</span>
+            <span v-if="otStatus.order?.title"> — {{ otStatus.order.title }}</span>
+            <span v-if="otStatus.order?.approved_start" class="block text-xs mt-0.5">
+              ช่วงที่อนุมัติ {{ formatOtRange(otStatus.order) }}
+            </span>
+          </template>
+          <template v-else>
+            ยังไม่มีคำสั่งปฏิบัติงานล่วงเวลาที่อนุมัติแล้วครอบเวลานี้ — ลงเวลา OT ไม่ได้จนกว่าจะได้รับมอบหมาย
+          </template>
+        </div>
+
         <div class="grid grid-cols-2 gap-4">
-          <button @click="handleOtCheckIn" 
-                  :disabled="loading || !location || hasOtCheckedIn"
+          <button @click="handleOtCheckIn"
+                  :disabled="loading || !location || hasOtCheckedIn || otStatus?.can_check_in === false"
                   aria-label="ลงเวลาเข้างานล่วงเวลา (OT)"
                   class="flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-600 focus:outline-none"
-                  :class="loading || !location || hasOtCheckedIn ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400' : 'border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-200'">
+                  :class="loading || !location || hasOtCheckedIn || otStatus?.can_check_in === false ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400' : 'border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-200'">
             <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-2">
               <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
@@ -157,6 +179,28 @@ const fetchTodayAttendance = async () => {
   } catch (e) {
     console.error('Failed to fetch today attendance:', e)
   }
+}
+
+/*
+ * สถานะคำสั่ง OT ของฉันตอนนี้ (CLEANUP-02)
+ *
+ * ผู้ใช้ที่ไม่มีสิทธิ์ OT จะถูกปฏิเสธที่ endpoint — ถือว่าไม่มีสถานะให้แสดง ไม่ใช่ข้อผิดพลาด
+ */
+const otStatus = ref(null)
+
+const fetchOtStatus = async () => {
+  try {
+    const res = await api.get('/overtime/my-active')
+    otStatus.value = res.data
+  } catch {
+    otStatus.value = null
+  }
+}
+
+const formatOtRange = (order) => {
+  if (!order?.approved_start) return ''
+  const time = (value) => new Date(value).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+  return `${time(order.approved_start)} – ${time(order.approved_end)} น.`
 }
 
 const fetchSettings = async () => {
@@ -371,6 +415,7 @@ const handleOtCheckOut = async () => {
 
 onMounted(() => {
   fetchTodayAttendance()
+  fetchOtStatus()
   fetchSettings()
   updateTime()
   timer = setInterval(updateTime, 1000)

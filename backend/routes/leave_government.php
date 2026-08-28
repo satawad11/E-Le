@@ -17,7 +17,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/approvals/{leave}/approve', [GovernmentApprovalController::class, 'approve']);
     Route::post('/approvals/{leave}/reject', [GovernmentApprovalController::class, 'reject']);
     Route::get('/personnel-types', [LeavePolicyController::class, 'personnelTypes']);
-    Route::get('/leave-services', [LeaveGovernanceWorklistController::class, 'myLeaves']);
     Route::get('/leaves/{leave}/evidences', [LeaveEvidenceController::class, 'index']);
     Route::post('/leaves/{leave}/evidences', [LeaveEvidenceController::class, 'store']);
     Route::get('/leave-evidences/{evidence}/download', [LeaveEvidenceController::class, 'download'])->middleware('throttle:documents');

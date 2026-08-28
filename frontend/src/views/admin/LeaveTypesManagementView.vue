@@ -129,7 +129,7 @@
               </select>
               <p class="text-xs text-gray-500 mt-1.5">
                 แก้ไขเนื้อหาแบบฟอร์มได้ที่
-                <router-link to="/admin/document-templates" class="text-[#800000] font-semibold hover:underline">เมนูแม่แบบเอกสาร →</router-link>
+                <router-link to="/admin/document-center" class="text-[#800000] font-semibold hover:underline">ศูนย์จัดการเอกสารและรายงาน →</router-link>
               </p>
             </div>
 
@@ -295,7 +295,7 @@ const fetchTypes = async () => {
 
 const fetchTemplates = async () => {
   try {
-    const res = await api.get('/admin/document-templates', { params: { module: 'leave' } })
+    const res = await api.get('/admin/document-engine/templates', { params: { module: 'leave' } })
     leaveTemplates.value = res.data
   } catch {
     leaveTemplates.value = []

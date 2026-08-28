@@ -80,19 +80,4 @@ class PermissionController extends Controller
             'all_permissions' => array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray())),
         ]);
     }
-
-    /**
-     * Return count of users who have each permission (via role or direct).
-     */
-    public function userCounts()
-    {
-        $permissions = Permission::orderBy('name')->get();
-        $counts = [];
-
-        foreach ($permissions as $permission) {
-            $counts[$permission->name] = $permission->users()->count();
-        }
-
-        return response()->json($counts);
-    }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AttachRequestContext;
+use App\Http\Middleware\EnsureAnyAbility;
 use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
@@ -32,6 +33,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            /*
+             * CLEANUP-02 (D5) — ด่านสิทธิ์แบบ "อย่างน้อยหนึ่งข้อ" ที่เดินผ่าน Gate
+             * จึงรู้จักทั้งชื่อที่เทียบเท่ากันและ explicit deny ต่างจาก `permission:`
+             */
+            'ability' => EnsureAnyAbility::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

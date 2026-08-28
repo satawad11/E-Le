@@ -1,254 +1,269 @@
-﻿<template>
-  <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
-
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+<template>
+  <div class="max-w-6xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
       <div>
-        <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <span class="p-2 bg-indigo-100 rounded-xl text-indigo-700">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </span>
-          ภาพรวมโมดูลและสิทธิ์การเข้าถึง
-        </h2>
-        <p class="mt-1 text-sm text-gray-500">
-          แสดงโครงสร้างโมดูลทั้งหมดในระบบ พร้อมรายการสิทธิ์ (Permissions) ที่กำหนดไว้ในแต่ละโมดูล<br>
-          หากต้องการกำหนดสิทธิ์รายบุคคล ให้ไปที่ <router-link to="/admin/users" class="text-indigo-600 hover:underline font-medium">จัดการผู้ใช้งาน → ปุ่มสิทธิ์</router-link>
+        <h2 class="text-2xl font-bold text-gray-800">จัดการเมนูตามสิทธิ์</h2>
+        <p class="text-gray-500 text-sm mt-1">
+          กำหนดว่าเมนูใดแสดงกับใคร — ผู้ใช้จะเห็นเมนูเมื่อมีสิทธิ์อย่างน้อยหนึ่งข้อที่ผูกไว้
+          เมนูที่ไม่ผูกสิทธิ์ใดเลยจะเห็นได้ทุกคนที่เข้าสู่ระบบ
         </p>
       </div>
       <button
-        @click="loadData"
+        type="button"
         :disabled="loading"
         class="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition shadow-sm disabled:opacity-50"
+        @click="loadMenus"
       >
-        <svg class="w-4 h-4" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        <svg class="w-4 h-4" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
         รีเฟรชข้อมูล
       </button>
     </div>
 
-    <!-- Loading -->
-    <div v-if="loading" class="py-20 flex flex-col items-center text-slate-400">
-      <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-      <p class="mt-3 text-sm">กำลังโหลดข้อมูลโมดูล...</p>
+    <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
+      <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.info"/>
+      </svg>
+      <div class="text-sm text-blue-800">
+        รายการเมนูและลำดับมาจากโครงเมนูของระบบ (<code class="bg-blue-100 px-1 rounded font-mono text-xs">MenuSeeder</code>)
+        หน้านี้ปรับได้สองอย่างคือ <strong>เปิด/ปิดเมนู</strong> และ <strong>สิทธิ์ที่ใช้มองเห็นเมนู</strong>
+        การเปลี่ยนแปลงมีผลกับผู้ใช้ทุกคนทันทีหลังบันทึก
+      </div>
     </div>
 
-    <template v-else>
-      <!-- Notice Banner -->
-      <div class="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
-        <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <div class="text-sm text-blue-800">
-          <strong class="font-bold">วิธีการทำงานของระบบสิทธิ์ปัจจุบัน:</strong>
-          สิทธิ์ทั้งหมดถูกกำหนดจากโค้ด (<code class="bg-blue-100 px-1 rounded font-mono text-xs">config/modules.php</code>)
-          เมนูใน Sidebar จะแสดงหรือซ่อนโดยอัตโนมัติตาม <strong>สิทธิ์สุทธิ (Effective Permissions)</strong> ของผู้ใช้แต่ละคน
-          ซึ่งประกอบด้วยสิทธิ์จากบทบาท (Role) + สิทธิ์เฉพาะบุคคล (Direct Permission)
-        </div>
-      </div>
+    <div v-if="loading" class="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+      <LoadingState type="skeleton-table" :rows="6" :cols="3" message="กำลังโหลดรายการเมนู..." />
+    </div>
 
-      <!-- Module Cards -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div
-          v-for="(module, moduleId) in modules"
-          :key="moduleId"
-          class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
-        >
-          <!-- Module Header -->
-          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                :class="moduleColors[moduleId] || 'bg-slate-500'">
-                {{ moduleId.substring(0, 2).toUpperCase() }}
-              </div>
-              <div>
-                <h3 class="text-sm font-bold text-slate-900">{{ module.name }}</h3>
-                <p class="text-xs text-slate-500">{{ module.description }}</p>
-              </div>
-            </div>
+    <div v-else-if="loadError" class="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+      <ErrorState :message="loadError" @retry="loadMenus" />
+    </div>
 
-            <!-- Module Enable/Disable toggle -->
-            <div v-if="moduleId === 'attendance'" class="flex items-center gap-2 flex-shrink-0">
-              <!-- Attendance toggle -->
-              <template v-if="moduleId === 'attendance'">
-                <span class="text-xs text-slate-500">{{ settingStore.isAttendanceEnabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน' }}</span>
-                <button
-                  @click="toggleAttendanceModule"
-                  role="switch"
-                  aria-label="เปิดหรือปิดโมดูลลงเวลา"
-                  :aria-checked="settingStore.isAttendanceEnabled"
-                  :class="settingStore.isAttendanceEnabled ? 'bg-emerald-500' : 'bg-slate-300'"
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
-                  :disabled="savingModule"
-                >
-                  <span
-                    :class="settingStore.isAttendanceEnabled ? 'translate-x-6' : 'translate-x-1'"
-                    class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
-                  />
-                </button>
-              </template>
-            </div>
+    <!-- Menu tree -->
+    <div v-else class="space-y-4">
+      <section v-for="group in tree" :key="group.id" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <header class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3">
+          <div class="min-w-0">
+            <h3 class="font-bold text-slate-900">{{ group.title_th }}</h3>
+            <code class="text-[11px] text-slate-400 font-mono">{{ group.code }} · โมดูล {{ group.module }}</code>
           </div>
-
-          <!-- Permissions List -->
-          <div class="p-4 space-y-2">
-            <div
-              v-for="(desc, permKey) in module.permissions"
-              :key="permKey"
-              class="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-50 group"
+          <div class="ml-auto flex items-center gap-3">
+            <span class="text-xs" :class="group.is_active ? 'text-emerald-600' : 'text-slate-400'">
+              {{ group.is_active ? 'เปิดใช้งาน' : 'ปิดไว้' }}
+            </span>
+            <button
+              type="button"
+              role="switch"
+              :aria-checked="group.is_active"
+              :aria-label="`เปิดหรือปิดเมนู ${group.title_th}`"
+              :disabled="saving === group.id"
+              class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50"
+              :class="group.is_active ? 'bg-emerald-500' : 'bg-slate-300'"
+              @click="toggleActive(group)"
             >
-              <!-- Status dot -->
-              <div class="mt-0.5 w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 ring-2 ring-emerald-100"></div>
+              <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform" :class="group.is_active ? 'translate-x-6' : 'translate-x-1'"/>
+            </button>
+          </div>
+        </header>
 
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-semibold text-slate-800">{{ desc }}</p>
-                <code class="text-[10px] text-slate-400 font-mono">{{ permKey }}</code>
+        <ul class="divide-y divide-slate-100">
+          <li v-for="item in [group, ...group.children]" :key="item.id" class="px-5 py-4">
+            <div class="flex flex-wrap items-start gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold text-slate-800">
+                  <span v-if="item.id !== group.id" class="text-slate-300 mr-1">└</span>
+                  {{ item.title_th }}
+                  <span v-if="item.id === group.id" class="text-xs font-normal text-slate-400">(หัวข้อกลุ่ม)</span>
+                </p>
+                <code class="text-[11px] text-slate-400 font-mono">{{ item.route_path || 'ไม่มีหน้าเป็นของตัวเอง' }}</code>
               </div>
 
-              <!-- Usage badge -->
-              <span class="flex-shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                {{ permissionUserCount[permKey] !== undefined ? permissionUserCount[permKey] + ' คน' : '...' }}
-              </span>
+              <div v-if="item.id !== group.id" class="flex items-center gap-3">
+                <span class="text-xs" :class="item.is_active ? 'text-emerald-600' : 'text-slate-400'">
+                  {{ item.is_active ? 'เปิดใช้งาน' : 'ปิดไว้' }}
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  :aria-checked="item.is_active"
+                  :aria-label="`เปิดหรือปิดเมนู ${item.title_th}`"
+                  :disabled="saving === item.id"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50"
+                  :class="item.is_active ? 'bg-emerald-500' : 'bg-slate-300'"
+                  @click="toggleActive(item)"
+                >
+                  <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform" :class="item.is_active ? 'translate-x-6' : 'translate-x-1'"/>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <!-- Module Footer Stats -->
-          <div class="px-5 py-3 bg-slate-50/70 border-t border-slate-100 flex items-center gap-4 text-xs text-slate-500">
-            <span>{{ Object.keys(module.permissions).length }} สิทธิ์</span>
-            <span class="text-slate-300">|</span>
-            <span>กำหนดใน <code class="font-mono bg-slate-100 px-1 rounded text-slate-600">config/modules.php</code></span>
-          </div>
-        </div>
+            <!-- Permission chips -->
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <span v-if="!item.permissions.length" class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
+                ทุกคนที่เข้าสู่ระบบเห็นเมนูนี้
+              </span>
+              <span
+                v-for="permission in item.permissions"
+                :key="permission.id"
+                class="text-[11px] font-mono bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-1 rounded-lg"
+              >
+                {{ permission.name }}
+              </span>
+              <button
+                type="button"
+                class="text-xs font-semibold text-[#800000] hover:underline"
+                @click="openEditor(item)"
+              >
+                แก้ไขสิทธิ์
+              </button>
+            </div>
+          </li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- Permission editor -->
+    <AppModal
+      :model-value="!!editing"
+      :title="`สิทธิ์ที่มองเห็นเมนู “${editing?.title_th}”`"
+      @update:model-value="editing = null"
+    >
+      <p class="text-sm text-gray-500 mb-4">
+        เลือกสิทธิ์ที่ทำให้เห็นเมนูนี้ ผู้ใช้ที่มี <strong>อย่างน้อยหนึ่งข้อ</strong> จะเห็นเมนู
+        ถ้าไม่เลือกเลย เมนูนี้จะเห็นได้ทุกคนที่เข้าสู่ระบบ
+      </p>
+      <input
+        v-model="permissionFilter"
+        type="search"
+        placeholder="ค้นหาสิทธิ์…"
+        aria-label="ค้นหาสิทธิ์"
+        class="w-full border-gray-300 rounded-lg text-sm mb-3 focus:ring-[#800000] focus:border-[#800000]"
+      >
+      <div class="max-h-72 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-50">
+        <label
+          v-for="permission in filteredPermissions"
+          :key="permission.id"
+          class="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer"
+        >
+          <input v-model="selectedPermissionIds" type="checkbox" :value="permission.id" class="rounded text-[#800000] focus:ring-[#800000]">
+          <span class="text-sm font-mono text-slate-700">{{ permission.name }}</span>
+        </label>
+        <p v-if="!filteredPermissions.length" class="px-3 py-4 text-sm text-slate-400 text-center">ไม่พบสิทธิ์ที่ค้นหา</p>
       </div>
 
-      <!-- Permission–User Summary Table -->
-      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <h3 class="text-sm font-bold text-slate-900">สรุปสิทธิ์ที่ผู้ใช้งานได้รับ</h3>
-            <p class="text-xs text-slate-500 mt-0.5">แสดงจำนวนผู้ใช้งานที่ได้รับสิทธิ์แต่ละรายการ (ทั้งจาก Role และ Direct Permission)</p>
-          </div>
-          <router-link
-            to="/admin/users"
-            class="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition"
-          >
-            จัดการสิทธิ์รายบุคคล
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </router-link>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 border-b border-slate-100">
-              <tr>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">สิทธิ์ (Permission)</th>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">คำอธิบาย</th>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">โมดูล</th>
-                <th class="text-center px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">จำนวนผู้ใช้</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <template v-for="(module, moduleId) in modules" :key="moduleId">
-                <tr v-for="(desc, permKey) in module.permissions" :key="permKey" class="hover:bg-slate-50/60 transition">
-                  <td class="px-6 py-3">
-                    <code class="text-xs font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">{{ permKey }}</code>
-                  </td>
-                  <td class="px-6 py-3 text-xs text-slate-700">{{ desc }}</td>
-                  <td class="px-6 py-3">
-                    <span class="text-xs font-medium px-2.5 py-0.5 rounded-full"
-                      :class="moduleColors[moduleId] ? moduleColors[moduleId].replace('bg-', 'bg-opacity-10 text-').replace('500', '700') + ' bg-' + moduleColors[moduleId].split('-')[1] + '-100' : 'bg-slate-100 text-slate-700'">
-                      {{ moduleId }}
-                    </span>
-                  </td>
-                  <td class="px-6 py-3 text-center">
-                    <span class="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full text-xs font-bold"
-                      :class="(permissionUserCount[permKey] || 0) > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'">
-                      {{ permissionUserCount[permKey] !== undefined ? permissionUserCount[permKey] : '-' }}
-                    </span>
-                  </td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </template>
+      <template #footer>
+        <button type="button" class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800" @click="editing = null">ยกเลิก</button>
+        <button
+          type="button"
+          :disabled="saving === editing?.id"
+          class="px-5 py-2 rounded-xl bg-[#800000] hover:bg-[#660000] text-white text-sm font-semibold disabled:opacity-50"
+          @click="savePermissions"
+        >
+          {{ saving === editing?.id ? 'กำลังบันทึก…' : 'บันทึก' }}
+        </button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import api from '../../axios';
-import { useAlertStore } from '../../stores/alert';
-import { useSettingStore } from '../../stores/settingStore';
+/**
+ * CLEANUP-01 (D1) — หน้าจัดการเมนูที่จัดการเมนูได้จริง
+ *
+ * เดิมหน้านี้ชื่อ "จัดการเมนูตามสิทธิ์" แต่เรียกแค่ `/admin/permissions/modules`
+ * และ `/admin/permissions/user-counts` — เป็นหน้าสรุปสิทธิ์รายโมดูล ไม่ได้แตะเมนูเลย
+ * ขณะที่แถบเมนูจริงก็เขียนตายตัวอยู่ใน App.vue การตั้งค่าที่นี่จึงไม่มีผลกับใคร
+ *
+ * ตอนนี้แถบเมนูอ่านจากตาราง `menus` แล้ว หน้านี้จึงแก้ได้จริงสองอย่าง:
+ * เปิด/ปิดเมนู และสิทธิ์ที่ใช้มองเห็นเมนู
+ * ส่วนรายการเมนูและลำดับยังมาจาก `MenuSeeder` เพื่อให้มีแหล่งความจริงเดียว
+ */
+import { computed, onMounted, ref } from 'vue'
+import api from '../../axios'
+import { useAlertStore } from '../../stores/alert'
+import { useMenuStore } from '../../stores/menuStore'
+import { getErrorMessage } from '../../utils/errorHandler'
+import { ICONS } from '../../utils/icons'
+import AppModal from '../../components/ui/AppModal.vue'
+import LoadingState from '../../components/ui/LoadingState.vue'
+import ErrorState from '../../components/ui/ErrorState.vue'
 
-const alertStore = useAlertStore();
-const settingStore = useSettingStore();
+const alerts = useAlertStore()
+const menuStore = useMenuStore()
 
-const loading = ref(true);
-const savingModule = ref(false);
-const modules = ref({});
-const permissionUserCount = ref({});
+const menus = ref([])
+const permissions = ref([])
+const loading = ref(false)
+const loadError = ref('')
+const saving = ref(null)
+const editing = ref(null)
+const selectedPermissionIds = ref([])
+const permissionFilter = ref('')
 
-const moduleColors = {
-  leave:      'bg-sky-500',
-  admin:      'bg-rose-500',
-  attendance: 'bg-amber-500',
-  finance:    'bg-emerald-500',
-};
+const tree = computed(() => {
+  const roots = menus.value.filter((menu) => !menu.parent_id)
+  return roots.map((root) => ({
+    ...root,
+    children: menus.value.filter((menu) => menu.parent_id === root.id).sort((a, b) => a.sort_order - b.sort_order),
+  })).sort((a, b) => a.sort_order - b.sort_order)
+})
 
-async function loadData() {
-  loading.value = true;
+const filteredPermissions = computed(() => {
+  const term = permissionFilter.value.trim().toLowerCase()
+  if (!term) return permissions.value
+  return permissions.value.filter((permission) => permission.name.toLowerCase().includes(term))
+})
+
+const loadMenus = async () => {
+  loading.value = true
+  loadError.value = ''
   try {
-    const [modulesRes, countsRes] = await Promise.all([
-      api.get('/admin/permissions/modules'),
-      api.get('/admin/permissions/user-counts').catch(() => ({ data: {} })),
-    ]);
-
-    await settingStore.fetchSettings();
-
-    if (modulesRes.data?.success) {
-      modules.value = modulesRes.data.modules || {};
-    }
-
-    if (countsRes.data && typeof countsRes.data === 'object') {
-      permissionUserCount.value = countsRes.data;
-    } else {
-      const counts = {};
-      for (const module of Object.values(modules.value)) {
-        for (const key of Object.keys(module.permissions || {})) {
-          counts[key] = 0;
-        }
-      }
-      permissionUserCount.value = counts;
-    }
-  } catch (err) {
-    console.error(err);
-    alertStore.showError('ไม่สามารถโหลดข้อมูลโมดูลได้');
+    const { data } = await api.get('/admin/menus')
+    menus.value = data.data.menus
+    permissions.value = data.data.available_permissions
+  } catch (error) {
+    loadError.value = getErrorMessage(error, 'ไม่สามารถโหลดรายการเมนูได้')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
-
-async function toggleAttendanceModule() {
-  savingModule.value = true;
-  const newValue = settingStore.isAttendanceEnabled ? '0' : '1';
+const persist = async (menu, payload, successMessage) => {
+  saving.value = menu.id
   try {
-    await settingStore.updateSetting('enable_attendance_menu', newValue);
-    alertStore.showSuccess(newValue !== '0' ? 'เปิดใช้งานระบบลงเวลาออนไลน์แล้ว' : 'ปิดใช้งานระบบลงเวลาออนไลน์แล้ว');
-  } catch {
-    alertStore.showError('ไม่สามารถเปลี่ยนสถานะระบบลงเวลาได้');
+    const { data } = await api.put(`/admin/menus/${menu.id}/permissions`, payload)
+    Object.assign(menu, data.data)
+    alerts.success(successMessage)
+    // แถบเมนูของผู้ดูแลเองต้องสะท้อนการเปลี่ยนแปลงทันที ไม่ต้องรอรีเฟรชหน้า
+    await menuStore.fetchUserMenus()
+  } catch (error) {
+    alerts.error(getErrorMessage(error, 'บันทึกไม่สำเร็จ'))
+    await loadMenus()
   } finally {
-    savingModule.value = false;
+    saving.value = null
   }
 }
 
-onMounted(loadData);
+const toggleActive = (menu) =>
+  persist(
+    menu,
+    { is_active: !menu.is_active },
+    !menu.is_active ? 'เปิดใช้งานเมนูแล้ว' : 'ปิดเมนูแล้ว',
+  )
+
+const openEditor = (menu) => {
+  editing.value = menu
+  permissionFilter.value = ''
+  selectedPermissionIds.value = menu.permissions.map((permission) => permission.id)
+}
+
+const savePermissions = async () => {
+  const menu = editing.value
+  await persist(menu, { permission_ids: selectedPermissionIds.value }, 'บันทึกสิทธิ์ของเมนูเรียบร้อยแล้ว')
+  editing.value = null
+}
+
+onMounted(loadMenus)
 </script>
-

@@ -25,13 +25,62 @@ use Illuminate\Support\Facades\DB;
  *   - `leave_approvals`     คงไว้ (กฎข้อ 2) — ยังเป็นตัวตัดสินสถานะจริง
  *   - `leaves.approval_level` คงไว้
  *
- * instance ที่สร้างจากที่นี่เป็น shadow ทั้งหมด (`is_shadow = true`)
+ * instance ที่สร้างจากที่นี่เป็น shadow โดยค่าเริ่มต้น (`is_shadow = true`)
+ *
+ * CLEANUP-01 (D4) — เมื่อเปิด `workflow.engine_is_source_of_truth` การอนุมัติจริง
+ * จะเดินบน instance เดียวกันนี้ จึงต้องสร้างแบบไม่ใช่ shadow (`backfill($leave, shadow: false)`)
+ * ของเดิมทั้งหมดยังถูกเขียนคู่กันไปเสมอ (dual-write) ตามข้อกำหนดของเฟส
  */
 class LeaveWorkflowProvisioner
 {
     public const DEFINITION_CODE = 'leave.approval';
 
-    public function __construct(private readonly WorkflowEngine $engine) {}
+    public function __construct(protected readonly WorkflowEngine $engine) {}
+
+    /*
+     * ─────────── จุดที่ "สายขอลา" กับ "สายขอยกเลิก" ต่างกัน (CLEANUP-02 · D4) ───────────
+     *
+     * ทั้งสองสายเดินบนโครงเดียวกันทุกประการ ต่างกันแค่ชุดขั้นตอนต้นทาง, แถวสรุปที่อ่าน
+     * และคอลัมน์ที่บอกว่าตอนนี้อยู่ขั้นไหน — แยกออกมาเป็นเมธอดเพื่อให้
+     * `LeaveCancellationWorkflowProvisioner` เปลี่ยนเฉพาะส่วนนี้ได้โดยไม่คัดลอกโค้ดทั้งชุด
+     */
+
+    protected function definitionCode(): string
+    {
+        return self::DEFINITION_CODE;
+    }
+
+    protected function definitionName(): string
+    {
+        return 'สายการอนุมัติใบลา';
+    }
+
+    protected function definitionDescription(): string
+    {
+        return 'แปลงจาก approval_steps ที่ใช้งานอยู่เดิม (LEGACY-05 · 05-2)';
+    }
+
+    protected function legacyChain(): string
+    {
+        return ApprovalStep::CHAIN_LEAVE;
+    }
+
+    protected function approvalStage(): string
+    {
+        return LeaveApproval::STAGE_REQUEST;
+    }
+
+    /** ขั้นที่ใบลานี้ค้างอยู่ในสายนี้ */
+    protected function currentLevel(Leave $leave): ?int
+    {
+        return $leave->approval_level;
+    }
+
+    /** สถานะของ "เรื่อง" ในสายนี้ ใช้ตัดสินสถานะของ instance */
+    protected function subjectStatus(Leave $leave): ?string
+    {
+        return $leave->status;
+    }
 
     /**
      * สร้าง/หา definition ของสายอนุมัติใบลา
@@ -39,12 +88,12 @@ class LeaveWorkflowProvisioner
     public function definition(): WorkflowDefinition
     {
         return WorkflowDefinition::firstOrCreate(
-            ['code' => self::DEFINITION_CODE],
+            ['code' => $this->definitionCode()],
             [
                 'module' => 'leave',
-                'name' => 'สายการอนุมัติใบลา',
+                'name' => $this->definitionName(),
                 'subject_type' => (new Leave)->getMorphClass(),
-                'description' => 'แปลงจาก approval_steps ที่ใช้งานอยู่เดิม (LEGACY-05 · 05-2)',
+                'description' => $this->definitionDescription(),
                 'is_active' => true,
             ],
         );
@@ -63,7 +112,7 @@ class LeaveWorkflowProvisioner
     public function publishCurrentVersion(): WorkflowVersion
     {
         $definition = $this->definition();
-        $legacySteps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE);
+        $legacySteps = ApprovalStep::stepsFor($this->legacyChain());
 
         if ($legacySteps->isEmpty()) {
             throw new \RuntimeException('ยังไม่ได้ตั้งค่าลำดับการอนุมัติใน approval_steps จึงแปลงเป็น workflow ไม่ได้');
@@ -179,7 +228,7 @@ class LeaveWorkflowProvisioner
      * ที่เป็นประวัติจริง เพื่อให้ instance สะท้อนความจริง ณ ตอนนี้
      * ประวัติเดิมไม่ถูกแก้ไขแม้แต่แถวเดียว
      */
-    public function backfill(Leave $leave): ?WorkflowInstance
+    public function backfill(Leave $leave, bool $shadow = true): ?WorkflowInstance
     {
         $definition = $this->definition();
         $version = $definition->activeVersion();
@@ -198,13 +247,15 @@ class LeaveWorkflowProvisioner
             return $existing;
         }
 
-        $approvals = LeaveApproval::where('leave_id', $leave->getKey())->orderBy('step_order')->get();
+        $approvals = LeaveApproval::where('leave_id', $leave->getKey())
+            ->where('stage', $this->approvalStage())
+            ->orderBy('step_order')->get();
 
         if ($approvals->isEmpty()) {
             return null;
         }
 
-        return DB::transaction(function () use ($leave, $version, $approvals) {
+        return DB::transaction(function () use ($leave, $version, $approvals, $shadow) {
             $steps = $version->steps()->get()->keyBy('step_order');
 
             $instance = WorkflowInstance::create([
@@ -213,9 +264,9 @@ class LeaveWorkflowProvisioner
                 'subject_id' => $leave->getKey(),
                 'status' => WorkflowInstance::STATUS_RUNNING,
                 'initiated_by' => $leave->user_id,
-                'is_shadow' => true,
+                'is_shadow' => $shadow,
                 'started_at' => $leave->submitted_at ?? $leave->created_at,
-                'meta' => ['backfilled_from' => 'leave_approvals', 'legacy_approval_level' => $leave->approval_level],
+                'meta' => ['backfilled_from' => 'leave_approvals', 'stage' => $this->approvalStage(), 'legacy_approval_level' => $this->currentLevel($leave)],
             ]);
 
             $sequence = 0;
@@ -284,9 +335,9 @@ class LeaveWorkflowProvisioner
     /**
      * สถานะของ instance ให้ตรงกับสถานะจริงของใบลา
      */
-    private function instanceStatusFor(Leave $leave, ?int $currentStepId): string
+    protected function instanceStatusFor(Leave $leave, ?int $currentStepId): string
     {
-        return match ($leave->status) {
+        return match ($this->subjectStatus($leave)) {
             'Pending' => $currentStepId === null ? WorkflowInstance::STATUS_COMPLETED : WorkflowInstance::STATUS_RUNNING,
             'Approved' => WorkflowInstance::STATUS_COMPLETED,
             'Rejected' => WorkflowInstance::STATUS_REJECTED,
@@ -302,7 +353,7 @@ class LeaveWorkflowProvisioner
      * เป็นการแปลงแบบ many-to-one จึงต้องใช้จุดเดียวกันทั้งตอนเขียนเวอร์ชัน
      * และตอนคำนวณ fingerprint มิฉะนั้นสองฝั่งจะพูดคนละคำศัพท์
      */
-    private function assigneeTypeFor(ApprovalStep $legacy): string
+    protected function assigneeTypeFor(ApprovalStep $legacy): string
     {
         return match ($legacy->approver_type ?? 'ROLE') {
             ApprovalStep::RESOLVER_SPECIFIC_USER => WorkflowStep::ASSIGNEE_USER,
@@ -312,7 +363,7 @@ class LeaveWorkflowProvisioner
     }
 
     /** ชื่อขั้นตอนที่จะถูกเขียนลง workflow_steps — มี fallback เมื่อ legacy ไม่ได้ตั้งชื่อ */
-    private function stepNameFor(ApprovalStep $legacy): string
+    protected function stepNameFor(ApprovalStep $legacy): string
     {
         return $legacy->name ?: ('ขั้นตอนที่ '.$legacy->step_order);
     }
@@ -326,7 +377,7 @@ class LeaveWorkflowProvisioner
      * ผลคือ publishCurrentVersion() ออกเวอร์ชันใหม่ทุกครั้งที่ถูกเรียก
      * ทั้งที่สายอนุมัติไม่ได้เปลี่ยน — ผิดข้อกำหนด idempotent
      */
-    private function fingerprintOf($legacySteps): string
+    protected function fingerprintOf($legacySteps): string
     {
         return $legacySteps
             ->map(fn (ApprovalStep $step) => $step->step_order
@@ -337,7 +388,7 @@ class LeaveWorkflowProvisioner
             ->implode('|');
     }
 
-    private function fingerprintOfVersion(WorkflowVersion $version): string
+    protected function fingerprintOfVersion(WorkflowVersion $version): string
     {
         return $version->steps()
             ->get()

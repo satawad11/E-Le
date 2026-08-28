@@ -29,10 +29,17 @@ const router = createRouter({
       meta: { requiresGuest: true, title: 'ตั้งรหัสผ่านใหม่' }
     },
     {
-      path: '/verify-leave',
+      /*
+       * CLEANUP-01 (D1) — เส้นทางนี้ต้องรับ hash ตาม QR ที่พิมพ์ลงบนเอกสาร
+       *
+       * เดิมประกาศไว้ที่นี่แบบไม่มีพารามิเตอร์ แล้วถูก `main.js` ลงทะเบียนทับด้วย
+       * `/verify-leave/:hash` (ชื่อ route เดียวกัน = แทนที่กันเงียบ ๆ)
+       * `LeaveVerificationService` สร้างลิงก์เป็น `/verify-leave/{hash}` เสมอ
+       */
+      path: '/verify-leave/:hash',
       name: 'verify-leave',
       component: () => import('../views/VerifyLeaveView.vue'),
-      meta: { requiresGuest: false, bare: true, title: 'ตรวจสอบใบลา' }
+      meta: { requiresGuest: false, bare: true, public: true, title: 'ตรวจสอบใบลา' }
     },
     {
       path: '/',
@@ -60,16 +67,35 @@ const router = createRouter({
       meta: { requiresAuth: true, title: 'รายงานสถิติการลา', parent: 'ระบบลางาน' }
     },
     {
+      /*
+       * CLEANUP-01 (D3) — หน้าจอของชั้นรายงานกลาง
+       *
+       * ชั้นรายงานกลาง (`/api/reporting/*`) สร้างไว้ตั้งแต่ LEGACY-11 แต่ไม่เคยมี
+       * หน้าจอใดเรียกใช้เลย ผู้ใช้จึงเข้าไม่ถึงรายงานมาตรฐาน 8 ชนิดที่มีอยู่แล้ว
+       * ไม่ผูก permission ที่ router — สารบัญรายงานคัดตามสิทธิ์ของผู้เรียกให้เองแล้ว
+       * และแต่ละรายงานยังตรวจสิทธิ์ซ้ำที่ฝั่ง server ทุกครั้ง
+       */
+      path: '/report-center',
+      name: 'report-center',
+      component: () => import('../views/admin/ReportCenterView.vue'),
+      meta: { requiresAuth: true, title: 'ศูนย์รายงานกลาง', parent: 'รายงาน' }
+    },
+    {
       path: '/leave-card',
       name: 'leave-card',
       component: () => import('../views/LeaveCardView.vue'),
       meta: { requiresAuth: true, title: 'บัตรลา', parent: 'ระบบลางาน' }
     },
     {
+      /*
+       * CLEANUP-01 (D10) — "บริการและเอกสารใบลา" ถูกยุบเข้า "รายการใบลาของฉัน"
+       *
+       * ทั้งสองหน้าคือรายการใบลาของผู้ใช้คนเดียวกัน ต่างกันแค่ปุ่มบริการ
+       * ผู้ใช้ทั่วไปจึงเห็นสองเมนูที่ดูเหมือนกัน ตอนนี้หลักฐาน ประวัติการดำเนินการ
+       * และการขอยกเลิกบางช่วง อยู่ในแถบขยายของแต่ละใบลาที่ /leaves
+       */
       path: '/leave-services',
-      name: 'leave-services',
-      component: () => import('../views/LeaveServicesView.vue'),
-      meta: { requiresAuth: true, title: 'บริการและเอกสารใบลา', parent: 'ระบบลางาน' }
+      redirect: { name: 'my-leaves' }
     },
     {
       path: '/team-calendar',
@@ -95,7 +121,7 @@ const router = createRouter({
       path: '/admin/leaves-management',
       name: 'admin-leaves-management',
       component: () => import('../views/admin/LeaveManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['approve_leave', 'leave.management.manage'], title: 'จัดการ/ซิงค์วันลา (HR)', parent: 'ระบบลางาน' }
+      meta: { requiresAuth: true, permissions: ['leave.approval.dept', 'leave.management.manage'], title: 'จัดการ/ซิงค์วันลา (HR)', parent: 'ระบบลางาน' }
     },
     {
       path: '/admin/promotion-screening',
@@ -107,7 +133,7 @@ const router = createRouter({
       path: '/admin/leave-governance',
       name: 'admin-leave-governance',
       component: () => import('../views/admin/LeaveGovernanceView.vue'),
-      meta: { requiresAuth: true, permission: 'leave.management.manage', title: 'ศูนย์งานกำกับการลา', parent: 'ระบบลางาน' }
+      meta: { requiresAuth: true, permissions: ['leave.approval.hr', 'leave.management.manage'], title: 'ศูนย์งานกำกับการลา', parent: 'ระบบลางาน' }
     },
 
     // === โปรไฟล์ผู้ใช้ ===
@@ -141,19 +167,19 @@ const router = createRouter({
       path: '/admin/attendances',
       name: 'admin-attendances',
       component: () => import('../views/admin/AttendanceReportView.vue'),
-      meta: { requiresAuth: true, permissions: ['view_all_attendances', 'attendance.view_all'], title: 'รายงานการลงเวลา', parent: 'ระบบลงเวลาออนไลน์' }
+      meta: { requiresAuth: true, permission: 'attendance.view_all', title: 'รายงานการลงเวลา', parent: 'ระบบลงเวลาออนไลน์' }
     },
     {
       path: '/admin/attendances/summary',
       name: 'admin-attendances-summary',
       component: () => import('../views/admin/AttendanceSummaryView.vue'),
-      meta: { requiresAuth: true, permissions: ['view_all_attendances', 'attendance.view_all'], title: 'สรุปผลการปฏิบัติงาน', parent: 'ระบบลงเวลาออนไลน์' }
+      meta: { requiresAuth: true, permission: 'attendance.view_all', title: 'สรุปผลการปฏิบัติงาน', parent: 'ระบบลงเวลาออนไลน์' }
     },
     {
       path: '/admin/ot-summary',
       name: 'admin-ot-summary',
       component: () => import('../views/admin/AttendanceOTSummaryView.vue'),
-      meta: { requiresAuth: true, permissions: ['view_all_attendances', 'attendance.ot', 'attendance.ot_summary'], title: 'สรุปผลการปฏิบัติงาน (OT)', parent: 'ระบบลงเวลาออนไลน์' }
+      meta: { requiresAuth: true, permissions: ['attendance.ot', 'attendance.ot_summary'], title: 'สรุปผลการปฏิบัติงาน (OT)', parent: 'ระบบลงเวลาออนไลน์' }
     },
     {
       path: '/admin/overtime-orders',
@@ -167,25 +193,25 @@ const router = createRouter({
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('../views/admin/UsersManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['view_users', 'system.user.view'], title: 'รายชื่อผู้ใช้งาน', parent: 'จัดการผู้ใช้งาน' }
+      meta: { requiresAuth: true, permission: 'system.user.view', title: 'รายชื่อผู้ใช้งาน', parent: 'จัดการผู้ใช้งาน' }
     },
     {
       path: '/admin/personnel-assignments',
       name: 'admin-personnel-assignments',
       component: () => import('../views/admin/PersonnelAssignmentsView.vue'),
-      meta: { requiresAuth: true, permissions: ['edit_users', 'system.user.manage'], title: 'กำหนดประเภทบุคลากร', parent: 'จัดการผู้ใช้งาน' }
+      meta: { requiresAuth: true, permission: 'system.user.manage', title: 'กำหนดประเภทบุคลากร', parent: 'จัดการผู้ใช้งาน' }
     },
     {
       path: '/admin/menus',
       name: 'admin-menus',
       component: () => import('../views/admin/MenusManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['edit_users', 'system.menu.manage'], title: 'จัดการเมนูตามสิทธิ์', parent: 'จัดการผู้ใช้งาน' }
+      meta: { requiresAuth: true, permission: 'system.menu.manage', title: 'จัดการเมนูตามสิทธิ์', parent: 'จัดการผู้ใช้งาน' }
     },
     {
       path: '/admin/roles',
       name: 'admin-roles',
       component: () => import('../views/admin/RolesManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['edit_users', 'system.role.manage'], title: 'จัดการบทบาทและสิทธิ์', parent: 'จัดการผู้ใช้งาน' }
+      meta: { requiresAuth: true, permissions: ['system.menu.manage', 'system.role.manage'], title: 'จัดการบทบาทและสิทธิ์', parent: 'จัดการผู้ใช้งาน' }
     },
 
     // === ตั้งค่าระบบ ===
@@ -193,7 +219,7 @@ const router = createRouter({
       path: '/admin/settings',
       name: 'admin-settings',
       component: () => import('../views/admin/AdminSettingsView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ข้อมูลสถานศึกษาและแบบฟอร์ม', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permission: 'system.setting.manage', title: 'ข้อมูลสถานศึกษาและแบบฟอร์ม', parent: 'ตั้งค่าระบบ' }
     },
     {
       // เมนู "ตั้งค่าแบบฟอร์ม & ส่งออก" ถูกยุบเข้าเป็นแท็บของ /admin/settings แล้ว
@@ -205,13 +231,13 @@ const router = createRouter({
       path: '/admin/attendance-settings',
       name: 'admin-attendance-settings',
       component: () => import('../views/admin/AttendanceSettingsView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ตั้งค่าระบบลงเวลา', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permission: 'system.setting.manage', title: 'ตั้งค่าระบบลงเวลา', parent: 'ตั้งค่าระบบ' }
     },
     {
       path: '/admin/work-calendar',
       name: 'admin-work-calendar',
       component: () => import('../views/admin/WorkCalendarView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ปฏิทินวันทำการ', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permission: 'system.setting.manage', title: 'ปฏิทินวันทำการ', parent: 'ตั้งค่าระบบ' }
     },
     {
       path: '/admin/departments',
@@ -229,7 +255,7 @@ const router = createRouter({
       path: '/admin/leave-policies',
       name: 'admin-leave-policies',
       component: () => import('../views/admin/LeavePoliciesView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'นโยบายสิทธิการลา', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permissions: ['leave.policy.manage', 'system.setting.manage'], title: 'นโยบายสิทธิการลา', parent: 'ตั้งค่าระบบ' }
     },
     {
       path: '/admin/leave-types',
@@ -241,19 +267,24 @@ const router = createRouter({
       path: '/admin/fiscal-years',
       name: 'admin-fiscal-years',
       component: () => import('../views/admin/FiscalYearManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ปีงบประมาณ', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permission: 'system.setting.manage', title: 'ปีงบประมาณ', parent: 'ตั้งค่าระบบ' }
     },
     {
       path: '/admin/notifications',
       name: 'admin-notifications',
       component: () => import('../views/admin/TelegramSettingsView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'การแจ้งเตือน', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permission: 'system.setting.manage', title: 'การแจ้งเตือน', parent: 'ตั้งค่าระบบ' }
     },
     {
+      /*
+       * CLEANUP-01 (D2) — หน้า "จัดการแม่แบบเอกสาร" ถูกยุบเข้าศูนย์จัดการเอกสาร
+       *
+       * ทั้งสองหน้าอ่านเขียนตาราง `document_templates` ชุดเดียวกันแต่เป็นคนละเมนู
+       * ผู้ดูแลจึงต้องเดาว่าจะแก้แม่แบบที่หน้าไหน คงเส้นทางเดิมไว้เป็น redirect
+       * เพื่อไม่ให้ลิงก์หรือบุ๊กมาร์กที่บันทึกไว้เสีย
+       */
       path: '/admin/document-templates',
-      name: 'admin-document-templates',
-      component: () => import('../views/admin/DocumentTemplatesView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'จัดการแม่แบบเอกสาร', parent: 'ตั้งค่าระบบ' }
+      redirect: { name: 'document-center' }
     },
     // === ศูนย์จัดการเอกสารและรายงาน (Document & Report Engine) ===
     {
@@ -262,7 +293,7 @@ const router = createRouter({
       component: () => import('../views/admin/DocumentCenterView.vue'),
       meta: {
         requiresAuth: true,
-        permissions: ['document.template.view', 'document.template.manage', 'manage_settings', 'system.setting.manage'],
+        permissions: ['document.template.view', 'document.template.manage', 'system.setting.manage'],
         title: 'ศูนย์จัดการเอกสารและรายงาน',
         parent: 'ตั้งค่าระบบ',
       }
@@ -273,7 +304,7 @@ const router = createRouter({
       component: () => import('../views/admin/ReportDesignerView.vue'),
       meta: {
         requiresAuth: true,
-        permissions: ['document.report.manage', 'manage_settings', 'system.setting.manage'],
+        permissions: ['document.report.manage', 'system.setting.manage'],
         title: 'ออกแบบรายงาน',
         parent: 'ตั้งค่าระบบ',
       }
@@ -284,7 +315,7 @@ const router = createRouter({
       component: () => import('../views/admin/DocumentDesignerView.vue'),
       meta: {
         requiresAuth: true,
-        permissions: ['document.template.manage', 'manage_settings', 'system.setting.manage'],
+        permissions: ['document.template.manage', 'system.setting.manage'],
         title: 'ออกแบบแบบฟอร์มเอกสาร',
         parent: 'ตั้งค่าระบบ',
       }
@@ -293,9 +324,22 @@ const router = createRouter({
       path: '/admin/modules',
       name: 'admin-modules',
       component: () => import('../views/admin/AdminModulesView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'โมดูลระบบ', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permission: 'system.setting.manage', title: 'โมดูลระบบ', parent: 'ตั้งค่าระบบ' }
     },
 
+    /*
+     * CLEANUP-01 (D1) — เส้นทางเดิมที่เคยถูกลงทะเบียนซ้ำใน `main.js`
+     *
+     * `main.js` เคยเรียก `router.addRoute()` อีก 8 เส้นทางโดยใช้ "ชื่อ route เดียวกัน"
+     * กับที่ประกาศไว้ในไฟล์นี้ ผลคือเส้นทางในไฟล์นี้ถูกแทนที่เงียบ ๆ พร้อมกับ meta
+     * ที่ต่างกัน — เงื่อนไขสิทธิ์ ชื่อหน้า และแม้แต่ path ก็ไม่ตรงกับที่เขียนไว้ที่นี่
+     *
+     * ตอนนี้ทุกเส้นทางอยู่ในไฟล์นี้ไฟล์เดียว ส่วน path เดิมที่เคยเข้าถึงได้จริง
+     * คงไว้เป็น redirect เพื่อไม่ให้บุ๊กมาร์กเสีย
+     */
+    { path: '/my-access-history', redirect: { name: 'my-access-history' } },
+    { path: '/admin/personnel-types', redirect: { name: 'admin-personnel-assignments' } },
+    { path: '/admin/leave-calendar', redirect: { name: 'admin-work-calendar' } },
     {
       path: '/forbidden',
       name: 'forbidden',

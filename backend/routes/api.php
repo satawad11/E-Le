@@ -3,10 +3,9 @@
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\DocumentEngineController;
 use App\Http\Controllers\Admin\DocumentReportController;
-use App\Http\Controllers\Admin\DocumentTemplateController;
 use App\Http\Controllers\Admin\LeaveTypeController;
+use App\Http\Controllers\Admin\ModuleController;
 use App\Http\Controllers\Admin\PermissionController;
-use App\Http\Controllers\Admin\SecureExportSettingController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WorkflowController;
 use App\Http\Controllers\Api\MenuController;
@@ -29,7 +28,6 @@ use App\Http\Controllers\Overtime\OvertimeReportController;
 use App\Http\Controllers\Overtime\OvertimeTimeController;
 use App\Http\Controllers\PersonalDataController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportingController;
 use App\Http\Controllers\SecureFileController;
 use App\Http\Controllers\SecureSettingController;
@@ -96,9 +94,12 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     });
 
     Route::get('/attendances/today', [AttendanceController::class, 'today'])
-        ->middleware('permission:attendance.checkin|attendance.view_self');
+        ->middleware('ability:attendance.checkin|attendance.view_self');
     Route::post('/attendances/{attendance:uuid}/corrections', [AttendanceCorrectionController::class, 'store'])
-        ->middleware('permission:attendance.view_self|attendance.view_all');
+        ->middleware('ability:attendance.view_self|attendance.view_all');
+    // CLEANUP-02 — ดูสถานะคำขอแก้ไขเวลาของตนเอง (เดิมมีแต่ endpoint สร้างและตัดสิน)
+    Route::get('/attendance-corrections', [AttendanceCorrectionController::class, 'mine'])
+        ->middleware('ability:attendance.view_self|attendance.view_all');
 
     Route::group(['middleware' => ['can:overtime.operation.execute']], function () {
         Route::post('/attendances/ot-check-in', [OvertimeTimeController::class, 'checkIn']);
@@ -126,6 +127,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/admin/attendances/export/word', [AttendanceController::class, 'exportWord'])->middleware('throttle:exports');
         Route::get('/admin/attendances/summary', [AttendanceController::class, 'summary']);
         Route::post('/admin/attendances/sync-leaves', [AttendanceController::class, 'syncLeaves']);
+        Route::get('/admin/attendance-corrections', [AttendanceCorrectionController::class, 'index']);
         Route::post('/admin/attendance-corrections/{correction:uuid}/approve', [AttendanceCorrectionController::class, 'approve']);
         Route::post('/admin/attendance-corrections/{correction:uuid}/reject', [AttendanceCorrectionController::class, 'reject']);
     });
@@ -141,12 +143,19 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // ซึ่งลงทะเบียนทีหลังจึงทับเส้นทางนี้อยู่แล้ว — ย้ายไปไว้ที่เดียวเพื่อไม่ให้เข้าใจผิดว่าใช้ตัวไหน
     Route::get('/approvals/pending', [ApprovalController::class, 'pending']);
 
-    // Report routes
-    Route::get('/reports/summary', [ReportController::class, 'summary']);
-    Route::get('/reports/export-excel', [ReportController::class, 'exportExcel'])->middleware('throttle:exports');
-    Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])->middleware('throttle:exports');
-
-    // Unified, scope-aware reporting layer. Existing Government Report endpoints remain unchanged.
+    /*
+     * ชั้นรายงานกลาง — scope-aware ทุกรายงาน
+     *
+     * CLEANUP-01 (D3) — เดิมมี `/reports/summary`, `/reports/export-excel`,
+     * `/reports/export-pdf` ของ `ReportController` ซ้อนอยู่อีกชุด ซึ่งไม่มีหน้าใด
+     * ในระบบเรียกเลย และคำนวณขอบเขตการมองเห็นด้วยตรรกะคนละชุดกับที่นี่
+     * ถอดออกแล้วเมื่อ 2026-08-28 — รายงานสถิติการลาใช้ `/reporting/leave` แทน
+     *
+     * ทะเบียนคุมการลาของราชการ (`/reports/government-leave-*`) เป็นเอกสารคนละชนิด
+     * (รายใบ รวมใบที่ถูกลบ) จึงยังอยู่ตามเดิม
+     */
+    Route::get('/reporting', [ReportingController::class, 'index']);
+    Route::get('/reporting-org-units', [ReportingController::class, 'orgUnits']);
     Route::get('/reporting/evaluation-metrics', [ReportingController::class, 'evaluation']);
     Route::get('/reporting/{report}/export/{format}', [ReportingController::class, 'export'])
         ->whereIn('report', ReportingDataService::REPORTS)
@@ -158,11 +167,17 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // Admin routes
     Route::group(['middleware' => ['can:view_users']], function () {
         Route::get('/admin/users', [UserController::class, 'index']);
-        Route::get('/admin/roles', [UserController::class, 'roles']);
-        Route::get('/admin/departments-list', [UserController::class, 'departments']);
     });
 
-    Route::group(['middleware' => ['permission:edit_users|system.user.manage']], function () {
+    /*
+     * CLEANUP-01 — รายชื่อหน่วยงานสำหรับช่องตัวกรอง
+     *
+     * เดิมมีสองเส้นทางที่พังทั้งคู่: `/departments` ไม่เคยมี route และ
+     * `/admin/departments-list` ชี้ไปยังเมธอดที่ไม่มีอยู่ รวมเหลือเส้นทางเดียว
+     */
+    Route::get('/departments', [DepartmentController::class, 'options']);
+
+    Route::group(['middleware' => ['can:system.user.manage']], function () {
         Route::post('/admin/users', [UserController::class, 'store']);
         Route::post('/admin/users/import', [UserController::class, 'importCsv']);
         Route::put('/admin/users/{user}', [UserController::class, 'update']);
@@ -179,9 +194,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      * แยกออกมาให้ต้องมี `admin.users.manage_permissions` โดยเฉพาะ ตามข้อกำหนด
      * least privilege ของงานนี้ที่ระบุ "การจัดการ permission" ไว้ชัดเจน
      */
-    Route::group(['middleware' => ['permission:admin.users.manage_permissions']], function () {
+    Route::group(['middleware' => ['can:admin.users.manage_permissions']], function () {
         Route::get('/admin/permissions/modules', [PermissionController::class, 'modules']);
-        Route::get('/admin/permissions/user-counts', [PermissionController::class, 'userCounts']);
         Route::get('/admin/users/{user}/permissions', [PermissionController::class, 'getUserPermissions']);
         Route::put('/admin/users/{user}/permissions', [PermissionController::class, 'updateUserPermissions']);
     });
@@ -218,7 +232,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      * ตั้งค่าระบบ — LEGACY-04 (ปิดงาน)
      *
      */
-    Route::middleware('permission:manage_settings|system.setting.manage')->group(function () {
+    Route::middleware('can:system.setting.manage')->group(function () {
         Route::get('/admin/settings', [SecureSettingController::class, 'adminIndex']);
         Route::post('/admin/settings', [SecureSettingController::class, 'update']);
         Route::post('/admin/settings/upload-logo', [SecureSettingController::class, 'uploadLogo']);
@@ -226,18 +240,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::delete('/admin/settings/secrets/{key}', [SecureSettingController::class, 'clearSecret']);
         Route::post('/admin/settings/test-notification/{channel}', [SecureSettingController::class, 'testNotification']);
 
-        Route::get('/admin/export-settings', [SecureExportSettingController::class, 'index']);
-        Route::post('/admin/export-settings', [SecureExportSettingController::class, 'update']);
-        Route::post('/admin/export-settings/upload-logo', [SecureExportSettingController::class, 'uploadLogo']);
-
-        Route::get('/admin/document-templates', [DocumentTemplateController::class, 'index']);
-        Route::post('/admin/document-templates', [DocumentTemplateController::class, 'store']);
-        Route::post('/admin/document-templates/seed-defaults', [DocumentTemplateController::class, 'seedDefaults']);
-        Route::get('/admin/document-templates/fields', [DocumentTemplateController::class, 'fields']);
-        Route::post('/admin/document-templates/preview', [DocumentTemplateController::class, 'preview'])->middleware('throttle:documents');
-        Route::get('/admin/document-templates/{template}', [DocumentTemplateController::class, 'show']);
-        Route::put('/admin/document-templates/{template}', [DocumentTemplateController::class, 'update']);
-        Route::delete('/admin/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
+        // CLEANUP-02 — เปิด-ปิดโมดูลด้วยกลไกเดียวกับที่เมนูและด่าน route ใช้จริง
+        Route::get('/admin/modules', [ModuleController::class, 'index']);
+        Route::post('/admin/modules', [ModuleController::class, 'update']);
 
         Route::get('/admin/fiscal-years', [FiscalYearController::class, 'index']);
 
@@ -252,9 +257,17 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      * ยอมรับทั้งสิทธิ์เฉพาะชุดใหม่และสิทธิ์ตั้งค่าระบบเดิม เพื่อให้ผู้ดูแลที่ใช้งานอยู่
      * ไม่ถูกตัดสิทธิ์ในวันที่อัปเกรด แล้วค่อยถอดสิทธิ์เดิมออกเมื่อกำหนดบทบาทใหม่ครบ
      */
-    Route::middleware('permission:document.template.view|document.template.manage|manage_settings|system.setting.manage')->group(function () {
+    Route::middleware('ability:document.template.view|document.template.manage|system.setting.manage')->group(function () {
         Route::get('/admin/document-engine/overview', [DocumentEngineController::class, 'overview']);
         Route::get('/admin/document-engine/templates', [DocumentEngineController::class, 'templates']);
+        /*
+         * CLEANUP-01 (D2) — แม่แบบชนิด HTML ย้ายมาอยู่ใต้ศูนย์จัดการเอกสารทั้งหมด
+         * เดิมอยู่ที่ `/admin/document-templates` ของ `DocumentTemplateController`
+         * ซึ่งอ่านเขียนตารางเดียวกันแต่เป็นคนละเมนู
+         *
+         * ประกาศก่อน `{template}` เพราะ `content-fields` เป็น path คงที่
+         */
+        Route::get('/admin/document-engine/templates/content-fields', [DocumentEngineController::class, 'contentFields']);
         Route::get('/admin/document-engine/templates/{template}', [DocumentEngineController::class, 'showTemplate']);
         Route::get('/admin/document-engine/fields', [DocumentEngineController::class, 'fieldDictionary']);
         Route::get('/admin/document-engine/data-sources', [DocumentEngineController::class, 'dataSources']);
@@ -266,8 +279,13 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/admin/document-engine/generated', [DocumentEngineController::class, 'generatedFiles']);
     });
 
-    Route::middleware('permission:document.template.manage|manage_settings|system.setting.manage')->group(function () {
+    Route::middleware('ability:document.template.manage|system.setting.manage')->group(function () {
         Route::post('/admin/document-engine/templates', [DocumentEngineController::class, 'storeTemplate']);
+        // CLEANUP-01 (D2) — แม่แบบชนิด HTML: แก้เนื้อหา พรีวิว สร้างชุดตั้งต้น และลบแม่แบบ
+        Route::post('/admin/document-engine/templates/seed-defaults', [DocumentEngineController::class, 'seedDefaultTemplates']);
+        Route::post('/admin/document-engine/templates/preview', [DocumentEngineController::class, 'previewContent'])->middleware('throttle:documents');
+        Route::put('/admin/document-engine/templates/{template}/content', [DocumentEngineController::class, 'updateTemplateContent']);
+        Route::delete('/admin/document-engine/templates/{template}', [DocumentEngineController::class, 'deleteTemplate']);
         Route::post('/admin/document-engine/templates/{template}/versions', [DocumentEngineController::class, 'createVersion']);
         Route::post('/admin/document-engine/versions/{version}/pdf', [DocumentEngineController::class, 'uploadPdf']);
         Route::post('/admin/document-engine/versions/{version}/publish', [DocumentEngineController::class, 'publishVersion']);
@@ -279,7 +297,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/admin/document-engine/calibrations', [DocumentEngineController::class, 'saveCalibration']);
     });
 
-    Route::middleware('permission:document.report.view|document.report.manage|manage_settings|system.setting.manage')->group(function () {
+    Route::middleware('ability:document.report.view|document.report.manage|system.setting.manage')->group(function () {
         Route::get('/admin/document-reports', [DocumentReportController::class, 'index']);
         Route::get('/admin/document-reports/{report}/run', [DocumentReportController::class, 'run']);
         Route::get('/admin/document-reports/{report}/export/{format}', [DocumentReportController::class, 'export'])
@@ -288,12 +306,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     });
 
     Route::post('/admin/document-reports', [DocumentReportController::class, 'store'])
-        ->middleware('permission:document.report.manage|manage_settings|system.setting.manage');
+        ->middleware('ability:document.report.manage|system.setting.manage');
 
     Route::get('/admin/document-engine/generated/{file}/download', [DocumentEngineController::class, 'downloadGenerated'])
-        ->middleware(['permission:document.final.download|manage_settings|system.setting.manage', 'throttle:documents']);
-
-    Route::get('/fiscal-year/current', [FiscalYearController::class, 'current']);
+        ->middleware(['ability:document.final.download|system.setting.manage', 'throttle:documents']);
 
     // ดาวน์โหลดไฟล์อัปโหลด — ต้องยืนยันตัวตน (แทน /api/storage/{path} เดิมที่เปิดสาธารณะ)
     Route::get('/files/{path}', [SecureFileController::class, 'show'])
@@ -317,11 +333,12 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      *
      * เหลือเฉพาะ `system.menu.manage` ซึ่งเป็นสิทธิ์ของผู้ดูแลระบบ
      */
-    Route::group(['middleware' => ['permission:system.menu.manage']], function () {
+    Route::group(['middleware' => ['can:system.menu.manage']], function () {
         Route::get('/admin/menus', [MenuController::class, 'adminIndex']);
         Route::put('/admin/menus/{menu}/permissions', [MenuController::class, 'updatePermissions']);
         Route::get('/admin/permissions', [RoleController::class, 'permissions']);
-        Route::apiResource('/admin/roles', RoleController::class);
+        // CLEANUP-01 — `show` ไม่มีเมธอดใน RoleController และไม่มีหน้าใดเรียก
+        Route::apiResource('/admin/roles', RoleController::class)->except('show');
     });
 
 });

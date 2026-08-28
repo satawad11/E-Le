@@ -91,6 +91,10 @@
             <tr v-if="loading">
               <td :colspan="daysInMonth + 3" class="py-8 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
             </tr>
+            <!-- CLEANUP-02 — เดิมหน้านี้ไม่แสดงข้อความผิดพลาดเลย ตารางว่างโดยไม่บอกสาเหตุ -->
+            <tr v-else-if="errorMessage">
+              <td :colspan="daysInMonth + 3" class="py-8 text-center text-red-600 font-medium">{{ errorMessage }}</td>
+            </tr>
             <tr v-else-if="records.length === 0">
               <td :colspan="daysInMonth + 3" class="py-8 text-center text-gray-500">ไม่พบข้อมูล</td>
             </tr>
@@ -112,118 +116,34 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import api from '../../axios'
-import { useAlertStore } from '../../stores/alert'
-import { openAuthenticatedReport, reportErrorMessage } from '../../utils/secureFile'
+/**
+ * สรุปผลการปฏิบัติงานล่วงเวลา (OT)
+ *
+ * CLEANUP-02 (D10) — ตัวกรอง รายชื่ออ้างอิง และปุ่มดาวน์โหลด ใช้ร่วมกับหน้า
+ * "สรุปผลการปฏิบัติงาน" ผ่าน `useAttendanceSummary` แล้ว เหลือเฉพาะตารางที่ต่างกันจริง
+ */
+import { onMounted } from 'vue'
+import { useAttendanceSummary } from '../../composables/useAttendanceSummary'
 
-const alertStore = useAlertStore()
-
-const loading = ref(false)
-const errorMessage = ref('')
-const records = ref([])
-const departments = ref([])
-const yearOptions = ref([])
-const users = ref([])
-
-const currentDate = new Date()
-const filters = ref({
-  month: currentDate.getMonth() + 1,
-  year: currentDate.getFullYear(),
-  department_id: '',
-  user_id: ''
-})
-
-const thaiMonths = [
-  'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
-  'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'
-]
-
-const daysInMonth = computed(() => {
-  return new Date(filters.value.year, filters.value.month, 0).getDate()
-})
-
-const filteredUsers = computed(() => {
-  if (!filters.value.department_id) return users.value
-  return users.value.filter(u => u.department_id === filters.value.department_id)
-})
-
-const fetchDepartments = async () => {
-  try {
-    const res = await api.get('/admin/departments')
-    departments.value = res.data
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-const fetchUsers = async () => {
-  try {
-    const res = await api.get('/users/list')
-    users.value = res.data
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-const fetchFiscalYears = async () => {
-  try {
-    const res = await api.get('/admin/fiscal-years')
-    const cur = new Date().getFullYear()
-    yearOptions.value = res.data.map(fy => fy.year > 2500 ? fy.year - 543 : fy.year).sort((a,b) => b - a)
-    
-    if (!yearOptions.value.includes(cur)) {
-      yearOptions.value.push(cur)
-      yearOptions.value.sort((a,b) => b - a)
-    }
-  } catch (error) {
-    console.error(error)
-    const cur = new Date().getFullYear()
-    yearOptions.value = [cur + 1, cur, cur - 1]
-  }
-}
-
-const fetchRecords = async () => {
-  loading.value = true
-  errorMessage.value = ''
-  try {
-    const res = await api.get('/admin/attendances/ot-summary', {
-      params: filters.value
-    })
-    records.value = res.data
-  } catch (error) {
-    if (error.response?.data?.error) {
-      errorMessage.value = error.response.data.error
-    }
-    records.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
-// SEC-009 — เดิมแนบ Sanctum token ทาง query string แล้วเปิดด้วย window.open
-// ทำให้ token ไปโผล่ใน access log และ browser history
-// ตอนนี้ดึงผ่าน axios ที่แนบ Authorization header ให้แล้ว
-const runReport = async (path) => {
-  try {
-    await openAuthenticatedReport(path, filters.value)
-  } catch (error) {
-    alertStore.error(reportErrorMessage(error))
-  }
-}
-
-const previewReport = () => runReport('/admin/attendances/ot-summary/preview')
-const exportPdf = () => runReport('/admin/attendances/ot-summary/export/pdf')
-const exportWord = () => runReport('/admin/attendances/ot-summary/export/word')
-const exportExcel = () => runReport('/admin/attendances/ot-summary/export/excel')
+const {
+  loading,
+  errorMessage,
+  records,
+  departments,
+  yearOptions,
+  filters,
+  thaiMonths,
+  daysInMonth,
+  filteredUsers,
+  fetchRecords,
+  loadReferenceData,
+  previewReport,
+  exportPdf,
+  exportWord,
+  exportExcel,
+} = useAttendanceSummary('/admin/attendances/ot-summary')
 
 onMounted(async () => {
-  await Promise.all([
-    fetchFiscalYears(),
-    fetchDepartments(),
-    fetchUsers(),
-    fetchRecords()
-  ])
+  await Promise.all([loadReferenceData(), fetchRecords()])
 })
 </script>
-

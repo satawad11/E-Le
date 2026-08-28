@@ -7,11 +7,11 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\NotificationCenter\DeliveryResult;
 use App\Services\NotificationCenter\NotificationMessage;
-use App\Services\TelegramService;
+use App\Services\NotificationCenter\Providers\TelegramGateway;
 
 class TelegramChannelAdapter implements NotificationChannelAdapter
 {
-    public function __construct(private TelegramService $telegram) {}
+    public function __construct(private TelegramGateway $telegram) {}
 
     public function channel(): string
     {

@@ -184,7 +184,7 @@
           </div>
 
           <!-- Delegation Section -->
-          <div v-if="authStore.isManager || authStore.isSuperAdmin || authStore.hasPermission('approvals')" class="md:col-span-2">
+          <div v-if="authStore.isManager || authStore.isSuperAdmin" class="md:col-span-2">
             <h3 class="text-lg font-bold text-red-700 mb-2 border-b pb-2 mt-4">มอบหมายผู้อนุมัติชั่วคราว</h3>
             <p class="text-xs text-gray-500 mb-4">ในกรณีที่คุณลางานหรือไม่สามารถอนุมัติใบลาได้ คุณสามารถมอบหมายให้ผู้ใช้อื่นอนุมัติแทนชั่วคราวได้</p>
             
@@ -226,6 +226,54 @@
         </div>
       </form>
     </div>
+
+    <!--
+      การแจ้งเตือนของฉัน (CLEANUP-02)
+      Notification Center รองรับ preference รายบุคคลมาตั้งแต่ LEGACY-10 แต่ไม่มีหน้าจอให้ตั้งค่า
+    -->
+    <section class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <header class="px-6 py-4 border-b border-gray-100">
+        <h2 class="font-bold text-gray-900">การแจ้งเตือนของฉัน</h2>
+        <p class="text-sm text-gray-500 mt-0.5">
+          เลือกช่องทางที่ต้องการรับแจ้งเตือนของแต่ละเหตุการณ์ · การแจ้งเตือนในระบบของเหตุการณ์บังคับปิดไม่ได้
+        </p>
+      </header>
+
+      <div v-if="notificationTypes.length === 0" class="px-6 py-8 text-center text-sm text-gray-500">
+        ยังไม่มีประเภทการแจ้งเตือนในระบบ
+      </div>
+
+      <div v-else class="overflow-x-auto">
+        <table class="w-full text-sm min-w-[560px]">
+          <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+            <tr>
+              <th class="text-left px-6 py-3 font-semibold">เหตุการณ์</th>
+              <th v-for="channel in notificationChannels" :key="channel" class="px-4 py-3 font-semibold text-center">
+                {{ channelLabel(channel) }}
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            <tr v-for="type in notificationTypes" :key="type.id" class="hover:bg-gray-50/60">
+              <td class="px-6 py-3">
+                <p class="font-medium text-gray-800">{{ type.name }}</p>
+                <p class="text-xs text-gray-400 font-mono">{{ type.code }}</p>
+              </td>
+              <td v-for="channel in notificationChannels" :key="channel" class="px-4 py-3 text-center">
+                <input
+                  type="checkbox"
+                  class="rounded text-[#800000] focus:ring-[#800000]"
+                  :aria-label="`รับ${type.name}ทาง${channelLabel(channel)}`"
+                  :checked="isPreferred(type, channel)"
+                  :disabled="isLockedChannel(type, channel) || savingPreference"
+                  @change="savePreference(type, channel, $event.target.checked)"
+                >
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -293,6 +341,67 @@ const delegationForm = reactive({
   is_active: true
 })
 
+/*
+ * การแจ้งเตือนรายบุคคล (CLEANUP-02)
+ *
+ * Notification Center เก็บ preference ต่อเหตุการณ์ต่อช่องทางมาตั้งแต่ LEGACY-10
+ * และ `NotificationCenter::emit()` อ่านค่านี้จริงตอนส่ง แต่ไม่เคยมีหน้าจอให้ตั้งค่า
+ * ผู้ใช้จึงได้แต่ค่าเริ่มต้นของแต่ละเหตุการณ์เท่านั้น
+ */
+const notificationChannels = ref([])
+const notificationTypes = ref([])
+const notificationPreferences = ref([])
+const savingPreference = ref(false)
+
+const CHANNEL_LABELS = {
+  in_app: 'ในระบบ',
+  email: 'อีเมล',
+  line_oa: 'LINE',
+  telegram: 'Telegram',
+}
+
+const channelLabel = (channel) => CHANNEL_LABELS[channel] || channel
+
+const loadNotificationPreferences = async () => {
+  try {
+    const { data } = await api.get('/notification-preferences')
+    notificationChannels.value = data.channels || []
+    notificationTypes.value = data.types || []
+    notificationPreferences.value = data.preferences || []
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+/*
+ * ไม่มีแถว preference = ใช้ค่าเริ่มต้นของเหตุการณ์นั้น จึงต้องอ่านจาก default_channels
+ * ไม่ใช่ถือว่าปิด — ไม่อย่างนั้นช่องที่เปิดอยู่จริงจะแสดงเป็นปิดทั้งหมด
+ */
+const isPreferred = (type, channel) => {
+  const preference = notificationPreferences.value.find(
+    (p) => p.channel === channel && (p.notification_type_id === type.id || p.notification_type_id === null),
+  )
+  if (preference) return !!preference.enabled
+
+  return (type.default_channels || []).includes(channel)
+}
+
+const isLockedChannel = (type, channel) => type.is_mandatory && channel === 'in_app'
+
+const savePreference = async (type, channel, enabled) => {
+  savingPreference.value = true
+  try {
+    await api.put('/notification-preferences', { type_code: type.code, channel, enabled })
+    await loadNotificationPreferences()
+    alertStore.success('บันทึกการตั้งค่าการแจ้งเตือนแล้ว')
+  } catch (e) {
+    alertStore.error(e.response?.data?.message || 'บันทึกการตั้งค่าไม่สำเร็จ')
+    await loadNotificationPreferences()
+  } finally {
+    savingPreference.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     const res = await api.get('/profile')
@@ -321,10 +430,12 @@ onMounted(async () => {
     }
 
     // Load users list for delegation
-    if (authStore.isManager || authStore.isSuperAdmin || authStore.hasPermission('approvals')) {
+    if (authStore.isManager || authStore.isSuperAdmin) {
       const uRes = await api.get('/admin/users')
       usersList.value = uRes.data.filter(u => u.id !== authStore.user.id)
     }
+
+    await loadNotificationPreferences()
 
   } catch (e) {
     console.error(e)

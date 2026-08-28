@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class SystemSettingsTest extends TestCase
@@ -71,6 +72,40 @@ class SystemSettingsTest extends TestCase
         $this->assertDatabaseHas('settings', ['key' => 'school_name', 'value' => 'วิทยาลัยใหม่']);
         $this->assertDatabaseHas('settings', ['key' => 'doc_number_prefix', 'value' => 'ศธ 0001']);
         $this->assertDatabaseCount('setting_audit_logs', 1);
+    }
+
+    /*
+     * CLEANUP-01 (D8) — ปุ่มทดสอบการแจ้งเตือนต้องเดินผ่าน adapter ของ Notification Center
+     *
+     * เดิมเรียก provider ตรง ๆ จึงตอบ "สำเร็จ" ได้ทั้งที่ผู้รับยังไม่ได้ผูกบัญชี
+     */
+    public function test_notification_test_button_refuses_a_channel_the_recipient_has_not_linked(): void
+    {
+        $admin = $this->superAdmin();
+        $admin->forceFill(['telegram_chat_id' => null])->save();
+        Setting::create(['key' => 'telegram_bot_token', 'value' => 'token']);
+
+        $this->actingAs($admin)->postJson('/api/admin/settings/test-notification/telegram')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('channel');
+    }
+
+    public function test_notification_test_button_rejects_an_unknown_channel(): void
+    {
+        $this->actingAs($this->superAdmin())
+            ->postJson('/api/admin/settings/test-notification/carrier-pigeon')
+            ->assertNotFound();
+    }
+
+    public function test_notification_test_button_sends_through_the_email_adapter(): void
+    {
+        Mail::fake();
+
+        $this->actingAs($this->superAdmin())
+            ->postJson('/api/admin/settings/test-notification/email')
+            ->assertOk();
+
+        Mail::assertSentCount(1);
     }
 
     private function superAdmin(): User

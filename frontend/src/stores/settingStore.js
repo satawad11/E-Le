@@ -1,18 +1,20 @@
 import { defineStore } from 'pinia';
 import api from '../axios';
 
+/**
+ * ค่าตั้งค่าระบบที่หน้าเว็บใช้ร่วมกัน
+ *
+ * CLEANUP-02 — ถอด `enable_attendance_menu` / `enable_leave_menu` ออก
+ *
+ * สองค่านี้เคยใช้ซ่อนเมนูที่เขียนตายตัวใน `App.vue` เมื่อแถบเมนูเปลี่ยนไปอ่านจาก
+ * `/api/user/menus` (ซึ่งกรองด้วย ModuleRegistry ฝั่ง server ให้แล้ว) ก็ไม่มีที่ใดอ่านอีก
+ * การเปิด-ปิดโมดูลตั้งได้ที่หน้า "โมดูลระบบ" และมีผลกับทั้งเมนูและ API พร้อมกัน
+ */
 export const useSettingStore = defineStore('setting', {
   state: () => ({
-    settings: {
-      enable_attendance_menu: '1',
-      enable_leave_menu: '1',
-    },
+    settings: {},
     loaded: false,
   }),
-  getters: {
-    isAttendanceEnabled: (state) => state.settings.enable_attendance_menu !== '0',
-    isLeaveEnabled: (state) => state.settings.enable_leave_menu !== '0',
-  },
   actions: {
     async fetchSettings() {
       try {

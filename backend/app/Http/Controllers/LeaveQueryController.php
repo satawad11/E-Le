@@ -6,6 +6,7 @@ use App\Models\FiscalYear;
 use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\LeaveType;
+use App\Models\User;
 use App\Services\LeavePolicyService;
 use App\Services\LeaveVisibility;
 use Carbon\Carbon;
@@ -59,6 +60,17 @@ class LeaveQueryController extends Controller
         return response()->json($leaves);
     }
 
+    /**
+     * โควตาวันลาคงเหลือของผู้ใช้ที่กำลังเข้าระบบ
+     *
+     * แถวใน `leave_balances` ถูกคีย์ด้วยปีที่ **นโยบายของการลาประเภทนั้น** กำหนด
+     * (`LeavePolicyService::periodYear()`) นโยบายที่นับตามปีงบประมาณกับที่นับตามปีปฏิทิน
+     * จึงได้เลขปีคนละตัวในช่วง 1 ต.ค. – 31 ธ.ค. ของทุกปี
+     *
+     * เดิมหน้าจอนี้หาแถวด้วย "เลขปีงบประมาณ" ตัวเดียวสำหรับทุกประเภทการลา ผลคือในช่วงนั้น
+     * ประเภทที่นับตามปีปฏิทินจะอ่านคนละแถวกับที่ระบบจอง/ตัดจริง — ยื่นลาแล้วยอดไม่ลด
+     * ยกเลิกแล้วยอดไม่คืน หรือหายไปจากหน้าจอทั้งแถว ทั้งที่ข้อมูลในฐานถูกต้อง
+     */
     public function balances(Request $request)
     {
         $userId = $request->user()->id;
@@ -67,40 +79,35 @@ class LeaveQueryController extends Controller
             ? FiscalYear::where('year', (int) $requestedYear)->first()
             : FiscalYear::current();
 
-        $year = $this->policies->fiscalYearNumber(
-            $selectedFY,
-            $selectedFY ? Carbon::parse($selectedFY->start_date) : today()
-        );
+        /*
+         * วันอ้างอิงของรอบที่ผู้ใช้กำลังดู — ใช้ "วันนี้" ถ้าวันนี้อยู่ในรอบนั้นจริง
+         * มิฉะนั้นใช้วันเริ่มรอบ เพื่อให้ปีปฏิทินที่ได้เป็นปีที่รอบนั้นเริ่มต้น
+         */
+        $reference = today();
+        if ($selectedFY) {
+            $fyStart = Carbon::parse($selectedFY->start_date)->startOfDay();
+            $fyEnd = Carbon::parse($selectedFY->end_date)->endOfDay();
+            $reference = $reference->between($fyStart, $fyEnd) ? $reference : $fyStart->copy();
+        }
+
+        $fiscalYearNumber = $this->policies->fiscalYearNumber($selectedFY, $reference);
+        $calendarYear = (int) $reference->year;
 
         $balances = LeaveBalance::with(['type', 'policy'])
             ->where('user_id', $userId)
-            ->where('year', $year)
-            ->get();
-
-        $pendingQuery = Leave::selectRaw('leave_type_id, SUM(total_days) as pending_days')
-            ->where('user_id', $userId)
-            ->where('status', 'Pending');
-        $approvedQuery = Leave::selectRaw('leave_type_id, SUM(total_days) as used_days')
-            ->where('user_id', $userId)
-            ->where('status', 'Approved');
-
-        if ($selectedFY) {
-            $startDate = Carbon::parse($selectedFY->start_date)->startOfDay();
-            $endDate = Carbon::parse($selectedFY->end_date)->endOfDay();
-            $pendingQuery->whereBetween('start_date', [$startDate, $endDate]);
-            $approvedQuery->whereBetween('start_date', [$startDate, $endDate]);
-        } else {
-            $pendingQuery->whereYear('start_date', $year);
-            $approvedQuery->whereYear('start_date', $year);
-        }
-
-        $pendingLeaves = $pendingQuery->groupBy('leave_type_id')->pluck('pending_days', 'leave_type_id')->toArray();
-        $approvedLeaves = $approvedQuery->groupBy('leave_type_id')->pluck('used_days', 'leave_type_id')->toArray();
+            ->whereIn('year', array_unique([$fiscalYearNumber, $calendarYear]))
+            ->get()
+            ->each(fn (LeaveBalance $balance) => $this->attachPolicy($request->user(), $balance, $reference))
+            // เก็บเฉพาะแถวที่ตรงกับเกณฑ์นับรอบของนโยบายตัวเอง
+            ->filter(fn (LeaveBalance $balance) => (int) $balance->year === $this->periodYearFor($balance, $fiscalYearNumber, $calendarYear))
+            ->values();
 
         foreach ($balances as $balance) {
+            [$windowStart, $windowEnd] = $this->periodWindowFor($balance, $selectedFY, $reference);
+
             $balance->pending = (float) $balance->reserved;
-            $balance->leaves_pending_days = (float) ($pendingLeaves[$balance->leave_type_id] ?? 0);
-            $balance->leaves_used_days = (float) ($approvedLeaves[$balance->leave_type_id] ?? 0);
+            $balance->leaves_pending_days = $this->daysInWindow($userId, $balance->leave_type_id, 'Pending', $windowStart, $windowEnd);
+            $balance->leaves_used_days = $this->daysInWindow($userId, $balance->leave_type_id, 'Approved', $windowStart, $windowEnd);
             $balance->unlimited = $balance->relationLoaded('policy')
                 && $balance->policy !== null
                 && $balance->policy->annual_quota === null;
@@ -113,6 +120,70 @@ class LeaveQueryController extends Controller
         }
 
         return response()->json($balances);
+    }
+
+    /**
+     * ผูกนโยบายที่ใช้จริงเข้ากับแถวโควตาที่ยังไม่มี `leave_policy_id`
+     *
+     * แถวที่ถูกสร้างตอนติดตั้งหรือย้ายข้อมูลมีแต่ตัวเลขโควตา ไม่ได้ผูกนโยบายไว้
+     * ผลคือหน้าจอตัดสินว่า "ไม่จำกัดโควตา" ไม่ได้ ประเภทการลาที่ระเบียบไม่จำกัดวัน
+     * (ลาเข้ารับการตรวจเลือก ลาไปศึกษาต่อ ลาติดตามคู่สมรส ฯลฯ) จึงแสดงเป็น
+     * "เหลือ 0 วัน" เหมือนไม่มีสิทธิ์ลาเลย และเพดานวันที่ได้รับเงินเดือนก็หายไปด้วย
+     */
+    private function attachPolicy(User $user, LeaveBalance $balance, Carbon $reference): void
+    {
+        if ($balance->relationLoaded('policy') && $balance->policy !== null) {
+            return;
+        }
+
+        try {
+            $balance->setRelation('policy', $this->policies->resolve($user, (int) $balance->leave_type_id, $reference));
+        } catch (\Throwable) {
+            // ไม่มีนโยบายให้ผูก — แสดงตามตัวเลขในแถวเหมือนเดิม ดีกว่าทำให้ทั้งหน้าพัง
+            $balance->setRelation('policy', null);
+        }
+    }
+
+    /** เลขปีที่แถวโควตาของนโยบายนี้ต้องใช้ — ตรงกับที่ `LeaveService` ใช้ตอนจองและตัดวัน */
+    private function periodYearFor(LeaveBalance $balance, int $fiscalYearNumber, int $calendarYear): int
+    {
+        return $balance->policy?->period_basis === 'calendar_year' ? $calendarYear : $fiscalYearNumber;
+    }
+
+    /**
+     * ช่วงวันที่ของรอบโควตาหนึ่งแถว — ใช้รวมยอดใบลาที่ยื่นในรอบเดียวกันเท่านั้น
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function periodWindowFor(LeaveBalance $balance, ?FiscalYear $selectedFY, Carbon $reference): array
+    {
+        if ($balance->policy?->period_basis === 'calendar_year') {
+            return [$reference->copy()->startOfYear(), $reference->copy()->endOfYear()];
+        }
+
+        if ($selectedFY) {
+            return [
+                Carbon::parse($selectedFY->start_date)->startOfDay(),
+                Carbon::parse($selectedFY->end_date)->endOfDay(),
+            ];
+        }
+
+        // ไม่มีรอบปีงบประมาณในฐานข้อมูล — ใช้เกณฑ์เดียวกับ `fiscalYearNumber()` คือเริ่ม 1 ต.ค.
+        $endYear = $reference->month >= 10 ? $reference->year + 1 : $reference->year;
+
+        return [
+            Carbon::create($endYear - 1, 10, 1)->startOfDay(),
+            Carbon::create($endYear, 9, 30)->endOfDay(),
+        ];
+    }
+
+    private function daysInWindow(int $userId, int $leaveTypeId, string $status, Carbon $from, Carbon $to): float
+    {
+        return (float) Leave::where('user_id', $userId)
+            ->where('leave_type_id', $leaveTypeId)
+            ->where('status', $status)
+            ->whereBetween('start_date', [$from, $to])
+            ->sum('total_days');
     }
 
     public function teamCalendar(Request $request)

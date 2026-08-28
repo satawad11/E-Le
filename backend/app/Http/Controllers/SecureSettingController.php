@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\LineNotificationService;
+use App\Services\NotificationCenter\NotificationChannelTester;
 use App\Services\SystemSettingService;
-use App\Services\TelegramService;
 use App\Support\UploadRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -52,21 +50,27 @@ class SecureSettingController extends Controller
         return response()->json(['message' => 'ล้างข้อมูลลับเรียบร้อยแล้ว']);
     }
 
-    public function testNotification(Request $request, string $channel)
+    /*
+     * CLEANUP-01 (D8) — ทดสอบผ่าน adapter ชุดเดียวกับที่ส่งของจริง
+     *
+     * เดิมเมธอดนี้เรียก provider ตรง ๆ (LineNotificationService / TelegramService)
+     * จึงตอบว่า "สำเร็จ" ได้ทั้งที่ช่องทางนั้นส่งของจริงไม่ได้ เพราะข้ามการตรวจ
+     * `isConfiguredFor` ของ Notification Center ไปทั้งดุ้น
+     */
+    public function testNotification(Request $request, string $channel, NotificationChannelTester $tester)
     {
-        abort_unless(in_array($channel, ['line', 'telegram', 'email'], true), 404);
-        $message = 'ทดสอบการแจ้งเตือนจากระบบ E-Leave เวลา '.now()->format('d/m/Y H:i:s');
+        abort_unless($tester->supports($channel), 404);
 
-        $sent = match ($channel) {
-            'line' => app(LineNotificationService::class)->sendMessage($message),
-            'telegram' => filled($request->user()->telegram_chat_id)
-                && app(TelegramService::class)->sendMessage($request->user()->telegram_chat_id, $message),
-            'email' => $this->sendTestEmail($request->user()->email, $message),
-        };
+        $outcome = $tester->send(
+            $channel,
+            $request->user(),
+            'ทดสอบการแจ้งเตือน E-Leave',
+            'ทดสอบการแจ้งเตือนจากระบบ E-Leave เวลา '.now()->format('d/m/Y H:i:s'),
+        );
 
-        if (! $sent) {
+        if (! $outcome->successful) {
             throw ValidationException::withMessages([
-                'channel' => ['ทดสอบไม่สำเร็จ กรุณาตรวจสอบค่าเชื่อมต่อและข้อมูลผู้รับของบัญชีผู้ดูแลระบบ'],
+                'channel' => ['ทดสอบไม่สำเร็จ: '.$outcome->reason],
             ]);
         }
 
@@ -105,22 +109,5 @@ class SecureSettingController extends Controller
             return;
         }
         Storage::disk('private_uploads')->delete(substr($url, strlen('/storage/')));
-    }
-
-    private function sendTestEmail(?string $recipient, string $message): bool
-    {
-        if (blank($recipient) || blank($this->settings->runtimeValues()->get('mail_host'))) {
-            return false;
-        }
-
-        try {
-            Mail::raw($message, fn ($mail) => $mail->to($recipient)->subject('ทดสอบการแจ้งเตือน E-Leave'));
-
-            return true;
-        } catch (\Throwable $exception) {
-            report($exception);
-
-            return false;
-        }
     }
 }

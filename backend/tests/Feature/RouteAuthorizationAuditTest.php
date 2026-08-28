@@ -39,8 +39,8 @@ class RouteAuthorizationAuditTest extends TestCase
             'api/leaves/{leave}/word',
             'api/admin/attendances/export/pdf',
             'api/admin/attendances/export/word',
-            'api/reports/export-excel',
-            'api/reports/export-pdf',
+            // CLEANUP-01 (D3) — `/reports/export-*` ของชั้นรายงานเดิมถูกถอดออกแล้ว
+            'api/reporting/{report}/export/{format}',
             'api/leave-evidences/{evidence}/download',
         ];
 

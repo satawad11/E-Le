@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Services\PermissionEvaluator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -67,7 +68,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;
 
         $user->load(['department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']);
-        $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
+        $user->permission_names = $this->effectivePermissionNames($user);
         $user->direct_permissions = array_values(array_unique($user->getDirectPermissions()->pluck('name')->toArray()));
         $user->role_names = array_values(array_unique($user->roles->pluck('name')->toArray()));
 
@@ -151,10 +152,32 @@ class AuthController extends Controller
         return response()->json(['message' => 'ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว']);
     }
 
+    /**
+     * ชื่อสิทธิ์ที่หน้าเว็บใช้ตัดสินการแสดงผล — รวมชื่อที่เทียบเท่ากันมาให้ครบ
+     *
+     * CLEANUP-02 (D5) — ผู้ใช้ปัจจุบันถือ "ชื่อชุดเดิม" (`manage_settings`) ขณะที่โค้ดใหม่
+     * อ้าง "ชื่อมาตรฐาน" (`system.setting.manage`) ฝั่ง server แก้ให้แล้วด้วย
+     * `permission_aliases` แต่หน้าเว็บเทียบชื่อตรง ๆ จึงต้องเขียนทั้งสองชื่อทุกจุด
+     *
+     * ส่งชื่อที่เทียบเท่ากันมาด้วย หน้าเว็บจึงเช็คชื่อมาตรฐานชื่อเดียวได้
+     * และไม่ถือเป็นการให้สิทธิ์เพิ่ม เพราะเป็นชื่ออื่นของสิ่งที่ผู้ใช้ถืออยู่แล้ว
+     *
+     * @return array<int,string>
+     */
+    private function effectivePermissionNames(User $user): array
+    {
+        $evaluator = app(PermissionEvaluator::class);
+
+        $names = $user->getAllPermissions()->pluck('name')
+            ->flatMap(fn (string $name) => $evaluator->equivalentNames($name));
+
+        return array_values(array_unique($names->all()));
+    }
+
     public function user(Request $request)
     {
         $user = $request->user()->load(['department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']);
-        $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
+        $user->permission_names = $this->effectivePermissionNames($user);
         $user->direct_permissions = array_values(array_unique($user->getDirectPermissions()->pluck('name')->toArray()));
         $user->role_names = array_values(array_unique($user->roles->pluck('name')->toArray()));
 

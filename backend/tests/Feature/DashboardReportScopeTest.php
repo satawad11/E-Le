@@ -117,23 +117,30 @@ class DashboardReportScopeTest extends TestCase
 
     // -------------------------------------------------------------- รายงาน
 
+    /*
+     * CLEANUP-01 (D3) — ย้ายมาวัดที่ชั้นรายงานกลาง
+     *
+     * เดิมสองเทสต์นี้ยิง `/api/reports/summary` ของ `ReportController` ที่ถูกถอดออกแล้ว
+     * เจตนาเดิมคือ "ผู้ถือสิทธิ์รายงานเห็นทั้งองค์กร ส่วนคนที่ไม่ถือสิทธิ์ต้องไม่เห็นของคนอื่น"
+     * ชั้นรายงานกลางบังคับเรื่องเดียวกันแต่เข้มกว่า — คนที่ไม่ถือสิทธิ์ถูกปฏิเสธไปเลย
+     */
     public function test_report_viewer_sees_organisation_wide_report(): void
     {
         $viewer = $this->userWith(['leave.report.view']);
 
-        $response = $this->actingAs($viewer)->getJson('/api/reports/summary');
+        $response = $this->actingAs($viewer)->getJson('/api/reporting/leave?'.http_build_query([
+            'from' => now()->subYear()->toDateString(),
+            'to' => now()->addYear()->toDateString(),
+        ]));
         $response->assertOk();
 
-        $this->assertGreaterThan(0, (int) data_get($response->json(), 'summary.total_requests', 0));
+        $this->assertGreaterThan(0, count($response->json('rows', [])));
     }
 
-    public function test_user_without_report_permission_sees_only_their_own(): void
+    public function test_user_without_report_permission_is_refused_the_organisation_report(): void
     {
         $viewer = $this->userWith([]);
 
-        $response = $this->actingAs($viewer)->getJson('/api/reports/summary');
-        $response->assertOk();
-
-        $this->assertSame(0, (int) data_get($response->json(), 'summary.total_requests', 0));
+        $this->actingAs($viewer)->getJson('/api/reporting/leave')->assertForbidden();
     }
 }

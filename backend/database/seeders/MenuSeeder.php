@@ -4,171 +4,423 @@ namespace Database\Seeders;
 
 use App\Models\Menu;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Cache;
 use Spatie\Permission\Models\Permission;
 
+/**
+ * แหล่งความจริงเดียวของแถบเมนู
+ *
+ * CLEANUP-01 (D1) — ก่อนหน้านี้เมนูมีสองชุดที่ไม่ตรงกัน: ชุดที่ผู้ใช้เห็นจริงเขียน
+ * ตายตัวอยู่ใน `frontend/src/App.vue` (และเขียนซ้ำอีกก๊อปสำหรับจอมือถือ) ส่วนชุดใน
+ * ตาราง `menus` ที่ seeder และ migration หลายตัวช่วยกันเติม ชี้ไปยัง route ที่ไม่มีอยู่จริง
+ * (`/dashboard`, `/calendar`, `/attendance/me`, `/admin/personnel-types`,
+ * `/admin/leave-calendar`) หน้าจัดการเมนูจึงไม่มีผลกับสิ่งที่ผู้ใช้เห็นเลย
+ *
+ * ตอนนี้ตาราง `menus` เป็นแหล่งความจริงเดียว หน้าเว็บวาดแถบเมนูจาก `/api/user/menus`
+ * และ `MenuIntegrityTest` บังคับว่าทุก path ในนี้ต้องมีอยู่จริงใน `router/index.js`
+ *
+ * กติกาการแก้ไข: เพิ่ม/แก้เมนูที่ `TREE` ที่เดียว แล้วรัน `php artisan db:seed
+ * --class=MenuSeeder` — เมนูที่ไม่อยู่ใน `TREE` จะถูกลบทิ้งเพราะชี้ไปยังหน้าที่ไม่มีอยู่
+ */
 class MenuSeeder extends Seeder
 {
+    /**
+     * โครงเมนูทั้งระบบ — ต้องตรงกับ `frontend/src/router/index.js`
+     *
+     * `permissions` = เห็นเมนูนี้ถ้ามีสิทธิ์ "อย่างน้อยหนึ่งข้อ" ในรายการ
+     * รายการว่าง = ผู้ใช้ที่ล็อกอินแล้วเห็นได้ทุกคน
+     * `module` = โมดูลเจ้าของ ถ้าโมดูลถูกปิด เมนูทั้งกิ่งจะหายไปเอง
+     */
+    public const TREE = [
+        [
+            'code' => 'dashboard',
+            'title_th' => 'หน้าหลัก',
+            'title_en' => 'Dashboard',
+            'module' => 'system',
+            'icon' => 'home',
+            'route_name' => 'dashboard',
+            'route_path' => '/',
+            'permissions' => [],
+        ],
+        [
+            'code' => 'leave',
+            'title_th' => 'ระบบลางาน',
+            'title_en' => 'Leave',
+            'module' => 'leave',
+            'icon' => 'calendar',
+            'permissions' => [],
+            'children' => [
+                [
+                    'code' => 'leave.request',
+                    'title_th' => 'ยื่นใบลา',
+                    'title_en' => 'Request Leave',
+                    'route_name' => 'request',
+                    'route_path' => '/request',
+                    'permissions' => [],
+                ],
+                [
+                    'code' => 'leave.my',
+                    'title_th' => 'รายการใบลาของฉัน',
+                    'title_en' => 'My Leaves',
+                    'route_name' => 'my-leaves',
+                    'route_path' => '/leaves',
+                    'permissions' => [],
+                ],
+                [
+                    'code' => 'leave.card',
+                    'title_th' => 'บัตรลา',
+                    'title_en' => 'Leave Card',
+                    'route_name' => 'leave-card',
+                    'route_path' => '/leave-card',
+                    'permissions' => [],
+                ],
+                [
+                    'code' => 'leave.team_calendar',
+                    'title_th' => 'ปฏิทินวันลาทีม',
+                    'title_en' => 'Team Calendar',
+                    'route_name' => 'team-calendar',
+                    'route_path' => '/team-calendar',
+                    'permissions' => [],
+                ],
+                /*
+                 * ทะเบียนคุมการลาอ่านข้อมูลของทั้งหน่วยงาน ฝั่ง server ปฏิเสธผู้ที่ไม่ถือ
+                 * สิทธิ์รายงานอยู่แล้ว เมนูจึงต้องใช้เงื่อนไขเดียวกัน ไม่งั้นบุคลากรทั่วไป
+                 * จะเห็นเมนูที่กดแล้วเด้ง 403 ทุกครั้ง
+                 */
+                [
+                    'code' => 'leave.government_reports',
+                    'title_th' => 'รายงานการลาราชการ',
+                    'title_en' => 'Government Leave Reports',
+                    'route_name' => 'reports',
+                    'route_path' => '/reports',
+                    'permissions' => ['leave.report.view', 'leave.management.manage'],
+                ],
+                [
+                    'code' => 'leave.approvals',
+                    'title_th' => 'อนุมัติใบลา',
+                    'title_en' => 'Leave Approvals',
+                    'route_name' => 'approvals',
+                    'route_path' => '/approvals',
+                    'permissions' => ['leave.approve', 'leave.approval.dept', 'leave.approval.hr'],
+                ],
+                [
+                    'code' => 'leave.cancel_approvals',
+                    'title_th' => 'อนุมัติยกเลิกใบลา',
+                    'title_en' => 'Cancellation Approvals',
+                    'route_name' => 'cancel-approvals',
+                    'route_path' => '/cancel-approvals',
+                    'permissions' => ['leave.approve', 'leave.approval.dept', 'leave.approval.hr'],
+                ],
+                [
+                    'code' => 'leave.management',
+                    'title_th' => 'จัดการ/ซิงค์วันลา (HR)',
+                    'title_en' => 'Leave Management',
+                    'route_name' => 'admin-leaves-management',
+                    'route_path' => '/admin/leaves-management',
+                    'permissions' => ['leave.approval.dept', 'leave.management.manage'],
+                ],
+                [
+                    'code' => 'leave.promotion_screening',
+                    'title_th' => 'คัดกรองเลื่อนเงินเดือน',
+                    'title_en' => 'Promotion Screening',
+                    'route_name' => 'admin-promotion-screening',
+                    'route_path' => '/admin/promotion-screening',
+                    'permissions' => ['leave.report.view', 'leave.management.manage'],
+                ],
+                [
+                    'code' => 'leave.governance',
+                    'title_th' => 'ศูนย์งานกำกับการลา',
+                    'title_en' => 'Leave Governance',
+                    'route_name' => 'admin-leave-governance',
+                    'route_path' => '/admin/leave-governance',
+                    'permissions' => ['leave.approval.hr', 'leave.management.manage'],
+                ],
+            ],
+        ],
+        [
+            'code' => 'attendance',
+            'title_th' => 'ระบบลงเวลาออนไลน์',
+            'title_en' => 'Attendance',
+            'module' => 'attendance',
+            'icon' => 'clock',
+            'permissions' => [],
+            'children' => [
+                [
+                    'code' => 'attendance.checkin',
+                    'title_th' => 'ลงเวลาปฏิบัติงาน',
+                    'title_en' => 'Check In / Out',
+                    'route_name' => 'attendance-check-in',
+                    'route_path' => '/attendance/check-in',
+                    'permissions' => ['attendance.checkin'],
+                ],
+                [
+                    'code' => 'attendance.history',
+                    'title_th' => 'ประวัติการลงเวลา',
+                    'title_en' => 'My Attendance',
+                    'route_name' => 'attendance-history',
+                    'route_path' => '/attendance/history',
+                    'permissions' => ['attendance.view_self'],
+                ],
+                [
+                    'code' => 'attendance.records',
+                    'title_th' => 'รายงานการลงเวลา',
+                    'title_en' => 'Attendance Records',
+                    'route_name' => 'admin-attendances',
+                    'route_path' => '/admin/attendances',
+                    'permissions' => ['attendance.view_all'],
+                ],
+                [
+                    'code' => 'attendance.summary',
+                    'title_th' => 'สรุปผลการปฏิบัติงาน',
+                    'title_en' => 'Attendance Summary',
+                    'route_name' => 'admin-attendances-summary',
+                    'route_path' => '/admin/attendances/summary',
+                    'permissions' => ['attendance.view_all'],
+                ],
+                [
+                    'code' => 'overtime.orders',
+                    'title_th' => 'คำสั่งปฏิบัติงานล่วงเวลา (OT)',
+                    'title_en' => 'Overtime Orders',
+                    'module' => 'overtime',
+                    'route_name' => 'admin-overtime-orders',
+                    'route_path' => '/admin/overtime-orders',
+                    'permissions' => ['overtime.operation.execute', 'overtime.management.review'],
+                ],
+                [
+                    'code' => 'overtime.summary',
+                    'title_th' => 'สรุปผลการปฏิบัติงาน (OT)',
+                    'title_en' => 'Overtime Summary',
+                    'module' => 'overtime',
+                    'route_name' => 'admin-ot-summary',
+                    'route_path' => '/admin/ot-summary',
+                    'permissions' => ['attendance.ot_summary', 'attendance.ot'],
+                ],
+            ],
+        ],
+        [
+            'code' => 'reporting',
+            'title_th' => 'รายงาน',
+            'title_en' => 'Reports',
+            'module' => 'reporting',
+            'icon' => 'chart',
+            'permissions' => [],
+            'children' => [
+                [
+                    'code' => 'reporting.center',
+                    'title_th' => 'ศูนย์รายงานกลาง',
+                    'title_en' => 'Report Center',
+                    'route_name' => 'report-center',
+                    'route_path' => '/report-center',
+                    'permissions' => [
+                        'leave.report.view', 'system.user.view',
+                        'attendance.view_all', 'overtime.management.review',
+                    ],
+                ],
+            ],
+        ],
+        [
+            'code' => 'users',
+            'title_th' => 'จัดการผู้ใช้งาน',
+            'title_en' => 'User Management',
+            'module' => 'system',
+            'icon' => 'users',
+            'permissions' => [],
+            'children' => [
+                [
+                    'code' => 'users.list',
+                    'title_th' => 'รายชื่อผู้ใช้งาน',
+                    'title_en' => 'Users',
+                    'route_name' => 'admin-users',
+                    'route_path' => '/admin/users',
+                    'permissions' => ['system.user.view'],
+                ],
+                [
+                    'code' => 'users.personnel_assignments',
+                    'title_th' => 'กำหนดประเภทบุคลากร',
+                    'title_en' => 'Personnel Assignments',
+                    'route_name' => 'admin-personnel-assignments',
+                    'route_path' => '/admin/personnel-assignments',
+                    'permissions' => ['system.user.manage'],
+                ],
+                [
+                    'code' => 'users.roles',
+                    'title_th' => 'จัดการบทบาทและสิทธิ์',
+                    'title_en' => 'Roles & Permissions',
+                    'route_name' => 'admin-roles',
+                    'route_path' => '/admin/roles',
+                    'permissions' => ['system.menu.manage', 'system.role.manage'],
+                ],
+                [
+                    'code' => 'users.menus',
+                    'title_th' => 'จัดการเมนูตามสิทธิ์',
+                    'title_en' => 'Menu Management',
+                    'route_name' => 'admin-menus',
+                    'route_path' => '/admin/menus',
+                    'permissions' => ['system.menu.manage'],
+                ],
+            ],
+        ],
+        [
+            'code' => 'settings',
+            'title_th' => 'ตั้งค่าระบบ',
+            'title_en' => 'System Settings',
+            'module' => 'system',
+            'icon' => 'cog',
+            'permissions' => [],
+            'children' => [
+                [
+                    'code' => 'settings.general',
+                    'title_th' => 'ข้อมูลสถานศึกษาและแบบฟอร์ม',
+                    'title_en' => 'Institution & Forms',
+                    'route_name' => 'admin-settings',
+                    'route_path' => '/admin/settings',
+                    'permissions' => ['system.setting.manage'],
+                ],
+                [
+                    'code' => 'settings.fiscal_years',
+                    'title_th' => 'ปีงบประมาณ',
+                    'title_en' => 'Fiscal Years',
+                    'route_name' => 'admin-fiscal-years',
+                    'route_path' => '/admin/fiscal-years',
+                    'permissions' => ['system.setting.manage'],
+                ],
+                [
+                    'code' => 'settings.work_calendar',
+                    'title_th' => 'ปฏิทินวันทำการ',
+                    'title_en' => 'Work Calendar',
+                    'route_name' => 'admin-work-calendar',
+                    'route_path' => '/admin/work-calendar',
+                    'permissions' => ['system.setting.manage', 'leave.calendar.manage'],
+                ],
+                [
+                    'code' => 'settings.departments',
+                    'title_th' => 'จัดการแผนกวิชา',
+                    'title_en' => 'Departments',
+                    'route_name' => 'admin-departments',
+                    'route_path' => '/admin/departments',
+                    'permissions' => ['manage_departments'],
+                ],
+                [
+                    'code' => 'settings.leave_policies',
+                    'title_th' => 'นโยบายสิทธิการลา',
+                    'title_en' => 'Leave Policies',
+                    'module' => 'leave',
+                    'route_name' => 'admin-leave-policies',
+                    'route_path' => '/admin/leave-policies',
+                    'permissions' => ['system.setting.manage', 'leave.policy.manage'],
+                ],
+                [
+                    'code' => 'settings.leave_types',
+                    'title_th' => 'ประเภทการลา',
+                    'title_en' => 'Leave Types',
+                    'module' => 'leave',
+                    'route_name' => 'admin-leave-types',
+                    'route_path' => '/admin/leave-types',
+                    'permissions' => ['manage_leave_types'],
+                ],
+                [
+                    'code' => 'settings.attendance',
+                    'title_th' => 'ตั้งค่าระบบลงเวลา',
+                    'title_en' => 'Attendance Settings',
+                    'module' => 'attendance',
+                    'route_name' => 'admin-attendance-settings',
+                    'route_path' => '/admin/attendance-settings',
+                    'permissions' => ['system.setting.manage'],
+                ],
+                [
+                    'code' => 'settings.workflow',
+                    'title_th' => 'จัดการลำดับการอนุมัติ',
+                    'title_en' => 'Approval Workflow',
+                    'route_name' => 'admin-workflow',
+                    'route_path' => '/admin/workflow',
+                    'permissions' => ['manage_workflow_steps'],
+                ],
+                [
+                    'code' => 'settings.notifications',
+                    'title_th' => 'การแจ้งเตือน',
+                    'title_en' => 'Notifications',
+                    'module' => 'notification',
+                    'route_name' => 'admin-notifications',
+                    'route_path' => '/admin/notifications',
+                    'permissions' => ['system.setting.manage'],
+                ],
+                [
+                    'code' => 'settings.document_center',
+                    'title_th' => 'ศูนย์จัดการเอกสารและรายงาน',
+                    'title_en' => 'Document & Report Center',
+                    'route_name' => 'document-center',
+                    'route_path' => '/admin/document-center',
+                    'permissions' => [
+                        'document.template.view', 'document.template.manage', 'system.setting.manage',
+                    ],
+                ],
+                [
+                    'code' => 'settings.modules',
+                    'title_th' => 'โมดูลระบบ',
+                    'title_en' => 'System Modules',
+                    'route_name' => 'admin-modules',
+                    'route_path' => '/admin/modules',
+                    'permissions' => ['system.setting.manage'],
+                ],
+            ],
+        ],
+    ];
+
     public function run(): void
     {
-        // Define root menus
-        $menus = [
-            [
-                'code' => 'dashboard',
-                'title_th' => 'แผงควบคุม (Dashboard)',
-                'title_en' => 'Dashboard',
-                'module' => 'system',
-                'icon' => 'LayoutDashboard',
-                'route_name' => 'Dashboard',
-                'route_path' => '/dashboard',
-                'component_path' => 'views/Dashboard.vue',
-                'sort_order' => 1,
-                'permissions' => [],
-            ],
-            [
-                'code' => 'leave',
-                'title_th' => 'ระบบการลา',
-                'title_en' => 'Leave System',
-                'module' => 'leave',
-                'icon' => 'Calendar',
-                'route_name' => null,
-                'route_path' => null,
-                'sort_order' => 2,
-                'children' => [
-                    [
-                        'code' => 'leave.my',
-                        'title_th' => 'ยื่นใบลา / ประวัติการลา',
-                        'title_en' => 'My Leaves',
-                        'module' => 'leave',
-                        'icon' => 'FileText',
-                        'route_name' => 'LeaveHistory',
-                        'route_path' => '/leaves',
-                        'sort_order' => 1,
-                        'permissions' => [],
-                    ],
-                    [
-                        'code' => 'leave.approval',
-                        'title_th' => 'อนุมัติการลา',
-                        'title_en' => 'Approve Leaves',
-                        'module' => 'leave',
-                        'icon' => 'CheckSquare',
-                        'route_name' => 'LeaveApprovals',
-                        'route_path' => '/approvals',
-                        'sort_order' => 2,
-                        'permissions' => ['approve_leaves'],
-                    ],
-                    [
-                        'code' => 'leave.calendar',
-                        'title_th' => 'ปฏิทินการลาทีม',
-                        'title_en' => 'Team Calendar',
-                        'module' => 'leave',
-                        'icon' => 'CalendarDays',
-                        'route_name' => 'TeamCalendar',
-                        'route_path' => '/calendar',
-                        'sort_order' => 3,
-                        'permissions' => [],
-                    ],
-                ],
-            ],
-            [
-                'code' => 'attendance',
-                'title_th' => 'ระบบลงเวลาเข้า-ออก',
-                'title_en' => 'Attendance System',
-                'module' => 'attendance',
-                'icon' => 'Clock',
-                'route_name' => null,
-                'route_path' => null,
-                'sort_order' => 3,
-                'children' => [
-                    [
-                        'code' => 'attendance.my',
-                        'title_th' => 'บันทึกเวลาของฉัน',
-                        'title_en' => 'My Attendance',
-                        'module' => 'attendance',
-                        'icon' => 'UserCheck',
-                        'route_name' => 'MyAttendance',
-                        'route_path' => '/attendance/me',
-                        'sort_order' => 1,
-                        'permissions' => [],
-                    ],
-                    [
-                        'code' => 'attendance.all',
-                        'title_th' => 'ตรวจสอบเวลาทั้งหมด',
-                        'title_en' => 'All Attendance Records',
-                        'module' => 'attendance',
-                        'icon' => 'Users',
-                        'route_name' => 'AllAttendance',
-                        'route_path' => '/admin/attendances',
-                        'sort_order' => 2,
-                        'permissions' => ['view_all_attendances'],
-                    ],
-                ],
-            ],
-            [
-                'code' => 'admin',
-                'title_th' => 'จัดการระบบ (Admin)',
-                'title_en' => 'System Administration',
-                'module' => 'system',
-                'icon' => 'Settings',
-                'route_name' => null,
-                'route_path' => null,
-                'sort_order' => 5,
-                'children' => [
-                    [
-                        'code' => 'admin.users',
-                        'title_th' => 'จัดการผู้ใช้งาน',
-                        'title_en' => 'User Management',
-                        'module' => 'system',
-                        'icon' => 'Users',
-                        'route_name' => 'AdminUsers',
-                        'route_path' => '/admin/users',
-                        'sort_order' => 1,
-                        'permissions' => ['view_users'],
-                    ],
-                    [
-                        'code' => 'admin.menus',
-                        'title_th' => 'จัดการเมนูตามสิทธิ์',
-                        'title_en' => 'Dynamic Menu Management',
-                        'module' => 'system',
-                        'icon' => 'Menu',
-                        'route_name' => 'AdminMenus',
-                        'route_path' => '/admin/menus',
-                        'sort_order' => 2,
-                        'permissions' => ['edit_users'],
-                    ],
-                ],
-            ],
-        ];
+        $keptCodes = [];
 
-        foreach ($menus as $item) {
-            $children = $item['children'] ?? [];
-            $rootPermissions = $item['permissions'] ?? [];
-            unset($item['children'], $item['permissions']);
+        foreach (self::TREE as $order => $item) {
+            $menu = $this->upsert($item, $order + 1, null);
+            $keptCodes[] = $menu->code;
 
-            $menu = Menu::updateOrCreate(
-                ['code' => $item['code']],
-                $item
-            );
-
-            if (! empty($rootPermissions)) {
-                $permIds = Permission::whereIn('name', $rootPermissions)->pluck('id');
-                $menu->permissions()->sync($permIds);
-            }
-
-            foreach ($children as $childItem) {
-                $childPermissions = $childItem['permissions'] ?? [];
-                unset($childItem['permissions']);
-
-                $childItem['parent_id'] = $menu->id;
-                $childMenu = Menu::updateOrCreate(
-                    ['code' => $childItem['code']],
-                    $childItem
-                );
-
-                if (! empty($childPermissions)) {
-                    $permIds = Permission::whereIn('name', $childPermissions)->pluck('id');
-                    $childMenu->permissions()->sync($permIds);
-                }
+            foreach ($item['children'] ?? [] as $childOrder => $child) {
+                // กิ่งลูกสืบทอดโมดูลจากกิ่งแม่ เว้นแต่ระบุเอง (เช่น OT อยู่ใต้กลุ่มลงเวลา)
+                $child['module'] ??= $item['module'];
+                $keptCodes[] = $this->upsert($child, $childOrder + 1, $menu->id)->code;
             }
         }
+
+        /*
+         * เมนูที่ไม่อยู่ใน TREE ชี้ไปยังหน้าที่ไม่มีอยู่จริง — เหลือไว้ก็มีแต่จะพาไป 404
+         * (ของเดิมที่พบตอนสำรวจ: `leave.my` เดิมชี้ /leaves ผ่านชื่อ route ที่ไม่มี,
+         * `admin.personnel_types` → /admin/personnel-types, `admin.leave_calendar`
+         * → /admin/leave-calendar ซึ่งทั้งคู่ไม่เคยมีใน router)
+         */
+        Menu::query()->whereNotIn('code', $keptCodes)->delete();
+
+        Cache::flush();
+    }
+
+    private function upsert(array $item, int $sortOrder, ?int $parentId): Menu
+    {
+        $permissionNames = $item['permissions'] ?? [];
+
+        $menu = Menu::updateOrCreate(['code' => $item['code']], [
+            'title_th' => $item['title_th'],
+            'title_en' => $item['title_en'],
+            'module' => $item['module'],
+            'icon' => $item['icon'] ?? null,
+            'route_name' => $item['route_name'] ?? null,
+            'route_path' => $item['route_path'] ?? null,
+            'component_path' => null,
+            'parent_id' => $parentId,
+            'sort_order' => $sortOrder,
+            'is_external' => false,
+        ]);
+
+        /*
+         * สิทธิ์บางชื่อที่เมนูอ้างถึงยังไม่ถูกสร้างในบางระบบ (`leave.management.manage`,
+         * `system.role.manage` มีนิยามอยู่ใน StandardRolesAndPermissionsSeeder ที่ไม่ได้
+         * ถูกเรียกตอนติดตั้ง) ถ้าไม่สร้างให้ที่นี่ เงื่อนไขของเมนูจะขาดไปเงียบ ๆ
+         * การสร้างชื่อสิทธิ์ไม่ได้แจกสิทธิ์ให้ใคร จึงไม่กระทบขอบเขตของผู้ใช้เดิม
+         */
+        $permissionIds = collect($permissionNames)
+            ->map(fn (string $name) => Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web'])->id)
+            ->all();
+
+        $menu->permissions()->sync($permissionIds);
+
+        return $menu;
     }
 }

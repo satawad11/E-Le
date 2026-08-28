@@ -25,12 +25,20 @@ final readonly class ReportFilter
                 : FiscalYear::current());
 
         $year = (int) ($input['fiscal_year'] ?? $fiscal?->year ?? self::currentFiscalYear());
+
+        /*
+         * CLEANUP-01 — `fiscal_years.year` เก็บเป็น พ.ศ. (ปีงบประมาณ 2569 = 1 ต.ค. 2568
+         * ถึง 30 ก.ย. 2569) ทางถอยเดิมเอาเลข พ.ศ. ไปประกอบเป็นวันที่ตรง ๆ
+         * (`2568-10-01`) ซึ่ง Carbon อ่านเป็น ค.ศ. 2568 — ช่วงวันที่จึงเพี้ยนไป 543 ปี
+         * ทุกครั้งที่ยังไม่มีข้อมูลปีงบประมาณในระบบ
+         */
+        $endYearCe = $year - 543;
         $from = isset($input['from'])
             ? CarbonImmutable::parse($input['from'])->startOfDay()
-            : CarbonImmutable::parse($fiscal?->start_date ?? ($year - 1).'-10-01')->startOfDay();
+            : CarbonImmutable::parse($fiscal?->start_date ?? ($endYearCe - 1).'-10-01')->startOfDay();
         $to = isset($input['to'])
             ? CarbonImmutable::parse($input['to'])->endOfDay()
-            : CarbonImmutable::parse($fiscal?->end_date ?? "{$year}-09-30")->endOfDay();
+            : CarbonImmutable::parse($fiscal?->end_date ?? "{$endYearCe}-09-30")->endOfDay();
 
         return new self(
             $from,
@@ -54,10 +62,12 @@ final readonly class ReportFilter
         ];
     }
 
+    /** ปีงบประมาณปัจจุบันเป็น พ.ศ. — เรียกชื่อตามปีที่สิ้นสุด (1 ต.ค. ถึง 30 ก.ย.) */
     private static function currentFiscalYear(): int
     {
         $today = CarbonImmutable::today();
+        $endYearCe = $today->month >= 10 ? $today->year + 1 : $today->year;
 
-        return $today->month >= 10 ? $today->year + 1 : $today->year;
+        return $endYearCe + 543;
     }
 }

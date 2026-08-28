@@ -5,8 +5,6 @@ return [
         'institution_name',
         'short_name_th',
         'organization_logo',
-        'enable_leave_menu',
-        'enable_attendance_menu',
     ],
 
     'secret_keys' => [
@@ -61,8 +59,15 @@ return [
         'max_attendance_radius' => ['nullable', 'numeric', 'min:0', 'max:100000'],
         'require_attendance_selfie' => ['nullable', 'in:0,1'],
         'postal_code' => ['nullable', 'digits:5'],
-        'enable_leave_menu' => ['nullable', 'in:0,1'],
-        'enable_attendance_menu' => ['nullable', 'in:0,1'],
+        /*
+         * CLEANUP-02 — การเปิด-ปิดโมดูลใช้คีย์ `module_{code}_enabled` ชุดเดียว
+         * (เดิม `enable_leave_menu` / `enable_attendance_menu` ไม่มีอะไรอ่านอีกแล้ว)
+         */
+        'module_leave_enabled' => ['nullable', 'in:0,1'],
+        'module_attendance_enabled' => ['nullable', 'in:0,1'],
+        'module_overtime_enabled' => ['nullable', 'in:0,1'],
+        'module_notification_enabled' => ['nullable', 'in:0,1'],
+        'module_reporting_enabled' => ['nullable', 'in:0,1'],
         'cancel_allowed_days' => ['nullable', 'integer', 'min:0', 'max:365'],
         'leave_evidence_retention_days' => ['nullable', 'integer', 'min:1', 'max:36500'],
         'telegram_bot_token' => ['nullable', 'string', 'max:4096'],

@@ -2,7 +2,6 @@
 
 namespace App\Services\NotificationCenter;
 
-use App\Contracts\NotificationCenter\NotificationChannelAdapter;
 use App\Jobs\DeliverNotification;
 use App\Models\NotificationCenter\NotificationDelivery;
 use App\Services\Modules\ModuleRegistry;
@@ -11,9 +10,8 @@ use Throwable;
 
 class NotificationDeliveryService
 {
-    /** @param array<string, NotificationChannelAdapter> $adapters */
     public function __construct(
-        private array $adapters,
+        private ChannelAdapterRegistry $adapters,
         private TemplateRenderer $renderer,
         private ModuleRegistry $modules,
     ) {}
@@ -32,7 +30,7 @@ class NotificationDeliveryService
             return;
         }
 
-        $adapter = $this->adapters[$delivery->channel] ?? null;
+        $adapter = $this->adapters->for($delivery->channel);
         if (! $adapter || ! $delivery->template) {
             $delivery->update(['status' => 'skipped', 'last_error' => 'Channel adapter or active template is unavailable.']);
             $this->refreshEventStatus($delivery);

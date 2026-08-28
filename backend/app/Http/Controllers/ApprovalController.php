@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\ApprovalStep;
 use App\Models\Leave;
+use App\Models\LeaveApproval;
 use App\Models\User;
-use App\Services\Workflow\ApproverResolverService;
+use App\Services\Workflow\LeaveApprovalCoordinator;
 use Illuminate\Http\Request;
 
 /**
@@ -22,7 +23,7 @@ use Illuminate\Http\Request;
  */
 class ApprovalController extends Controller
 {
-    public function __construct(private readonly ApproverResolverService $resolver) {}
+    public function __construct(private readonly LeaveApprovalCoordinator $coordinator) {}
 
     public function pending(Request $request)
     {
@@ -100,6 +101,18 @@ class ApprovalController extends Controller
             return false;
         }
 
+        /*
+         * CLEANUP-01 / CLEANUP-02 (D4) — ถามผู้ตัดสินคนเดียวกับตอนกดอนุมัติจริง
+         *
+         * เดิมหน้านี้เรียก `ApproverResolverService` เอง ถ้าวันหนึ่ง engine กลายเป็น
+         * ผู้ตัดสิน (`workflow.engine_is_source_of_truth`) รายการนี้จะยังตอบด้วยกติกาเดิม
+         * ผู้ใช้จึงเห็นใบลาที่กดแล้วถูกปฏิเสธ หรือไม่เห็นใบที่ตนอนุมัติได้จริง
+         *
+         * ใบเก่าที่ยังไม่มี snapshot ส่งขั้นที่หามาได้เข้าไปตรง ๆ เพราะ engine
+         * สร้าง instance จากแถวสรุปไม่ได้เมื่อยังไม่มีแถวนั้น
+         */
+        $stage = $isCancellation ? LeaveApproval::STAGE_CANCELLATION : LeaveApproval::STAGE_REQUEST;
+
         $cacheKey = implode('|', [
             $user->id,
             $step->approver_type ?? ApprovalStep::RESOLVER_ROLE,
@@ -107,8 +120,14 @@ class ApprovalController extends Controller
             $step->specific_user_id ?? '-',
             $step->permission_name ?? '-',
             $leave->user_id,
+            $stage,
         ]);
 
-        return $cache[$cacheKey] ??= $this->resolver->isAuthorizedApprover($user, $leave->user, $step);
+        return $cache[$cacheKey] ??= $this->coordinator->canAct(
+            $leave,
+            $user,
+            $snapshot === null ? $step : null,
+            $stage,
+        );
     }
 }

@@ -17,4 +17,10 @@ class AuditLog extends Model
         static::updating(fn () => throw new \LogicException('Audit logs are append-only.'));
         static::deleting(fn () => throw new \LogicException('Audit logs are append-only.'));
     }
+
+    /** ผู้กระทำ — ใช้แสดงชื่อในหน้าประวัติการดำเนินการ */
+    public function actor()
+    {
+        return $this->belongsTo(User::class, 'actor_id');
+    }
 }

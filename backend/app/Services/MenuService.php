@@ -19,7 +19,7 @@ class MenuService
         $cacheKey = "user_menu_tree_{$user->id}_{$this->modules->stateFingerprint()}";
 
         return Cache::remember($cacheKey, 3600, function () use ($user) {
-            $userPermissions = $user->getAllPermissions()->pluck('name')->toArray();
+            // CLEANUP-02 (D5) — ตัดสินด้วย Gate เพื่อให้รู้จักชื่อที่เทียบเท่าและ explicit deny
 
             /*
              * LEGACY-04 (ปิดงาน) — เดิมบรรทัดนี้เช็ค role ชื่อ `admin`, `super_admin`,
@@ -39,7 +39,7 @@ class MenuService
 
             $result = [];
             foreach ($rootMenus as $menu) {
-                $formatted = $this->formatMenuItem($menu, $userPermissions, $isAdmin);
+                $formatted = $this->formatMenuItem($menu, $user, $isAdmin);
                 if ($formatted) {
                     $result[] = $formatted;
                 }
@@ -52,21 +52,21 @@ class MenuService
     /**
      * Format menu item and filter authorized children.
      */
-    protected function formatMenuItem(Menu $menu, array $userPermissions, bool $isAdmin): ?array
+    protected function formatMenuItem(Menu $menu, User $user, bool $isAdmin): ?array
     {
         if (! $menu->is_active || ! $this->modules->has($menu->module) || ! $this->modules->isEnabled($menu->module)) {
             return null;
         }
 
         // Check if user is authorized for this menu item
-        if (! $this->isAuthorized($menu, $userPermissions, $isAdmin)) {
+        if (! $this->isAuthorized($menu, $user, $isAdmin)) {
             return null;
         }
 
         $children = [];
         if ($menu->children && $menu->children->count() > 0) {
             foreach ($menu->children as $child) {
-                $formattedChild = $this->formatMenuItem($child, $userPermissions, $isAdmin);
+                $formattedChild = $this->formatMenuItem($child, $user, $isAdmin);
                 if ($formattedChild) {
                     $children[] = $formattedChild;
                 }
@@ -97,7 +97,7 @@ class MenuService
     /**
      * Determine if user has permission for a menu item.
      */
-    protected function isAuthorized(Menu $menu, array $userPermissions, bool $isAdmin): bool
+    protected function isAuthorized(Menu $menu, User $user, bool $isAdmin): bool
     {
         if ($isAdmin) {
             return true;
@@ -111,7 +111,7 @@ class MenuService
         }
 
         // User must have at least one of the required permissions
-        return count(array_intersect($requiredPermissions, $userPermissions)) > 0;
+        return collect($requiredPermissions)->contains(fn (string $name) => $user->can($name));
     }
 
     /**

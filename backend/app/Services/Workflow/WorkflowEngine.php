@@ -46,11 +46,21 @@ class WorkflowEngine
      * instance ของเรื่องนี้ (ถ้ามี) — เรื่องหนึ่งมีได้หลาย instance ต่างเวอร์ชัน
      * จึงเอาตัวที่ยังรันอยู่ก่อน ไม่มีค่อยเอาตัวล่าสุด
      */
-    public function instanceFor(Model $subject): ?WorkflowInstance
+    public function instanceFor(Model $subject, ?string $definitionCode = null): ?WorkflowInstance
     {
         return WorkflowInstance::query()
             ->where('subject_type', $subject->getMorphClass())
             ->where('subject_id', $subject->getKey())
+            /*
+             * CLEANUP-02 (D4) — เรื่องหนึ่งมีได้หลายสาย
+             *
+             * ใบลาหนึ่งใบมีทั้งสาย "ขอลา" และสาย "ขอยกเลิก" ถ้าไม่ระบุ definition
+             * จะหยิบสายผิดได้ทันทีที่มีคำขอยกเลิกเกิดขึ้น
+             */
+            ->when($definitionCode !== null, fn ($query) => $query->whereHas(
+                'version.definition',
+                fn ($definition) => $definition->where('code', $definitionCode),
+            ))
             ->orderByRaw("CASE WHEN status = '".WorkflowInstance::STATUS_RUNNING."' THEN 0 ELSE 1 END")
             ->orderByDesc('id')
             ->first();

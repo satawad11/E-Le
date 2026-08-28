@@ -12,10 +12,14 @@ use App\Models\DocumentTemplate;
 use App\Models\DocumentTemplateVersion;
 use App\Models\LeaveType;
 use App\Services\AuditLogger;
+use App\Services\DefaultDocumentTemplateService;
 use App\Services\DocumentEngine\DataProviderRegistry;
 use App\Services\DocumentEngine\DocumentEngine;
+use App\Services\LeaveDocumentFields;
 use App\Support\UploadRules;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;
@@ -121,6 +125,118 @@ class DocumentEngineController extends Controller
             'versions' => $template->versions()->orderByDesc('version')->get(),
             'binding_rules' => $template->bindingRules()->orderBy('priority')->get(),
         ]);
+    }
+
+    /*
+     * ─────────────── แม่แบบชนิด HTML (CLEANUP-01 · D2) ───────────────
+     *
+     * เดิมแม่แบบชนิด HTML ถูกจัดการผ่าน `Admin\DocumentTemplateController`
+     * ที่หน้า `/admin/document-templates` ซึ่งเป็นเมนูแยกอีกอันหนึ่ง ทั้งที่อ่านเขียน
+     * ตาราง `document_templates` ชุดเดียวกับศูนย์จัดการเอกสาร ผู้ดูแลจึงต้องเดา
+     * ว่าจะแก้แม่แบบที่หน้าไหน และเปลี่ยนที่หนึ่งแล้วอีกหน้าแสดงคนละอย่าง
+     *
+     * ย้ายมารวมไว้ที่นี่ทั้งหมด เหลือทางเข้าเดียวคือศูนย์จัดการเอกสาร
+     */
+
+    /** แก้เนื้อหาแม่แบบชนิด HTML — model hook จะออกเวอร์ชันใหม่ให้เองเมื่อเนื้อหาเปลี่ยน */
+    public function updateTemplateContent(Request $request, DocumentTemplate $template)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'paper_size' => 'nullable|string|max:20',
+            'orientation' => 'nullable|string|in:portrait,landscape',
+            'margin_top' => 'nullable|numeric|min:0|max:100',
+            'margin_bottom' => 'nullable|numeric|min:0|max:100',
+            'margin_left' => 'nullable|numeric|min:0|max:100',
+            'margin_right' => 'nullable|numeric|min:0|max:100',
+            'content_html' => 'required|string',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $before = $template->toArray();
+        $template->update($data);
+
+        $this->audit->log('document_template_content_updated', 'DocumentTemplate', $template->id, before: $before, after: $template->fresh()->toArray());
+
+        return response()->json([
+            'message' => 'บันทึกเนื้อหาแม่แบบเรียบร้อยแล้ว',
+            'template' => $template->fresh('currentVersion'),
+        ]);
+    }
+
+    /** รายการตัวแปรที่ใช้ในแม่แบบชนิด HTML — คนละชุดกับ Field Dictionary ของแบบ PDF overlay */
+    public function contentFields()
+    {
+        return response()->json(LeaveDocumentFields::catalog());
+    }
+
+    /** พรีวิวด้วยข้อมูลตัวอย่าง — ไม่แตะข้อมูลจริงและไม่ต้องมีใบลา */
+    public function previewContent(Request $request, LeaveDocumentFields $fields)
+    {
+        $data = $request->validate([
+            'content_html' => 'required|string',
+            'paper_size' => 'nullable|string|max:20',
+            'orientation' => 'nullable|string|max:20',
+        ]);
+
+        try {
+            $html = Blade::render($data['content_html'], array_merge($fields->sample(), [
+                'approverBlocks' => $this->sampleApproverBlocks(),
+            ]));
+        } catch (\Throwable $exception) {
+            return response()->json(['message' => 'แม่แบบมีข้อผิดพลาด: '.$exception->getMessage()], 422);
+        }
+
+        return Pdf::loadHTML($html)
+            ->setPaper(strtolower($data['paper_size'] ?? 'a4'), strtolower($data['orientation'] ?? 'portrait'))
+            ->stream('preview.pdf');
+    }
+
+    /** สร้าง/คืนค่าแม่แบบตั้งต้นของแบบฟอร์มราชการ */
+    public function seedDefaultTemplates(Request $request, DefaultDocumentTemplateService $templates)
+    {
+        $overwrite = $request->boolean('overwrite');
+        $templates->sync($overwrite);
+
+        $this->audit->log('document_templates_seeded', 'DocumentTemplate', null, after: ['overwrite' => $overwrite]);
+
+        return response()->json([
+            'message' => $overwrite
+                ? 'คืนค่าแบบฟอร์มตั้งต้นเรียบร้อยแล้ว (เวอร์ชันเดิมยังถูกเก็บไว้ เอกสารเก่าพิมพ์ซ้ำได้เหมือนเดิม)'
+                : 'ซิงค์แม่แบบเอกสารตั้งต้นเรียบร้อยแล้ว',
+        ]);
+    }
+
+    public function deleteTemplate(DocumentTemplate $template)
+    {
+        $before = $template->toArray();
+        $template->delete();
+
+        $this->audit->log('document_template_deleted', 'DocumentTemplate', $before['id'], before: $before);
+
+        return response()->json(['message' => 'ลบแม่แบบเอกสารเรียบร้อยแล้ว']);
+    }
+
+    /**
+     * บล็อกผู้ลงนามตัวอย่างสำหรับพรีวิว
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function sampleApproverBlocks(): array
+    {
+        return collect(['HR Head' => 'หัวหน้างานบุคลากร', 'Deputy Director' => 'รองผู้อำนวยการ', 'Director' => 'ผู้อำนวยการ'])
+            ->map(fn (string $position, string $role) => [
+                'name' => 'ตัวอย่าง ผู้ลงนาม',
+                'date' => now(),
+                'signature' => null,
+                'comment' => 'เห็นควรอนุญาต',
+                'status' => 'Approved',
+                'position' => $position,
+                'role_name' => $role,
+            ])
+            ->values()
+            ->all();
     }
 
     // ──────────────────────────── เวอร์ชันของแม่แบบ ────────────────────────────

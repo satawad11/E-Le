@@ -92,7 +92,15 @@ class NotificationController extends Controller
 
         return response()->json([
             'channels' => NotificationCenter::CHANNELS,
-            'types' => NotificationType::query()->where('is_active', true)->get(['id', 'code', 'name', 'is_mandatory']),
+            /*
+             * CLEANUP-02 — ต้องส่ง `default_channels` มาด้วย
+             *
+             * ผู้ใช้ที่ยังไม่เคยตั้งค่าจะไม่มีแถว preference เลย หน้าจอจึงต้องรู้ว่า
+             * ค่าเริ่มต้นของเหตุการณ์นั้นเปิดช่องทางใดไว้ ไม่งั้นจะแสดงว่าปิดทั้งหมด
+             * ทั้งที่ระบบส่งให้อยู่จริง
+             */
+            'types' => NotificationType::query()->where('is_active', true)
+                ->get(['id', 'code', 'name', 'is_mandatory', 'default_channels']),
             'preferences' => $preferences,
         ]);
     }

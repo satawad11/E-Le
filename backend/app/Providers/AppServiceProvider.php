@@ -11,6 +11,7 @@ use App\Observers\PersonnelObserver;
 use App\Observers\UserObserver;
 use App\Observers\UserProfileObserver;
 use App\Services\AuditLogger;
+use App\Services\Modules\ModuleStateResolver;
 use App\Services\PermissionEvaluator;
 use App\Services\SystemSettingService;
 use App\Support\ProductionEnvironmentGuard;
@@ -103,6 +104,10 @@ class AppServiceProvider extends ServiceProvider
         try {
             if (Schema::hasTable('settings')) {
                 $settings = app(SystemSettingService::class)->runtimeValues();
+
+                // CLEANUP-02 — สถานะโมดูลที่ผู้ดูแลตั้งไว้เป็นตัวกำหนดจริง (ดู ModuleStateResolver)
+                app(ModuleStateResolver::class)->applyToConfig();
+
                 if ($settings->get('mail_host')) {
                     config([
                         'mail.default' => 'smtp',
