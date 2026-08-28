@@ -222,6 +222,16 @@ class LeaveService
         return [$paid, $days - $paid];
     }
 
+    /**
+     * ตัดวันลาจริงตอนอนุมัติขั้นสุดท้าย — คืน false เมื่อโควตาไม่พอ ผู้เรียกต้องยกเลิกทั้งรายการ
+     *
+     * ประเภทการลาที่ระเบียบ **ไม่จำกัดจำนวนวัน** (`annual_quota` เป็น null) ต้องข้ามการตรวจโควตา
+     * เหมือนตอนยื่น มิฉะนั้นจะคิด available = 0 แล้วปฏิเสธทุกใบ — ลาเข้ารับการตรวจเลือก
+     * ลาไปศึกษาต่อ ลาไปปฏิบัติงานในองค์การระหว่างประเทศ ลาติดตามคู่สมรส และลาไปฟื้นฟูสมรรถภาพ
+     * จึงอนุมัติไม่ผ่านเลยสักใบ ค้างสถานะรออนุมัติตลอดไป
+     *
+     * ยังบันทึก `used` ให้ตามปกติ เพราะรายงานและทะเบียนคุมการลาต้องรู้ว่าใช้ไปกี่วัน
+     */
     public function deductBalance(Leave $leave): bool
     {
         return DB::transaction(function () use ($leave) {
@@ -230,8 +240,9 @@ class LeaveService
                 return false;
             }
             $reserved = min((float) $balance->reserved, (float) $leave->reserved_days);
+            $unlimited = $this->isUnlimited($leave, $balance);
             $available = (float) $balance->quota + (float) $balance->carried_forward - (float) $balance->used - ((float) $balance->reserved - $reserved);
-            if ($available < $leave->total_days) {
+            if (! $unlimited && $available < $leave->total_days) {
                 return false;
             }
             $balance->reserved -= $reserved;
@@ -264,11 +275,17 @@ class LeaveService
         });
     }
 
-    public function hasEnoughBalance(Leave $leave): bool
+    /**
+     * ประเภทการลานี้ไม่จำกัดจำนวนวันตามระเบียบหรือไม่
+     *
+     * ถามนโยบายของใบลาก่อน ถ้าใบลาไม่ได้ผูกนโยบายไว้จึงถามนโยบายที่ผูกกับแถวโควตา
+     * — แถวเก่าที่ย้ายข้อมูลมาบางแถวไม่มีทั้งคู่ กรณีนั้นถือว่าจำกัดตามตัวเลขในแถวเหมือนเดิม
+     */
+    private function isUnlimited(Leave $leave, LeaveBalance $balance): bool
     {
-        $balance = $this->balanceFor($leave, false);
+        $policy = $leave->policy ?? $balance->policy;
 
-        return $balance && ((float) $balance->quota + (float) $balance->carried_forward - (float) $balance->used - (float) $balance->reserved + (float) $leave->reserved_days) >= $leave->total_days;
+        return $policy !== null && $policy->annual_quota === null;
     }
 
     private function balanceFor(Leave $leave, bool $lock): ?LeaveBalance

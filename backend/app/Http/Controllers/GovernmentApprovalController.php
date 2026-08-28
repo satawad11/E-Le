@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveAuditLog;
+use App\Services\Attendance\LeaveAttendanceSync;
 use App\Services\LeaveService;
 use App\Services\NotificationCenter\NotificationCenter;
 use App\Services\Workflow\LeaveApprovalCoordinator;
@@ -19,6 +20,7 @@ class GovernmentApprovalController extends Controller
         private LeaveApprovalCoordinator $coordinator,
         private LeaveWorkflowShadow $shadow,
         private NotificationCenter $notifications,
+        private LeaveAttendanceSync $attendanceSync,
     ) {}
 
     /**
@@ -106,6 +108,13 @@ class GovernmentApprovalController extends Controller
             } else {
                 abort_unless($this->service->deductBalance($locked), 422, 'วันลาคงเหลือไม่เพียงพอ');
                 $locked->update(['status' => 'Approved']);
+                /*
+                 * ลงวันลาในตารางลงเวลาทันทีที่อนุมัติครบสาย
+                 *
+                 * เดิมต้องรอให้ผู้ดูแลกดปุ่ม "ซิงค์ข้อมูลการลา" เอง ถ้าไม่มีใครกด
+                 * ใบลงเวลารายเดือนจะแสดงว่าคนที่ลาถูกต้องแล้ว "ขาดงาน"
+                 */
+                $this->attendanceSync->apply($locked->load(['type', 'user', 'policy']));
             }
 
             LeaveAuditLog::create([
@@ -142,6 +151,7 @@ class GovernmentApprovalController extends Controller
 
             $this->recordStep($decision['step'], $r, 'Rejected', $data['comment'], $decision['delegated_from']);
             $this->service->restoreBalance($locked);
+            $this->attendanceSync->clear($locked->load('type'));
             $locked->update(['status' => 'Rejected']);
 
             LeaveAuditLog::create([

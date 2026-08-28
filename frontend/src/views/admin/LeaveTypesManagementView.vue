@@ -190,6 +190,19 @@
               </label>
             </div>
 
+            <!--
+              ช่องในใบลงเวลารายเดือน — เดิมระบบเดาจากคำในชื่อประเภทการลา
+              ทำให้ลาพักผ่อนถูกนับเป็นลากิจ และลาไปช่วยเหลือภริยาที่คลอดบุตรถูกนับเป็นลาคลอด
+            -->
+            <div class="border-t border-gray-100 pt-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">ช่องในใบลงเวลารายเดือน</label>
+              <select v-model="form.attendance_bucket"
+                class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#800000]/30 focus:border-[#800000]">
+                <option v-for="bucket in attendanceBuckets" :key="bucket.value" :value="bucket.value">{{ bucket.label }}</option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">กำหนดว่าวันลาประเภทนี้จะไปนับรวมในช่องใดของใบลงเวลารายเดือน</p>
+            </div>
+
             <div class="border-t border-gray-100 pt-3">
               <div class="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
                 <p class="text-sm font-semibold text-gray-700 mb-1">เงื่อนไขการลาอื่น ๆ</p>
@@ -273,14 +286,25 @@ const form = ref({
   max_carry_forward: null,
   is_prorated: false,
   counts_toward_promotion: true,
+  attendance_bucket: 'other',
   document_template_code: '',
   extra_fields: [],
 })
 
+// ช่องในใบลงเวลารายเดือน — ต้องตรงกับ LeaveDayClassifier::BUCKETS ฝั่ง backend
+const attendanceBuckets = [
+  { value: 'sick', label: 'ลาป่วย' },
+  { value: 'personal', label: 'ลากิจ' },
+  { value: 'maternity', label: 'ลาคลอดบุตร' },
+  { value: 'vacation', label: 'ลาพักผ่อน' },
+  { value: 'official', label: 'ราชการ' },
+  { value: 'other', label: 'อื่น ๆ' },
+]
+
 const leaveTemplates = ref([])
 
 const resetForm = () => {
-  form.value = { name: '', code_prefix: '', max_days: 30, description: '', requires_doc: false, is_carry_forward: false, max_carry_forward: null, is_prorated: false, counts_toward_promotion: true, document_template_code: '', extra_fields: [] }
+  form.value = { name: '', code_prefix: '', max_days: 30, description: '', requires_doc: false, is_carry_forward: false, max_carry_forward: null, is_prorated: false, counts_toward_promotion: true, attendance_bucket: 'other', document_template_code: '', extra_fields: [] }
   formError.value = ''
 }
 
@@ -322,6 +346,7 @@ const openEdit = (lt) => {
     max_carry_forward: lt.max_carry_forward ?? null,
     is_prorated: !!lt.is_prorated,
     counts_toward_promotion: lt.counts_toward_promotion ?? true,
+    attendance_bucket: lt.attendance_bucket || 'other',
     document_template_code: lt.document_template_code || '',
     extra_fields: (lt.extra_fields || []).map(field => ({
       ...field,

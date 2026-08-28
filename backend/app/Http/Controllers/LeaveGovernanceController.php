@@ -5,19 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\Leave;
 use App\Models\LeaveAuditLog;
+use App\Services\Attendance\LeaveAttendanceSync;
 use App\Services\LeaveService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class LeaveGovernanceController extends Controller
 {
-    public function void(Request $r, Leave $leave, LeaveService $service)
+    public function void(Request $r, Leave $leave, LeaveService $service, LeaveAttendanceSync $attendanceSync)
     {
         abort_unless($r->user()->can('leave.management.manage'), 403);
         $data = $r->validate(['reason' => 'required|string|max:1000']);
-        DB::transaction(function () use ($r, $leave, $service, $data) {
+        DB::transaction(function () use ($r, $leave, $service, $data, $attendanceSync) {
             $before = $leave->toArray();
             $service->restoreBalance($leave);
+            $attendanceSync->clear($leave->load('type'));
             $leave->update(['status' => 'Voided', 'voided_by' => $r->user()->id, 'voided_at' => now(), 'void_reason' => $data['reason']]);
             $leave->delete();
             LeaveAuditLog::create(['leave_id' => $leave->id, 'user_id' => $r->user()->id, 'action' => 'voided', 'before' => $before, 'after' => $leave->toArray(), 'ip_address' => $r->ip(), 'user_agent' => $r->userAgent()]);

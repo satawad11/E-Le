@@ -87,6 +87,7 @@
               <th class="py-4 px-4 font-semibold text-center text-blue-600 bg-blue-50">ลากิจ</th>
               <th class="py-4 px-4 font-semibold text-center text-blue-600 bg-blue-50">ป่วย</th>
               <th class="py-4 px-4 font-semibold text-center text-blue-600 bg-blue-50">ลาคลอด</th>
+              <th class="py-4 px-4 font-semibold text-center text-blue-600 bg-blue-50">พักผ่อน</th>
               <th class="py-4 px-4 font-semibold text-center text-blue-600 bg-blue-50">ราชการ</th>
             </tr>
           </thead>
@@ -101,18 +102,19 @@
               <th class="py-4 px-4 font-semibold text-center text-blue-600 bg-blue-50">ลากิจ</th>
               <th class="py-4 px-4 font-semibold text-center text-blue-600 bg-blue-50">ป่วย</th>
               <th class="py-4 px-4 font-semibold text-center text-blue-600 bg-blue-50">ลาคลอด</th>
+              <th class="py-4 px-4 font-semibold text-center text-blue-600 bg-blue-50">พักผ่อน</th>
               <th class="py-4 px-4 font-semibold text-center text-blue-600 bg-blue-50">ราชการ</th>
             </tr>
           </thead>
           <tbody v-if="isYearlyMode" class="text-sm divide-y divide-gray-100">
             <tr v-if="loading">
-              <td colspan="37" class="py-8 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
+              <td colspan="38" class="py-8 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
             </tr>
             <tr v-else-if="errorMessage">
-              <td colspan="37" class="py-8 text-center text-red-500 font-medium">{{ errorMessage }}</td>
+              <td colspan="38" class="py-8 text-center text-red-500 font-medium">{{ errorMessage }}</td>
             </tr>
             <tr v-else-if="records.length === 0">
-              <td colspan="37" class="py-8 text-center text-gray-500">ไม่พบข้อมูล</td>
+              <td colspan="38" class="py-8 text-center text-gray-500">ไม่พบข้อมูล</td>
             </tr>
             <tr v-else v-for="record in records" :key="record.month_no" class="hover:bg-gray-50 transition-colors">
               <td class="py-3 px-4 whitespace-nowrap border-r border-gray-100">{{ record.month_name }}</td>
@@ -124,15 +126,16 @@
               <td class="py-3 px-4 text-center font-bold text-blue-600 bg-blue-50">{{ record.total_personal || '-' }}</td>
               <td class="py-3 px-4 text-center font-bold text-blue-600 bg-blue-50">{{ record.total_sick || '-' }}</td>
               <td class="py-3 px-4 text-center font-bold text-blue-600 bg-blue-50">{{ record.total_maternity || '-' }}</td>
+              <td class="py-3 px-4 text-center font-bold text-blue-600 bg-blue-50">{{ record.total_vacation || '-' }}</td>
               <td class="py-3 px-4 text-center font-bold text-blue-600 bg-blue-50">{{ record.total_official || '-' }}</td>
             </tr>
           </tbody>
           <tbody v-else class="text-sm divide-y divide-gray-100">
             <tr v-if="loading">
-              <td :colspan="daysInMonth + 7" class="py-8 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
+              <td :colspan="daysInMonth + 8" class="py-8 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
             </tr>
             <tr v-else-if="records.length === 0">
-              <td :colspan="daysInMonth + 7" class="py-8 text-center text-gray-500">ไม่พบข้อมูล</td>
+              <td :colspan="daysInMonth + 8" class="py-8 text-center text-gray-500">ไม่พบข้อมูล</td>
             </tr>
             <tr v-else v-for="record in records" :key="record.user_id" class="hover:bg-gray-50 transition-colors">
               <td class="py-3 px-4 whitespace-nowrap border-r border-gray-100">{{ record.name }}</td>
@@ -147,6 +150,7 @@
               <td class="py-3 px-4 text-center font-bold text-blue-600 bg-blue-50">{{ record.total_personal || '-' }}</td>
               <td class="py-3 px-4 text-center font-bold text-blue-600 bg-blue-50">{{ record.total_sick || '-' }}</td>
               <td class="py-3 px-4 text-center font-bold text-blue-600 bg-blue-50">{{ record.total_maternity || '-' }}</td>
+              <td class="py-3 px-4 text-center font-bold text-blue-600 bg-blue-50">{{ record.total_vacation || '-' }}</td>
               <td class="py-3 px-4 text-center font-bold text-blue-600 bg-blue-50">{{ record.total_official || '-' }}</td>
             </tr>
           </tbody>

@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Services\Attendance\AttendanceEventRecorder;
 use App\Services\Attendance\AttendanceReconciliationService;
 use App\Services\Attendance\AttendanceScopeService;
+use App\Services\Attendance\LeaveAttendanceSync;
+use App\Services\Attendance\LeaveDayClassifier;
 use App\Services\NotificationCenter\NotificationCenter;
 use App\Services\SystemSettingService;
 use App\Services\ThaiDateService;
@@ -35,6 +37,8 @@ class AttendanceController extends Controller
         private readonly AttendanceReconciliationService $reconciliation,
         private readonly AttendanceScopeService $scope,
         private readonly NotificationCenter $notifications,
+        private readonly LeaveAttendanceSync $leaveAttendance,
+        private readonly LeaveDayClassifier $leaveDays,
     ) {}
 
     /**
@@ -57,7 +61,7 @@ class AttendanceController extends Controller
 
         // Check if already checked in today
         $attendance = Attendance::where('user_id', $user->id)
-            ->where('date', $date)
+            ->whereDate('date', $date)
             ->first();
 
         if ($attendance && $attendance->check_in_time) {
@@ -118,6 +122,30 @@ class AttendanceController extends Controller
         );
         $attendance = $this->reconciliation->reconcile($recorded['event']);
 
+        /*
+         * ลงเวลาในวันที่มีใบลาอนุมัติแล้ว — บันทึกได้ แต่ต้องไม่เงียบ
+         *
+         * ไม่ห้ามเด็ดขาด เพราะผู้ที่กลับมาปฏิบัติงานกลางคันแล้วยื่นยกเลิกลาทีหลังต้องบันทึกได้
+         * ข้อมูลหายเสียหายกว่าข้อมูลที่ขัดกันแล้วมีคนตรวจ · ถ้าหน่วยงานต้องการห้ามขาด
+         * เปลี่ยนบล็อกนี้ให้ตอบ 422 แทนการแจ้งเตือนได้ทันที
+         */
+        $leaveOnThisDay = Leave::where('user_id', $user->id)
+            ->where('status', 'Approved')
+            ->whereDate('start_date', '<=', $date)
+            ->whereDate('end_date', '>=', $date)
+            ->with('type')
+            ->first();
+
+        if ($leaveOnThisDay !== null) {
+            $reviewers = User::permission('attendance.view_all')->get()
+                ->filter(fn (User $reviewer) => $this->scope->canSee($reviewer, $user));
+            $this->notifications->emit('attendance.leave_conflict', $reviewers, $attendance, [
+                'leave_type' => $leaveOnThisDay->type?->name ?? 'ไม่ระบุประเภท',
+                'document_number' => $leaveOnThisDay->document_number,
+                'time' => $time->format('H:i'),
+            ], $user);
+        }
+
         if ($lateMinutes > 0) {
             $reviewers = User::permission('attendance.view_all')->get()
                 ->filter(fn (User $reviewer) => $this->scope->canSee($reviewer, $user));
@@ -151,11 +179,24 @@ class AttendanceController extends Controller
         $settings = app(SystemSettingService::class)->runtimeValues();
 
         $attendance = Attendance::where('user_id', $user->id)
-            ->where('date', $date)
+            ->whereDate('date', $date)
             ->first();
 
         if ($attendance?->check_out_time) {
             return response()->json(['message' => 'คุณได้ลงเวลาออกงานของวันนี้ไปแล้ว'], 400);
+        }
+
+        /*
+         * ต้องลงเวลาเข้าก่อนเสมอ
+         *
+         * เดิมตรวจแค่ว่าลงเวลาออกไปแล้วหรือยัง ถ้ายังไม่มีแถวของวันนั้นเลย ระบบจะสร้างแถวใหม่
+         * ที่มีเวลาออกแต่ไม่มีเวลาเข้า แล้วตั้งสถานะเป็น "ขาดงาน" — เป็นรายการที่อ่านไม่ได้ความ
+         * ในเอกสารลงเวลาราชการ ผู้ที่ลืมลงเวลาเข้าต้องใช้คำขอแก้ไขเวลาปฏิบัติงานแทน
+         */
+        if (! $attendance?->check_in_time) {
+            return response()->json([
+                'message' => 'ยังไม่ได้ลงเวลาเข้างานของวันนี้ หากลืมลงเวลาเข้า กรุณายื่นคำขอแก้ไขเวลาปฏิบัติงาน',
+            ], 422);
         }
 
         // Calculate distance if location is provided
@@ -220,10 +261,11 @@ class AttendanceController extends Controller
     public function today()
     {
         $user = auth()->user();
-        $date = Carbon::now()->toDateString();
+        // ต้องใช้เขตเวลาชุดเดียวกับตอนลงเวลา มิฉะนั้น "วันนี้" ของหน้าจอกับของการลงเวลาไม่ตรงกัน
+        $date = $this->time->now($user)->toDateString();
 
         $attendance = Attendance::where('user_id', $user->id)
-            ->where('date', $date)
+            ->whereDate('date', $date)
             ->first();
 
         $record = OvertimeTimeRecord::where('user_id', $user->id)
@@ -438,6 +480,43 @@ class AttendanceController extends Controller
             ->header('Content-Disposition', 'attachment; filename="attendance_report.doc"');
     }
 
+    /**
+     * วันลาของผู้ใช้คนหนึ่งในเดือนหนึ่ง แยกตามวันที่ พร้อมช่องและน้ำหนักที่จะลงในใบลงเวลา
+     *
+     * นับด้วยเกณฑ์เดียวกับตอนตัดโควตา — ข้ามวันหยุดที่คร่อมช่วงลา (เว้นประเภทที่ระเบียบ
+     * ให้นับต่อเนื่อง) และลาครึ่งวันมีน้ำหนัก 0.5 ยอดรวมท้ายใบลงเวลาจึงตรงกับโควตาที่ถูกตัดไป
+     *
+     * ประเภทการลามาจาก `leave_types.attendance_bucket` ไม่ใช่การค้นคำในชื่อไทย
+     *
+     * @return array<int,array{symbol:string,column:string,weight:float}>
+     */
+    private function leaveDaysByDay(User $user, int|string $year, int|string $month): array
+    {
+        $map = [];
+
+        foreach ($user->leaves as $leave) {
+            $bucket = $this->leaveDays->bucketFor($leave->type);
+            [$symbol, $column] = LeaveDayClassifier::BUCKETS[$bucket];
+
+            $date = Carbon::parse($leave->start_date)->startOfDay();
+            $end = Carbon::parse($leave->end_date)->startOfDay();
+
+            for (; $date->lte($end); $date->addDay()) {
+                if ((int) $date->year !== (int) $year || (int) $date->month !== (int) $month) {
+                    continue;
+                }
+
+                $weight = $this->leaveDays->dayWeight($leave, $this->time->isWorkingDay($date, $user));
+
+                if ($weight > 0) {
+                    $map[$date->day] = ['symbol' => $symbol, 'column' => $column, 'weight' => $weight];
+                }
+            }
+        }
+
+        return $map;
+    }
+
     private function getSummaryData(Request $request)
     {
         $year = $request->year ?? date('Y');
@@ -461,7 +540,7 @@ class AttendanceController extends Controller
                         $sub->where('start_date', '<=', $endOfMonth)
                             ->where('end_date', '>=', $startOfMonth);
                     });
-                })->with('type');
+                })->with(['type', 'policy']);
         }]);
         $this->scope->applyToUserQuery($usersQuery, $request->user());
 
@@ -478,10 +557,7 @@ class AttendanceController extends Controller
         foreach ($users as $user) {
             $attendancesByDay = [];
             $totalScore = 0;
-            $totalSick = 0;
-            $totalPersonal = 0;
-            $totalOfficial = 0;
-            $totalMaternity = 0;
+            $totals = LeaveDayClassifier::emptyTotals();
 
             $attMap = [];
             foreach ($user->attendances as $att) {
@@ -489,57 +565,25 @@ class AttendanceController extends Controller
                 $attMap[$day] = $att;
             }
 
-            $leaveMap = [];
-            foreach ($user->leaves as $leave) {
-                $start = Carbon::parse($leave->start_date)->startOfDay();
-                $end = Carbon::parse($leave->end_date)->endOfDay();
-
-                $current = $start->copy();
-                while ($current <= $end) {
-                    if ($current->year == $year && $current->month == $month) {
-                        $leaveMap[$current->day] = $leave->type->name;
-                    }
-                    $current->addDay();
-                }
-            }
+            $leaveMap = $this->leaveDaysByDay($user, $year, $month);
 
             for ($i = 1; $i <= $daysInMonth; $i++) {
                 $status = null;
-                $isLeave = false;
-                $leaveName = '';
 
-                if (isset($attMap[$i]) && $attMap[$i]->status === 'Leave') {
-                    $isLeave = true;
-                    $leaveName = isset($leaveMap[$i]) ? $leaveMap[$i] : ($attMap[$i]->notes ?? '');
-                } elseif (isset($leaveMap[$i])) {
-                    $isLeave = true;
-                    $leaveName = $leaveMap[$i];
-                }
-
-                if ($isLeave) {
-                    if (str_contains($leaveName, 'ป่วย')) {
-                        $status = 'ป';
-                        $totalSick++;
-                    } elseif (str_contains($leaveName, 'กิจ')) {
-                        $status = 'ก';
-                        $totalPersonal++;
-                    } elseif (str_contains($leaveName, 'คลอด')) {
-                        $status = 'ด';
-                        $totalMaternity++;
-                    } elseif (str_contains($leaveName, 'ราชการ')) {
-                        $status = 'ร';
-                        $totalOfficial++;
-                    } else {
-                        $status = 'ก'; // Default fallback
-                        $totalPersonal++;
-                    }
+                /*
+                 * ใบลาที่อนุมัติแล้วเป็นความจริงหลัก แถวสถานะ `Leave` ในตารางลงเวลาเป็นเพียงเงา
+                 *
+                 * เดิมอ่านแถวเงาก่อน และถ้าไม่พบใบลาก็ถอยไปเดาประเภทจากหมายเหตุ ผลคือใบลา
+                 * ที่ถูกยกเลิกไปแล้วยังถูกนับเป็นวันลาต่อไปจากหมายเหตุที่ค้างอยู่ในตาราง
+                 */
+                if (isset($leaveMap[$i])) {
+                    $status = $leaveMap[$i]['symbol'];
+                    $totals[$leaveMap[$i]['column']] += $leaveMap[$i]['weight'];
                 } elseif (isset($attMap[$i])) {
                     $att = $attMap[$i];
                     if ($att->check_in_time && $att->check_out_time) {
                         $status = 1;
                         $totalScore += 1;
-                    } elseif ($att->check_in_time && ! $att->check_out_time) {
-                        $status = 0;
                     } else {
                         $status = 0;
                     }
@@ -555,11 +599,7 @@ class AttendanceController extends Controller
                 'department' => $user->department->name ?? '',
                 'attendances' => $attendancesByDay,
                 'total_score' => $totalScore,
-                'total_sick' => $totalSick,
-                'total_personal' => $totalPersonal,
-                'total_maternity' => $totalMaternity,
-                'total_official' => $totalOfficial,
-            ];
+            ] + $totals;
         }
 
         return [
@@ -597,7 +637,7 @@ class AttendanceController extends Controller
         // ดึง leaves ทั้งปีครั้งเดียว พร้อม type
         $startOfYear = Carbon::createFromDate($year, 1, 1)->startOfDay();
         $endOfYear = Carbon::createFromDate($year, 12, 31)->endOfDay();
-        $allLeaves = Leave::with('type')
+        $allLeaves = Leave::with(['type', 'policy'])
             ->where('user_id', $userId)
             ->where('status', 'Approved')
             ->where(function ($q) use ($startOfYear, $endOfYear) {
@@ -623,55 +663,20 @@ class AttendanceController extends Controller
                 $attMap[$day] = $att;
             }
 
-            // Leave map สำหรับเดือนนี้
-            $leaveMap = [];
-            foreach ($allLeaves as $leave) {
-                $lStart = Carbon::parse($leave->start_date)->startOfDay();
-                $lEnd = Carbon::parse($leave->end_date)->endOfDay();
-                $current = $lStart->copy();
-                while ($current <= $lEnd) {
-                    if ($current->year == $year && $current->month == $m) {
-                        $leaveMap[$current->day] = $leave->type->name ?? '';
-                    }
-                    $current->addDay();
-                }
-            }
+            // วันลาของเดือนนี้ — เกณฑ์เดียวกับสรุปรายเดือน
+            $user->setRelation('leaves', $allLeaves);
+            $leaveMap = $this->leaveDaysByDay($user, $year, $m);
 
             $attendancesByDay = [];
             $totalScore = 0;
-            $totalSick = 0;
-            $totalPersonal = 0;
-            $totalOfficial = 0;
+            $totals = LeaveDayClassifier::emptyTotals();
 
             for ($i = 1; $i <= $daysInMonth; $i++) {
                 $status = null;
-                $isLeave = false;
-                $leaveName = '';
 
-                if (isset($attMap[$i]) && $attMap[$i]->status === 'Leave') {
-                    $isLeave = true;
-                    $leaveName = isset($leaveMap[$i]) ? $leaveMap[$i] : ($attMap[$i]->notes ?? '');
-                } elseif (isset($leaveMap[$i])) {
-                    $isLeave = true;
-                    $leaveName = $leaveMap[$i];
-                }
-
-                if ($isLeave) {
-                    if (str_contains($leaveName, 'ป่วย')) {
-                        $status = 'ป';
-                        $totalSick++;
-                    } elseif (str_contains($leaveName, 'กิจ')) {
-                        $status = 'ก';
-                        $totalPersonal++;
-                    } elseif (str_contains($leaveName, 'คลอด')) {
-                        $status = 'ด';
-                    } elseif (str_contains($leaveName, 'ราชการ')) {
-                        $status = 'ร';
-                        $totalOfficial++;
-                    } else {
-                        $status = 'ก';
-                        $totalPersonal++;
-                    }
+                if (isset($leaveMap[$i])) {
+                    $status = $leaveMap[$i]['symbol'];
+                    $totals[$leaveMap[$i]['column']] += $leaveMap[$i]['weight'];
                 } elseif (isset($attMap[$i])) {
                     $att = $attMap[$i];
                     if ($att->check_in_time && $att->check_out_time) {
@@ -691,10 +696,7 @@ class AttendanceController extends Controller
                 'days_in_month' => $daysInMonth,
                 'attendances' => $attendancesByDay,
                 'total_score' => $totalScore,
-                'total_sick' => $totalSick,
-                'total_personal' => $totalPersonal,
-                'total_official' => $totalOfficial,
-            ];
+            ] + $totals;
         }
 
         return [
@@ -830,7 +832,14 @@ class AttendanceController extends Controller
         $month = str_pad($request->month, 2, '0', STR_PAD_LEFT);
         $year = $request->year;
 
-        $leaves = Leave::with('type')
+        /*
+         * ปุ่มนี้เป็นตัวช่วยย้อนหลังเท่านั้น — การอนุมัติใบลาลงวันลาให้ทันทีอยู่แล้ว
+         * ยังคงไว้สำหรับข้อมูลเก่าที่อนุมัติก่อนระบบทำให้อัตโนมัติ
+         *
+         * เกณฑ์นับวันมาจาก `LeaveAttendanceSync` ชุดเดียวกับที่ใช้ตอนตัดโควตา
+         * จึงไม่ทำเครื่องหมายวันหยุดที่คร่อมช่วงลา และเคารพลาครึ่งวัน
+         */
+        $leaves = Leave::with(['type', 'user', 'policy'])
             ->where('status', 'Approved')
             ->where(function ($query) use ($month, $year) {
                 $query->whereMonth('start_date', $month)->whereYear('start_date', $year)
@@ -839,35 +848,15 @@ class AttendanceController extends Controller
                     });
             });
         $this->scope->applyToUserOwnedQuery($leaves, $request->user());
-        $leaves = $leaves->get();
 
         $count = 0;
 
-        foreach ($leaves as $leave) {
-            $start = Carbon::parse($leave->start_date);
-            $end = Carbon::parse($leave->end_date);
-
-            for ($date = $start; $date->lte($end); $date->addDay()) {
-                if ($date->month == $request->month && $date->year == $request->year) {
-                    $attendance = Attendance::firstOrCreate(
-                        ['user_id' => $leave->user_id, 'date' => $date->toDateString()],
-                        ['status' => 'Leave', 'notes' => 'ลา: '.$leave->type->name]
-                    );
-
-                    if ($attendance->status !== 'Present' && $attendance->status !== 'Late') {
-                        $attendance->status = 'Leave';
-                        if (! str_contains($attendance->notes ?? '', 'ลา: '.$leave->type->name)) {
-                            $attendance->notes = $attendance->notes ? $attendance->notes.' | ลา: '.$leave->type->name : 'ลา: '.$leave->type->name;
-                        }
-                        $attendance->save();
-                    }
-                    $count++;
-                }
-            }
+        foreach ($leaves->get() as $leave) {
+            $count += $this->leaveAttendance->apply($leave);
         }
 
         return response()->json([
-            'message' => "ซิงค์ข้อมูลการลาสำเร็จ (พบข้อมูลวันลาที่ตรงกับเดือนนี้ $count วัน)",
+            'message' => "ซิงค์ข้อมูลการลาสำเร็จ (บันทึกวันลาลงใบลงเวลา $count วัน)",
             'synced_count' => $count,
         ]);
     }

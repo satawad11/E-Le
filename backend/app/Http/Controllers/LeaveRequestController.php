@@ -9,6 +9,7 @@ use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveType;
 use App\Models\Setting;
+use App\Services\Attendance\LeaveAttendanceSync;
 use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
 use Carbon\Carbon;
@@ -20,6 +21,7 @@ class LeaveRequestController extends Controller
     public function __construct(
         private LeaveService $leaveService,
         private LeaveRequestNotificationService $notifications,
+        private LeaveAttendanceSync $attendanceSync,
     ) {}
 
     public function store(StoreLeaveRequest $request)
@@ -131,6 +133,7 @@ class LeaveRequestController extends Controller
         }
         if (in_array($leave->status, ['Pending', 'Approved'], true)) {
             $this->leaveService->restoreBalance($leave);
+            $this->attendanceSync->clear($leave->load('type'));
         }
         $leave->delete();
 

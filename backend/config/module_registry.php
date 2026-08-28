@@ -62,7 +62,7 @@ return [
         'policies' => [],
         'workflow_definitions' => ['attendance.correction'],
         'settings' => ['attendance'],
-        'notifications' => ['attendance.correction', 'attendance.late', 'attendance.early_leave'],
+        'notifications' => ['attendance.correction', 'attendance.late', 'attendance.early_leave', 'attendance.leave_conflict'],
         'reports' => ['attendance', 'late', 'absence'],
         'audit_events' => ['attendance.created', 'attendance.updated', 'attendance.deleted', 'attendance.correction.approved'],
         'providers' => [AttendanceModuleServiceProvider::class],

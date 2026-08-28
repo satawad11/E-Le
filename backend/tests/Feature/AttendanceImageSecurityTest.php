@@ -71,12 +71,15 @@ class AttendanceImageSecurityTest extends TestCase
         $user = $this->attendanceUser();
         $payload = 'data:image/jpeg;base64,'.base64_encode('<script>unsafe</script>');
 
+        // ต้องลงเวลาเข้าก่อน มิฉะนั้นจะถูกปฏิเสธที่ด่านนั้นก่อนถึงการตรวจไฟล์ภาพ
+        $this->actingAs($user)->postJson('/api/attendances/check-in')->assertOk();
+
         $this->actingAs($user)
             ->postJson('/api/attendances/check-out', ['image' => $payload])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('image');
 
-        $this->assertDatabaseCount('attendances', 0);
+        $this->assertNull(Attendance::query()->sole()->check_out_time);
         $this->assertSame([], Storage::disk('private_uploads')->allFiles());
     }
 

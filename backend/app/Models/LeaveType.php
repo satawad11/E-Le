@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'description', 'max_days', 'requires_doc', 'code_prefix', 'document_template_code', 'extra_fields', 'is_carry_forward', 'max_carry_forward', 'is_prorated', 'counts_toward_promotion'])]
+#[Fillable(['name', 'description', 'max_days', 'requires_doc', 'code_prefix', 'document_template_code', 'extra_fields', 'is_carry_forward', 'max_carry_forward', 'is_prorated', 'counts_toward_promotion', 'attendance_bucket'])]
 class LeaveType extends Model
 {
     protected function casts(): array

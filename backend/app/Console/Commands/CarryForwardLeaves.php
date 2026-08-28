@@ -55,6 +55,15 @@ class CarryForwardLeaves extends Command
         $count = 0;
 
         foreach ($carryPolicies as $policy) {
+            /*
+             * เลขปีของแถวโควตาต้องมาจากเกณฑ์นับรอบของนโยบายเอง
+             *
+             * เดิมคิดเป็นปีงบประมาณเสมอ นโยบายที่ตั้งให้นับตามปีปฏิทินจึงถูกอ่านผิดแถว
+             * ทั้งฝั่งที่ทบมาและฝั่งที่ทบไป — วันลาสะสมหายหรือไปโผล่ผิดปี
+             */
+            $policyToYear = $policy->period_basis === 'calendar_year' ? today()->year : $toYear;
+            $policyFromYear = $policyToYear - 1;
+
             // เพดานที่ทบได้จริง = น้อยที่สุดระหว่างเพดานต่อปี กับ (เพดานสะสมรวม - สิทธิ์ประจำปีของปีใหม่)
             $cap = $policy->max_carry_forward ?? INF;
             if ($policy->max_accumulated !== null) {
@@ -68,7 +77,7 @@ class CarryForwardLeaves extends Command
             foreach ($userIds as $userId) {
                 $previous = LeaveBalance::where('user_id', $userId)
                     ->where('leave_type_id', $policy->leave_type_id)
-                    ->where('year', $fromYear)
+                    ->where('year', $policyFromYear)
                     ->first();
                 if (! $previous) {
                     continue;
@@ -93,11 +102,11 @@ class CarryForwardLeaves extends Command
                     continue;
                 }
 
-                DB::transaction(function () use ($userId, $policy, $toYear, $carry) {
+                DB::transaction(function () use ($userId, $policy, $policyToYear, $carry) {
                     $next = LeaveBalance::firstOrNew([
                         'user_id' => $userId,
                         'leave_type_id' => $policy->leave_type_id,
-                        'year' => $toYear,
+                        'year' => $policyToYear,
                     ]);
                     if (! $next->exists) {
                         $next->quota = $policy->annual_quota ?? 0;

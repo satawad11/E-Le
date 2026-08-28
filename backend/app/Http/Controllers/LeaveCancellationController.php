@@ -8,6 +8,7 @@ use App\Models\LeaveActionLog;
 use App\Models\LeaveApproval;
 use App\Models\LeaveAuditLog;
 use App\Models\User;
+use App\Services\Attendance\LeaveAttendanceSync;
 use App\Services\LeaveService;
 use App\Services\Workflow\LeaveApprovalCoordinator;
 use Illuminate\Http\Request;
@@ -29,6 +30,7 @@ class LeaveCancellationController extends Controller
     public function __construct(
         private LeaveService $leaveService,
         private LeaveApprovalCoordinator $coordinator,
+        private LeaveAttendanceSync $attendanceSync,
     ) {}
 
     public function cancel(Request $request, Leave $leave)
@@ -40,6 +42,7 @@ class LeaveCancellationController extends Controller
         }
         if ($leave->status === 'Pending') {
             $this->leaveService->restoreBalance($leave);
+            $this->attendanceSync->clear($leave->load('type'));
             $leave->status = 'Cancelled';
             $leave->save();
             LeaveActionLog::create(['leave_id' => $leave->id, 'user_id' => $user->id, 'action' => 'Cancelled', 'details' => ['reason' => 'User cancelled pending leave']]);
@@ -190,6 +193,8 @@ class LeaveCancellationController extends Controller
                  * (พฤติกรรมเดิมสลับลำดับไว้ ทำให้อนุมัติยกเลิกแล้ววันลาหายไปเลย)
                  */
                 $this->leaveService->restoreBalance($locked);
+                // ล้างวันลาออกจากตารางลงเวลาด้วย มิฉะนั้นใบลงเวลารายเดือนยังนับเป็นวันลาต่อไป
+                $this->attendanceSync->clear($locked->load('type'));
                 $locked->cancellation_status = 'Approved';
                 $locked->status = 'Cancelled';
                 $action = 'Cancellation Approved';

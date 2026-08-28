@@ -120,6 +120,7 @@
                     <th rowspan="2" style="width: 4%;">ลากิจ</th>
                     <th rowspan="2" style="width: 4%;">ป่วย</th>
                     <th rowspan="2" style="width: 4%;">ลาคลอด</th>
+                    <th rowspan="2" style="width: 4%;">พักผ่อน</th>
                     <th rowspan="2" style="width: 4%;">ราชการ</th>
                 </tr>
                 <tr>
@@ -152,6 +153,7 @@
                         <td style="color: blue;">{{ $monthData['total_personal'] ?: '-' }}</td>
                         <td style="color: blue;">{{ $monthData['total_sick'] ?: '-' }}</td>
                         <td style="color: blue;">{{ $monthData['total_maternity'] ?: '-' }}</td>
+                        <td style="color: blue;">{{ $monthData['total_vacation'] ?: '-' }}</td>
                         <td style="color: blue;">{{ $monthData['total_official'] ?: '-' }}</td>
                     </tr>
                 @endforeach
