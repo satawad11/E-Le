@@ -238,6 +238,71 @@ class LeaveBalanceLifecycleTest extends TestCase
         $this->assertTrue($row['unlimited'], 'ประเภทการลาที่ไม่จำกัดวันต้องถูกทำเครื่องหมายว่าไม่จำกัด');
     }
 
+    /*
+     * เพิกถอนเอกสาร (void) — เจ้าหน้าที่ยกเลิกใบลาที่อนุมัติแล้วโดยคงประวัติไว้
+     *
+     * เส้นทางนี้ไม่เคยมีเทสต์ครอบ ทั้งที่คืนวันลาเหมือนกัน และเป็นเส้นทางที่ใช้จริง
+     * ตอนเจ้าหน้าที่ต้องแก้เอกสารย้อนหลัง
+     */
+    public function test_voiding_an_approved_leave_returns_the_days(): void
+    {
+        $this->seedBalance();
+        $leave = $this->submitLeave($this->workday(3), $this->workday(4));
+        $this->approve($leave);
+        $this->assertSame(8.0, $this->remainingOnScreen());
+
+        $officer = User::factory()->create();
+        $officer->givePermissionTo(Permission::findOrCreate('leave.management.manage', 'web'));
+
+        $this->actingAs($officer)
+            ->postJson("/api/leaves/{$leave->id}/void", ['reason' => 'ออกเอกสารผิด'])
+            ->assertOk();
+
+        $this->assertSame(10.0, $this->remainingOnScreen(), 'เพิกถอนเอกสารแล้วต้องคืนวันลาครบ');
+        $this->assertSame(0.0, (float) $this->balance()->used);
+    }
+
+    /*
+     * ลบใบลา — เส้นทางสุดท้ายที่ปิดใบลาได้ และไม่เคยมีเทสต์ครอบเช่นกัน
+     */
+    public function test_deleting_an_approved_leave_returns_the_days(): void
+    {
+        $this->seedBalance();
+        $leave = $this->submitLeave($this->workday(3), $this->workday(4));
+        $this->approve($leave);
+
+        $officer = User::factory()->create();
+        $officer->givePermissionTo(Permission::findOrCreate('leave.management.manage', 'web'));
+
+        $this->actingAs($officer)->deleteJson("/api/leaves/{$leave->id}")->assertOk();
+
+        $this->assertSame(10.0, $this->remainingOnScreen(), 'ลบใบลาที่อนุมัติแล้วต้องคืนวันลาครบ');
+    }
+
+    /*
+     * ลบใบลาที่ยกเลิกไปแล้ว ต้องไม่คืนซ้ำ
+     *
+     * การยกเลิกคืนวันไปแล้วรอบหนึ่ง ถ้าการลบคืนอีกรอบผู้ใช้จะได้วันลาเกินจริง
+     */
+    public function test_deleting_an_already_cancelled_leave_does_not_return_the_days_twice(): void
+    {
+        $this->seedBalance();
+        $leave = $this->submitLeave($this->workday(3), $this->workday(4));
+        $this->approve($leave);
+
+        $this->actingAs($this->employee)
+            ->postJson("/api/leaves/{$leave->id}/cancel", ['cancellation_reason' => 'ติดภารกิจ'])->assertOk();
+        $this->actingAs($this->approver)
+            ->postJson("/api/leaves/{$leave->id}/approve-cancellation")->assertOk();
+        $this->assertSame(10.0, $this->remainingOnScreen());
+
+        $officer = User::factory()->create();
+        $officer->givePermissionTo(Permission::findOrCreate('leave.management.manage', 'web'));
+        $this->actingAs($officer)->deleteJson("/api/leaves/{$leave->id}")->assertOk();
+
+        $this->assertSame(10.0, $this->remainingOnScreen(), 'ต้องไม่คืนวันลาซ้ำจนเกินโควตา');
+    }
+
     private function fiscalYearNumber(): int
     {
         $today = today();
