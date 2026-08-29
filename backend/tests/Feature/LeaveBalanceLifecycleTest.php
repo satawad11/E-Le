@@ -304,18 +304,18 @@ class LeaveBalanceLifecycleTest extends TestCase
     }
 
     /*
-     * แบบฟอร์มใบลาพิมพ์ได้เมื่อผ่านการอนุมัติแล้วเท่านั้น
+     * แบบฟอร์มใบลาต้องพิมพ์ได้ตั้งแต่ยังรออนุมัติ
      *
-     * เดิมดาวน์โหลดได้ทุกสถานะ ใบที่ยังรออนุมัติจึงพิมพ์ออกมาเป็นกระดาษหน้าตาเหมือน
-     * ใบลาที่ผ่านการอนุมัติแล้ว ทั้งที่ยังไม่มีใครอนุมัติ
+     * ขั้นตอนราชการคือผู้ลาพิมพ์ใบลาออกมาเสนอผู้บังคับบัญชาลงนาม ใบที่ยังไม่อนุมัติ
+     * จึงเป็นกรณีที่ *ต้อง* พิมพ์ได้ที่สุด — ห้ามพิมพ์เท่ากับตัดขั้นตอนการเสนอลงนามทิ้ง
      */
-    public function test_a_pending_leave_has_no_document_to_download(): void
+    public function test_a_pending_leave_can_be_printed_for_signatures(): void
     {
         $this->seedBalance();
         $leave = $this->submitLeave($this->workday(3), $this->workday(4));
 
-        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf")->assertStatus(422);
-        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/word")->assertStatus(422);
+        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf")->assertOk();
+        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/word")->assertOk();
     }
 
     public function test_an_approved_leave_can_be_downloaded(): void
@@ -346,15 +346,19 @@ class LeaveBalanceLifecycleTest extends TestCase
         $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf")->assertOk();
     }
 
-    /** ใบที่ยกเลิกตั้งแต่ยังรออนุมัติ ไม่เคยเป็นเอกสาร จึงไม่มีอะไรให้พิมพ์ */
-    public function test_a_leave_cancelled_while_still_pending_has_no_document(): void
+    /*
+     * ใบที่ผู้ยื่นถอนเองตั้งแต่ยังรออนุมัติ ไม่มี "ใบยกเลิกวันลา" ให้พิมพ์
+     *
+     * เพราะไม่เคยมีเอกสารที่อนุมัติแล้วให้ยกเลิก — ส่วนตัวใบลาเองยังพิมพ์ได้ตามปกติ
+     */
+    public function test_a_leave_withdrawn_while_pending_has_no_cancellation_form(): void
     {
         $this->seedBalance();
         $leave = $this->submitLeave($this->workday(3), $this->workday(4));
 
         $this->actingAs($this->employee)->postJson("/api/leaves/{$leave->id}/cancel")->assertOk();
 
-        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf")->assertStatus(422);
+        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf")->assertOk();
         $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf?form=cancel")->assertStatus(422);
     }
 

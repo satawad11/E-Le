@@ -98,13 +98,10 @@
               <!-- Right: actions -->
               <div class="flex flex-col gap-2 flex-shrink-0">
                 <!--
-                  แบบฟอร์มใบลามีให้พิมพ์เมื่อใบลาผ่านการอนุมัติแล้วเท่านั้น
-                  ใบที่อนุมัติแล้วภายหลังถูกยกเลิกหรือเพิกถอนยังพิมพ์ได้ เพราะเอกสารออกไปจริง
+                  แบบฟอร์มใบลาพิมพ์ได้ทุกสถานะโดยตั้งใจ — ผู้ลาต้องพิมพ์ออกมาเสนอผู้บังคับบัญชา
+                  ลงนาม ใบที่ยังรออนุมัติจึงเป็นกรณีที่ต้องพิมพ์ได้ที่สุด
                 -->
-                <p v-if="!wasIssued(leave)" class="text-xs text-gray-400 leading-relaxed max-w-[13rem]">
-                  {{ leave.status === 'Rejected' ? 'ใบลานี้ไม่ได้รับอนุมัติ จึงไม่มีเอกสารให้ดาวน์โหลด' : 'ดาวน์โหลดเอกสารได้เมื่อใบลาผ่านการอนุมัติแล้ว' }}
-                </p>
-                <div v-else class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap gap-2">
                   <button @click="downloadPdf(leave)"
                     :disabled="pdfLoading === leave.id || wordLoading === leave.id"
                     class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#800000] border border-[#800000]/20 rounded-lg hover:bg-[#800000]/5 transition-colors min-h-[38px] flex-1 sm:flex-none">
@@ -131,6 +128,10 @@
                     Word
                   </button>
                 </div>
+                <!-- บอกให้ชัดว่าฉบับที่พิมพ์ตอนนี้ยังไม่ผ่านการอนุมัติ ช่องลงนามจึงยังว่าง -->
+                <p v-if="leave.status === 'Pending'" class="text-xs text-gray-400 leading-relaxed max-w-[13rem] -mt-1">
+                  พิมพ์เพื่อเสนอผู้บังคับบัญชาลงนาม — ช่องลงนามในเอกสารจะยังว่างจนกว่าจะอนุมัติในระบบ
+                </p>
 
                 <!-- Cancel button (Pending, within 5 days or Admin) -->
                 <button v-if="canCancel(leave)"

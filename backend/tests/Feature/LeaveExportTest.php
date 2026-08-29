@@ -53,8 +53,7 @@ class LeaveExportTest extends TestCase
             'end_date' => now()->addDays(6)->toDateString(),
             'total_days' => 2,
             'reason' => 'ทดสอบลาป่วย',
-            // ต้องเป็นใบที่ผ่านการอนุมัติแล้ว จึงจะมีเอกสารให้ส่งออก
-            'status' => 'Approved',
+            'status' => 'Pending',
         ]);
     }
 
