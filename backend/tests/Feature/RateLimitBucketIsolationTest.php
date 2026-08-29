@@ -43,7 +43,8 @@ class RateLimitBucketIsolationTest extends TestCase
             'end_date' => now()->addDays(6)->toDateString(),
             'total_days' => 2,
             'reason' => 'ทดสอบ',
-            'status' => 'Pending',
+            // ต้องเป็นใบที่ผ่านการอนุมัติแล้ว จึงจะมีเอกสารให้ดาวน์โหลดวัดโควตาได้
+            'status' => 'Approved',
         ]);
     }
 

@@ -24,7 +24,7 @@
               </div>
               <div class="w-px h-4 bg-gray-300"></div>
               <div class="flex items-center gap-1.5">
-                <span class="text-xs text-gray-500 font-medium">ใช้ไปแล้ว:</span>
+                <span class="text-xs text-gray-500 font-medium">อนุมัติแล้ว:</span>
                 <span class="text-sm font-bold text-orange-600">{{ selectedBalance.used }} วัน</span>
               </div>
               <div class="w-px h-4 bg-gray-300"></div>
@@ -38,8 +38,17 @@
                 <span class="text-sm font-bold text-emerald-700">{{ selectedBalance.paid_remaining }} / {{ selectedBalance.paid_quota }} วัน</span>
               </div>
               <div v-if="selectedBalance.paid_quota !== null && selectedBalance.paid_quota !== undefined" class="w-px h-4 bg-gray-300"></div>
+              <!--
+                หน้านี้ตัวเลขที่สำคัญที่สุดคือ "ยื่นได้อีก" เพราะเป็นตัวที่ตัดสินว่าใบนี้จะถูกรับหรือไม่
+                ส่วน "คงเหลือตามสิทธิ์" (หักเฉพาะวันที่อนุมัติแล้ว) แสดงคู่กันเมื่อสองค่าต่างกัน
+              -->
               <div v-if="!selectedBalance.unlimited" class="flex items-center gap-1.5">
-                <span class="text-xs text-gray-500 font-medium">คงเหลือ:</span>
+                <span class="text-xs text-gray-500 font-medium">คงเหลือตามสิทธิ์:</span>
+                <span class="text-sm font-bold text-gray-800">{{ approvedRemaining }} วัน</span>
+              </div>
+              <div v-if="!selectedBalance.unlimited" class="w-px h-4 bg-gray-300"></div>
+              <div v-if="!selectedBalance.unlimited" class="flex items-center gap-1.5">
+                <span class="text-xs text-gray-500 font-medium">ยื่นได้อีก:</span>
                 <span class="text-sm font-bold px-2.5 py-0.5 rounded-full" :class="remainingDays <= 2 ? 'bg-red-100 text-red-700' : remainingDays <= 5 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'">
                   {{ remainingDays }} วัน
                 </span>
@@ -393,10 +402,25 @@ const selectedBalance = computed(() => {
   return leaveStore.balances.find(b => b.leave_type_id === form.leave_type_id || b.type?.id === form.leave_type_id) || null
 })
 
-const remainingDays = computed(() => {
+/*
+ * คงเหลือตามสิทธิ์ — หักเฉพาะวันที่ได้รับอนุมัติแล้วจริง เป็นตัวเลขทางทะเบียน
+ * ที่ไม่ขยับตอนกดยื่น
+ */
+const approvedRemaining = computed(() => {
   if (!selectedBalance.value) return 0
   const b = selectedBalance.value
-  return (b.quota + (b.carried_forward || 0)) - b.used - (b.pending || 0)
+
+  return (Number(b.quota || 0) + Number(b.carried_forward || 0)) - Number(b.used || 0)
+})
+
+/*
+ * ยื่นได้อีก — หักวันที่กันไว้รออนุมัติออกด้วย เป็นตัวเลขที่ฝั่ง server ใช้ตัดสินจริง
+ * ว่าจะรับใบลาใบถัดไปหรือไม่ จึงต้องเป็นตัวที่ใช้เตือนผู้ใช้บนหน้านี้
+ */
+const remainingDays = computed(() => {
+  if (!selectedBalance.value) return 0
+
+  return approvedRemaining.value - Number(selectedBalance.value.pending || 0)
 })
 
 // จำนวนวันของคำขอนี้ที่จะตกเป็นวันไม่ได้รับเงินเดือน (เกินเพดาน max_days_with_pay)

@@ -53,7 +53,8 @@ class LeaveExportTest extends TestCase
             'end_date' => now()->addDays(6)->toDateString(),
             'total_days' => 2,
             'reason' => 'ทดสอบลาป่วย',
-            'status' => 'Pending',
+            // ต้องเป็นใบที่ผ่านการอนุมัติแล้ว จึงจะมีเอกสารให้ส่งออก
+            'status' => 'Approved',
         ]);
     }
 
@@ -76,6 +77,9 @@ class LeaveExportTest extends TestCase
 
     public function test_user_can_download_leave_cancel_pdf(): void
     {
+        // แบบฟอร์มใบยกเลิกมีให้พิมพ์ก็ต่อเมื่อเคยยื่นคำขอยกเลิกจริง
+        $this->leave->update(['cancellation_status' => 'Pending', 'cancellation_reason' => 'ติดภารกิจ']);
+
         $response = $this->actingAs($this->employee)
             ->getJson("/api/leaves/{$this->leave->id}/pdf?form=cancel");
 

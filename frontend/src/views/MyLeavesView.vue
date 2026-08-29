@@ -97,8 +97,14 @@
 
               <!-- Right: actions -->
               <div class="flex flex-col gap-2 flex-shrink-0">
-                <!-- PDF/Word download (All statuses) -->
-                <div class="flex flex-wrap gap-2">
+                <!--
+                  แบบฟอร์มใบลามีให้พิมพ์เมื่อใบลาผ่านการอนุมัติแล้วเท่านั้น
+                  ใบที่อนุมัติแล้วภายหลังถูกยกเลิกหรือเพิกถอนยังพิมพ์ได้ เพราะเอกสารออกไปจริง
+                -->
+                <p v-if="!wasIssued(leave)" class="text-xs text-gray-400 leading-relaxed max-w-[13rem]">
+                  {{ leave.status === 'Rejected' ? 'ใบลานี้ไม่ได้รับอนุมัติ จึงไม่มีเอกสารให้ดาวน์โหลด' : 'ดาวน์โหลดเอกสารได้เมื่อใบลาผ่านการอนุมัติแล้ว' }}
+                </p>
+                <div v-else class="flex flex-wrap gap-2">
                   <button @click="downloadPdf(leave)"
                     :disabled="pdfLoading === leave.id || wordLoading === leave.id"
                     class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#800000] border border-[#800000]/20 rounded-lg hover:bg-[#800000]/5 transition-colors min-h-[38px] flex-1 sm:flex-none">
@@ -463,9 +469,26 @@ const canRequestCancellation = (leave) => {
   return leave.cancellation_status !== 'Pending' && leave.cancellation_status !== 'Approved'
 }
 
-// มีใบยกเลิกให้พิมพ์ก็ต่อเมื่อเคยยื่นคำขอยกเลิกจริง (คอลัมน์เก่าอาจเป็น null)
+/*
+ * มีใบยกเลิกให้พิมพ์ก็ต่อเมื่อเคยยื่นคำขอยกเลิกจริง
+ *
+ * ใบที่ผู้ยื่นถอนเองตั้งแต่ยังรออนุมัติไม่เข้าข่าย เพราะไม่เคยมีเอกสารให้ยกเลิก
+ * เงื่อนไข `Cancelled` คงไว้รองรับข้อมูลเก่าที่ยกเลิกก่อนระบบบันทึกสถานะคำขอยกเลิก
+ */
 const hasCancellationForm = (leave) =>
-  ['Pending', 'Approved', 'Rejected'].includes(leave.cancellation_status) || leave.status === 'Cancelled'
+  ['Pending', 'Approved', 'Rejected'].includes(leave.cancellation_status)
+  || (leave.status === 'Cancelled' && wasIssued(leave))
+
+/*
+ * ใบลานี้เคยได้รับอนุมัติจนออกเป็นเอกสารจริงแล้วหรือยัง — เงื่อนไขเดียวกับ `Leave::wasIssued()`
+ * ฝั่ง server ซึ่งเป็นผู้บังคับจริง ตรงนี้เพียงไม่แสดงปุ่มที่กดแล้วจะถูกปฏิเสธ
+ *
+ * ใบที่อนุมัติแล้วภายหลังถูกยกเลิกหรือเพิกถอนยังนับว่าออกเอกสารไปแล้ว จึงยังพิมพ์ได้
+ */
+const wasIssued = (leave) =>
+  leave.content_hash != null
+  || leave.status === 'Approved'
+  || ['Pending', 'Approved', 'Rejected'].includes(leave.cancellation_status)
 
 // Show ALL leaves for non-employees if viewMode is 'all', but always ONLY OWN leaves for Employees or viewMode 'mine'
 const myLeaves = computed(() => {

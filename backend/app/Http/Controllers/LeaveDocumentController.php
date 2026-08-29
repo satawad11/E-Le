@@ -51,12 +51,47 @@ class LeaveDocumentController extends Controller
     }
 
     /**
+     * แบบฟอร์มใบลาพิมพ์ได้ต่อเมื่อใบลานั้นเคยได้รับอนุมัติจริง
+     *
+     * เดิมดาวน์โหลดได้ทุกสถานะ ใบที่ยังรออนุมัติหรือถูกปฏิเสธจึงพิมพ์ออกมาได้
+     * เป็นกระดาษหน้าตาเหมือนใบลาที่ผ่านการอนุมัติแล้ว ทั้งที่ยังไม่มีใครอนุมัติ
+     *
+     * ใบที่อนุมัติแล้วภายหลังถูกยกเลิกหรือเพิกถอนยังพิมพ์ได้ตามเดิม เพราะเอกสารนั้น
+     * ออกไปจริงและอยู่ในทะเบียนคุมการลา · ส่วนแบบฟอร์ม "ใบยกเลิก" มีเงื่อนไขของตัวเอง
+     * คือต้องเคยยื่นคำขอยกเลิกมาก่อน
+     */
+    private function assertIssued(Leave $leave, bool $isCancellationForm): void
+    {
+        if ($isCancellationForm) {
+            /*
+             * ใบที่ผู้ยื่นถอนเองตั้งแต่ยังรออนุมัติ ไม่มีแบบฟอร์มใบยกเลิก เพราะไม่เคยมี
+             * เอกสารให้ยกเลิก · เงื่อนไข `status === 'Cancelled'` คงไว้เพื่อรองรับข้อมูลเก่า
+             * ที่ยกเลิกไปก่อนระบบบันทึก `cancellation_status` — แต่ต้องเป็นใบที่ออกเอกสารแล้วจริง
+             */
+            abort_unless(
+                $leave->hasCancellationRequest() || ($leave->status === 'Cancelled' && $leave->wasIssued()),
+                422,
+                'ใบลานี้ยังไม่มีคำขอยกเลิก จึงยังไม่มีแบบฟอร์มใบยกเลิกให้พิมพ์',
+            );
+
+            return;
+        }
+
+        abort_unless(
+            $leave->wasIssued(),
+            422,
+            'ใบลานี้ยังไม่ได้รับอนุมัติ จึงยังไม่มีเอกสารให้ดาวน์โหลด — จะพิมพ์ได้เมื่อผ่านการอนุมัติแล้ว',
+        );
+    }
+
+    /**
      * Export a leave as PDF.
      */
     public function exportPdf(Request $request, Leave $leave, ThaiDateService $thaiDateService)
     {
         // SEC-003 — เอกสารมีเหตุผลการลา ที่อยู่ติดต่อ และลายเซ็นของผู้ลาอยู่ในนั้น
         $this->authorize('view', $leave);
+        $this->assertIssued($leave, $request->query('form') === 'cancel');
 
         $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
 
@@ -198,6 +233,7 @@ class LeaveDocumentController extends Controller
     {
         // SEC-003 — เช่นเดียวกับ exportPdf
         $this->authorize('view', $leave);
+        $this->assertIssued($leave, $request->query('form') === 'cancel');
 
         $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
 

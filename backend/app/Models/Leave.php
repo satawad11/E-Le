@@ -18,6 +18,37 @@ class Leave extends Model
         return ['start_date' => 'date', 'end_date' => 'date', 'total_days' => 'float', 'paid_days' => 'float', 'unpaid_days' => 'float', 'reserved_days' => 'float', 'meta_data' => 'array', 'notified_supervisor_at' => 'datetime', 'submitted_at' => 'datetime', 'voided_at' => 'datetime'];
     }
 
+    /**
+     * ใบลานี้เคยได้รับอนุมัติจนออกเป็นเอกสารจริงแล้วหรือยัง
+     *
+     * ใช้ตัดสินว่าจะให้ดาวน์โหลดแบบฟอร์มใบลาได้หรือไม่ — ใบที่ยังรออนุมัติหรือถูกปฏิเสธ
+     * ยังไม่เคยเป็นเอกสารของทางราชการ การปล่อยให้พิมพ์ออกมาได้ทำให้มีกระดาษที่หน้าตา
+     * เหมือนใบลาที่ผ่านการอนุมัติแล้วลอยอยู่ข้างนอก ทั้งที่ยังไม่มีใครอนุมัติ
+     *
+     * ใบที่อนุมัติแล้วภายหลังถูกยกเลิกหรือเพิกถอน **ยังดาวน์โหลดได้** เพราะเอกสารนั้น
+     * เคยออกไปจริงและต้องอยู่ในทะเบียนคุมการลา
+     *
+     * `content_hash` ถูกผนึกไว้ตอนอนุมัติขั้นสุดท้ายเท่านั้น จึงเป็นร่องรอยที่แม่นที่สุด
+     * ส่วนอีกสองเงื่อนไขรองรับข้อมูลเก่าที่บันทึกไว้ก่อนระบบผนึกลายนิ้วมือเนื้อหา
+     */
+    public function wasIssued(): bool
+    {
+        return $this->content_hash !== null
+            || $this->status === 'Approved'
+            || $this->hasCancellationRequest();
+    }
+
+    /**
+     * เคยยื่นคำขอยกเลิกใบลานี้แล้วหรือยัง
+     *
+     * คอลัมน์ `cancellation_status` มีค่าเริ่มต้นเป็นสตริง `'None'` ไม่ใช่ null
+     * การเทียบกับ null จึงเป็นจริงกับทุกใบ — ต้องดูค่าที่แปลว่ามีคำขอจริงเท่านั้น
+     */
+    public function hasCancellationRequest(): bool
+    {
+        return in_array($this->cancellation_status, ['Pending', 'Approved', 'Rejected'], true);
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Leave $leave): void {

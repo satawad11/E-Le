@@ -303,6 +303,76 @@ class LeaveBalanceLifecycleTest extends TestCase
         $this->assertSame(10.0, $this->remainingOnScreen(), 'ต้องไม่คืนวันลาซ้ำจนเกินโควตา');
     }
 
+    /*
+     * แบบฟอร์มใบลาพิมพ์ได้เมื่อผ่านการอนุมัติแล้วเท่านั้น
+     *
+     * เดิมดาวน์โหลดได้ทุกสถานะ ใบที่ยังรออนุมัติจึงพิมพ์ออกมาเป็นกระดาษหน้าตาเหมือน
+     * ใบลาที่ผ่านการอนุมัติแล้ว ทั้งที่ยังไม่มีใครอนุมัติ
+     */
+    public function test_a_pending_leave_has_no_document_to_download(): void
+    {
+        $this->seedBalance();
+        $leave = $this->submitLeave($this->workday(3), $this->workday(4));
+
+        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf")->assertStatus(422);
+        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/word")->assertStatus(422);
+    }
+
+    public function test_an_approved_leave_can_be_downloaded(): void
+    {
+        $this->seedBalance();
+        $leave = $this->submitLeave($this->workday(3), $this->workday(4));
+        $this->approve($leave);
+
+        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf")->assertOk();
+    }
+
+    /*
+     * ใบที่อนุมัติแล้วภายหลังถูกยกเลิก ยังต้องพิมพ์ได้ เพราะเอกสารออกไปจริง
+     * และต้องอยู่ในทะเบียนคุมการลา
+     */
+    public function test_a_cancelled_leave_that_was_once_approved_can_still_be_downloaded(): void
+    {
+        $this->seedBalance();
+        $leave = $this->submitLeave($this->workday(3), $this->workday(4));
+        $this->approve($leave);
+
+        $this->actingAs($this->employee)
+            ->postJson("/api/leaves/{$leave->id}/cancel", ['cancellation_reason' => 'ติดภารกิจ'])->assertOk();
+        $this->actingAs($this->approver)
+            ->postJson("/api/leaves/{$leave->id}/approve-cancellation")->assertOk();
+
+        $this->assertSame('Cancelled', $leave->fresh()->status);
+        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf")->assertOk();
+    }
+
+    /** ใบที่ยกเลิกตั้งแต่ยังรออนุมัติ ไม่เคยเป็นเอกสาร จึงไม่มีอะไรให้พิมพ์ */
+    public function test_a_leave_cancelled_while_still_pending_has_no_document(): void
+    {
+        $this->seedBalance();
+        $leave = $this->submitLeave($this->workday(3), $this->workday(4));
+
+        $this->actingAs($this->employee)->postJson("/api/leaves/{$leave->id}/cancel")->assertOk();
+
+        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf")->assertStatus(422);
+        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf?form=cancel")->assertStatus(422);
+    }
+
+    /** แบบฟอร์มใบยกเลิกต้องเคยมีคำขอยกเลิกก่อน */
+    public function test_the_cancellation_form_needs_a_cancellation_request(): void
+    {
+        $this->seedBalance();
+        $leave = $this->submitLeave($this->workday(3), $this->workday(4));
+        $this->approve($leave);
+
+        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf?form=cancel")->assertStatus(422);
+
+        $this->actingAs($this->employee)
+            ->postJson("/api/leaves/{$leave->id}/cancel", ['cancellation_reason' => 'ติดภารกิจ'])->assertOk();
+
+        $this->actingAs($this->employee)->get("/api/leaves/{$leave->id}/pdf?form=cancel")->assertOk();
+    }
+
     private function fiscalYearNumber(): int
     {
         $today = today();

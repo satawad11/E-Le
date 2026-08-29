@@ -94,18 +94,26 @@
               <span v-if="balance.unlimited" class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">ไม่จำกัดโควตา</span>
               <span v-else :class="[
                 'text-xs font-bold px-2 py-0.5 rounded-full',
-                (balance.quota + (balance.carried_forward || 0) - balance.used - (balance.pending || 0)) <= 2 ? 'bg-red-100 text-red-700' :
-                (balance.quota + (balance.carried_forward || 0) - balance.used - (balance.pending || 0)) <= 5 ? 'bg-amber-100 text-amber-700' :
+                submittableDays(balance) <= 2 ? 'bg-red-100 text-red-700' :
+                submittableDays(balance) <= 5 ? 'bg-amber-100 text-amber-700' :
                 'bg-green-100 text-green-700'
-              ]">เหลือ {{ balance.quota + (balance.carried_forward || 0) - balance.used - (balance.pending || 0) }} วัน</span>
+              ]">ยื่นได้อีก {{ submittableDays(balance) }} วัน</span>
             </div>
-            <div class="flex items-baseline gap-1 mb-2">
-              <span class="text-4xl font-extrabold text-[#800000]">{{ balance.unlimited ? balance.used : balance.quota + (balance.carried_forward || 0) - balance.used - (balance.pending || 0) }}</span>
+            <!--
+              ตัวเลขใหญ่คือ "คงเหลือตามสิทธิ์" ซึ่งหักเฉพาะวันที่ได้รับอนุมัติแล้วจริง
+              เดิมหักวันที่ยังรออนุมัติออกไปด้วย ผู้ใช้จึงเห็นยอดลดทันทีที่กดยื่น
+              ทั้งที่ยังไม่มีใครอนุมัติ และไม่มีอะไรบอกว่าที่หายไปคือส่วนที่กันไว้
+            -->
+            <div class="flex items-baseline gap-1 mb-1">
+              <span class="text-4xl font-extrabold text-[#800000]">{{ balance.unlimited ? balance.used : approvedRemaining(balance) }}</span>
               <span class="text-gray-400 text-sm flex flex-col gap-0.5">
                 <span>{{ balance.unlimited ? 'วันที่ใช้ไป' : `/ ${balance.quota + (balance.carried_forward || 0)} วัน` }}</span>
                 <span v-if="balance.carried_forward" class="text-xs text-blue-600 font-medium">(มีวันทบยอด {{ balance.carried_forward }} วัน)</span>
               </span>
             </div>
+            <p v-if="!balance.unlimited && balance.pending" class="mb-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 leading-relaxed">
+              กันไว้รออนุมัติ <span class="font-bold">{{ balance.pending }}</span> วัน — ยื่นเพิ่มได้อีก <span class="font-bold">{{ submittableDays(balance) }}</span> วัน
+            </p>
             <div class="h-2 bg-gray-100 rounded-full overflow-hidden flex">
               <div
                 :class="[
@@ -122,7 +130,7 @@
               ></div>
             </div>
             <div class="flex justify-between text-xs text-gray-400 mt-1.5">
-              <span>ใช้ไปแล้ว {{ balance.used }} วัน</span>
+              <span>อนุมัติแล้ว {{ balance.used }} วัน</span>
               <span v-if="balance.pending">รออนุมัติ {{ balance.pending }} วัน</span>
             </div>
           </div>
@@ -252,6 +260,22 @@ import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
 import LoadingState from '../components/ui/LoadingState.vue'
 import { statusLabel, statusBadgeClass } from '../utils/statusHelper'
 import { getErrorMessage } from '../utils/errorHandler'
+
+/*
+ * วันลาคงเหลือมีสองตัวเลขที่ต่างกัน และผู้ใช้ต้องเห็นทั้งคู่
+ *
+ *   คงเหลือตามสิทธิ์ = สิทธิ์ทั้งหมด − วันที่ **อนุมัติแล้ว**
+ *     ตรงกับความจริงทางทะเบียน เป็นตัวเลขที่ผู้ใช้คาดหวังว่าจะไม่ขยับตอนกดยื่น
+ *
+ *   ยื่นได้อีก = คงเหลือตามสิทธิ์ − วันที่กันไว้รออนุมัติ
+ *     เป็นตัวเลขที่ตัดสินจริงว่าใบลาใบถัดไปจะถูกรับหรือถูกปฏิเสธ
+ *
+ * แสดงเฉพาะตัวแรกจะทำให้ผู้ใช้ยื่นแล้วโดนปฏิเสธโดยไม่เข้าใจ แสดงเฉพาะตัวหลัง
+ * (พฤติกรรมเดิม) ทำให้ยอดลดทันทีที่กดยื่นโดยไม่มีคำอธิบาย จึงต้องแสดงทั้งคู่
+ */
+const totalEntitlement = (balance) => Number(balance.quota || 0) + Number(balance.carried_forward || 0)
+const approvedRemaining = (balance) => totalEntitlement(balance) - Number(balance.used || 0)
+const submittableDays = (balance) => approvedRemaining(balance) - Number(balance.pending || 0)
 import ErrorState from '../components/ui/ErrorState.vue'
 
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'

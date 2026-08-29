@@ -62,7 +62,9 @@ class LeaveAuthorizationTest extends TestCase
             'end_date' => now()->addDays(4)->toDateString(),
             'total_days' => 2,
             'reason' => 'เหตุผลการลาที่เป็นข้อมูลอ่อนไหว',
-            'status' => 'Pending',
+            // แบบฟอร์มใบลาพิมพ์ได้เมื่อผ่านการอนุมัติแล้วเท่านั้น เทสต์ชุดนี้ถามว่า
+            // "ใครพิมพ์เอกสารที่ออกแล้วได้บ้าง" จึงต้องเริ่มจากใบที่ออกเอกสารแล้วจริง
+            'status' => 'Approved',
         ]);
     }
 
