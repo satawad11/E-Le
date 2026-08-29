@@ -63,9 +63,22 @@ class LeaveService
         return $this->time->workingDaysBetween($start, $end, $user, $departmentId);
     }
 
-    public function createLeaveRequest(array $data, int $userId, ?UploadedFile $attachment): Leave
+    /**
+     * สร้างใบลา — เป็น "ร่าง" หรือ "ยื่นเข้าสายอนุมัติ" ก็ได้
+     *
+     * ร่างคือใบลาที่ยังไม่เข้าสู่กระบวนการ จึงต้องไม่แตะสิ่งที่เป็นของทางราชการเลย:
+     *
+     *   - **ไม่ออกเลขที่หนังสือ** เลขเป็นลำดับที่เดินหน้าอย่างเดียว ถ้าออกให้ร่างแล้วร่าง
+     *     ถูกลบ ทะเบียนหนังสือจะมีเลขขาดเป็นช่วง ๆ ซึ่งอธิบายกับผู้ตรวจสอบไม่ได้
+     *   - **ไม่กันโควตาวันลา** ร่างยังไม่ใช่คำขอ จึงไม่ควรไปลดยอดที่คนอื่นเห็น
+     *   - **ไม่ผนึก snapshot สายอนุมัติ** ต้องผนึก ณ วันที่ยื่นจริงเท่านั้น
+     *   - **ไม่แจ้งเตือนผู้อนุมัติ** และไม่เปิด workflow instance
+     *
+     * ทั้งสี่อย่างเกิดพร้อมกันตอนกด "ส่งอนุมัติ" ใน `submitDraft()`
+     */
+    public function createLeaveRequest(array $data, int $userId, ?UploadedFile $attachment, bool $asDraft = false): Leave
     {
-        $leave = DB::transaction(function () use ($data, $userId, $attachment) {
+        $leave = DB::transaction(function () use ($data, $userId, $attachment, $asDraft) {
             $user = User::with(['personnel', 'currentAssignment', 'personnelType', 'profile'])->lockForUpdate()->findOrFail($userId);
             $start = Carbon::parse($data['start_date']);
             $end = Carbon::parse($data['end_date']);
@@ -87,7 +100,8 @@ class LeaveService
             // เงื่อนไขเฉพาะประเภทลาตามระเบียบ เช่น ลาอุปสมบทได้ครั้งเดียวตลอดอายุราชการ
             $this->eligibilityRules->assert($user, $policy, $start);
 
-            $overlap = Leave::where('user_id', $userId)->whereNotIn('status', ['Cancelled', 'Rejected', 'Voided'])
+            // ร่างยังไม่ใช่คำขอ จึงไม่นับเป็นใบลาที่จองช่วงเวลาไว้
+            $overlap = Leave::where('user_id', $userId)->whereNotIn('status', ['Draft', 'Cancelled', 'Rejected', 'Voided'])
                 ->where('start_date', '<=', $end)->where('end_date', '>=', $start)->lockForUpdate()->exists();
             if ($overlap) {
                 throw ValidationException::withMessages(['start_date' => 'มีใบลาในช่วงเวลานี้อยู่แล้ว']);
@@ -103,23 +117,25 @@ class LeaveService
             // แยกวันที่ได้รับเงินเดือน/ไม่ได้รับเงินเดือน ตามเพดาน max_days_with_pay ของนโยบาย
             [$paidDays, $unpaidDays] = $this->splitPaidDays($policy, $balance, $days);
 
-            $type = LeaveType::findOrFail($policy->leave_type_id);
             $fiscalYear = $this->policies->fiscalYear($start);
-            $number = $this->numbers->next($type->code_prefix ?: 'L', $this->policies->periodYear($policy, $start) + 543);
             $path = $attachment ? Storage::disk('local')->putFile('private/leave-evidences', $attachment) : null;
             $leave = Leave::create([
                 'user_id' => $userId, 'leave_type_id' => $policy->leave_type_id, 'leave_policy_id' => $policy->id,
-                'fiscal_year_id' => $fiscalYear?->id, 'document_number' => $number, 'start_date' => $start,
+                'fiscal_year_id' => $fiscalYear?->id,
+                // ร่างยังไม่ออกเลขที่หนังสือ — ออกตอนกดส่งอนุมัติเท่านั้น
+                'document_number' => $asDraft ? null : $this->nextDocumentNumber($policy, $start),
+                'start_date' => $start,
                 'end_date' => $end, 'leave_period' => $period, 'total_days' => $days,
                 'paid_days' => $paidDays, 'unpaid_days' => $unpaidDays,
-                'reserved_days' => $policy->annual_quota !== null ? $days : 0, 'reason' => $data['reason'],
-                'contact_address' => $data['contact_address'] ?? null, 'status' => 'Pending', 'approval_level' => 1,
+                'reserved_days' => (! $asDraft && $policy->annual_quota !== null) ? $days : 0, 'reason' => $data['reason'],
+                'contact_address' => $data['contact_address'] ?? null,
+                'status' => $asDraft ? 'Draft' : 'Pending', 'approval_level' => 1,
                 'substitute_id' => $data['substitute_id'] ?? null, 'substitute_status' => isset($data['substitute_id']) ? 'Pending' : null,
                 'substitute_reason' => $data['substitute_reason'] ?? null,
                 'meta_data' => $this->metaData($data),
                 'signature_path' => $data['signature_path'] ?? null, 'notified_supervisor_at' => $data['notified_supervisor_at'] ?? null,
                 'verification_hash' => Str::random(40),
-                'submitted_at' => now(),
+                'submitted_at' => $asDraft ? null : now(),
             ]);
             if ($leave->reserved_days > 0) {
                 $balance->reserved += (float) $leave->reserved_days;
@@ -141,17 +157,19 @@ class LeaveService
              * ไม่ได้ผูกกับ role ใด ๆ ถ้าตกหล่นจะกลายเป็นขั้นตอนแบบ ROLE ทั้งหมด
              * แล้วผู้อนุมัติตัวจริงจะถูกปฏิเสธสิทธิ์ในขั้นของตัวเอง
              */
-            foreach (ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role') as $step) {
-                LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'stage' => LeaveApproval::STAGE_REQUEST, 'step_order' => $step->step_order], [
-                    'step_name' => $step->name, 'required_role_id' => $step->role_id, 'status' => 'Pending',
-                    'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
-                    'specific_user_id' => $step->specific_user_id, 'permission_name' => $step->permission_name,
-                ]);
+            if (! $asDraft) {
+                $this->snapshotApprovalChain($leave);
             }
-            $this->audit->log($leave, 'created', null, $leave->toArray());
+
+            $this->audit->log($leave, $asDraft ? 'draft_created' : 'created', null, $leave->toArray());
 
             return $leave;
         }, 5);
+
+        // ร่างยังไม่เข้าสู่กระบวนการ จึงไม่เปิด workflow instance
+        if ($asDraft) {
+            return $leave;
+        }
 
         /*
          * LEGACY-07 — เปิด workflow instance ให้ใบลาใบใหม่ (shadow mode)
@@ -173,6 +191,115 @@ class LeaveService
         }
 
         return $leave;
+    }
+
+    /** เลขที่หนังสือลำดับถัดไปของประเภทการลานี้ในรอบปีนั้น */
+    private function nextDocumentNumber(LeavePolicy $policy, Carbon $start): string
+    {
+        $type = LeaveType::findOrFail($policy->leave_type_id);
+
+        return $this->numbers->next($type->code_prefix ?: 'L', $this->policies->periodYear($policy, $start) + 543);
+    }
+
+    /**
+     * ผนึกสายอนุมัติ ณ วันที่ยื่นจริง
+     *
+     * ต้องคัดลอก "วิธีหาตัวผู้อนุมัติ" ให้ครบ ไม่ใช่แค่ role เพราะขั้นตอนแบบหัวหน้าแผนก
+     * ต้นสังกัด/ผอ./ผู้ใช้เจาะจง ไม่ได้ผูกกับ role ใด ๆ ถ้าตกหล่นจะกลายเป็นขั้นตอนแบบ
+     * ROLE ทั้งหมด แล้วผู้อนุมัติตัวจริงจะถูกปฏิเสธสิทธิ์ในขั้นของตัวเอง
+     */
+    private function snapshotApprovalChain(Leave $leave): void
+    {
+        foreach (ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role') as $step) {
+            LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'stage' => LeaveApproval::STAGE_REQUEST, 'step_order' => $step->step_order], [
+                'step_name' => $step->name, 'required_role_id' => $step->role_id, 'status' => 'Pending',
+                'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
+                'specific_user_id' => $step->specific_user_id, 'permission_name' => $step->permission_name,
+            ]);
+        }
+    }
+
+    /**
+     * ส่งร่างเข้าสายอนุมัติ — จุดที่ใบลากลายเป็นเอกสารของทางราชการ
+     *
+     * ทุกอย่างที่ร่างจงใจไม่ทำ เกิดขึ้นพร้อมกันที่นี่: ออกเลขที่หนังสือ กันโควตา
+     * ผนึกสายอนุมัติ และเปิด workflow instance
+     *
+     * ตรวจสิทธิ์และเงื่อนไขซ้ำอีกรอบ เพราะร่างอาจถูกบันทึกไว้นานจนเงื่อนไขเปลี่ยน
+     * (โควตาหมดไปแล้ว มีใบลาช่วงเดียวกันแทรกเข้ามา หรือเลยกำหนดยื่นล่วงหน้า)
+     */
+    public function submitDraft(Leave $leave): Leave
+    {
+        $submitted = DB::transaction(function () use ($leave) {
+            $locked = Leave::whereKey($leave->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->status !== 'Draft') {
+                throw ValidationException::withMessages(['status' => 'ใบลานี้ถูกส่งเข้าสายอนุมัติไปแล้ว']);
+            }
+
+            $user = User::with(['personnel', 'currentAssignment', 'personnelType', 'profile'])->lockForUpdate()->findOrFail($locked->user_id);
+            $start = Carbon::parse($locked->start_date);
+            $end = Carbon::parse($locked->end_date);
+            $policy = $this->policies->resolve($user, (int) $locked->leave_type_id, $start);
+            $period = $locked->leave_period ?: 'full_day';
+
+            $this->policies->assertEligible($user, $policy, $start, $end, (float) $locked->total_days, $period, $locked->evidences()->exists());
+            $this->eligibilityRules->assert($user, $policy, $start);
+
+            $overlap = Leave::where('user_id', $locked->user_id)
+                ->whereKeyNot($locked->id)
+                ->whereNotIn('status', ['Draft', 'Cancelled', 'Rejected', 'Voided'])
+                ->where('start_date', '<=', $end)->where('end_date', '>=', $start)
+                ->lockForUpdate()->exists();
+            if ($overlap) {
+                throw ValidationException::withMessages(['start_date' => 'มีใบลาในช่วงเวลานี้อยู่แล้ว']);
+            }
+
+            $balance = $this->policies->balance($user, $policy, $start);
+            $balance = LeaveBalance::whereKey($balance->id)->lockForUpdate()->first();
+            $available = (float) $balance->quota + (float) $balance->carried_forward - (float) $balance->used - (float) $balance->reserved;
+            if ($policy->annual_quota !== null && $available < (float) $locked->total_days) {
+                throw ValidationException::withMessages(['leave_type_id' => 'วันลาคงเหลือไม่เพียงพอ (รวมรายการรออนุมัติแล้ว)']);
+            }
+
+            [$paidDays, $unpaidDays] = $this->splitPaidDays($policy, $balance, (float) $locked->total_days);
+            $before = $locked->toArray();
+
+            $locked->fill([
+                'leave_policy_id' => $policy->id,
+                'document_number' => $locked->document_number ?: $this->nextDocumentNumber($policy, $start),
+                'paid_days' => $paidDays,
+                'unpaid_days' => $unpaidDays,
+                'reserved_days' => $policy->annual_quota !== null ? (float) $locked->total_days : 0,
+                'status' => 'Pending',
+                'approval_level' => 1,
+                'submitted_at' => now(),
+            ])->save();
+
+            if ($locked->reserved_days > 0) {
+                $balance->reserved += (float) $locked->reserved_days;
+                $balance->leave_policy_id = $policy->id;
+                $balance->save();
+            }
+
+            $this->snapshotApprovalChain($locked);
+            $this->audit->log($locked, 'submitted', $before, $locked->toArray());
+
+            return $locked;
+        }, 5);
+
+        if (config('workflow.shadow_mode', true)) {
+            try {
+                $this->workflow->prepare($submitted);
+            } catch (\Throwable $exception) {
+                Log::warning('เปิด workflow instance ให้ใบลาไม่สำเร็จ', [
+                    'leave_id' => $submitted->id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return $submitted;
     }
 
     /**

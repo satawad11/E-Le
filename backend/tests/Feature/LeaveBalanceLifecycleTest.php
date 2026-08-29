@@ -21,7 +21,7 @@ use Tests\TestCase;
 /**
  * วันลาคงเหลือต้องถูกต้องตลอดวงจรชีวิตของใบลา
  *
- * ยื่น → จอง (reserved) · อนุมัติ → ตัดจริง (used) · ยกเลิก/ปฏิเสธ/ลบ/เพิกถอน → คืนครบ
+ * ยื่น → จอง (reserved) · อนุมัติ → ตัดจริง (used) · ยกเลิก/ปฏิเสธ/เพิกถอน → คืนครบ
  * ตัวเลขที่หน้าจอแสดงต้องเดินตามนี้ทุกก้าว
  */
 class LeaveBalanceLifecycleTest extends TestCase
@@ -260,47 +260,6 @@ class LeaveBalanceLifecycleTest extends TestCase
 
         $this->assertSame(10.0, $this->remainingOnScreen(), 'เพิกถอนเอกสารแล้วต้องคืนวันลาครบ');
         $this->assertSame(0.0, (float) $this->balance()->used);
-    }
-
-    /*
-     * ลบใบลา — เส้นทางสุดท้ายที่ปิดใบลาได้ และไม่เคยมีเทสต์ครอบเช่นกัน
-     */
-    public function test_deleting_an_approved_leave_returns_the_days(): void
-    {
-        $this->seedBalance();
-        $leave = $this->submitLeave($this->workday(3), $this->workday(4));
-        $this->approve($leave);
-
-        $officer = User::factory()->create();
-        $officer->givePermissionTo(Permission::findOrCreate('leave.management.manage', 'web'));
-
-        $this->actingAs($officer)->deleteJson("/api/leaves/{$leave->id}")->assertOk();
-
-        $this->assertSame(10.0, $this->remainingOnScreen(), 'ลบใบลาที่อนุมัติแล้วต้องคืนวันลาครบ');
-    }
-
-    /*
-     * ลบใบลาที่ยกเลิกไปแล้ว ต้องไม่คืนซ้ำ
-     *
-     * การยกเลิกคืนวันไปแล้วรอบหนึ่ง ถ้าการลบคืนอีกรอบผู้ใช้จะได้วันลาเกินจริง
-     */
-    public function test_deleting_an_already_cancelled_leave_does_not_return_the_days_twice(): void
-    {
-        $this->seedBalance();
-        $leave = $this->submitLeave($this->workday(3), $this->workday(4));
-        $this->approve($leave);
-
-        $this->actingAs($this->employee)
-            ->postJson("/api/leaves/{$leave->id}/cancel", ['cancellation_reason' => 'ติดภารกิจ'])->assertOk();
-        $this->actingAs($this->approver)
-            ->postJson("/api/leaves/{$leave->id}/approve-cancellation")->assertOk();
-        $this->assertSame(10.0, $this->remainingOnScreen());
-
-        $officer = User::factory()->create();
-        $officer->givePermissionTo(Permission::findOrCreate('leave.management.manage', 'web'));
-        $this->actingAs($officer)->deleteJson("/api/leaves/{$leave->id}")->assertOk();
-
-        $this->assertSame(10.0, $this->remainingOnScreen(), 'ต้องไม่คืนวันลาซ้ำจนเกินโควตา');
     }
 
     /*

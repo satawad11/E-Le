@@ -4,6 +4,8 @@
  */
 
 export const STATUS_MAP = {
+  // ร่างยังไม่เข้าสู่กระบวนการ — ยังไม่มีเลขที่หนังสือและยังไม่กันวันลา
+  Draft:     { label: 'ร่าง',        color: 'slate' },
   Pending:   { label: 'รออนุมัติ',  color: 'amber' },
   Approved:  { label: 'อนุมัติแล้ว', color: 'green' },
   Rejected:  { label: 'ไม่อนุมัติ',  color: 'red'   },
@@ -26,6 +28,7 @@ export function statusLabel(status) {
  */
 export function statusBadgeClass(status) {
   const colorMap = {
+    slate: 'bg-slate-100 text-slate-600',
     amber: 'bg-amber-100 text-amber-700',
     green: 'bg-green-100 text-green-700',
     red:   'bg-red-100   text-red-700',

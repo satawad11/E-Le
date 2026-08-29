@@ -353,12 +353,24 @@
           </div>
         </div>
 
-        <div class="flex justify-end pt-2">
+        <!--
+          บันทึกร่างไว้ก่อนได้ — ร่างยังไม่ออกเลขที่หนังสือและยังไม่กันวันลา
+          จึงแก้หรือลบทิ้งได้อิสระ ต่างจากใบที่ยื่นแล้วซึ่งลบไม่ได้เพื่อให้ตรวจสอบย้อนหลังได้
+        -->
+        <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-2">
+          <button type="button" :disabled="loading" @click="handleSubmit(true)"
+            class="w-full sm:w-auto px-6 py-3.5 border border-gray-300 text-gray-700 font-semibold rounded-xl transition-colors hover:bg-gray-50 disabled:opacity-50 flex items-center justify-center gap-2 text-base sm:text-sm min-h-[48px] focus-visible:ring-2 focus-visible:ring-gray-400">
+            <span v-if="savingDraft" class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500" aria-hidden="true"></span>
+            {{ savingDraft ? 'กำลังบันทึก...' : 'บันทึกร่าง' }}
+          </button>
           <button type="submit" id="submit-leave" :disabled="loading" class="w-full sm:w-auto px-8 py-3.5 bg-[#800000] hover:bg-[#600000] text-white font-bold rounded-xl shadow-md transition-all hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 text-base sm:text-sm min-h-[48px] focus-visible:ring-2 focus-visible:ring-[#800000]">
-            <span v-if="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white" aria-hidden="true"></span>
-            {{ loading ? 'กำลังส่ง...' : 'ส่งคำขอลา' }}
+            <span v-if="loading && !savingDraft" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white" aria-hidden="true"></span>
+            {{ loading && !savingDraft ? 'กำลังส่ง...' : 'ส่งคำขอลา' }}
           </button>
         </div>
+        <p class="text-xs text-gray-400 text-right pt-1">
+          ใบลาที่ส่งแล้วจะออกเลขที่หนังสือและลบไม่ได้ — หากยังไม่แน่ใจให้บันทึกเป็นร่างไว้ก่อน
+        </p>
       </form>
     </div>
   </div>
@@ -380,6 +392,7 @@ const leaveStore = useLeaveStore()
 const router = useRouter()
 const alertStore = useAlertStore()
 const loading = ref(false)
+const savingDraft = ref(false)
 const calculatedDays = ref(null)
 const fileName = ref('')
 const fileInput = ref(null)
@@ -617,10 +630,12 @@ const handleFile = (e) => {
   }
 }
 
-const handleSubmit = async () => {
+const handleSubmit = async (asDraft = false) => {
   loading.value = true
+  savingDraft.value = asDraft === true
   try {
     const formData = new FormData()
+    if (asDraft === true) formData.append('save_as_draft', '1')
     formData.append('leave_type_id', form.leave_type_id)
     formData.append('start_date', form.start_date)
     formData.append('end_date', form.end_date)
@@ -652,8 +667,14 @@ const handleSubmit = async () => {
     }
 
     await leaveStore.submitLeaveFormData(formData)
-    alertStore.success('ส่งคำขอลาเรียบร้อยแล้ว! กำลังกลับสู่หน้าหลัก...')
-    setTimeout(() => router.push('/'), 1500)
+
+    if (asDraft === true) {
+      alertStore.success('บันทึกร่างใบลาแล้ว — เปิดแก้ไขและส่งอนุมัติได้ที่รายการใบลาของฉัน')
+      setTimeout(() => router.push('/leaves'), 1200)
+    } else {
+      alertStore.success('ส่งคำขอลาเรียบร้อยแล้ว! กำลังกลับสู่หน้าหลัก...')
+      setTimeout(() => router.push('/'), 1500)
+    }
   } catch (error) {
     const errors = error.response?.data?.errors
     if (errors) {
@@ -663,6 +684,7 @@ const handleSubmit = async () => {
     }
   } finally {
     loading.value = false
+    savingDraft.value = false
   }
 }
 </script>

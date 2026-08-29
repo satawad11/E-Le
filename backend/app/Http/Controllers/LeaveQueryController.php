@@ -24,7 +24,12 @@ class LeaveQueryController extends Controller
 
         if ($canViewAll) {
             $query = Leave::with(['user:id,name,department_id', 'user.department', 'type:id,name', 'approvals.approver:id,name', 'actionLogs.user:id,name'])
-                ->orderBy('created_at', 'desc');
+                ->orderBy('created_at', 'desc')
+                /*
+                 * ร่างเป็นของส่วนตัวจนกว่าจะส่ง — ยังไม่มีเลขที่หนังสือ ยังไม่เข้าสายอนุมัติ
+                 * และเจ้าตัวยังแก้หรือลบได้ ผู้อื่นจึงไม่ควรเห็นแม้จะมีสิทธิ์ดูทั้งองค์กร
+                 */
+                ->where(fn ($scoped) => $scoped->where('status', '!=', 'Draft')->orWhere('user_id', $user->id));
             $query = $visibility->applyScope($query, $user);
 
             if ($request->fiscal_year) {
@@ -51,7 +56,8 @@ class LeaveQueryController extends Controller
         $leaves = Leave::with(['user:id,name,department_id', 'user.department', 'type:id,name', 'approvals.approver:id,name', 'actionLogs.user:id,name'])
             ->where(function ($query) use ($user) {
                 $query->where('user_id', $user->id)
-                    ->orWhere('substitute_id', $user->id);
+                    // ผู้ปฏิบัติงานแทนเห็นเฉพาะใบที่ยื่นจริงแล้ว ไม่เห็นร่างของคนอื่น
+                    ->orWhere(fn ($assigned) => $assigned->where('substitute_id', $user->id)->where('status', '!=', 'Draft'));
             })
             ->orderBy('created_at', 'desc')
             ->limit(100)

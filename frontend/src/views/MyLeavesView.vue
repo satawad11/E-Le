@@ -98,10 +98,29 @@
               <!-- Right: actions -->
               <div class="flex flex-col gap-2 flex-shrink-0">
                 <!--
+                  ร่างยังไม่เข้าสู่กระบวนการ — ยังไม่มีเลขที่หนังสือ ยังไม่กันวันลา
+                  จึงมีได้แค่สองทางคือส่งอนุมัติ หรือลบทิ้ง
+                -->
+                <template v-if="leave.status === 'Draft'">
+                  <button @click="submitDraft(leave)" :disabled="submittingDraft === leave.id"
+                    class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-[#800000] hover:bg-[#600000] rounded-lg transition-colors min-h-[38px] disabled:opacity-50">
+                    <span v-if="submittingDraft === leave.id" class="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></span>
+                    {{ submittingDraft === leave.id ? 'กำลังส่ง...' : 'ส่งอนุมัติ' }}
+                  </button>
+                  <button @click="deleteLeave(leave.id)"
+                    class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors min-h-[38px]">
+                    ลบร่าง
+                  </button>
+                  <p class="text-xs text-gray-400 leading-relaxed max-w-[13rem]">
+                    ยังไม่ออกเลขที่หนังสือและยังไม่กันวันลา — ส่งอนุมัติแล้วจะลบไม่ได้อีก
+                  </p>
+                </template>
+
+                <!--
                   แบบฟอร์มใบลาพิมพ์ได้ทุกสถานะโดยตั้งใจ — ผู้ลาต้องพิมพ์ออกมาเสนอผู้บังคับบัญชา
                   ลงนาม ใบที่ยังรออนุมัติจึงเป็นกรณีที่ต้องพิมพ์ได้ที่สุด
                 -->
-                <div class="flex flex-wrap gap-2">
+                <div v-if="leave.status !== 'Draft'" class="flex flex-wrap gap-2">
                   <button @click="downloadPdf(leave)"
                     :disabled="pdfLoading === leave.id || wordLoading === leave.id"
                     class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#800000] border border-[#800000]/20 rounded-lg hover:bg-[#800000]/5 transition-colors min-h-[38px] flex-1 sm:flex-none">
@@ -151,11 +170,11 @@
                   ขอยกเลิก
                 </button>
                 
-                <!-- Admin/HR Actions -->
-                <div v-if="isAdminOrHR" class="flex gap-2">
-                  <!-- <button @click="editLeave(leave)" class="px-3 py-1.5 text-xs font-semibold text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50">แก้ไข</button> -->
-                  <button @click="deleteLeave(leave.id)" class="px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50">ลบ</button>
-                </div>
+                <!--
+                  ปุ่ม "ลบ" ของผู้ดูแลถูกถอดออก — ใบลาที่ยื่นแล้วต้องตรวจสอบย้อนหลังได้เสมอ
+                  ใบที่ยังรออนุมัติใช้ "ยกเลิกใบลา" ส่วนใบที่อนุมัติแล้วใช้ "เพิกถอนเอกสาร"
+                  ที่ศูนย์งานกำกับการลา ซึ่งบังคับใส่เหตุผลและเก็บประวัติไว้
+                -->
 
                 <!-- Print Cancellation Form (when cancellation is requested or approved or cancelled) -->
                 <div v-if="hasCancellationForm(leave)" class="flex gap-2">
@@ -414,6 +433,7 @@ const loadError    = ref('')
 const pdfLoading   = ref(null)
 const wordLoading  = ref(null)
 const cancelLoading = ref(null)
+const submittingDraft = ref(null)
 const showCancelModal = ref(false)
 const cancelTarget = ref(null)
 const cancellationReason = ref('')
@@ -435,6 +455,7 @@ const itemsPerPage = 10
 
 const filters = [
   { label: 'ทั้งหมด',    value: 'all'       },
+  { label: 'ร่าง',        value: 'Draft'     },
   { label: 'รออนุมัติ', value: 'Pending'   },
   { label: 'อนุมัติแล้ว', value: 'Approved'  },
   { label: 'ไม่อนุมัติ', value: 'Rejected'  },
@@ -612,14 +633,34 @@ const doCancel = async () => {
   }
 }
 
+/*
+ * ลบได้เฉพาะร่างเท่านั้น — ใบที่ยื่นแล้วต้องใช้ "ยกเลิกใบลา" หรือ "เพิกถอนเอกสาร"
+ * เพื่อให้ตรวจสอบย้อนหลังได้ ฝั่ง server เป็นผู้บังคับจริง ตรงนี้เพียงไม่แสดงปุ่ม
+ */
 const deleteLeave = async (leaveId) => {
-  if (!confirm('ยืนยันการลบใบลา?')) return
+  if (!confirm('ยืนยันการลบร่างใบลานี้?')) return
   try {
     await api.delete(`/leaves/${leaveId}`)
-    alertStore.success('ลบใบลาเรียบร้อยแล้ว')
+    alertStore.success('ลบร่างใบลาเรียบร้อยแล้ว')
     await leaveStore.fetchLeaves()
   } catch (e) {
     alertStore.error(e?.response?.data?.message || 'ลบไม่สำเร็จ')
+  }
+}
+
+/** ส่งร่างเข้าสายอนุมัติ — จุดที่ใบลาออกเลขที่หนังสือและกันวันลา */
+const submitDraft = async (leave) => {
+  if (!confirm('ส่งร่างนี้เข้าสายอนุมัติ? เมื่อส่งแล้วจะออกเลขที่หนังสือและลบไม่ได้อีก')) return
+  submittingDraft.value = leave.id
+  try {
+    await api.post(`/leaves/${leave.id}/submit`)
+    alertStore.success('ส่งคำขอลาเรียบร้อยแล้ว')
+    await Promise.all([leaveStore.fetchLeaves(), leaveStore.fetchBalances()])
+  } catch (e) {
+    const errors = e?.response?.data?.errors
+    alertStore.error(errors ? Object.values(errors).flat().join(' ') : (e?.response?.data?.message || 'ส่งคำขอไม่สำเร็จ'))
+  } finally {
+    submittingDraft.value = null
   }
 }
 

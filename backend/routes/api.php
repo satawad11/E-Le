@@ -85,6 +85,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/leaves/{leave}/substitute-accept', [LeaveWorkflowActionController::class, 'acceptSubstitute']);
     Route::post('/leaves/{leave}/substitute-reject', [LeaveWorkflowActionController::class, 'rejectSubstitute']);
     Route::put('/leaves/{leave}', [LeaveRequestController::class, 'update']);
+    // ส่งร่างเข้าสายอนุมัติ — จุดที่ใบลาออกเลขที่หนังสือและกันโควตา
+    Route::post('/leaves/{leave}/submit', [LeaveRequestController::class, 'submit']);
     Route::delete('/leaves/{leave}', [LeaveRequestController::class, 'destroy']);
 
     // Attendance routes — ตรวจสอบสิทธิ์รายฟังก์ชันตามโมดูล attendance
