@@ -187,6 +187,39 @@ class OperationalPermissionMatrixTest extends TestCase
         );
     }
 
+    /*
+     * หัวหน้าบุคลากรต้องตรวจสอบสถิติการลาได้
+     *
+     * ปุ่ม "ตรวจสอบสถิติการลา" บังคับสิทธิ์ `leave.approval.hr` แต่เดิมไม่มีบทบาทใด
+     * ได้รับเลยนอกจาก Super Admin — รวมถึง `HR Head` ซึ่งเป็นผู้ทำหน้าที่นี้จริง
+     * และเป็น role ที่ผูกกับขั้นตอน "ตรวจสอบโดยหัวหน้าบุคลากร" ในสายอนุมัติมาตรฐาน
+     *
+     * ที่ผ่านมาไม่มีใครสังเกตเพราะบัญชีที่ใช้ทดสอบถูกมอบบทบาท Super Admin ไว้
+     * ซึ่งผ่าน `Gate::before` ทุกกรณีโดยไม่เกี่ยวกับสิทธิ์ที่ถืออยู่จริง
+     */
+    public function test_hr_head_can_verify_leave_statistics(): void
+    {
+        $this->seed(OperationalPermissionSeeder::class);
+
+        $this->assertTrue(
+            $this->userWithRole('HR Head')->can('leave.approval.hr'),
+            'หัวหน้าบุคลากรต้องกดปุ่มตรวจสอบสถิติการลาได้',
+        );
+    }
+
+    /** สิทธิ์นี้เป็นของงานบุคลากร ไม่ใช่ของทุกคนที่อยู่ในสายอนุมัติ */
+    public function test_leave_statistics_verification_is_not_handed_to_every_approver(): void
+    {
+        $this->seed(OperationalPermissionSeeder::class);
+
+        foreach (['Employee', 'Deputy Director', 'Director', 'Document Officer'] as $role) {
+            $this->assertFalse(
+                $this->userWithRole($role)->can('leave.approval.hr'),
+                "บทบาท {$role} ไม่ควรได้สิทธิ์ตรวจสอบสถิติการลา",
+            );
+        }
+    }
+
     /**
      * seeder ต้องรันซ้ำได้โดยไม่แจกสิทธิ์เพิ่มและไม่ถอนของเดิม
      */

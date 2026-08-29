@@ -105,6 +105,16 @@ class OperationalPermissionSeeder extends Seeder
             'attendance.ot',
             'attendance.ot_summary',
             'overtime.operation.execute',
+            /*
+             * งานบุคลากร — ตรวจสอบสถิติการลาก่อนเสนออนุมัติต่อ
+             *
+             * ปุ่ม "ตรวจสอบสถิติการลา" ต้องการ `leave.approval.hr` แต่ไม่เคยมีบทบาทใด
+             * ได้รับสิทธิ์นี้เลยนอกจาก Super Admin หัวหน้าบุคลากรซึ่งเป็นผู้ทำหน้าที่นี้จริง
+             * และเป็น role ที่ผูกกับขั้นตอน "ตรวจสอบโดยหัวหน้าบุคลากร" ในสายอนุมัติ
+             * จึงกดปุ่มของตัวเองไม่ได้ · ที่ผ่านมาไม่มีใครสังเกตเพราะบัญชีที่ใช้ทดสอบ
+             * ถูกมอบบทบาท Super Admin ไว้ ซึ่งผ่าน Gate::before ทุกกรณีอยู่แล้ว
+             */
+            'leave.approval.hr',
         ],
 
         'Document Officer' => [
@@ -139,6 +149,9 @@ class OperationalPermissionSeeder extends Seeder
             ]);
         }
 
+        // สิทธิ์ที่ seeder นี้เป็นเจ้าของ — Super Admin ได้ครบชุดนี้ ไม่ใช่ทุกชื่อที่บังเอิญถูกหาระหว่างทาง
+        $ownedIds = $permissionIds;
+
         foreach (self::GRANTS as $roleName => $names) {
             $roleId = DB::table('roles')->where('name', $roleName)->where('guard_name', $guard)->value('id');
 
@@ -148,7 +161,7 @@ class OperationalPermissionSeeder extends Seeder
             }
 
             foreach ($names as $name) {
-                $this->attach($permissionIds[$name], $roleId);
+                $this->attach($this->permissionId($name, $guard, $permissionIds), $roleId);
             }
         }
 
@@ -159,12 +172,37 @@ class OperationalPermissionSeeder extends Seeder
                 continue;
             }
 
-            foreach ($permissionIds as $permissionId) {
+            foreach ($ownedIds as $permissionId) {
                 $this->attach($permissionId, $roleId);
             }
         }
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
+    }
+
+    /**
+     * หา id ของ permission ตามชื่อ — รองรับชื่อที่ seeder อื่นเป็นเจ้าของ
+     *
+     * `GRANTS` อ้างชื่อจากสารบัญกลาง (`PermissionCatalogSeeder`) ได้ด้วย ไม่ใช่เฉพาะ
+     * ชื่อที่ seeder นี้สร้างเอง จึงต้องหาแบบ lazy แทนการอ่านจากตารางที่เตรียมไว้ล่วงหน้า
+     * มิฉะนั้นการมอบสิทธิ์ตามหน้าที่จะทำได้เฉพาะกับสิทธิ์ชุดของตัวเอง
+     *
+     * @param  array<string,int>  $known  ตารางที่เตรียมไว้แล้ว — เติมผลลัพธ์กลับเข้าไปเพื่อไม่ต้องหาซ้ำ
+     */
+    private function permissionId(string $name, string $guard, array &$known): int
+    {
+        if (isset($known[$name])) {
+            return $known[$name];
+        }
+
+        $id = DB::table('permissions')->where('name', $name)->where('guard_name', $guard)->value('id');
+
+        return $known[$name] = $id ?? DB::table('permissions')->insertGetId([
+            'name' => $name,
+            'guard_name' => $guard,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     private function attach(int $permissionId, int $roleId): void
