@@ -80,25 +80,8 @@ class LeaveService
     {
         $leave = DB::transaction(function () use ($data, $userId, $attachment, $asDraft) {
             $user = User::with(['personnel', 'currentAssignment', 'personnelType', 'profile'])->lockForUpdate()->findOrFail($userId);
-            $start = Carbon::parse($data['start_date']);
-            $end = Carbon::parse($data['end_date']);
-            $policy = $this->policies->resolve($user, (int) $data['leave_type_id'], $start);
-            $period = $data['leave_period'] ?? 'full_day';
-            $days = $period === 'full_day'
-                ? $this->calculateTotalDays($start, $end, $policy->exclude_holidays, $user->department_id, $user)
-                : 0.5;
-            if ($days <= 0) {
-                throw ValidationException::withMessages(['start_date' => 'ช่วงวันที่เลือกไม่มีวันทำการ']);
-            }
-            if ($period !== 'full_day' && ! $start->isSameDay($end)) {
-                throw ValidationException::withMessages(['leave_period' => 'ลาครึ่งวันต้องเป็นวันเดียวกัน']);
-            }
-            if ($policy->requires_substitute && ! ($data['substitute_id'] ?? null)) {
-                throw ValidationException::withMessages(['substitute_id' => 'ต้องระบุผู้ปฏิบัติงานแทน']);
-            }
-            $this->policies->assertEligible($user, $policy, $start, $end, $days, $period, (bool) $attachment);
-            // เงื่อนไขเฉพาะประเภทลาตามระเบียบ เช่น ลาอุปสมบทได้ครั้งเดียวตลอดอายุราชการ
-            $this->eligibilityRules->assert($user, $policy, $start);
+
+            [$policy, $start, $end, $period, $days] = $this->resolveRequest($user, $data, (bool) $attachment);
 
             // ร่างยังไม่ใช่คำขอ จึงไม่นับเป็นใบลาที่จองช่วงเวลาไว้
             $overlap = Leave::where('user_id', $userId)->whereNotIn('status', ['Draft', 'Cancelled', 'Rejected', 'Voided'])
@@ -191,6 +174,125 @@ class LeaveService
         }
 
         return $leave;
+    }
+
+    /**
+     * แก้ไขร่างใบลา
+     *
+     * ร่างต้องแก้ได้จริง มิฉะนั้นกฎ "ลบได้เฉพาะร่าง" จะบังคับให้ผู้ใช้ลบแล้วกรอกใหม่ทั้งใบ
+     * ทุกครั้งที่พิมพ์ผิดคำเดียว ซึ่งแย่กว่าเดิม
+     *
+     * คำนวณจำนวนวัน นโยบาย และการแบ่งวันที่ได้รับเงินเดือนใหม่ทุกครั้ง เพราะผู้ใช้อาจ
+     * เปลี่ยนประเภทการลาหรือช่วงวันที่ · ยังคงเป็นร่างอยู่เหมือนเดิม จึงไม่ออกเลขที่หนังสือ
+     * และไม่กันโควตา
+     */
+    public function updateDraft(Leave $leave, array $data, ?UploadedFile $attachment = null): Leave
+    {
+        return DB::transaction(function () use ($leave, $data, $attachment) {
+            $locked = Leave::whereKey($leave->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->status !== 'Draft') {
+                throw ValidationException::withMessages(['status' => 'แก้ไขได้เฉพาะร่างใบลาเท่านั้น']);
+            }
+
+            $user = User::with(['personnel', 'currentAssignment', 'personnelType', 'profile'])->findOrFail($locked->user_id);
+            $before = $locked->toArray();
+
+            [$policy, $start, $end, $period, $days] = $this->resolveRequest($user, $data, $attachment !== null || $locked->evidences()->exists());
+
+            $overlap = Leave::where('user_id', $locked->user_id)
+                ->whereKeyNot($locked->id)
+                ->whereNotIn('status', ['Draft', 'Cancelled', 'Rejected', 'Voided'])
+                ->where('start_date', '<=', $end)->where('end_date', '>=', $start)
+                ->lockForUpdate()->exists();
+            if ($overlap) {
+                throw ValidationException::withMessages(['start_date' => 'มีใบลาในช่วงเวลานี้อยู่แล้ว']);
+            }
+
+            $balance = LeaveBalance::whereKey($this->policies->balance($user, $policy, $start)->id)->lockForUpdate()->first();
+            [$paidDays, $unpaidDays] = $this->splitPaidDays($policy, $balance, $days);
+
+            $locked->fill([
+                'leave_type_id' => $policy->leave_type_id,
+                'leave_policy_id' => $policy->id,
+                'fiscal_year_id' => $this->policies->fiscalYear($start)?->id,
+                'start_date' => $start,
+                'end_date' => $end,
+                'leave_period' => $period,
+                'total_days' => $days,
+                'paid_days' => $paidDays,
+                'unpaid_days' => $unpaidDays,
+                'reason' => $data['reason'],
+                'contact_address' => $data['contact_address'] ?? null,
+                'substitute_id' => $data['substitute_id'] ?? null,
+                'substitute_status' => isset($data['substitute_id']) ? 'Pending' : null,
+                'substitute_reason' => $data['substitute_reason'] ?? null,
+                'meta_data' => $this->metaData($data),
+            ]);
+
+            // ลายเซ็นใหม่มาเมื่อผู้ใช้วาดใหม่เท่านั้น ไม่งั้นคงของเดิมไว้
+            if (! empty($data['signature_path'])) {
+                $locked->signature_path = $data['signature_path'];
+            }
+
+            $locked->save();
+
+            /*
+             * แนบไฟล์ใหม่ = แทนที่ของเดิม ร่างมีหลักฐานได้ชุดเดียวเสมอ
+             * มิฉะนั้นแก้ร่างสิบครั้งจะได้ไฟล์แนบสิบไฟล์ติดไปกับใบลาตอนยื่นจริง
+             */
+            if ($attachment !== null) {
+                $locked->evidences()->delete();
+                LeaveEvidence::create([
+                    'leave_id' => $locked->id, 'uploaded_by' => $locked->user_id,
+                    'evidence_type' => $policy->required_evidence_type ?: 'supporting_document',
+                    'original_name' => $attachment->getClientOriginalName(),
+                    'storage_path' => Storage::disk('local')->putFile('private/leave-evidences', $attachment),
+                    'mime_type' => $attachment->getMimeType(), 'file_size' => $attachment->getSize(),
+                    'sha256' => hash_file('sha256', $attachment->getRealPath()),
+                ]);
+            }
+
+            $this->audit->log($locked, 'draft_updated', $before, $locked->toArray());
+
+            return $locked;
+        }, 5);
+    }
+
+    /**
+     * ตรวจและคำนวณคำขอลาหนึ่งใบจากข้อมูลที่กรอกมา
+     *
+     * ใช้ร่วมกันระหว่างการสร้างใบลาและการแก้ไขร่าง เพื่อให้ทั้งสองทางตรวจด้วยเกณฑ์
+     * ชุดเดียวกันเสมอ — ร่างที่แก้แล้วจึงส่งอนุมัติได้แน่นอน ไม่ใช่ผ่านตอนแก้แต่ตกตอนส่ง
+     *
+     * @return array{0: LeavePolicy, 1: Carbon, 2: Carbon, 3: string, 4: float}
+     */
+    private function resolveRequest(User $user, array $data, bool $hasEvidence): array
+    {
+        $start = Carbon::parse($data['start_date']);
+        $end = Carbon::parse($data['end_date']);
+        $policy = $this->policies->resolve($user, (int) $data['leave_type_id'], $start);
+        $period = $data['leave_period'] ?? 'full_day';
+
+        $days = $period === 'full_day'
+            ? $this->calculateTotalDays($start, $end, $policy->exclude_holidays, $user->department_id, $user)
+            : 0.5;
+
+        if ($days <= 0) {
+            throw ValidationException::withMessages(['start_date' => 'ช่วงวันที่เลือกไม่มีวันทำการ']);
+        }
+        if ($period !== 'full_day' && ! $start->isSameDay($end)) {
+            throw ValidationException::withMessages(['leave_period' => 'ลาครึ่งวันต้องเป็นวันเดียวกัน']);
+        }
+        if ($policy->requires_substitute && ! ($data['substitute_id'] ?? null)) {
+            throw ValidationException::withMessages(['substitute_id' => 'ต้องระบุผู้ปฏิบัติงานแทน']);
+        }
+
+        $this->policies->assertEligible($user, $policy, $start, $end, $days, $period, $hasEvidence);
+        // เงื่อนไขเฉพาะประเภทลาตามระเบียบ เช่น ลาอุปสมบทได้ครั้งเดียวตลอดอายุราชการ
+        $this->eligibilityRules->assert($user, $policy, $start);
+
+        return [$policy, $start, $end, $period, $days];
     }
 
     /** เลขที่หนังสือลำดับถัดไปของประเภทการลานี้ในรอบปีนั้น */

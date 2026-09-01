@@ -85,6 +85,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/leaves/{leave}/substitute-accept', [LeaveWorkflowActionController::class, 'acceptSubstitute']);
     Route::post('/leaves/{leave}/substitute-reject', [LeaveWorkflowActionController::class, 'rejectSubstitute']);
     Route::put('/leaves/{leave}', [LeaveRequestController::class, 'update']);
+    Route::get('/leaves/{leave}', [LeaveRequestController::class, 'show']);
+    // แก้ไขร่างของตนเอง — ใช้ POST เพราะต้องรับไฟล์แนบผ่าน multipart ได้
+    Route::post('/leaves/{leave}/draft', [LeaveRequestController::class, 'updateDraft']);
     // ส่งร่างเข้าสายอนุมัติ — จุดที่ใบลาออกเลขที่หนังสือและกันโควตา
     Route::post('/leaves/{leave}/submit', [LeaveRequestController::class, 'submit']);
     Route::delete('/leaves/{leave}', [LeaveRequestController::class, 'destroy']);

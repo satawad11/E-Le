@@ -13,6 +13,7 @@ use App\Models\PersonnelType;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\LeavePolicyService;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Spatie\Permission\Models\Permission;
@@ -39,6 +40,16 @@ class LeaveBalanceLifecycleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        /*
+         * ตรึงวันให้เป็นวันจันทร์เสมอ
+         *
+         * นโยบายในเทสต์ชุดนี้ตั้ง `exclude_holidays = false` จึงนับวันตามปฏิทิน
+         * `workday(3)`–`workday(4)` จึงได้จำนวนวันไม่เท่ากันแล้วแต่ว่ารันวันไหน
+         * (รันวันศุกร์จะคร่อมสุดสัปดาห์กลายเป็น 4 วัน) เทสต์เคยผ่านแล้วมาแดงเอง
+         * เมื่อวันที่เปลี่ยนไป ทั้งที่โค้ดไม่ได้แก้อะไรเลย
+         */
+        $this->travelTo(today()->next(CarbonInterface::MONDAY));
 
         Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\FiscalYearSeeder', '--force' => true]);
 

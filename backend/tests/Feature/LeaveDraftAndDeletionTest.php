@@ -14,6 +14,7 @@ use App\Models\PersonnelType;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\LeavePolicyService;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Spatie\Permission\Models\Permission;
@@ -147,6 +148,104 @@ class LeaveDraftAndDeletionTest extends TestCase
             'end_date' => $this->workday(4),
             'reason' => 'ยื่นจริง',
         ])->assertSuccessful();
+    }
+
+    /*
+     * ร่างต้องแก้ได้จริง
+     *
+     * มิฉะนั้นกฎ "ลบได้เฉพาะร่าง" จะบังคับให้ผู้ใช้ลบแล้วกรอกใหม่ทั้งใบทุกครั้งที่พิมพ์ผิด
+     * คำเดียว ซึ่งแย่กว่าไม่มีร่างเสียอีก
+     */
+    public function test_a_draft_can_be_edited_and_the_days_are_recalculated(): void
+    {
+        $draft = $this->saveDraft();
+        $this->assertSame(2.0, (float) $draft->total_days);
+
+        $this->actingAs($this->employee)->postJson("/api/leaves/{$draft->id}/draft", [
+            'leave_type_id' => $this->type->id,
+            'start_date' => $this->workday(3),
+            'end_date' => $this->workday(6),
+            'reason' => 'แก้เหตุผลใหม่',
+        ])->assertOk();
+
+        $draft->refresh();
+        $this->assertSame('แก้เหตุผลใหม่', $draft->reason);
+        $this->assertSame(4.0, (float) $draft->total_days, 'เปลี่ยนช่วงวันแล้วจำนวนวันต้องคำนวณใหม่');
+        $this->assertSame('Draft', $draft->status, 'แก้ร่างแล้วต้องยังเป็นร่างอยู่');
+        $this->assertNull($draft->document_number, 'แก้ร่างต้องไม่ทำให้ออกเลขที่หนังสือ');
+        $this->assertSame(0.0, (float) $this->balance()->reserved, 'แก้ร่างต้องไม่กันโควตา');
+    }
+
+    public function test_editing_a_draft_is_written_to_the_audit_trail(): void
+    {
+        $draft = $this->saveDraft();
+
+        $this->actingAs($this->employee)->postJson("/api/leaves/{$draft->id}/draft", [
+            'leave_type_id' => $this->type->id,
+            'start_date' => $this->workday(3),
+            'end_date' => $this->workday(4),
+            'reason' => 'แก้แล้ว',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('leave_audit_logs', [
+            'leave_id' => $draft->id,
+            'user_id' => $this->employee->id,
+            'action' => 'draft_updated',
+        ]);
+    }
+
+    /** แก้ร่างแล้วต้องผ่านเกณฑ์เดียวกับตอนยื่น ไม่ใช่ผ่านตอนแก้แต่ไปตกตอนกดส่ง */
+    public function test_editing_a_draft_is_checked_with_the_same_rules_as_submitting(): void
+    {
+        $draft = $this->saveDraft();
+
+        // ช่วงวันที่เลือกไม่มีวันทำการเลย (เสาร์–อาทิตย์)
+        $saturday = today()->next(CarbonInterface::SATURDAY);
+
+        $this->actingAs($this->employee)->postJson("/api/leaves/{$draft->id}/draft", [
+            'leave_type_id' => $this->type->id,
+            'start_date' => $saturday->toDateString(),
+            'end_date' => $saturday->copy()->addDay()->toDateString(),
+            'reason' => 'ลาเสาร์อาทิตย์',
+        ])->assertStatus(422);
+
+        $this->assertSame('ทดสอบร่าง', $draft->fresh()->reason, 'คำขอที่ไม่ผ่านต้องไม่แก้ร่างเดิม');
+    }
+
+    public function test_a_submitted_leave_can_no_longer_be_edited_as_a_draft(): void
+    {
+        $draft = $this->saveDraft();
+        $this->actingAs($this->employee)->postJson("/api/leaves/{$draft->id}/submit")->assertOk();
+
+        $this->actingAs($this->employee)->postJson("/api/leaves/{$draft->id}/draft", [
+            'leave_type_id' => $this->type->id,
+            'start_date' => $this->workday(3),
+            'end_date' => $this->workday(4),
+            'reason' => 'พยายามแก้หลังส่ง',
+        ])->assertStatus(422);
+    }
+
+    public function test_someone_else_cannot_edit_your_draft(): void
+    {
+        $draft = $this->saveDraft();
+
+        $this->actingAs($this->approver)->postJson("/api/leaves/{$draft->id}/draft", [
+            'leave_type_id' => $this->type->id,
+            'start_date' => $this->workday(3),
+            'end_date' => $this->workday(4),
+            'reason' => 'แก้ของคนอื่น',
+        ])->assertForbidden();
+    }
+
+    /** เปิดร่างขึ้นมาแก้ต้องอ่านค่าที่บันทึกไว้กลับมาได้ */
+    public function test_the_owner_can_open_their_draft_to_edit_it(): void
+    {
+        $draft = $this->saveDraft();
+
+        $this->actingAs($this->employee)->getJson("/api/leaves/{$draft->id}")
+            ->assertOk()
+            ->assertJsonPath('status', 'Draft')
+            ->assertJsonPath('reason', 'ทดสอบร่าง');
     }
 
     public function test_only_the_owner_can_submit_their_draft(): void

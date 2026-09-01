@@ -1,8 +1,10 @@
 <template>
   <div class="max-w-2xl mx-auto">
     <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900">ยื่นใบลา</h1>
-      <p class="text-gray-500 mt-1">กรอกข้อมูลเพื่อส่งคำขอลา</p>
+      <h1 class="text-2xl font-bold text-gray-900">{{ draftId ? 'แก้ไขร่างใบลา' : 'ยื่นใบลา' }}</h1>
+      <p class="text-gray-500 mt-1">
+        {{ draftId ? 'แก้ไขแล้วบันทึกร่างไว้ก่อน หรือส่งอนุมัติได้เลย' : 'กรอกข้อมูลเพื่อส่งคำขอลา' }}
+      </p>
     </div>
 
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
@@ -379,7 +381,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useLeaveStore } from '../stores/leave'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
 import ThaiDatePicker from '../components/ThaiDatePicker.vue'
@@ -390,6 +392,9 @@ const authStore = useAuthStore()
 
 const leaveStore = useLeaveStore()
 const router = useRouter()
+const route = useRoute()
+// id ของร่างที่กำลังแก้ — ว่างแปลว่ากำลังยื่นใบใหม่
+const draftId = ref(null)
 const alertStore = useAlertStore()
 const loading = ref(false)
 const savingDraft = ref(false)
@@ -505,9 +510,57 @@ onMounted(async () => {
     console.error('Failed to load users for substitute dropdown')
   }
 
+  await loadDraftIfRequested()
+
   // Setup Canvas Context initially in case 'draw' is selected later
   setupCanvas()
 })
+
+/*
+ * เปิดร่างขึ้นมาแก้ — เข้าจากปุ่ม "แก้ไข" บนการ์ดร่างในหน้ารายการใบลาของฉัน
+ *
+ * โหลดค่าที่บันทึกไว้กลับเข้าฟอร์มทั้งหมด เพื่อให้แก้เฉพาะจุดที่ต้องการได้จริง
+ * ไม่ต้องกรอกใหม่ทั้งใบ
+ */
+const loadDraftIfRequested = async () => {
+  const id = route.query.draft
+
+  if (! id) return
+
+  try {
+    const { data } = await api.get(`/leaves/${id}`)
+
+    if (data.status !== 'Draft') {
+      alertStore.error('ใบลานี้ถูกส่งเข้าสายอนุมัติแล้ว จึงแก้ไขไม่ได้')
+      router.replace('/leaves')
+
+      return
+    }
+
+    draftId.value = data.id
+    form.leave_type_id = data.leave_type_id
+    form.start_date = String(data.start_date).slice(0, 10)
+    form.end_date = String(data.end_date).slice(0, 10)
+    form.leave_period = data.leave_period || 'full_day'
+    form.reason = data.reason || ''
+    form.contact_address = data.contact_address || ''
+    form.substitute_id = data.substitute_id || ''
+    form.substitute_reason = data.substitute_reason || ''
+
+    if (data.meta_data && typeof data.meta_data === 'object') {
+      Object.assign(form.meta_data, data.meta_data)
+
+      Object.entries(data.meta_data.extra_fields || {}).forEach(([key, value]) => {
+        extraValues[key] = value
+      })
+    }
+
+    calcDays()
+  } catch {
+    alertStore.error('เปิดร่างใบลาไม่สำเร็จ')
+    router.replace('/leaves')
+  }
+}
 
 
 import { watch } from 'vue'
@@ -664,6 +717,25 @@ const handleSubmit = async (asDraft = false) => {
 
     if (sigType.value === 'draw' && sigBase64.value) {
       formData.append('signature_base64', sigBase64.value)
+    }
+
+    /*
+     * กำลังแก้ร่างอยู่ → บันทึกทับร่างเดิม แล้วส่งอนุมัติต่อถ้าผู้ใช้กดปุ่มส่ง
+     * ไม่งั้นการกดส่งจากหน้าแก้ร่างจะสร้างใบใหม่ทิ้งร่างเดิมค้างไว้
+     */
+    if (draftId.value) {
+      await leaveStore.updateDraft(draftId.value, formData)
+
+      if (asDraft === true) {
+        alertStore.success('บันทึกร่างใบลาแล้ว')
+        setTimeout(() => router.push('/leaves'), 1200)
+      } else {
+        await leaveStore.submitDraft(draftId.value)
+        alertStore.success('ส่งคำขอลาเรียบร้อยแล้ว! กำลังกลับสู่หน้าหลัก...')
+        setTimeout(() => router.push('/'), 1500)
+      }
+
+      return
     }
 
     await leaveStore.submitLeaveFormData(formData)

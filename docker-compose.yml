@@ -7,6 +7,18 @@ services:
       MYSQL_DATABASE: eleave
       # รหัสผ่านมาจาก .env ที่ root ของโปรเจกต์ (gitignore) — ห้าม hardcode ที่นี่
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?ต้องตั้งค่าใน .env}
+      #
+      # DEPLOY-007 — บัญชีฐานข้อมูลของแอปต้องถูกสร้างโดย stack เอง
+      #
+      # เดิม compose ส่ง DB_APP_USERNAME/DB_APP_PASSWORD ให้ backend อย่างเดียว
+      # แต่**ไม่มีอะไรสร้างบัญชีนั้นใน MySQL เลย** stack ที่ขึ้นจากศูนย์จึงมีแต่ root
+      # แล้ว backend วนรีสตาร์ตด้วย "Access denied for user" ตลอดไป — ที่ผ่านมาใช้ได้
+      # เพราะมีคนสร้างบัญชีด้วยมือไว้ครั้งหนึ่ง พอ volume ถูกสร้างใหม่ก็หายไปพร้อมกัน
+      #
+      # image ของ MySQL สร้างบัญชีนี้ให้เองและ GRANT ALL บน MYSQL_DATABASE
+      # (ทำงานเฉพาะตอน initialize volume ครั้งแรกเท่านั้น)
+      MYSQL_USER: ${DB_APP_USERNAME:?ต้องตั้งค่าใน .env}
+      MYSQL_PASSWORD: ${DB_APP_PASSWORD:?ต้องตั้งค่าใน .env}
     ports:
       - "127.0.0.1:3306:3306"
     volumes:

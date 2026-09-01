@@ -86,6 +86,23 @@ export const useLeaveStore = defineStore('leave', {
       await this._refreshAfterBalanceChange();
       return res.data;
     },
+    /*
+     * แก้ร่างที่บันทึกไว้ — ใช้ multipart เหมือนตอนยื่น เพราะต้องรับไฟล์แนบและลายเซ็นได้
+     * ร่างไม่กันโควตา จึงยังไม่ต้องดึงยอดวันลาใหม่ตรงนี้
+     */
+    async updateDraft(leaveId, formData) {
+      const res = await api.post(`/leaves/${leaveId}/draft`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      await this.fetchLeaves();
+      return res.data;
+    },
+    /** ส่งร่างเข้าสายอนุมัติ — ตรงนี้โควตาถูกกันจริง จึงต้องดึงยอดใหม่ด้วย */
+    async submitDraft(leaveId) {
+      const res = await api.post(`/leaves/${leaveId}/submit`);
+      await this._refreshAfterBalanceChange();
+      return res.data;
+    },
     // fetchApprovals: ใช้ข้อมูลจาก leaves ที่มีอยู่ ไม่ยิง API ซ้ำ
     async fetchApprovals() {
       try {

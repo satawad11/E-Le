@@ -102,6 +102,10 @@
                   จึงมีได้แค่สองทางคือส่งอนุมัติ หรือลบทิ้ง
                 -->
                 <template v-if="leave.status === 'Draft'">
+                  <router-link :to="{ path: '/request', query: { draft: leave.id } }"
+                    class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors min-h-[38px]">
+                    แก้ไขร่าง
+                  </router-link>
                   <button @click="submitDraft(leave)" :disabled="submittingDraft === leave.id"
                     class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-[#800000] hover:bg-[#600000] rounded-lg transition-colors min-h-[38px] disabled:opacity-50">
                     <span v-if="submittingDraft === leave.id" class="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></span>
@@ -653,9 +657,8 @@ const submitDraft = async (leave) => {
   if (!confirm('ส่งร่างนี้เข้าสายอนุมัติ? เมื่อส่งแล้วจะออกเลขที่หนังสือและลบไม่ได้อีก')) return
   submittingDraft.value = leave.id
   try {
-    await api.post(`/leaves/${leave.id}/submit`)
+    await leaveStore.submitDraft(leave.id)
     alertStore.success('ส่งคำขอลาเรียบร้อยแล้ว')
-    await Promise.all([leaveStore.fetchLeaves(), leaveStore.fetchBalances()])
   } catch (e) {
     const errors = e?.response?.data?.errors
     alertStore.error(errors ? Object.values(errors).flat().join(' ') : (e?.response?.data?.message || 'ส่งคำขอไม่สำเร็จ'))
