@@ -30,6 +30,26 @@
       >
         <canvas ref="canvas" class="block w-full h-full" />
 
+        <!--
+          วัตถุที่บันทึกไว้แล้ว — เส้นประเพื่อให้เห็นชัดว่าต่างจากของที่กำลังวาง
+          และไม่มีตัวจัดการลาก จึงไม่ชวนให้เข้าใจว่าย้ายได้
+        -->
+        <div
+          v-for="item in lockedAnnotations"
+          :key="item.key"
+          class="absolute border-2 border-dashed border-gray-400 bg-gray-100/70 rounded pointer-events-none"
+          :style="styleFor(item)"
+          :aria-label="`${labelFor(item)} ที่บันทึกไว้แล้ว หน้า ${item.page}`"
+          role="group"
+        >
+          <div class="text-[10px] leading-tight p-1 text-gray-600 select-none">
+            <strong v-if="item.type === 'stamp'" class="block">
+              {{ item.payload?.title || 'รับหนังสือ' }}
+            </strong>
+            <span>{{ item.payload?.text || labelFor(item) }}</span>
+          </div>
+        </div>
+
         <!-- วัตถุที่วางไว้ — ตำแหน่งบนจอคำนวณจากพิกัด PDF point คูณด้วยระดับซูม -->
         <div
           v-for="(item, index) in pageAnnotations"
@@ -91,6 +111,8 @@ const props = defineProps({
   source: { type: [String, Object], default: null },
   modelValue: { type: Array, default: () => [] },
   editable: { type: Boolean, default: false },
+  /** วัตถุที่บันทึกไว้แล้ว — แสดงเป็นบริบท ลากและลบไม่ได้ */
+  locked: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -114,6 +136,22 @@ const displayHeight = computed(() => pageHeight.value * zoom.value)
 const pageAnnotations = computed(() =>
   props.modelValue
     .map((item, index) => ({ ...item, key: item.id ?? `new-${index}`, index }))
+    .filter((item) => Number(item.page) === page.value),
+)
+
+/**
+ * วัตถุที่วางไว้แล้วบนเวอร์ชันนี้ — **แสดงแต่แก้ไม่ได้**
+ *
+ * ที่มา (2026-09-06): หน้าลงนามเดิมแสดงเฉพาะไฟล์ดิบ ผู้ลงนามจึงไม่เห็นตราประทับรับ
+ * และเกษียนที่วางไว้แล้วบนเวอร์ชันเดียวกัน · แต่ตอนลงนามตัวเรนเดอร์วาด **วัตถุ
+ * ทั้งหมด** ลงไป — ผู้ลงนามจึงรับรองเอกสารที่หน้าตาไม่ตรงกับที่จะออกมาจริง
+ *
+ * แยกจาก `modelValue` โดยเจตนา: ลากได้แปลว่าย้ายได้ · ของที่บันทึกไปแล้วและ
+ * หน้านี้ไม่ได้เป็นเจ้าของ ต้องไม่ให้ลากเพื่อไม่ให้ผู้ใช้เข้าใจว่าย้ายได้แล้วไม่มีผล
+ */
+const lockedAnnotations = computed(() =>
+  props.locked
+    .map((item, index) => ({ ...item, key: item.id ?? `locked-${index}` }))
     .filter((item) => Number(item.page) === page.value),
 )
 

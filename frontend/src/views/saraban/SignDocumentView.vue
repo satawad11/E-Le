@@ -65,7 +65,7 @@
 
         <!-- เอกสารจริง — ลากวางตำแหน่งได้ (ปิด RISK-30) -->
         <section class="lg:col-span-2 bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
-          <PdfWorkspace v-if="fileUrl" v-model="objects" :source="fileUrl" editable />
+          <PdfWorkspace v-if="fileUrl" v-model="objects" :locked="existing" :source="fileUrl" editable />
           <EmptyState
             v-else
             title="หนังสือฉบับนี้ยังไม่มีไฟล์ให้ลงนาม"
@@ -111,6 +111,7 @@ const router = useRouter()
 const alertStore = useAlertStore()
 
 const documentRecord = ref(null)
+const existing = ref([])
 const fileUrl = ref('')
 const objects = ref([])
 const strokes = ref([])
@@ -165,18 +166,29 @@ const placeNote = () => {
   noteText.value = ''
 }
 
+/**
+ * ดึง **เอกสารตามที่เป็นอยู่จริง** ไม่ใช่ไฟล์ดิบ
+ *
+ * ใช้ endpoint เดียวกับหน้าประทับตรา ซึ่งคืนเวอร์ชันปัจจุบัน **พร้อมวัตถุที่วางไว้
+ * แล้ว** (ตราประทับรับ เกษียนที่ยังไม่ถูกเรนเดอร์)
+ *
+ * สำคัญเพราะตอนลงนาม `SarabanPdfRenderer` วาด **วัตถุทั้งหมด** บนเวอร์ชันนั้น
+ * ลงไปในฉบับที่ลงนาม — ถ้าหน้านี้แสดงแต่ไฟล์ดิบ ผู้ลงนามจะรับรองเอกสารที่หน้าตา
+ * ไม่ตรงกับที่จะออกมาจริง ซึ่งเป็นการรับรองสิ่งที่ตนไม่ได้เห็น
+ */
 async function boot() {
   loading.value = true
   loadError.value = ''
 
   try {
-    const { data } = await api.get(`/saraban/documents/${route.params.id}`)
-    documentRecord.value = data
+    const { data } = await api.get(`/saraban/documents/${route.params.id}/annotations`)
 
-    const current = data.current_version || (data.versions || []).at(-1)
-    const path = current?.pdf_file_path || current?.original_file_path
+    documentRecord.value = data.version
+    existing.value = data.annotations || []
 
-    if (path) fileUrl.value = await fetchObjectUrl(`/storage/${path}`)
+    if (!data.version?.file_path) return
+
+    fileUrl.value = await fetchObjectUrl(`/storage/${data.version.file_path}`)
   } catch (e) {
     loadError.value = getErrorMessage(e, 'เปิดหนังสือเพื่อลงนามไม่สำเร็จ')
   } finally {
