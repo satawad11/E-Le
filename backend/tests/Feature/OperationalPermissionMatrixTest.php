@@ -279,6 +279,46 @@ class OperationalPermissionMatrixTest extends TestCase
     }
 
     /**
+     * วงจรเพิกถอนลายเซ็นต้องแยกผู้ขอออกจากผู้ตัดสินตั้งแต่ค่าตั้งต้น (SoT §26)
+     *
+     * ถ้าบทบาทเดียวถือทั้งสองสิทธิ์ การแยกหน้าที่จะเหลือแค่ชื่อ — server ยัง
+     * ปฏิเสธการอนุมัติคำขอของตัวเองอยู่ แต่คนสองคนในบทบาทเดียวกันจะอนุมัติ
+     * ให้กันไปมาได้ ซึ่งไม่ใช่การควบคุมที่ตั้งใจไว้
+     */
+    public function test_signature_revocation_separates_request_from_decision(): void
+    {
+        $this->seed(OperationalPermissionSeeder::class);
+
+        $officer = $this->userWithRole('Document Officer');
+        $director = $this->userWithRole('Director');
+
+        $this->assertTrue($officer->can('saraban.signature.revoke'));
+        $this->assertFalse($officer->can('saraban.signature.revoke_approve'));
+
+        $this->assertTrue($director->can('saraban.signature.revoke_approve'));
+        $this->assertFalse($director->can('saraban.signature.revoke'));
+    }
+
+    /**
+     * สิทธิ์ชั้นความลับต้องไม่หายไปเพราะบทบาทเดียวกันได้สิทธิ์เพิกถอนด้วย
+     *
+     * **ที่มา:** ตารางค่าตั้งต้นสองชุดใช้ชื่อบทบาทเป็นคีย์และมีบทบาทซ้ำกัน ·
+     * การรวมสองตารางด้วย spread จะทำให้สิทธิ์ของตารางแรกหายเงียบ ๆ
+     */
+    public function test_a_role_in_both_default_tables_keeps_both_grants(): void
+    {
+        $this->seed(OperationalPermissionSeeder::class);
+
+        $director = $this->userWithRole('Director');
+        $this->assertTrue($director->can('saraban.top_secret.view'), 'ผู้อำนวยการต้องยังได้รับอนุญาตชั้นลับที่สุด');
+        $this->assertTrue($director->can('saraban.signature.revoke_approve'));
+
+        $officer = $this->userWithRole('Document Officer');
+        $this->assertTrue($officer->can('saraban.confidential.view'), 'เจ้าหน้าที่ธุรการต้องยังได้รับอนุญาตชั้นลับ');
+        $this->assertTrue($officer->can('saraban.signature.revoke'));
+    }
+
+    /**
      * แจกทีละชั้น ไม่แจกชั้นที่ต่ำกว่าซ้ำ (ระเบียบฯ ข้อ 26)
      *
      * ผู้ได้รับอนุญาตชั้นสูงกว่าเข้าถึงชั้นต่ำกว่าได้อยู่แล้วโดยตัวนโยบายเอง ·

@@ -96,6 +96,9 @@ class PermissionCatalogSeeder extends Seeder
         'saraban.workflow.manage' => 'จัดการและเผยแพร่เวอร์ชันสายงานเดินหนังสือ',
         'saraban.endorse.create' => 'เกษียนหนังสือ',
         'saraban.signature.sign' => 'ลงนามในหนังสือ',
+        // การเพิกถอน — ผู้ขอกับผู้ตัดสินต้องเป็นคนละคน (SoT §26)
+        'saraban.signature.revoke' => 'ยื่นคำขอเพิกถอนลายเซ็นหรือหนังสือ',
+        'saraban.signature.revoke_approve' => 'อนุมัติหรือปฏิเสธคำขอเพิกถอน',
         'saraban.distribution.create' => 'จัดทำรายการกระจายหนังสือ',
         'saraban.distribution.send' => 'ส่งหนังสือถึงผู้รับ',
         'saraban.distribution.track' => 'ติดตามการรับทราบและการดำเนินการ',

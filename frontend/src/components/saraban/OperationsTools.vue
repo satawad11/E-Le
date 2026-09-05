@@ -6,7 +6,24 @@
       <summary class="cursor-pointer">สุขภาพระบบ</summary>
       <AppButton class="my-3" :loading="busy" @click="loadHealth">ตรวจสุขภาพระบบ</AppButton>
       <p v-if="health">ตรวจเมื่อ {{ health.checked_at }} · {{ healthLabel(health.summary?.status) }}</p>
-      <ul><li v-for="(check, key) in health?.checks || {}" :key="key" class="text-sm py-1">{{ check.label || check.name || key }}: {{ healthLabel(check.status) }} {{ check.message || '' }}</li></ul>
+      <ul><li v-for="check in health?.checks || []" :key="check.name" class="text-sm py-1">{{ checkLabel(check.name) }}: {{ healthLabel(check.status) }}</li></ul>
+    </details>
+    <!--
+      คิวคำขอเพิกถอนที่รอการตัดสิน (SIGNATURE-VERIFICATION · SoT §14, §26)
+
+      กรองด้วยขอบเขตของผู้เรียกที่ฝั่ง server แล้ว — คิวที่ไม่กรองคือช่องทาง
+      ค้นพบว่าหนังสือของหน่วยงานอื่นกำลังมีปัญหา · การตัดสินทำที่หน้ารายละเอียด
+      หนังสือ เพื่อให้ผู้ตัดสินเห็นผลตรวจลายเซ็นก่อนกดเสมอ
+    -->
+    <details v-can="'saraban.signature.revoke_approve'">
+      <summary class="cursor-pointer">คำขอเพิกถอนที่รอการตัดสิน</summary>
+      <AppButton class="my-3" :loading="busy" @click="loadRevocations">โหลดคำขอ</AppButton>
+      <p v-if="revocations && !revocations.length" class="text-sm">ไม่มีคำขอที่รอการตัดสิน</p>
+      <ul>
+        <li v-for="item in revocations || []" :key="item.id" class="text-sm py-1">
+          {{ item.document_number || 'ยังไม่มีเลข' }} · {{ item.subject }} — ขอโดย {{ item.requested_by }} เมื่อ {{ item.requested_at }} · เหตุผล: {{ item.reason }}
+        </li>
+      </ul>
     </details>
     <details v-if="auth.hasAnyPermission(['saraban.operations.view', 'saraban.feature_flags.manage'])">
       <summary class="cursor-pointer">การเปิดใช้ความสามารถ</summary>
@@ -32,11 +49,13 @@ import { getErrorMessage } from '../../utils/errorHandler'
 import AppButton from '../ui/AppButton.vue'
 import ConfirmOperation from './ConfirmOperation.vue'
 const auth = useAuthStore()
-const health = ref(null), flags = ref([]), channels = ref([]), deliveries = ref(null), meta = ref(null), operation = ref(null), error = ref(''), busy = ref(false)
+const health = ref(null), revocations = ref(null), flags = ref([]), channels = ref([]), deliveries = ref(null), meta = ref(null), operation = ref(null), error = ref(''), busy = ref(false)
 const healthLabel = v => ({ ok: 'ปกติ', degraded: 'ควรตรวจสอบ', down: 'ขัดข้อง', disabled: 'ปิดอยู่' }[v] || 'ไม่ทราบสถานะ')
+const checkLabel = v => ({ database: 'ฐานข้อมูล', cache: 'แคช', queue: 'คิวงาน', storage: 'พื้นที่จัดเก็บ', pdf_renderer: 'การสร้างเอกสาร', notification_providers: 'ผู้ให้บริการแจ้งเตือน', scheduler: 'งานตามเวลา', exceptions: 'ข้อผิดพลาด' }[v] || 'องค์ประกอบระบบ')
 const channelLabel = v => ({ in_app: 'ในระบบ', email: 'อีเมล', web_push: 'เบราว์เซอร์', line: 'ไลน์', telegram: 'เทเลแกรม' }[v] || v)
 async function read(fn) { busy.value = true; error.value = ''; try { await fn() } catch (e) { error.value = getErrorMessage(e, 'โหลดข้อมูลไม่สำเร็จ') } finally { busy.value = false } }
 const loadHealth = () => read(async () => { health.value = (await api.get('/saraban/operations/health')).data })
+const loadRevocations = () => read(async () => { revocations.value = (await api.get('/saraban/revocations/pending')).data.pending })
 const loadFlags = () => read(async () => { flags.value = (await api.get('/saraban/feature-flags')).data.flags })
 const loadNotifications = (page) => read(async () => {
   const [summary, queue] = await Promise.all([api.get('/admin/notifications/channel-health'), api.get('/admin/notifications/dead-letters', { params: { page } })])

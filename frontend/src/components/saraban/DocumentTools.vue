@@ -10,6 +10,80 @@
       <p v-if="!evidence.length">ยังไม่มีหลักฐานการลงนาม</p>
       <p v-for="item in evidence" :key="item.id">{{ item.signer_name_snapshot }} · ฉบับที่ {{ item.version_no }} · {{ item.signed_at }} · {{ item.file_intact ? 'ไฟล์สมบูรณ์' : 'ตรวจพบความผิดปกติของไฟล์' }}</p>
     </div>
+    <!--
+      ตรวจสอบลายเซ็น (SIGNATURE-VERIFICATION · SoT §14)
+
+      **สถานะและเหตุผลทุกข้อมาจาก server** — หน้าจอแสดงสิ่งที่ server ตัดสินแล้ว
+      ไม่คำนวณเอง · หน้าจอที่ตัดสินเองคือหน้าจอที่แก้ผลได้ด้วยเครื่องมือนักพัฒนา
+    -->
+    <details class="border-t pt-3">
+      <summary class="cursor-pointer font-medium">ตรวจสอบความน่าเชื่อถือของลายเซ็น</summary>
+      <AppButton class="my-3" variant="secondary" :loading="busy" @click="loadVerification">ตรวจสอบลายเซ็น</AppButton>
+      <div v-if="verification" class="text-sm space-y-3">
+        <p class="font-medium">ผลรวม: {{ statusLabel(verification.status) }}</p>
+        <p v-if="!verification.signature_count">หนังสือฉบับนี้ยังไม่มีลายเซ็น</p>
+        <div v-for="signature in verification.signatures" :key="signature.id" class="border rounded-xl p-3 space-y-1">
+          <p class="font-medium">
+            ลำดับที่ {{ signature.sequence }} · {{ signature.signer }}
+            <span v-if="signature.position"> · {{ signature.position }}</span>
+          </p>
+          <p>{{ statusLabel(signature.status) }} · ลงนามเมื่อ {{ signature.signed_at }}</p>
+          <!--
+            บอกชนิดตรงไปตรงมาเสมอ — ผู้อ่านต้องรู้ว่ากำลังดูลายเซ็นอิเล็กทรอนิกส์
+            ที่ผูกกับตัวตนที่ยืนยันแล้ว ไม่ใช่ลายเซ็นดิจิทัลที่มีใบรับรองรองรับ
+          -->
+          <p class="text-gray-600">{{ typeLabel(signature.signature_type) }}</p>
+          <ul class="list-disc ms-5">
+            <li v-for="check in signature.checks" :key="check.check">
+              {{ checkLabel(check.check) }}: {{ statusLabel(check.status) }} — {{ check.detail }}
+            </li>
+          </ul>
+        </div>
+        <ul v-if="verification.document_checks?.length" class="list-disc ms-5">
+          <li v-for="check in verification.document_checks" :key="check.check">
+            {{ checkLabel(check.check) }}: {{ statusLabel(check.status) }} — {{ check.detail }}
+          </li>
+        </ul>
+        <p v-if="verification.revocation">
+          คำขอเพิกถอน: {{ statusLabel(verification.revocation.status) }} — {{ verification.revocation.reason }}
+        </p>
+        <AppButton variant="secondary" :loading="busy" @click="loadReport">ดูชุดหลักฐานฉบับเต็ม</AppButton>
+        <div v-if="report" class="border rounded-xl p-3 space-y-2">
+          <p class="font-medium">ชุดหลักฐานการลงนาม ({{ report.reported_at }})</p>
+          <div v-for="item in report.evidence_package" :key="item.id" class="space-y-1">
+            <p>{{ item.signer_name_snapshot }} · {{ item.position_snapshot || 'ไม่ระบุตำแหน่ง' }} · {{ item.signed_at }}</p>
+            <p class="text-gray-600 break-all">แฮชของฉบับที่ลงนาม: {{ item.document_hash }}</p>
+            <p class="text-gray-600">ยืนยันตัวตนซ้ำเมื่อ: {{ item.reauthenticated_at || 'ไม่มีบันทึก' }}</p>
+            <!-- แสดงหัวข้อใบรับรอง **เฉพาะเมื่อมีใบรับรองจริง** -->
+            <p v-if="item.certificate" class="text-gray-600">ใบรับรอง: {{ item.certificate.issuer }} · หมายเลข {{ item.certificate.serial }}</p>
+            <p v-if="item.trusted_timestamp" class="text-gray-600">เวลาที่ประทับ: {{ item.trusted_timestamp.authority }} · {{ item.trusted_timestamp.timestamped_at }}</p>
+          </div>
+          <p v-for="r in report.revocations" :key="r.id">
+            คำขอเพิกถอนโดย {{ r.requested_by }} · {{ statusLabel(r.status === 'pending' ? 'REVOCATION_PENDING' : (r.status === 'approved' ? 'REVOKED' : 'INVALID')) }} — {{ r.reason }}
+          </p>
+        </div>
+      </div>
+      <!--
+        การตัดสินคำขอ — ปรากฏเฉพาะผู้มีอำนาจอนุมัติ และเฉพาะเมื่อมีคำขอค้างอยู่
+        ผู้ขอกับผู้ตัดสินต้องเป็นคนละคน ซึ่ง server บังคับอีกชั้นเสมอ
+      -->
+      <div
+        v-if="verification?.revocation?.status === 'REVOCATION_PENDING'"
+        v-can="'saraban.signature.revoke_approve'"
+        class="border-t mt-3 pt-3 space-y-3"
+      >
+        <AppInput v-model="decisionNote" label="บันทึกการตัดสิน (จำเป็นเมื่อปฏิเสธ)" />
+        <div class="flex flex-wrap gap-2">
+          <AppButton @click="decide('approve')">อนุมัติการเพิกถอน</AppButton>
+          <AppButton variant="secondary" :disabled="decisionNote.trim().length < 10" @click="decide('reject')">ปฏิเสธคำขอ</AppButton>
+        </div>
+      </div>
+      <div v-if="verification && document.finalized_at" v-can="'saraban.signature.revoke'" class="border-t mt-3 pt-3 space-y-3">
+        <AppInput v-model="revocationReason" label="เหตุผลในการขอเพิกถอน (อย่างน้อย 10 ตัวอักษร)" />
+        <p class="text-sm text-gray-600">การเพิกถอนต้องผ่านการอนุมัติจากผู้มีอำนาจอีกคน และต้องยืนยันตัวตนซ้ำ</p>
+        <AppButton :disabled="revocationReason.trim().length < 10" @click="requestRevocation">ขอเพิกถอนหนังสือฉบับนี้</AppButton>
+      </div>
+    </details>
     <details class="border-t pt-3">
       <summary class="cursor-pointer font-medium">เปรียบเทียบฉบับ</summary>
       <div class="grid sm:grid-cols-2 gap-3 my-3">
@@ -73,20 +147,76 @@ import ConfirmOperation from './ConfirmOperation.vue'
 const props = defineProps({ document: { type: Object, required: true } })
 const emit = defineEmits(['changed'])
 const versions = computed(() => props.document.versions || [])
-const evidence = ref(null), comparison = ref(null), redactions = ref(null), operation = ref(null)
+const evidence = ref(null), comparison = ref(null), redactions = ref(null), operation = ref(null), verification = ref(null)
 const left = ref(''), right = ref(''), note = ref(''), sourceId = ref(''), redactionReason = ref(''), error = ref(''), fileUrl = ref('')
+const revocationReason = ref(''), decisionNote = ref(''), report = ref(null)
 const busy = ref(false), areas = ref([])
 const placement = reactive({ page: 1, x: 60, y: 100 })
 const area = reactive({ page: 1, x: 60, y: 100, width: 160, height: 30 })
 async function read(action) { busy.value = true; error.value = ''; try { await action() } catch (e) { error.value = getErrorMessage(e, 'โหลดข้อมูลไม่สำเร็จ') } finally { busy.value = false } }
 const loadEvidence = () => read(async () => { evidence.value = (await api.get(`/saraban/documents/${props.document.id}/signatures`)).data.evidences })
-const compare = () => read(async () => { comparison.value = (await api.get(`/saraban/documents/${props.document.id}/compare`, { params: { left: left.value, right: right.value } })).data })
+const loadVerification = () => read(async () => { verification.value = (await api.get(`/saraban/documents/${props.document.id}/verification`)).data })
+/*
+ * คำอธิบายสถานะเป็นภาษาไทยที่ผู้ปฏิบัติงานอ่านแล้วรู้ว่าต้องทำอะไรต่อ
+ *
+ * ไม่ตัดสินสถานะเอง — แปลงรหัสที่ server ส่งมาเป็นคำเท่านั้น · รหัสที่ไม่รู้จัก
+ * แสดงว่า "ตรวจสอบไม่ได้" ไม่ใช่ "ผ่าน" เพราะการเดาว่าผ่านคือความเสี่ยง
+ */
+const statusLabel = v => ({
+  VALID: 'ผ่านการตรวจสอบ',
+  VALID_WITH_WARNINGS: 'ผ่าน แต่มีข้อสังเกต',
+  INVALID: 'ไม่ผ่านการตรวจสอบ',
+  DOCUMENT_MODIFIED_AFTER_SIGNING: 'ไฟล์ถูกแก้หลังการลงนาม',
+  CERTIFICATE_EXPIRED: 'ใบรับรองหมดอายุ',
+  CERTIFICATE_REVOKED: 'ใบรับรองถูกเพิกถอน',
+  CERTIFICATE_UNTRUSTED: 'ใบรับรองไม่อยู่ในรายชื่อที่เชื่อถือ',
+  TIMESTAMP_INVALID: 'เวลาที่ประทับเชื่อถือไม่ได้',
+  SIGNER_MISMATCH: 'ผู้ลงนามไม่ตรงกับหลักฐาน',
+  AUTHORITY_INVALID: 'อำนาจลงนามไม่ถูกต้อง',
+  SIGNATURE_ORDER_INVALID: 'ลงนามผิดลำดับ',
+  REVOCATION_PENDING: 'มีคำขอเพิกถอนรอการตัดสิน',
+  REVOKED: 'ถูกเพิกถอนแล้ว',
+  UNVERIFIED: 'ยังไม่มีลายเซ็นให้ตรวจ',
+}[v] || 'ตรวจสอบไม่ได้')
+const checkLabel = v => ({
+  version_binding: 'การผูกกับฉบับที่ลงนาม',
+  integrity: 'ความสมบูรณ์ของไฟล์',
+  signer_identity: 'ตัวตนผู้ลงนาม',
+  authority: 'อำนาจลงนาม',
+  signing_order: 'ลำดับการลงนาม',
+  certificate: 'ใบรับรอง',
+  timestamp: 'เวลาที่ประทับ',
+  metadata_seal: 'ข้อมูลทะเบียน',
+  document_status: 'สถานะหนังสือ',
+}[v] || v)
+/* **ไม่เรียกลายเซ็นอิเล็กทรอนิกส์ว่าลายเซ็นดิจิทัลเด็ดขาด** — เป็นคนละสิ่งกัน */
+const typeLabel = v => v === 'digital'
+  ? 'ลายเซ็นดิจิทัล (มีใบรับรองรองรับ)'
+  : 'ลายเซ็นอิเล็กทรอนิกส์ (ผูกกับตัวตนที่ยืนยันแล้ว ไม่ใช่ลายเซ็นดิจิทัล)'
+const loadReport = () => read(async () => { report.value = (await api.get(`/saraban/documents/${props.document.id}/verification/report`)).data })
+function decide(decision) {
+  operation.value = {
+    title: decision === 'approve' ? 'อนุมัติการเพิกถอน' : 'ปฏิเสธคำขอเพิกถอน',
+    description: decision === 'approve'
+      ? 'หนังสือฉบับนี้จะเข้าสถานะยกเลิก ผู้ที่ตรวจสอบจาก QR จะเห็นว่าถูกเพิกถอนแล้ว ทะเบียนและไฟล์ยังคงอยู่'
+      : `คำขอจะถูกปฏิเสธและยังคงอยู่ในทะเบียน · เหตุผล: ${decisionNote.value}`,
+    action: () => api.post(`/saraban/revocations/${verification.value.revocation.id}/decision`, { decision, note: decisionNote.value || undefined }),
+  }
+}
+function requestRevocation() {
+  operation.value = {
+    title: 'ขอเพิกถอนหนังสือ',
+    description: `คำขอนี้ต้องผ่านการอนุมัติจากผู้มีอำนาจอีกคน · เหตุผล: ${revocationReason.value}`,
+    action: () => api.post(`/saraban/documents/${props.document.id}/revocations`, { reason: revocationReason.value }),
+  }
+}
+const compare = () => read(async () => { comparison.value = (await api.get(`/saraban/documents/${props.document.id}/compare`, { params: { left: Number(left.value), right: Number(right.value) } })).data })
 const loadRedactions = (event) => { if (!event || event.target.open) return read(async () => { redactions.value = (await api.get(`/saraban/documents/${props.document.id}/redactions`)).data }) }
 async function openFile(path) { return read(async () => { if (fileUrl.value) URL.revokeObjectURL(fileUrl.value); fileUrl.value = ''; areas.value = []; if (path) fileUrl.value = await fetchObjectUrl(`/storage/${path}`) }) }
 function preview(id) { const version = versions.value.find(v => String(v.id) === String(id)); return openFile(version?.pdf_file_path || version?.original_file_path) }
 function finalize() { operation.value = { title: 'ออกฉบับสมบูรณ์', description: 'ยืนยันออกหนังสือฉบับสมบูรณ์พร้อมรหัสตรวจสอบ หลังจากนี้แก้ไขฉบับนี้ไม่ได้', action: () => api.post(`/saraban/documents/${props.document.id}/finalize`) } }
 function endorse() { operation.value = { title: 'บันทึกเกษียน', description: note.value, action: () => api.post(`/saraban/documents/${props.document.id}/endorse`, { objects: [{ ...placement, type: 'note', width: 240, height: 40, payload: { text: note.value } }] }) } }
-function redact() { operation.value = { title: 'สร้างสำเนาปกปิด', description: `ตรวจพื้นที่ปกปิด ${areas.value.length} แห่งแล้ว เหตุผล: ${redactionReason.value}`, action: () => api.post(`/saraban/documents/${props.document.id}/redactions`, { source_version_id: sourceId.value, reason: redactionReason.value, areas: areas.value.map(({ page, x, y, width, height }) => ({ page, x, y, width, height })) }) } }
+function redact() { operation.value = { title: 'สร้างสำเนาปกปิด', description: `ตรวจพื้นที่ปกปิด ${areas.value.length} แห่งแล้ว เหตุผล: ${redactionReason.value}`, action: () => api.post(`/saraban/documents/${props.document.id}/redactions`, { source_version_id: Number(sourceId.value), reason: redactionReason.value, areas: areas.value.map(({ page, x, y, width, height }) => ({ page, x, y, width, height })) }) } }
 async function done() { operation.value = null; emit('changed'); if (redactions.value) await loadRedactions() }
 onBeforeUnmount(() => { if (fileUrl.value) URL.revokeObjectURL(fileUrl.value) })
 </script>

@@ -14,6 +14,7 @@
       </button>
     </div>
 
+    <OperationsTools />
     <!-- 1. LINE Official Account & Group Notifications -->
     <div class="bg-white shadow-sm border border-gray-100 rounded-2xl p-6 space-y-4">
       <div class="flex items-center gap-3 border-b pb-3">
@@ -140,6 +141,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import api from '../../axios'
+import OperationsTools from '../../components/saraban/OperationsTools.vue'
 import { useAlertStore } from '../../stores/alert'
 import { ICONS } from '../../utils/icons'
 
@@ -247,5 +249,4 @@ onMounted(() => {
 
 onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
 </script>
-
 

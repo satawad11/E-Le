@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Saraban\Document;
 use App\Models\Saraban\SignatureEvidence;
 use App\Services\Saraban\DocumentVerificationService;
+use App\Services\Saraban\SignatureVerificationService;
 use App\Services\TrustedClock;
 
 /**
@@ -22,6 +23,7 @@ class DocumentVerificationController extends Controller
 {
     public function __construct(
         private readonly DocumentVerificationService $verification,
+        private readonly SignatureVerificationService $signatures,
         private readonly TrustedClock $clock,
     ) {}
 
@@ -35,6 +37,8 @@ class DocumentVerificationController extends Controller
         abort_unless($document, 404, 'ไม่พบเอกสารที่ตรงกับรหัสตรวจสอบนี้');
 
         $altered = $this->verification->wasAltered($document);
+
+        $verification = $this->signatures->publicSummary($document);
 
         return response()->json([
             'document_number' => $document->documentNumber?->formatted,
@@ -60,12 +64,23 @@ class DocumentVerificationController extends Controller
                 ]),
 
             /*
-             * ใช้อ้างอิงได้เมื่อออกฉบับสมบูรณ์แล้ว ยังไม่ถูกยกเลิก
-             * และข้อมูลไม่ถูกแก้หลังออกหนังสือ
+             * **ผลตรวจมาจากบริการตรวจสอบตัวเดียวกับที่ผู้ใช้ภายในเห็น**
+             *
+             * ที่มา (SIGNATURE-VERIFICATION · RISK-64): เดิม `is_valid` คิดจาก
+             * สามอย่างคือ ออกฉบับสมบูรณ์แล้ว · ไม่ถูกยกเลิก · เมทาดาทาไม่ถูกแก้
+             * — **ไม่แตะไฟล์และไม่แตะลายเซ็นเลย** · ไฟล์ PDF ที่ถูกสับเปลี่ยน
+             * บนดิสก์จึงยังได้คำตอบว่า "ใช้อ้างอิงได้" ซึ่งผิดในกรณีที่สำคัญที่สุด
+             *
+             * ตอนนี้ต้องผ่านการตรวจแฮชไฟล์ การผูกเวอร์ชัน ตัวตนผู้ลงนาม อำนาจ
+             * และการเพิกถอน ครบทุกข้อจึงจะ "ใช้อ้างอิงได้"
              */
-            'is_valid' => $document->finalized_at !== null
-                && $document->status !== Document::STATUS_CANCELLED
-                && ! $altered,
+            'is_valid' => $document->finalized_at !== null && $verification['usable'],
+            /*
+             * **คืนสถานะอย่างย่อ ไม่บอกว่าอะไรผิดพลาด** — คนทั่วไปที่ถือกระดาษ
+             * ต้องรู้แค่ว่าเอกสารในมือใช้อ้างอิงได้ไหม · รายละเอียดว่าอำนาจของใคร
+             * หมดอายุหรือไฟล์ถูกแก้ที่จุดใด เป็นข้อมูลภายในที่บอกช่องโหว่ให้ผู้ไม่หวังดี
+             */
+            'verification_status' => $verification['status'],
             'content_altered' => $altered,
             'cancelled' => $document->status === Document::STATUS_CANCELLED,
             'verified_at' => $this->clock->now()->toIso8601String(),

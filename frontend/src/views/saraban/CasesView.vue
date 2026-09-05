@@ -116,7 +116,7 @@
             <AppSelect v-model="candidateId" label="หนังสือที่ต้องการเพิ่ม"><option value="">เลือกหนังสือ</option><option v-for="doc in candidates" :key="doc.id" :value="doc.id">{{ doc.subject }}</option></AppSelect>
             <div class="flex gap-2"><AppButton :disabled="candidatePage <= 1" @click="loadCandidates(candidatePage - 1)">ก่อนหน้า</AppButton><span>หน้า {{ candidatePage }} / {{ candidateLastPage }}</span><AppButton :disabled="candidatePage >= candidateLastPage" @click="loadCandidates(candidatePage + 1)">ถัดไป</AppButton></div>
             <AppInput v-model="documentNote" label="หมายเหตุการเชื่อมโยง" />
-            <AppButton :disabled="!candidateId || attaching" :loading="attaching" @click="attachDocument">เพิ่มหนังสือเข้ารื่อง</AppButton>
+            <AppButton :disabled="!candidateId || attaching" :loading="attaching" @click="attachDocument">เพิ่มหนังสือเข้าเรื่อง</AppButton>
           </template>
         </div>
         <p v-if="documentError" role="alert" class="text-red-700">{{ documentError }}</p>

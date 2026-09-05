@@ -177,6 +177,22 @@ class OperationalPermissionSeeder extends Seeder
      *
      * @var array<string,string>
      */
+    /**
+     * วงจรการเพิกถอนลายเซ็น — **ผู้ขอกับผู้ตัดสินต้องเป็นคนละบทบาท** (SoT §26)
+     *
+     * ค่าตั้งต้นตามการปฏิบัติจริง: เจ้าหน้าที่ธุรการเป็นผู้พบความผิดพลาดของ
+     * หนังสือที่ออกไปแล้วและยื่นเรื่อง · ผู้อำนวยการซึ่งเป็นผู้ลงนามเป็นผู้ตัดสิน
+     *
+     * การจับคู่แบบนี้ทำให้แยกหน้าที่ได้จริงตั้งแต่วันแรก โดยไม่ต้องรอผู้ดูแล
+     * มาตั้งค่า · **ปรับได้จากหน้าจอจัดการสิทธิ์** ตามโครงสร้างจริงของหน่วยงาน
+     *
+     * @var array<string,string>
+     */
+    public const SARABAN_REVOCATION = [
+        'Document Officer' => 'saraban.signature.revoke',
+        'Director' => 'saraban.signature.revoke_approve',
+    ];
+
     public const SARABAN_CLEARANCE = [
         'Director' => 'saraban.top_secret.view',
         'Deputy Director' => 'saraban.secret.view',
@@ -244,7 +260,22 @@ class OperationalPermissionSeeder extends Seeder
          * ชั้นสูงกว่าเข้าถึงชั้นต่ำกว่าได้อยู่แล้วโดยตัวนโยบายเอง (ระเบียบฯ ข้อ 26)
          * การแจกซ้ำจะทำให้การถอนสิทธิ์ในอนาคตทำได้ไม่หมดและตรวจสอบยาก
          */
-        foreach (self::SARABAN_CLEARANCE as $roleName => $permission) {
+        /*
+         * รวมสองตารางเป็น **คู่ (บทบาท, สิทธิ์)** ไม่ใช่การรวม array ตามคีย์
+         *
+         * ทั้งสองตารางใช้ชื่อบทบาทเป็นคีย์ และมีบทบาทซ้ำกัน (Director กับ
+         * Document Officer อยู่ในทั้งคู่) · การรวมด้วย spread จะทำให้สิทธิ์ของ
+         * ตารางแรกหายไปเงียบ ๆ ซึ่งเป็นข้อผิดพลาดที่ไม่มีอะไรฟ้อง
+         */
+        $roleGrants = [];
+
+        foreach ([self::SARABAN_CLEARANCE, self::SARABAN_REVOCATION] as $table) {
+            foreach ($table as $roleName => $permission) {
+                $roleGrants[] = [$roleName, $permission];
+            }
+        }
+
+        foreach ($roleGrants as [$roleName, $permission]) {
             $roleId = DB::table('roles')->where('name', $roleName)->where('guard_name', $guard)->value('id');
 
             if ($roleId === null) {

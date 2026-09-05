@@ -52,6 +52,7 @@ use App\Http\Controllers\Saraban\RegisterReportController;
 use App\Http\Controllers\Saraban\RetentionController;
 use App\Http\Controllers\Saraban\SavedViewController;
 use App\Http\Controllers\Saraban\SignatureController;
+use App\Http\Controllers\Saraban\SignatureVerificationController;
 use App\Http\Controllers\Saraban\WorkflowSimulationController;
 use App\Http\Controllers\SecureFileController;
 use App\Http\Controllers\SecureSettingController;
@@ -493,6 +494,28 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
             ->middleware('ability:saraban.endorse.create');
         Route::get('/documents/{document}/signatures', [SignatureController::class, 'evidence'])
             ->middleware('ability:saraban.document.view');
+
+        /*
+         * ตรวจสอบลายเซ็น และวงจรการเพิกถอน (SIGNATURE-VERIFICATION · SoT §14, §24)
+         *
+         * **การตรวจสอบใช้สิทธิ์เดียวกับการเปิดดูหนังสือ** — ผู้ที่เปิดหนังสือได้
+         * ต้องตรวจสอบความน่าเชื่อถือของมันได้ด้วย · การแยกสิทธิ์เพิ่มจะทำให้คน
+         * ส่วนใหญ่เห็นลายเซ็นแต่ไม่รู้ว่ามันยังใช้ได้ไหม ซึ่งแย่กว่าไม่แสดงเลย
+         *
+         * **การเพิกถอนแยกเป็นสองสิทธิ์และบังคับ `step_up` ทั้งคู่** — เป็นการ
+         * เปลี่ยนสถานะเอกสารที่เผยแพร่ออกไปแล้ว และต้องแยกผู้ขอออกจากผู้ตัดสิน
+         * ตาม SoT §26 แบบเดียวกับการทำลายเอกสาร (INT-19)
+         */
+        Route::get('/documents/{document}/verification', [SignatureVerificationController::class, 'show'])
+            ->middleware('ability:saraban.document.view');
+        Route::get('/documents/{document}/verification/report', [SignatureVerificationController::class, 'report'])
+            ->middleware('ability:saraban.document.view');
+        Route::post('/documents/{document}/revocations', [SignatureVerificationController::class, 'requestRevocation'])
+            ->middleware(['ability:saraban.signature.revoke', 'step_up']);
+        Route::get('/revocations/pending', [SignatureVerificationController::class, 'pending'])
+            ->middleware('ability:saraban.signature.revoke_approve');
+        Route::post('/revocations/{revocation}/decision', [SignatureVerificationController::class, 'decide'])
+            ->middleware(['ability:saraban.signature.revoke_approve', 'step_up']);
 
         /*
          * ออกหนังสือฉบับสมบูรณ์พร้อม QR (INT-12)

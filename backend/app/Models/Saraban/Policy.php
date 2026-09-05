@@ -38,6 +38,15 @@ class Policy extends Model
      */
     public const KEY_CONFIDENTIALITY = 'confidentiality';
 
+    /**
+     * ความน่าเชื่อถือของลายเซ็น — ผู้ออกใบรับรองและผู้ให้บริการเวลาที่ยอมรับ (SoT §18)
+     *
+     * รายชื่อว่าง = **ยังไม่ประกาศว่าเชื่อถือใคร** จึงไม่ตัดสินว่าไม่น่าเชื่อถือ ·
+     * เมื่อหน่วยงานเริ่มใช้ลายเซ็นดิจิทัลจริง ให้เติมรายชื่อที่นี่ แล้วใบรับรอง
+     * นอกรายการจะถูกรายงานว่า `CERTIFICATE_UNTRUSTED` ทันทีโดยไม่ต้องแก้โค้ด
+     */
+    public const KEY_SIGNATURE = 'signature';
+
     public function versions()
     {
         return $this->hasMany(PolicyVersion::class, 'policy_id')->orderByDesc('version_no');

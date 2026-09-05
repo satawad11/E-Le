@@ -88,6 +88,20 @@ class SignatureService
                 ...$this->snapshotOf($signer, $document),
                 'signed_at' => $this->clock->now(),
                 'signature_method' => SignatureEvidence::METHOD_DRAWN,
+                /*
+                 * **ประกาศชนิดตรงไปตรงมา** — ระบบนี้ทำลายเซ็นอิเล็กทรอนิกส์ที่ผูก
+                 * กับตัวตนที่ยืนยันแล้ว ไม่ใช่ลายเซ็นดิจิทัลที่มีใบรับรองรองรับ
+                 * การเขียนค่านี้ไว้ชัดเจน ทำให้ไม่มีใครในอนาคตเผลออ้างสิ่งที่
+                 * ระบบพิสูจน์ไม่ได้ (SoT §14)
+                 */
+                'signature_type' => SignatureEvidence::TYPE_ELECTRONIC,
+                /*
+                 * ลำดับการลงนามจริงของหนังสือฉบับนี้ — นับจากหลักฐานที่มีอยู่แล้ว
+                 * บันทึกไว้เพื่อให้ตรวจย้อนหลังได้ว่าลำดับเวลาตรงกับลำดับที่ควรเป็น
+                 */
+                'signing_sequence' => SignatureEvidence::query()
+                    ->where('document_id', $document->id)
+                    ->count() + 1,
                 'document_hash' => $signed->file_hash,
                 ...$this->assuranceOf($signer),
                 'ip_address' => $request->ip(),
