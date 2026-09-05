@@ -240,7 +240,13 @@ class MenuSeeder extends Seeder
              * ถ้าหัวข้อผูกไว้กับข้อนั้นข้อเดียว กิ่งทั้งกิ่งจะหายไปจากเมนูของเขา
              * และหนังสือที่เวียนถึงเขาก็ไม่มีทางเปิดเจอ
              */
-            'permissions' => ['saraban.document.view', 'saraban.inbox.view'],
+            'permissions' => [
+                'saraban.document.view',
+                'saraban.inbox.view',
+                'saraban.document.create',
+                'saraban.incoming.register',
+                'saraban.report.view',
+            ],
             'children' => [
                 [
                     'code' => 'saraban.inbox',
@@ -301,38 +307,13 @@ class MenuSeeder extends Seeder
                     'permissions' => ['saraban.incoming.register'],
                 ],
                 [
-                    // INT-16 — SoT §6, §9, §18
-                    'code' => 'saraban.authority',
-                    'title_th' => 'ตารางอำนาจหน้าที่',
-                    'title_en' => 'Authority Matrix',
-                    'route_name' => 'saraban-authority',
-                    'route_path' => '/saraban/authority',
-                    'permissions' => ['saraban.authority.view'],
-                ],
-                [
-                    'code' => 'saraban.policies',
-                    'title_th' => 'ศูนย์นโยบายงานสารบรรณ',
-                    'title_en' => 'Policy Center',
-                    'route_name' => 'saraban-policies',
-                    'route_path' => '/saraban/policies',
-                    'permissions' => ['saraban.policy.manage'],
-                ],
-                [
-                    'code' => 'saraban.number_series',
-                    'title_th' => 'ชุดเลขหนังสือ',
-                    'title_en' => 'Number Series',
-                    'route_name' => 'saraban-number-series',
-                    'route_path' => '/saraban/number-series',
-                    'permissions' => ['saraban.config.manage'],
-                ],
-                [
-                    // INT-20 — ทะเบียนหลักฐาน (SoT §23)
-                    'code' => 'saraban.compliance',
-                    'title_th' => 'ทะเบียนหลักฐานการปฏิบัติตามข้อกำหนด',
-                    'title_en' => 'Compliance Evidence',
-                    'route_name' => 'saraban-compliance',
-                    'route_path' => '/saraban/compliance',
-                    'permissions' => ['saraban.operations.view', 'saraban.report.view'],
+                    // INT-18 — สารบบเรื่อง (SoT §22)
+                    'code' => 'saraban.cases',
+                    'title_th' => 'สารบบเรื่อง',
+                    'title_en' => 'Cases',
+                    'route_name' => 'saraban-cases',
+                    'route_path' => '/saraban/cases',
+                    'permissions' => ['saraban.document.view'],
                 ],
                 [
                     // INT-19 — รายงานทะเบียน (SoT §28)
@@ -343,14 +324,85 @@ class MenuSeeder extends Seeder
                     'route_path' => '/saraban/reports',
                     'permissions' => ['saraban.report.view'],
                 ],
+            ],
+        ],
+        /*
+         * การจัดการงานสารบรรณ — แยกจากงานประจำวันโดยเจตนา
+         * (NAVIGATION-ACTION-PERMISSION-MATRIX §2, §5)
+         *
+         * **ทำไมเป็นกลุ่มระดับบนสุดแยก ไม่ใช่เมนูย่อยชั้นที่สาม**
+         *
+         * เอกสารต้นทางวาดผังไว้สามชั้น (สารบรรณ → การจัดการ → รายการย่อย) แต่
+         * ระบบเมนูของโครงการนี้รองรับสองชั้น — `MenuSeeder::run()` วนแค่
+         * `children` ชั้นเดียว · `MenuService` โหลด `children.permissions` ชั้นเดียว
+         * · และ `AppMenuNav.vue` เรนเดอร์แค่ `item.children`
+         *
+         * การเพิ่มชั้นที่สามต้องแก้แกนกลางของระบบเมนู ซึ่งกระทบโมดูลการลา
+         * การลงเวลา และการบริหารระบบทั้งหมด — เกินขอบเขตของการปรับเมนูโมดูลเดียว
+         *
+         * เอกสารต้นทางเองระบุไว้ใน §2 ว่า "อย่าสร้าง Sidebar ยาวเกินจำเป็น
+         * ให้ใช้ Tabs/Secondary Navigation ในแต่ละหน้า" — การแยกเป็นสองกลุ่ม
+         * ระดับบนสุดจึงตรงตามเจตนา และได้ผลเดียวกันคือ **แยกงานประจำวันออกจาก
+         * งานตั้งค่า** โดยไม่แตะแกนกลาง
+         *
+         * `module` = `saraban` เหมือนกลุ่มแรก — ปิดโมดูลแล้วหายทั้งสองกลุ่ม
+         */
+        [
+            'code' => 'saraban_admin',
+            'title_th' => 'การจัดการงานสารบรรณ',
+            'title_en' => 'Saraban Administration',
+            'module' => 'saraban',
+            'icon' => 'cog',
+
+            /*
+             * สิทธิ์ของกลุ่มคือ **ผลรวมของสิทธิ์ลูกทุกตัว**
+             *
+             * เมนูแม่กรองก่อนเมนูลูกเสมอ — ถ้าใส่ไม่ครบ ผู้ที่มีสิทธิ์เพียงข้อเดียว
+             * เช่นดูตารางอำนาจอย่างเดียว จะไม่เห็นกลุ่มนี้เลยทั้งที่มีสิทธิ์เข้าหน้านั้น
+             */
+            'permissions' => [
+                'saraban.authority.view',
+                'saraban.workflow.simulate',
+                'saraban.policy.manage',
+                'saraban.config.manage',
+                'saraban.operations.view',
+                'saraban.report.view',
+            ],
+            'children' => [
                 [
-                    // INT-18 — สารบบเรื่อง (SoT §22)
-                    'code' => 'saraban.cases',
-                    'title_th' => 'สารบบเรื่อง',
-                    'title_en' => 'Cases',
-                    'route_name' => 'saraban-cases',
-                    'route_path' => '/saraban/cases',
-                    'permissions' => ['saraban.document.view'],
+                    // INT-16 — SoT §6, §9, §18
+                    'code' => 'saraban.authority',
+                    'title_th' => 'ตารางอำนาจหน้าที่',
+                    'title_en' => 'Authority Matrix',
+                    'route_name' => 'saraban-authority',
+                    'route_path' => '/saraban/authority',
+                    'permissions' => ['saraban.authority.view'],
+                ],
+                [
+                    'code' => 'saraban.workflow.simulate',
+                    'title_th' => 'จำลองเส้นทางเดินหนังสือ',
+                    'title_en' => 'Workflow Simulation',
+                    'route_name' => 'saraban-workflow-simulate',
+                    'route_path' => '/saraban/workflow/simulate',
+                    'permissions' => ['saraban.workflow.simulate'],
+                ],
+                [
+                    // INT-16 — ศูนย์นโยบาย (SoT §18)
+                    'code' => 'saraban.policies',
+                    'title_th' => 'ศูนย์นโยบายงานสารบรรณ',
+                    'title_en' => 'Policy Center',
+                    'route_name' => 'saraban-policies',
+                    'route_path' => '/saraban/policies',
+                    'permissions' => ['saraban.policy.manage'],
+                ],
+                [
+                    // INT-16 — ตั้งค่าชุดเลขหนังสือ (SoT §9)
+                    'code' => 'saraban.number_series',
+                    'title_th' => 'ชุดเลขหนังสือ',
+                    'title_en' => 'Number Series',
+                    'route_name' => 'saraban-number-series',
+                    'route_path' => '/saraban/number-series',
+                    'permissions' => ['saraban.config.manage'],
                 ],
                 [
                     // INT-17 — SoT §19, §20, §21
@@ -362,12 +414,13 @@ class MenuSeeder extends Seeder
                     'permissions' => ['saraban.operations.view'],
                 ],
                 [
-                    'code' => 'saraban.workflow.simulate',
-                    'title_th' => 'จำลองเส้นทางเดินหนังสือ',
-                    'title_en' => 'Workflow Simulation',
-                    'route_name' => 'saraban-workflow-simulate',
-                    'route_path' => '/saraban/workflow/simulate',
-                    'permissions' => ['saraban.workflow.simulate'],
+                    // INT-20 — ทะเบียนหลักฐาน (SoT §23)
+                    'code' => 'saraban.compliance',
+                    'title_th' => 'ทะเบียนหลักฐานการปฏิบัติตามข้อกำหนด',
+                    'title_en' => 'Compliance Evidence',
+                    'route_name' => 'saraban-compliance',
+                    'route_path' => '/saraban/compliance',
+                    'permissions' => ['saraban.operations.view', 'saraban.report.view'],
                 ],
             ],
         ],

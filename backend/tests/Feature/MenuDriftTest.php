@@ -38,10 +38,10 @@ class MenuDriftTest extends TestCase
      *
      * การอัปเดตค่านี้เฉย ๆ โดยไม่ทำข้อ 1 = ปิดปากเทสต์ ไม่ใช่แก้ปัญหา
      */
-    private const TREE_FINGERPRINT = '17bd4c07cf71300f4b71521c794fba4b0c6c91b8727afb595a0d6c5d81ad5aae';
+    private const TREE_FINGERPRINT = 'c5d2dcb17caff5e4eaebc40005e78019a7041a6f455ab5d81fc984b8566fa4af';
 
     /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว */
-    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_11_100000_add_saraban_work_queue_menu';
+    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_12_100000_split_saraban_menu_into_work_and_admin';
 
     public function test_changing_the_menu_tree_requires_a_migration_for_installed_systems(): void
     {
@@ -68,16 +68,58 @@ class MenuDriftTest extends TestCase
      * เมนูสารบรรณต้องครบทุกหน้าที่โมดูลมี — ตรวจจำนวนตรง ๆ
      *
      * ตัวเลขนี้คือสิ่งที่หายไปจริงในเหตุการณ์ข้างต้น (มี 6 จาก 13)
+     *
+     * นับรวมสองกลุ่ม เพราะเมนูสารบรรณถูกแยกเป็น "งานสารบรรณ" กับ
+     * "การจัดการงานสารบรรณ" — สิ่งที่ต้องกันคือ **หน้าที่หายไปจากแถบเมนู**
+     * ไม่ใช่ว่าหน้านั้นอยู่กลุ่มไหน
      */
     public function test_the_saraban_branch_declares_every_page_the_module_has(): void
     {
-        $branch = collect(MenuSeeder::TREE)->firstWhere('code', 'saraban');
+        $groups = collect(MenuSeeder::TREE)
+            ->filter(fn (array $item) => ($item['module'] ?? null) === 'saraban');
 
-        $this->assertNotNull($branch, 'ไม่พบกิ่งเมนูงานสารบรรณใน TREE');
+        $this->assertCount(2, $groups, 'เมนูสารบรรณต้องมีสองกลุ่ม: งานประจำวัน และการจัดการ');
+
         $this->assertCount(
             14,
-            $branch['children'] ?? [],
-            'จำนวนเมนูลูกของงานสารบรรณเปลี่ยนไป — ถ้าตั้งใจ ให้แก้ตัวเลขนี้พร้อม migration sync เมนู',
+            $groups->flatMap(fn (array $item) => $item['children'] ?? [])->all(),
+            'จำนวนหน้าของงานสารบรรณเปลี่ยนไป — ถ้าตั้งใจ ให้แก้ตัวเลขนี้พร้อม migration sync เมนู',
         );
+    }
+
+    /**
+     * **เมนูแม่ต้องครอบคลุมสิทธิ์ของลูกทุกตัว**
+     *
+     * `MenuService` กรองเมนูแม่ก่อนพิจารณาลูก — ถ้าแม่ประกาศสิทธิ์ไม่ครบ
+     * ผู้ที่มีสิทธิ์เพียงข้อเดียวจะไม่เห็นกลุ่มนั้นเลย ทั้งที่มีสิทธิ์เข้าหน้าข้างใน
+     *
+     * เป็นความผิดพลาดที่มองไม่เห็นจากการอ่านโค้ด เพราะทุกอย่างดูถูกต้องหมด
+     * จนกว่าจะมีคนที่ถือสิทธิ์ชุดนั้นพอดีมาเปิดใช้
+     */
+    public function test_every_group_covers_the_permissions_of_its_children(): void
+    {
+        foreach (MenuSeeder::TREE as $group) {
+            $children = $group['children'] ?? [];
+
+            if ($children === [] || ($group['permissions'] ?? []) === []) {
+                continue;
+            }
+
+            $childPermissions = collect($children)
+                ->flatMap(fn (array $child) => $child['permissions'] ?? [])
+                ->unique();
+
+            $uncovered = $childPermissions
+                ->reject(fn (string $permission) => in_array($permission, $group['permissions'], true))
+                ->values()
+                ->all();
+
+            $this->assertSame(
+                [],
+                $uncovered,
+                "กลุ่มเมนู `{$group['code']}` ไม่ครอบคลุมสิทธิ์ของลูก — ผู้ที่ถือสิทธิ์เหล่านี้จะไม่เห็นกลุ่มเลย: ".
+                implode(', ', $uncovered),
+            );
+        }
     }
 }
