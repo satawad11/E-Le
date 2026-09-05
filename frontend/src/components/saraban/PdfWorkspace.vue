@@ -118,7 +118,15 @@ const pageAnnotations = computed(() =>
 )
 
 const labelFor = (item) =>
-  ({ stamp: 'ตราประทับรับ', text: 'ข้อความ', date: 'วันที่', qr: 'QR' })[item.type] || item.type
+  ({
+    stamp: 'ตราประทับรับ',
+    text: 'ข้อความ',
+    date: 'วันที่',
+    qr: 'QR',
+    // ใช้ในหน้าลงนาม — ผู้ลงนามต้องอ่านออกว่าวัตถุที่ลากอยู่คืออะไร
+    signature: 'ลายเซ็น',
+    note: 'ข้อความกำกับ',
+  })[item.type] || item.type
 
 const styleFor = (item) => ({
   left: `${item.x * zoom.value}px`,

@@ -42,6 +42,26 @@ class SignatureController extends Controller
             'strokes.*' => ['required', 'array', 'min:2'],
             'strokes.*.*.x' => ['required', 'numeric'],
             'strokes.*.*.y' => ['required', 'numeric'],
+
+            /*
+             * วันที่และข้อความที่วางพร้อมลายเซ็น (SoT §14 · NAV §4.7)
+             *
+             * **จำกัดชนิดไว้เฉพาะวันที่และข้อความ** — ลายมือกับเครื่องหมายถูก
+             * เป็นการเกษียนซึ่งไม่สร้างหลักฐานการลงนาม (SoT §15) · ถ้าปล่อยให้
+             * แนบมากับการลงนามได้ จะเกิดช่องที่ทำให้การเกษียนกลายเป็นลายเซ็น
+             */
+            'objects' => ['nullable', 'array', 'max:5'],
+            'objects.*.page' => ['required', 'integer', 'min:1'],
+            'objects.*.type' => ['required', 'string', Rule::in([
+                DocumentAnnotation::TYPE_NOTE,
+                DocumentAnnotation::TYPE_DATE,
+            ])],
+            'objects.*.x' => ['required', 'numeric', 'min:0', 'max:5000'],
+            'objects.*.y' => ['required', 'numeric', 'min:0', 'max:5000'],
+            'objects.*.width' => ['nullable', 'numeric', 'min:1', 'max:5000'],
+            'objects.*.height' => ['nullable', 'numeric', 'min:1', 'max:5000'],
+            'objects.*.payload' => ['nullable', 'array'],
+            'objects.*.payload.text' => ['nullable', 'string', 'max:500'],
         ]);
 
         try {

@@ -141,6 +141,18 @@ const router = createRouter({
       component: () => import('../views/saraban/DocumentFormView.vue'),
       meta: { requiresAuth: true, title: 'รายละเอียดหนังสือ', parent: 'งานสารบรรณ' }
     },
+    /*
+     * หน้าลงนาม (NAV §4.7 · ปิด RISK-30)
+     *
+     * เป็นหน้าเต็มไม่ใช่ modal โดยเจตนา — ผู้ลงนามต้องเห็นเอกสารทั้งหน้าและ
+     * ลากวางลายเซ็นบนตำแหน่งจริง ซึ่งทำใน modal ไม่ได้
+     */
+    {
+      path: '/saraban/documents/:id/sign',
+      name: 'saraban-document-sign',
+      component: () => import('../views/saraban/SignDocumentView.vue'),
+      meta: { requiresAuth: true, title: 'ลงนามในหนังสือ', parent: 'งานสารบรรณ' }
+    },
     {
       path: '/saraban/documents/:id/workspace',
       name: 'saraban-document-workspace',

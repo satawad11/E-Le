@@ -8,12 +8,15 @@
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <!-- INT-11 — ลงนาม (ต้องยืนยันตัวตนซ้ำ ซึ่ง modal จัดการให้เอง) -->
+        <!--
+          ลงนามเป็นหน้าเต็ม (ปิด RISK-30) — ผู้ลงนามต้องเห็นเอกสารและลากวาง
+          ลายเซ็นบนตำแหน่งจริง ซึ่งทำใน modal ไม่ได้
+        -->
         <AppButton
           v-if="isEdit"
           v-can="'saraban.signature.sign'"
           variant="secondary"
-          @click="signing = true"
+          @click="openSigning"
         >
           ลงนาม
         </AppButton>
@@ -30,13 +33,6 @@
         <AppButton v-if="isEdit" variant="outline" @click="openWorkspace">ประทับตรา</AppButton>
         <AppButton variant="ghost" @click="backToList">กลับสู่ทะเบียน</AppButton>
       </div>
-
-      <SignDocumentModal
-        v-if="isEdit"
-        v-model="signing"
-        :document-id="route.params.id"
-        @signed="onSigned"
-      />
 
       <DistributeDocumentModal
         v-if="isEdit && distributing"
@@ -273,7 +269,6 @@ import AppBadge from '../../components/ui/AppBadge.vue'
 import ErrorState from '../../components/ui/ErrorState.vue'
 import LoadingState from '../../components/ui/LoadingState.vue'
 import DistributeDocumentModal from '../../components/saraban/DistributeDocumentModal.vue'
-import SignDocumentModal from '../../components/saraban/SignDocumentModal.vue'
 import DocumentTools from '../../components/saraban/DocumentTools.vue'
 import RetentionPanel from '../../components/saraban/RetentionPanel.vue'
 
@@ -486,14 +481,6 @@ const ACTIONS = {
 
 const workflow = ref({ started: false, status: null, current_step: null, transitions: [], history: [] })
 const workflowComment = ref('')
-// INT-11 — กล่องลงนาม (จัดการการยืนยันตัวตนซ้ำเองเมื่อ server ตอบ 423)
-const signing = ref(false)
-
-const onSigned = async () => {
-  await boot()
-  await loadWorkflow()
-}
-
 // INT-13 — กล่องเวียนหนังสือ
 const distributing = ref(false)
 
@@ -550,6 +537,9 @@ const performWorkflow = async (transition) => {
 
 const openWorkspace = () =>
   router.push({ name: 'saraban-document-workspace', params: { id: route.params.id } })
+
+const openSigning = () =>
+  router.push({ name: 'saraban-document-sign', params: { id: route.params.id } })
 
 const backToList = () => router.push({ name: 'saraban-documents' })
 

@@ -387,6 +387,78 @@ class SarabanSignatureAndStepUpTest extends TestCase
         $this->assertSame(1, DocumentAnnotation::query()->where('type', 'handwriting')->count());
     }
 
+    // ── วันที่และข้อความที่วางพร้อมลายเซ็น (SoT §14 · NAV §4.7) ────────────
+
+    /**
+     * **ลายเซ็น วันที่ และข้อความกำกับ อยู่ในเวอร์ชันเดียวกัน**
+     *
+     * หนังสือราชการที่ลงนามประกอบด้วยลายเซ็น ชื่อ-ตำแหน่ง และวันที่ ซึ่งเป็น
+     * บล็อกเดียวกัน · ถ้าให้วางวันที่แยกเป็นการเกษียนอีกครั้ง จะได้เวอร์ชันเพิ่ม
+     * อีกฉบับ และหลักฐานการลงนามจะชี้ไปยังไฟล์ที่ยังไม่มีวันที่กำกับ
+     */
+    public function test_a_date_and_note_placed_with_the_signature_land_on_the_same_version(): void
+    {
+        $author = $this->userWith(['saraban.document.view', 'saraban.document.create']);
+        $document = $this->documentFor($author);
+
+        $signer = $this->userWith(['saraban.document.view', 'saraban.signature.sign']);
+        $this->actAs($signer);
+
+        $this->postJson("/api/saraban/documents/{$document->id}/sign", [
+            ...$this->signaturePayload(),
+            'objects' => [
+                ['page' => 1, 'type' => 'date', 'x' => 380, 'y' => 580, 'width' => 150, 'height' => 20,
+                    'payload' => ['text' => '6 กันยายน 2569']],
+                ['page' => 1, 'type' => 'note', 'x' => 380, 'y' => 600, 'width' => 200, 'height' => 20,
+                    'payload' => ['text' => 'ผู้อำนวยการโรงเรียน']],
+            ],
+        ])->assertCreated();
+
+        $evidence = SignatureEvidence::query()->firstOrFail();
+
+        // วัตถุทั้งสามอยู่บนเวอร์ชันก่อนลงนาม แล้วถูกเรนเดอร์รวมเป็นฉบับที่ลงนาม
+        $sourceVersion = $document->fresh()->versions()->orderBy('version_no')->first();
+
+        foreach (['signature', 'date', 'note'] as $type) {
+            $this->assertSame(
+                1,
+                DocumentAnnotation::query()
+                    ->where('document_version_id', $sourceVersion->id)
+                    ->where('type', $type)
+                    ->count(),
+                "ต้องมีวัตถุชนิด {$type} หนึ่งชิ้นบนเวอร์ชันที่ลงนาม",
+            );
+        }
+
+        $this->assertSame(1, SignatureEvidence::query()->count(), 'ต้องมีหลักฐานการลงนามเพียงหนึ่งรายการ');
+        $this->assertNotNull($evidence->document_hash);
+    }
+
+    /**
+     * **ลายมือแนบมากับการลงนามไม่ได้** (SoT §15)
+     *
+     * ถ้าปล่อยให้แนบได้ จะเกิดช่องที่ทำให้การเกษียน — ซึ่งไม่ใช่การรับรองเอกสาร
+     * ในทางกฎหมาย — ถูกบันทึกรวมอยู่ในหลักฐานการลงนาม
+     */
+    public function test_endorsement_object_types_cannot_ride_along_with_a_signature(): void
+    {
+        $author = $this->userWith(['saraban.document.view', 'saraban.document.create']);
+        $document = $this->documentFor($author);
+
+        $this->actAs($this->userWith(['saraban.document.view', 'saraban.signature.sign']));
+
+        foreach (['handwriting', 'checkmark', 'stamp'] as $type) {
+            $this->postJson("/api/saraban/documents/{$document->id}/sign", [
+                ...$this->signaturePayload(),
+                'objects' => [[
+                    'page' => 1, 'type' => $type, 'x' => 100, 'y' => 100, 'width' => 50, 'height' => 20,
+                ]],
+            ])->assertStatus(422);
+        }
+
+        $this->assertSame(0, SignatureEvidence::query()->count());
+    }
+
     public function test_endorsing_requires_its_own_permission_not_the_signing_one(): void
     {
         $author = $this->userWith(['saraban.document.view', 'saraban.document.create']);

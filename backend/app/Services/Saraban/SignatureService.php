@@ -74,6 +74,31 @@ class SignatureService
                 'created_by' => $signer->id,
             ]);
 
+            /*
+             * วันที่และข้อความที่วางพร้อมลายเซ็น (SoT §14 · NAV §4.7)
+             *
+             * **อยู่ในการกระทำเดียวกับการลงนามโดยเจตนา** — หนังสือราชการที่ลงนาม
+             * ประกอบด้วยลายเซ็น ชื่อ-ตำแหน่ง และวันที่ ซึ่งเป็นบล็อกเดียวกัน ·
+             * ถ้าให้วางวันที่แยกเป็นการเกษียนอีกครั้ง จะได้เวอร์ชันเพิ่มอีกฉบับ
+             * และหลักฐานการลงนามจะชี้ไปยังไฟล์ที่ยังไม่มีวันที่กำกับ
+             *
+             * ต่างจากการเกษียน (`endorse`) ตรงที่ **การเกษียนไม่สร้างหลักฐานการ
+             * ลงนาม** ตาม SoT §15 ส่วนวัตถุเหล่านี้เป็นส่วนประกอบของลายเซ็นเอง
+             */
+            foreach ($signature['objects'] ?? [] as $object) {
+                DocumentAnnotation::create([
+                    'document_version_id' => $version->id,
+                    'page' => $object['page'],
+                    'type' => $object['type'],
+                    'x' => $object['x'],
+                    'y' => $object['y'],
+                    'width' => $object['width'] ?? null,
+                    'height' => $object['height'] ?? null,
+                    'payload' => $object['payload'] ?? null,
+                    'created_by' => $signer->id,
+                ]);
+            }
+
             $signed = $this->documents->addVersionFromContents(
                 $document,
                 app(SarabanPdfRenderer::class)->render($version->fresh()),
