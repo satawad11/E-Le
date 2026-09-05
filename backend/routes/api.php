@@ -476,6 +476,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
          * ของทะเบียน ไม่ใช่ความสามารถใหม่
          */
         Route::get('/documents/queue', [DocumentController::class, 'queue'])->middleware('ability:saraban.document.view');
+        // หน้าแรกของงานสารบรรณ (NAV §4.1) — ต้องมาก่อน `/documents/{document}` เช่นกัน
+        Route::get('/dashboard', [DocumentController::class, 'dashboard'])->middleware('ability:saraban.document.view');
         Route::post('/documents', [DocumentController::class, 'store'])->middleware('ability:saraban.document.create');
         Route::get('/documents/{document}', [DocumentController::class, 'show'])->middleware('ability:saraban.document.view');
         Route::post('/documents/{document}', [DocumentController::class, 'update'])->middleware('ability:saraban.document.update');

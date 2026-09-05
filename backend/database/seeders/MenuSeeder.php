@@ -250,6 +250,15 @@ class MenuSeeder extends Seeder
             ],
             'children' => [
                 [
+                    // หน้าแรกของโมดูล (NAV §4.1) — ตัวเลขสรุปและงานของฉัน
+                    'code' => 'saraban.dashboard',
+                    'title_th' => 'หน้าแรกงานสารบรรณ',
+                    'title_en' => 'Saraban Home',
+                    'route_name' => 'saraban-dashboard',
+                    'route_path' => '/saraban',
+                    'permissions' => ['saraban.document.view'],
+                ],
+                [
                     'code' => 'saraban.inbox',
                     'title_th' => 'หนังสือเวียนถึงฉัน',
                     'title_en' => 'My Inbox',

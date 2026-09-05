@@ -118,6 +118,12 @@ const router = createRouter({
       meta: { requiresAuth: true, title: 'รอฉันดำเนินการ', parent: 'งานสารบรรณ' }
     },
     {
+      path: '/saraban',
+      name: 'saraban-dashboard',
+      component: () => import('../views/saraban/SarabanDashboardView.vue'),
+      meta: { requiresAuth: true, title: 'หน้าแรกงานสารบรรณ', parent: 'งานสารบรรณ' }
+    },
+    {
       path: '/saraban/numbers',
       name: 'saraban-numbers',
       component: () => import('../views/saraban/NumberReservationView.vue'),

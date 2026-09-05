@@ -478,4 +478,69 @@ class SarabanWorkflowAndAuthorityTest extends TestCase
             ->getJson('/api/saraban/documents/queue')
             ->assertForbidden();
     }
+
+    // ── หน้าแรกของงานสารบรรณ (NAV §4.1) ────────────────────────────────────
+
+    /**
+     * **ตัวเลขบนการ์ดต้องตรงกับรายการที่กดเข้าไปเห็น**
+     *
+     * ถ้านับด้วยวิธีอื่น ผู้ใช้จะเจอการ์ดบอกว่ามี 3 แต่กดเข้าไปเห็น 5 ซึ่งทำให้
+     * ไม่เชื่อถือทั้งหน้าจอ · หน้าแรกจึงนับจากคิวงานตัวเดียวกัน
+     */
+    public function test_the_dashboard_tile_matches_the_queue_it_links_to(): void
+    {
+        $author = $this->userIn($this->unitA, [
+            'saraban.document.view', 'saraban.document.create', 'saraban.document.submit',
+        ]);
+        $this->submittedDocument($author);
+
+        $officer = $this->userIn($this->unitA, ['saraban.document.view', 'saraban.workflow.review']);
+
+        $dashboard = $this->actingAs($officer)->getJson('/api/saraban/dashboard')->assertOk()->json();
+        $queue = $this->actingAs($officer)->getJson('/api/saraban/documents/queue')->assertOk()->json();
+
+        $waiting = collect($dashboard['tiles'])->firstWhere('key', 'waiting_for_me');
+
+        $this->assertSame($queue['count'], $waiting['value']);
+        $this->assertSame('/saraban/documents/queue', $waiting['route']);
+    }
+
+    /** ทุกการ์ดต้องพาไปดูรายการจริงได้ — การ์ดที่กดไม่ได้คือการทำให้กังวลเปล่า ๆ */
+    public function test_every_dashboard_tile_links_somewhere_real(): void
+    {
+        $officer = $this->userIn($this->unitA, ['saraban.document.view']);
+
+        $tiles = $this->actingAs($officer)->getJson('/api/saraban/dashboard')->assertOk()->json('tiles');
+
+        $this->assertNotEmpty($tiles);
+
+        foreach ($tiles as $tile) {
+            $this->assertArrayHasKey('route', $tile);
+            $this->assertStringStartsWith('/saraban', $tile['route']);
+            $this->assertIsInt($tile['value']);
+        }
+    }
+
+    /** ตัวเลขหน้าแรกต้องไม่นับหนังสือของหน่วยงานที่ผู้เรียกไม่มีสิทธิ์เห็น */
+    public function test_the_dashboard_does_not_count_another_units_documents(): void
+    {
+        $author = $this->userIn($this->unitB, [
+            'saraban.document.view', 'saraban.document.create', 'saraban.document.submit',
+        ]);
+        $this->submittedDocument($author, $this->unitB);
+
+        $outsider = $this->userIn($this->unitA, ['saraban.document.view']);
+
+        $tiles = $this->actingAs($outsider)->getJson('/api/saraban/dashboard')->assertOk()->json('tiles');
+
+        $this->assertSame(0, collect($tiles)->firstWhere('key', 'today')['value']);
+        $this->assertSame(0, collect($tiles)->firstWhere('key', 'this_month')['value']);
+    }
+
+    public function test_the_dashboard_requires_the_register_permission(): void
+    {
+        $this->actingAs($this->userIn($this->unitA, []))
+            ->getJson('/api/saraban/dashboard')
+            ->assertForbidden();
+    }
 }

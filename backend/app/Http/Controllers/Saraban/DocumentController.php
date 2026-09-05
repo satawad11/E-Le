@@ -15,6 +15,7 @@ use App\Policies\Saraban\DocumentPolicy;
 use App\Services\AuditLogger;
 use App\Services\OrgScopeResolver;
 use App\Services\Saraban\AuthorityResolver;
+use App\Services\Saraban\DashboardService;
 use App\Services\Saraban\DocumentComparator;
 use App\Services\Saraban\DocumentComparisonException;
 use App\Services\Saraban\DocumentService;
@@ -98,6 +99,19 @@ class DocumentController extends Controller
      * ใช้สิทธิ์เดียวกับการเปิดทะเบียน เพราะคิวคือมุมมองหนึ่งของทะเบียน ไม่ใช่
      * ความสามารถใหม่ · สิ่งที่จำกัดว่าใครเห็นอะไร คือสายงานและ policy รายฉบับ
      */
+    /**
+     * ตัวเลขสรุปหน้าแรกของงานสารบรรณ (NAV §4.1)
+     *
+     * ใช้สิทธิ์เดียวกับทะเบียน — หน้าแรกคือมุมมองรวมของข้อมูลชุดเดียวกัน
+     * ไม่ใช่ความสามารถใหม่ที่ต้องคุมแยก
+     */
+    public function dashboard(Request $request, DashboardService $dashboard)
+    {
+        $this->authorize('viewAny', Document::class);
+
+        return response()->json($dashboard->summaryFor($request->user()));
+    }
+
     public function queue(Request $request, WorkQueueService $queue)
     {
         $this->authorize('viewAny', Document::class);
