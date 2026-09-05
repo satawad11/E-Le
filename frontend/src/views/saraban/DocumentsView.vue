@@ -17,18 +17,53 @@
           <h2 class="font-semibold text-gray-800">รายการหนังสือ</h2>
           <p class="text-sm text-gray-500 mt-0.5">หนังสือที่เสนอเข้าสู่กระบวนการแล้วจะแก้ไขไม่ได้</p>
         </div>
-        <div class="flex gap-2">
-          <AppSelect v-model="filters.direction" aria-label="กรองตามทิศทางของหนังสือ" @update:modelValue="load">
+        <div class="flex flex-wrap gap-2 items-end">
+          <div class="w-full sm:w-56">
+            <AppInput
+              v-model="filters.q"
+              label="ค้นหา"
+              placeholder="เรื่อง หรือเลขที่หนังสือ"
+              @keyup.enter="applyFilters"
+            />
+          </div>
+          <AppSelect v-model="filters.direction" aria-label="กรองตามทิศทางของหนังสือ" @update:modelValue="applyFilters">
             <option value="">ทุกทิศทาง</option>
             <option v-for="d in DIRECTIONS" :key="d.value" :value="d.value">{{ d.label }}</option>
           </AppSelect>
-          <AppSelect v-model="filters.status" aria-label="กรองตามสถานะ" @update:modelValue="load">
+          <AppSelect v-model="filters.status" aria-label="กรองตามสถานะ" @update:modelValue="applyFilters">
             <option value="">ทุกสถานะ</option>
             <option value="draft">ฉบับร่าง</option>
             <option value="submitted">เสนอแล้ว</option>
           </AppSelect>
+          <AppButton variant="secondary" size="sm" @click="advanced = !advanced">
+            {{ advanced ? 'ซ่อนค้นหาขั้นสูง' : 'ค้นหาขั้นสูง' }}
+          </AppButton>
         </div>
       </header>
+
+      <!--
+        ค้นหาขั้นสูง (NAV §4.10) — ซ่อนไว้เป็นค่าเริ่มต้น เพราะผู้ใช้ส่วนใหญ่
+        ค้นด้วยคำเดียว · เปิดออกเมื่อต้องการจำกัดขอบเขตจริง ๆ
+      -->
+      <div v-if="advanced" class="px-5 py-4 border-b border-gray-100 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <AppSelect v-model="filters.document_type_id" label="ประเภทหนังสือ">
+          <option value="">ทุกประเภท</option>
+          <option v-for="t in documentTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+        </AppSelect>
+        <AppSelect v-model="filters.confidentiality" label="ชั้นความลับ">
+          <option value="">ทุกชั้น</option>
+          <option value="normal">ไม่ลับ</option>
+          <option value="confidential">ลับ</option>
+          <option value="secret">ลับมาก</option>
+          <option value="top_secret">ลับที่สุด</option>
+        </AppSelect>
+        <AppInput v-model="filters.from" type="date" label="ตั้งแต่วันที่" />
+        <AppInput v-model="filters.to" type="date" label="ถึงวันที่" />
+        <div class="sm:col-span-2 lg:col-span-4 flex gap-2">
+          <AppButton @click="applyFilters">ค้นหา</AppButton>
+          <AppButton variant="secondary" @click="resetFilters">ล้างเงื่อนไข</AppButton>
+        </div>
+      </div>
 
       <LoadingState v-if="loading" type="skeleton-table" :rows="5" :columns="6" />
       <ErrorState v-else-if="error" :message="error" @retry="load" />
@@ -86,6 +121,7 @@ import SavedViews from '../../components/saraban/SavedViews.vue'
 import { getErrorMessage } from '../../utils/errorHandler'
 import AppBadge from '../../components/ui/AppBadge.vue'
 import AppButton from '../../components/ui/AppButton.vue'
+import AppInput from '../../components/ui/AppInput.vue'
 import AppPagination from '../../components/ui/AppPagination.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
@@ -111,8 +147,20 @@ const loading = ref(true)
 const error = ref('')
 const page = ref(1)
 const lastPage = ref(1)
-const filters = reactive({ direction: '', status: '' })
+const filters = reactive({
+  direction: '', status: '', q: '', document_type_id: '', confidentiality: '', from: '', to: '',
+})
+const advanced = ref(false)
+const documentTypes = ref([])
 const applySavedView = (saved) => { filters.direction = saved.direction || ''; filters.status = saved.status || ''; page.value = 1; load() }
+
+const applyFilters = () => { page.value = 1; load() }
+
+/* ล้างทุกช่อง ไม่ใช่เฉพาะที่เห็นอยู่ — เงื่อนไขที่ซ่อนอยู่แล้วยังมีผล คือกับดักที่ผู้ใช้หาไม่เจอ */
+const resetFilters = () => {
+  Object.keys(filters).forEach((key) => { filters[key] = '' })
+  applyFilters()
+}
 
 const directionLabel = (value) => DIRECTIONS.find((d) => d.value === value)?.label || value
 const urgencyLabel = (value) => URGENCY[value]?.label || value
@@ -123,7 +171,11 @@ const load = async () => {
   error.value = ''
   try {
     const { data } = await api.get('/saraban/documents', {
-      params: { page: page.value, direction: filters.direction || undefined, status: filters.status || undefined },
+      params: {
+        page: page.value,
+        // ส่งเฉพาะช่องที่กรอกจริง — พารามิเตอร์ว่างทำให้ query ฝั่ง server ซับซ้อนโดยเปล่าประโยชน์
+        ...Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== '')),
+      },
     })
     documents.value = data.data
     lastPage.value = data.last_page
@@ -142,5 +194,17 @@ const changePage = (next) => {
 const goToCreate = () => router.push({ name: 'saraban-document-create' })
 const open = (doc) => router.push({ name: 'saraban-document-detail', params: { id: doc.id } })
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+
+  /*
+   * โหลดประเภทหนังสือสำหรับตัวกรองขั้นสูง — ล้มเหลวได้โดยไม่พังทั้งหน้า
+   * เพราะตัวกรองเป็นของเสริม ส่วนทะเบียนคือสิ่งที่ผู้ใช้มาดู
+   */
+  try {
+    documentTypes.value = (await api.get('/saraban/documents/options')).data.document_types || []
+  } catch {
+    documentTypes.value = []
+  }
+})
 </script>

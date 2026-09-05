@@ -78,6 +78,37 @@ class DocumentController extends Controller
             $query->where('status', $request->string('status')->toString());
         }
 
+        /*
+         * ค้นหาขั้นสูง (NAV §4.10)
+         *
+         * **ค้นเฉพาะเมทาดาทาที่ปรากฏบนหน้าเอกสาร** — เรื่อง และเลขที่หนังสือ ·
+         * ไม่ค้นในเนื้อไฟล์ PDF เพราะจะทำให้ผู้ที่เห็นรายการในทะเบียนได้ (แต่เปิด
+         * ไฟล์ไม่ได้) อนุมานเนื้อหาข้างในจากผลการค้นหา
+         */
+        if ($request->filled('q')) {
+            $term = $request->string('q')->toString();
+            $query->where(fn ($q) => $q
+                ->where('subject', 'like', "%{$term}%")
+                ->orWhereHas('documentNumber', fn ($n) => $n->where('formatted', 'like', "%{$term}%")));
+        }
+
+        if ($request->filled('document_type_id')) {
+            $query->where('document_type_id', $request->integer('document_type_id'));
+        }
+
+        if ($request->filled('confidentiality')) {
+            $query->where('confidentiality', $request->string('confidentiality')->toString());
+        }
+
+        // ช่วงวันที่ — นับจากวันที่สร้างระเบียนในทะเบียน
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->date('to'));
+        }
+
         return response()->json($query->paginate(20));
     }
 

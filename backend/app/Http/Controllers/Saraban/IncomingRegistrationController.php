@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Saraban;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Saraban\RegisterIncomingRequest;
 use App\Models\Saraban\Document;
+use App\Models\Saraban\DocumentType;
 use App\Models\Saraban\IncomingRegistration;
 use App\Services\OrgScopeResolver;
 use App\Services\Saraban\IncomingRegistrationService;
@@ -50,7 +51,39 @@ class IncomingRegistrationController extends Controller
                 ->orWhereHas('document', fn ($d) => $d->where('subject', 'like', "%{$term}%")));
         }
 
-        return response()->json($query->paginate(20));
+        /*
+         * กรองตามปีที่รับหนังสือ (NAV §4.2)
+         *
+         * **นับจากวันที่รับของหน่วยงานเรา ไม่ใช่วันที่ของหนังสือต้นทาง** —
+         * ทะเบียนรับเป็นทะเบียนของเรา หนังสือลงวันที่ปีที่แล้วแต่รับปีนี้
+         * ต้องอยู่ในทะเบียนของปีนี้ ตามที่ระเบียบงานสารบรรณกำหนด
+         */
+        if ($request->filled('buddhist_year')) {
+            $query->whereYear('received_at', $request->integer('buddhist_year') - 543);
+        }
+
+        if ($request->filled('document_type_id')) {
+            $query->whereHas(
+                'document',
+                fn ($d) => $d->where('document_type_id', $request->integer('document_type_id')),
+            );
+        }
+
+        return response()->json([
+            ...$query->paginate(20)->toArray(),
+            /*
+             * ตัวเลือกของตัวกรองมาพร้อมผลลัพธ์ เพื่อไม่ให้หน้าจอต้องยิงถามอีกรอบ
+             * และไม่ต้องเรียก `/documents/options` ซึ่งคืนข้อมูลมากเกินความจำเป็น
+             */
+            'filters' => [
+                'document_types' => DocumentType::query()
+                    ->orderBy('name')
+                    ->get(['id', 'name'])
+                    ->map(fn (DocumentType $type) => $type->only(['id', 'name']))
+                    ->all(),
+                'years' => $this->availableYears(),
+            ],
+        ]);
     }
 
     /** ตรวจหนังสือซ้ำก่อนลงทะเบียน — ให้หน้าจอเตือนได้ตั้งแต่ตอนกรอก */
@@ -106,5 +139,30 @@ class IncomingRegistrationController extends Controller
         return response()->json(
             $registration->load(['document.documentType', 'document.versions', 'registerNumber', 'registrar:id,name'])
         );
+    }
+
+    /**
+     * ปีพุทธศักราชที่มีหนังสือในทะเบียนรับจริง
+     *
+     * **ไม่ใช่ช่วงปีที่คำนวณจากปีปัจจุบัน** — ตัวเลือกที่มีปีซึ่งไม่มีข้อมูลเลย
+     * ทำให้ผู้ใช้เสียเวลาเลือกแล้วเจอหน้าว่าง · คืนจากข้อมูลจริงเรียงจากใหม่ไปเก่า
+     *
+     * @return array<int,int>
+     */
+    private function availableYears(): array
+    {
+        /*
+         * แปลงปีในฝั่ง PHP ไม่ใช่ใน SQL — `YEAR()` เป็นฟังก์ชันของ MySQL
+         * ส่วนชุดทดสอบรันบน SQLite ซึ่งใช้ `strftime` · การเขียน SQL ผูกกับ
+         * ฐานข้อมูลตัวเดียว ทำให้เทสต์กับของจริงเดินคนละทาง
+         */
+        return IncomingRegistration::query()
+            ->whereNotNull('received_at')
+            ->orderByDesc('received_at')
+            ->pluck('received_at')
+            ->map(fn ($date) => $date?->year + 543)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

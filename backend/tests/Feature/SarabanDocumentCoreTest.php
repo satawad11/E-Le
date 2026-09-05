@@ -154,6 +154,74 @@ class SarabanDocumentCoreTest extends TestCase
         $this->assertSame([], $visible, 'ต้องไม่เห็นหนังสือของหน่วยงานอื่น');
     }
 
+    // ── ค้นหาขั้นสูงในทะเบียน (NAV §4.10) ──────────────────────────────────
+
+    /**
+     * **ค้นหาขั้นสูงต้องไม่ข้ามขอบเขต**
+     *
+     * ตัวกรองคือทางลัดที่ข้ามขอบเขตได้ง่ายที่สุด เพราะดูเหมือนเป็นแค่การจำกัดผล
+     * ลัพธ์ · ถ้าเงื่อนไขใดทำให้เห็นหนังสือของหน่วยงานอื่น การควบคุมสิทธิ์ทั้งหมด
+     * จะไร้ความหมาย
+     */
+    public function test_advanced_search_never_widens_the_visible_scope(): void
+    {
+        $author = $this->userWith(['saraban.document.create', 'saraban.document.view']);
+        $this->actingAs($author)->postJson('/api/saraban/documents', $this->payload())->assertCreated();
+
+        $otherUnit = OrgUnit::create([
+            'uuid' => (string) Str::uuid(),
+            'code' => 'UNIT-SEARCH',
+            'name' => 'ฝ่ายไกล',
+            'type' => 'department',
+            'effective_from' => now()->toDateString(),
+            'is_active' => true,
+        ]);
+
+        $stranger = User::factory()->create(['org_unit_id' => $otherUnit->id]);
+        $stranger->givePermissionTo(Permission::findOrCreate('saraban.document.view', 'web'));
+
+        foreach ([
+            ['q' => 'เรื่อง'],
+            ['confidentiality' => 'normal'],
+            ['from' => now()->subYear()->toDateString(), 'to' => now()->addYear()->toDateString()],
+        ] as $filter) {
+            $visible = $this->actingAs($stranger->fresh())
+                ->getJson('/api/saraban/documents?'.http_build_query($filter))
+                ->assertOk()
+                ->json('data');
+
+            $this->assertSame([], $visible, 'ตัวกรองต้องไม่ทำให้เห็นหนังสือของหน่วยงานอื่น');
+        }
+    }
+
+    public function test_advanced_search_filters_by_term_and_date_range(): void
+    {
+        $author = $this->userWith(['saraban.document.create', 'saraban.document.view']);
+
+        $this->actingAs($author)
+            ->postJson('/api/saraban/documents', $this->payload(['subject' => 'ขออนุมัติจัดซื้อครุภัณฑ์']))
+            ->assertCreated();
+        $this->actingAs($author)
+            ->postJson('/api/saraban/documents', $this->payload(['subject' => 'รายงานผลการอบรม']))
+            ->assertCreated();
+
+        $found = $this->actingAs($author)
+            ->getJson('/api/saraban/documents?q='.urlencode('จัดซื้อ'))
+            ->assertOk()
+            ->json('data');
+
+        $this->assertCount(1, $found);
+        $this->assertStringContainsString('จัดซื้อ', $found[0]['subject']);
+
+        // ช่วงวันที่ที่ไม่ครอบคลุมวันนี้ ต้องไม่คืนอะไรเลย
+        $none = $this->actingAs($author)
+            ->getJson('/api/saraban/documents?to='.now()->subYear()->toDateString())
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame([], $none);
+    }
+
     // ── วงจรชีวิตและเวอร์ชัน ────────────────────────────────────────────────
 
     public function test_creating_with_a_file_stores_the_original_as_version_one(): void

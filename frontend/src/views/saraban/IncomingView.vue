@@ -16,13 +16,28 @@
           <h2 class="font-semibold text-gray-800">หนังสือที่รับเข้า</h2>
           <p class="text-sm text-gray-500 mt-0.5">เรียงจากที่รับล่าสุด</p>
         </div>
-        <div class="w-full sm:w-72">
-          <AppInput
-            v-model="search"
-            label="ค้นหา"
-            placeholder="เรื่อง ผู้ส่ง หรือเลขที่ต้นทาง"
-            @keyup.enter="applySearch"
-          />
+        <!--
+          ตัวกรอง — ปีนับจาก **วันที่รับของหน่วยงานเรา** ไม่ใช่วันที่ของหนังสือ
+          ต้นทาง · ตัวเลือกปีมาจากข้อมูลจริง ไม่ใช่ช่วงปีที่คำนวณเอา เพื่อไม่ให้
+          ผู้ใช้เลือกปีที่ไม่มีข้อมูลแล้วเจอหน้าว่าง
+        -->
+        <div class="grid grid-cols-2 sm:flex sm:items-end gap-3 w-full sm:w-auto">
+          <AppSelect v-model="filters.buddhist_year" label="ปี พ.ศ." @update:model-value="applySearch">
+            <option value="">ทั้งหมด</option>
+            <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+          </AppSelect>
+          <AppSelect v-model="filters.document_type_id" label="ประเภทหนังสือ" @update:model-value="applySearch">
+            <option value="">ทั้งหมด</option>
+            <option v-for="type in documentTypes" :key="type.id" :value="type.id">{{ type.name }}</option>
+          </AppSelect>
+          <div class="col-span-2 sm:w-64">
+            <AppInput
+              v-model="search"
+              label="ค้นหา"
+              placeholder="เรื่อง ผู้ส่ง หรือเลขที่ต้นทาง"
+              @keyup.enter="applySearch"
+            />
+          </div>
         </div>
       </header>
 
@@ -75,7 +90,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../axios'
 import AppModal from '../../components/ui/AppModal.vue'
@@ -83,6 +98,7 @@ import { getErrorMessage } from '../../utils/errorHandler'
 import AppButton from '../../components/ui/AppButton.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppPagination from '../../components/ui/AppPagination.vue'
+import AppSelect from '../../components/ui/AppSelect.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ErrorState from '../../components/ui/ErrorState.vue'
 import LoadingState from '../../components/ui/LoadingState.vue'
@@ -95,6 +111,9 @@ const page = ref(1)
 const lastPage = ref(1)
 const search = ref('')
 const selected = ref(null)
+const filters = reactive({ buddhist_year: '', document_type_id: '' })
+const documentTypes = ref([])
+const years = ref([])
 async function openRegistration(row) { try { selected.value = (await api.get(`/saraban/incoming/${row.id}`)).data } catch(e) { error.value = getErrorMessage(e, 'เปิดทะเบียนรับไม่สำเร็จ') } }
 
 const load = async () => {
@@ -102,10 +121,17 @@ const load = async () => {
   error.value = ''
   try {
     const { data } = await api.get('/saraban/incoming', {
-      params: { page: page.value, q: search.value || undefined },
+      params: {
+        page: page.value,
+        q: search.value || undefined,
+        buddhist_year: filters.buddhist_year || undefined,
+        document_type_id: filters.document_type_id || undefined,
+      },
     })
     registrations.value = data.data
     lastPage.value = data.last_page
+    documentTypes.value = data.filters?.document_types || []
+    years.value = data.filters?.years || []
   } catch (err) {
     error.value = getErrorMessage(err, 'โหลดทะเบียนรับไม่สำเร็จ')
   } finally {

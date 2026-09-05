@@ -164,10 +164,34 @@
                   <td class="px-4 py-2.5 font-medium text-gray-900">{{ version.version_no }}</td>
                   <td class="px-4 py-2.5 text-gray-600">{{ stageLabel(version.stage) }}</td>
                   <td class="px-4 py-2.5 text-gray-500">{{ version.created_at }}</td>
+                  <td class="px-4 py-2.5 text-right">
+                    <AppButton size="sm" variant="ghost" @click="preview(version)">ดูเอกสาร</AppButton>
+                  </td>
                 </tr>
               </tbody>
             </table>
             <p class="px-4 py-2 text-xs text-gray-400">ต้นฉบับถูกเก็บไว้ทุกฉบับและไม่ถูกเขียนทับ</p>
+          </div>
+
+          <!--
+            ตัวอย่างเอกสาร (NAV §4.2, §4.3)
+
+            **ดึงผ่านด่านไฟล์ที่มีสิทธิ์เสมอ** (`fetchObjectUrl`) ไม่ใช่ลิงก์ตรง —
+            ไฟล์อยู่บน private disk และต้องผ่าน `SecureFileController` ทุกครั้ง
+            ตามสัญญา INT-01 §1.12 · การฝัง URL ตรงจะทำให้ไฟล์หลุดออกนอกด่าน
+          -->
+          <div v-if="previewError" role="alert" class="text-sm text-red-700">{{ previewError }}</div>
+
+          <div v-if="previewUrl" class="border border-gray-200 rounded-xl overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
+              <span class="text-sm text-gray-700">ตัวอย่างฉบับที่ {{ previewVersion?.version_no }}</span>
+              <AppButton size="sm" variant="ghost" @click="closePreview">ปิดตัวอย่าง</AppButton>
+            </div>
+            <iframe
+              :src="previewUrl"
+              title="ตัวอย่างเอกสาร"
+              class="w-full h-[32rem] bg-white"
+            />
           </div>
         </div>
       </section>
@@ -235,10 +259,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../axios'
 import { getErrorMessage } from '../../utils/errorHandler'
+import { fetchObjectUrl } from '../../utils/secureFile'
 import { useAlertStore } from '../../stores/alert'
 import AppButton from '../../components/ui/AppButton.vue'
 import AppInput from '../../components/ui/AppInput.vue'
@@ -315,6 +340,40 @@ const pageTitle = computed(() => {
 })
 
 const stageLabel = (stage) => STAGES[stage] || stage
+
+// ── ตัวอย่างเอกสาร (NAV §4.3) ────────────────────────────────────────────
+const previewUrl = ref('')
+const previewVersion = ref(null)
+const previewError = ref('')
+
+function closePreview() {
+  /* คืน object URL ทุกครั้ง — ไม่คืนแล้วเบราว์เซอร์จะถือไฟล์ไว้ในหน่วยความจำจนปิดแท็บ */
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+  previewUrl.value = ''
+  previewVersion.value = null
+}
+
+async function preview(version) {
+  const path = version.pdf_file_path || version.original_file_path
+
+  if (!path) {
+    previewError.value = 'ฉบับนี้ไม่มีไฟล์ให้แสดง'
+
+    return
+  }
+
+  previewError.value = ''
+  closePreview()
+
+  try {
+    previewUrl.value = await fetchObjectUrl(`/storage/${path}`)
+    previewVersion.value = version
+  } catch (e) {
+    previewError.value = getErrorMessage(e, 'เปิดตัวอย่างเอกสารไม่สำเร็จ')
+  }
+}
+
+onBeforeUnmount(closePreview)
 
 const onFileChange = (event) => {
   selectedFile.value = event.target.files?.[0] || null
