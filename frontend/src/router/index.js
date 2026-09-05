@@ -105,6 +105,18 @@ const router = createRouter({
       component: () => import('../views/saraban/DocumentsView.vue'),
       meta: { requiresAuth: true, title: 'ทะเบียนหนังสือ', parent: 'งานสารบรรณ' }
     },
+    /*
+     * คิวงานของผู้ใช้ (NAV §4.7)
+     *
+     * ต้องอยู่ **ก่อน** `/saraban/documents/:id` มิฉะนั้น `queue` จะถูกจับเป็นรหัสหนังสือ
+     * — ข้อผิดพลาดเดียวกับที่ต้องระวังฝั่ง route ของ API
+     */
+    {
+      path: '/saraban/documents/queue',
+      name: 'saraban-work-queue',
+      component: () => import('../views/saraban/WorkQueueView.vue'),
+      meta: { requiresAuth: true, title: 'รอฉันดำเนินการ', parent: 'งานสารบรรณ' }
+    },
     {
       path: '/saraban/documents/new',
       name: 'saraban-document-create',

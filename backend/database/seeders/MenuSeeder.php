@@ -250,6 +250,24 @@ class MenuSeeder extends Seeder
                     'route_path' => '/saraban/inbox',
                     'permissions' => ['saraban.inbox.view'],
                 ],
+                /*
+                 * คิวงานของผู้ใช้ (NAV §4.7)
+                 *
+                 * วางไว้ลำดับที่สองต่อจากกล่องหนังสือเวียน เพราะเป็นสองคำถามที่
+                 * ผู้ใช้ถามทุกเช้า: "มีอะไรส่งถึงฉัน" กับ "มีอะไรรอฉันตัดสิน"
+                 *
+                 * ใช้สิทธิ์เดียวกับทะเบียนหนังสือ — ตัวที่กรองว่าใครเห็นอะไรจริง ๆ
+                 * คือสายงานและ policy รายฉบับ ไม่ใช่สิทธิ์ระดับเมนู · ผู้ที่ไม่มี
+                 * เรื่องรออยู่จะเห็นหน้าว่าง ซึ่งเป็นคำตอบที่ถูกต้อง
+                 */
+                [
+                    'code' => 'saraban.queue',
+                    'title_th' => 'รอฉันดำเนินการ',
+                    'title_en' => 'Waiting for Me',
+                    'route_name' => 'saraban-work-queue',
+                    'route_path' => '/saraban/documents/queue',
+                    'permissions' => ['saraban.document.view'],
+                ],
                 [
                     'code' => 'saraban.documents',
                     'title_th' => 'ทะเบียนหนังสือ',

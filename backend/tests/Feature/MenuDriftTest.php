@@ -38,10 +38,10 @@ class MenuDriftTest extends TestCase
      *
      * การอัปเดตค่านี้เฉย ๆ โดยไม่ทำข้อ 1 = ปิดปากเทสต์ ไม่ใช่แก้ปัญหา
      */
-    private const TREE_FINGERPRINT = '8c7907f4077ae3ffe846f4a33db3deb7310c025973eb138854545febd85c7809';
+    private const TREE_FINGERPRINT = '17bd4c07cf71300f4b71521c794fba4b0c6c91b8727afb595a0d6c5d81ad5aae';
 
     /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว */
-    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_09_100000_resync_saraban_menus_with_tree';
+    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_11_100000_add_saraban_work_queue_menu';
 
     public function test_changing_the_menu_tree_requires_a_migration_for_installed_systems(): void
     {
@@ -75,7 +75,7 @@ class MenuDriftTest extends TestCase
 
         $this->assertNotNull($branch, 'ไม่พบกิ่งเมนูงานสารบรรณใน TREE');
         $this->assertCount(
-            13,
+            14,
             $branch['children'] ?? [],
             'จำนวนเมนูลูกของงานสารบรรณเปลี่ยนไป — ถ้าตั้งใจ ให้แก้ตัวเลขนี้พร้อม migration sync เมนู',
         );

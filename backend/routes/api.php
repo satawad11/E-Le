@@ -467,6 +467,14 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     $sarabanRoutes = function () {
         Route::get('/documents', [DocumentController::class, 'index'])->middleware('ability:saraban.document.view');
         Route::get('/documents/options', [DocumentController::class, 'options'])->middleware('ability:saraban.document.view');
+        /*
+         * คิวงานของผู้เรียก (NAV §4.7)
+         *
+         * ต้องประกาศ **ก่อน** `/documents/{document}` มิฉะนั้น `queue` จะถูกจับ
+         * เป็นรหัสหนังสือ · ใช้สิทธิ์เดียวกับการเปิดทะเบียนเพราะคิวคือมุมมองหนึ่ง
+         * ของทะเบียน ไม่ใช่ความสามารถใหม่
+         */
+        Route::get('/documents/queue', [DocumentController::class, 'queue'])->middleware('ability:saraban.document.view');
         Route::post('/documents', [DocumentController::class, 'store'])->middleware('ability:saraban.document.create');
         Route::get('/documents/{document}', [DocumentController::class, 'show'])->middleware('ability:saraban.document.view');
         Route::post('/documents/{document}', [DocumentController::class, 'update'])->middleware('ability:saraban.document.update');

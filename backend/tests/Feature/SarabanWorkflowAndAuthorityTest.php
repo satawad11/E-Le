@@ -375,4 +375,107 @@ class SarabanWorkflowAndAuthorityTest extends TestCase
         $this->assertNotEmpty($history);
         $this->assertContains('approve', array_column($history, 'action'));
     }
+
+    // ── คิวงาน "รอฉันดำเนินการ" (NAV §4.7) ─────────────────────────────────
+
+    /**
+     * **คิวต้องแสดงเฉพาะเรื่องที่ผู้เรียกลงมือทำได้จริง ณ ตอนนี้**
+     *
+     * ที่มา: การตรวจ navigation เมื่อ 2026-09-05 พบว่าระบบตอบได้เฉพาะ "ฉันทำอะไร
+     * กับหนังสือฉบับนี้ได้บ้าง" แต่ไม่มีคำถามย้อนกลับ · ผู้พิจารณาและผู้ลงนามจึงต้อง
+     * เปิดทะเบียนแล้วไล่เปิดทีละฉบับ
+     */
+    public function test_the_work_queue_lists_documents_the_caller_can_act_on(): void
+    {
+        $author = $this->userIn($this->unitA, [
+            'saraban.document.view', 'saraban.document.create', 'saraban.document.submit',
+        ]);
+        $document = $this->submittedDocument($author);
+
+        $officer = $this->userIn($this->unitA, ['saraban.document.view', 'saraban.workflow.review']);
+
+        $body = $this->actingAs($officer)
+            ->getJson('/api/saraban/documents/queue')
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(1, $body['count']);
+        $this->assertSame($document->id, $body['pending'][0]['document_id']);
+        $this->assertContains('approve', $body['pending'][0]['actions']);
+        $this->assertNotNull($body['pending'][0]['current_step']);
+    }
+
+    /**
+     * **ผู้ที่ยังไม่ถึงคิวต้องไม่เห็นเรื่องนั้นในคิวของตน**
+     *
+     * ปุ่มที่กดแล้วถูกปฏิเสธ กับงานที่ซ่อนทั้งที่ทำได้ แย่พอกัน — คิวจึงต้องใช้
+     * ตัวตัดสินเดียวกับ endpoint การลงมือทำ ไม่ใช่กติกาของตัวเอง
+     */
+    public function test_the_work_queue_hides_work_the_caller_cannot_act_on(): void
+    {
+        $author = $this->userIn($this->unitA, [
+            'saraban.document.view', 'saraban.document.create', 'saraban.document.submit',
+        ]);
+        $this->submittedDocument($author);
+
+        // อยู่ในหน่วยงานเดียวกันและเห็นหนังสือได้ แต่ไม่มีสิทธิ์ทำขั้นตอนนี้
+        $bystander = $this->userIn($this->unitA, ['saraban.document.view']);
+
+        $body = $this->actingAs($bystander)
+            ->getJson('/api/saraban/documents/queue')
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(0, $body['count']);
+        $this->assertSame([], $body['pending']);
+    }
+
+    /** เรื่องของหน่วยงานอื่นต้องไม่โผล่ในคิว แม้ผู้เรียกจะมีสิทธิ์ระดับความสามารถครบ */
+    public function test_the_work_queue_does_not_leak_another_units_work(): void
+    {
+        $author = $this->userIn($this->unitA, [
+            'saraban.document.view', 'saraban.document.create', 'saraban.document.submit',
+        ]);
+        $this->submittedDocument($author);
+
+        $outsider = $this->userIn($this->unitB, ['saraban.document.view', 'saraban.workflow.review']);
+
+        $body = $this->actingAs($outsider)
+            ->getJson('/api/saraban/documents/queue')
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(0, $body['count']);
+    }
+
+    /** เรื่องที่จบแล้วต้องหายออกจากคิว ไม่ค้างให้ผู้ใช้เข้าใจผิดว่ายังมีงาน */
+    public function test_a_finished_document_leaves_the_queue(): void
+    {
+        $author = $this->userIn($this->unitA, [
+            'saraban.document.view', 'saraban.document.create', 'saraban.document.submit',
+        ]);
+        $document = $this->submittedDocument($author);
+
+        $officer = $this->userIn($this->unitA, ['saraban.document.view', 'saraban.workflow.review']);
+        $this->actingAs($officer)->postJson("/api/saraban/documents/{$document->id}/workflow", ['action' => 'approve'])->assertOk();
+
+        $body = $this->actingAs($officer)
+            ->getJson('/api/saraban/documents/queue')
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(
+            0,
+            $body['count'],
+            'ผู้ที่ทำขั้นตอนของตนไปแล้วต้องไม่เห็นเรื่องเดิมค้างอยู่ในคิว',
+        );
+    }
+
+    /** คิวต้องอยู่หลังด่านสิทธิ์เช่นเดียวกับทะเบียนหนังสือ */
+    public function test_the_work_queue_requires_the_register_permission(): void
+    {
+        $this->actingAs($this->userIn($this->unitA, []))
+            ->getJson('/api/saraban/documents/queue')
+            ->assertForbidden();
+    }
 }

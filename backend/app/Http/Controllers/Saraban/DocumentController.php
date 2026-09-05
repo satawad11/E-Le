@@ -20,6 +20,7 @@ use App\Services\Saraban\DocumentComparisonException;
 use App\Services\Saraban\DocumentService;
 use App\Services\Saraban\DocumentWorkflowService;
 use App\Services\Saraban\NumberingException;
+use App\Services\Saraban\WorkQueueService;
 use App\Services\Workflow\WorkflowAuthorizationException;
 use App\Services\Workflow\WorkflowTransitionException;
 use Illuminate\Http\Request;
@@ -87,6 +88,23 @@ class DocumentController extends Controller
      * สิทธิ์จัดการโครงสร้างองค์กร การผูกสองอย่างนี้เข้าด้วยกันจะบังคับให้ต้อง
      * แจกสิทธิ์เกินความจำเป็นเพียงเพื่อให้ฟอร์มใช้งานได้
      */
+    /**
+     * คิวงาน — หนังสือที่ผู้เรียกลงมือทำได้ ณ ตอนนี้ (NAV §4.7)
+     *
+     * **ที่มา:** การตรวจ navigation พบว่าระบบตอบได้เฉพาะ "ฉันทำอะไรกับหนังสือ
+     * ฉบับนี้ได้บ้าง" แต่ไม่มีคำถามย้อนกลับ · ผู้พิจารณาและผู้ลงนามจึงต้องเปิด
+     * ทะเบียนแล้วไล่เปิดทีละฉบับเพื่อหาว่าฉบับไหนถึงคิวตน
+     *
+     * ใช้สิทธิ์เดียวกับการเปิดทะเบียน เพราะคิวคือมุมมองหนึ่งของทะเบียน ไม่ใช่
+     * ความสามารถใหม่ · สิ่งที่จำกัดว่าใครเห็นอะไร คือสายงานและ policy รายฉบับ
+     */
+    public function queue(Request $request, WorkQueueService $queue)
+    {
+        $this->authorize('viewAny', Document::class);
+
+        return response()->json($queue->pendingFor($request->user()));
+    }
+
     public function options(Request $request)
     {
         $this->authorize('viewAny', Document::class);
