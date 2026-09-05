@@ -23,6 +23,17 @@ class RegisterReportController extends Controller
 {
     public function __construct(private readonly RegisterReportService $reports) {}
 
+    /**
+     * ตัวเลขสรุปสำหรับกราฟ (NAV §4.11)
+     *
+     * ใช้สิทธิ์และขอบเขตเดียวกับทะเบียน — กราฟคือมุมมองหนึ่งของข้อมูลชุดเดียวกัน
+     * ไม่ใช่ข้อมูลคนละชุดที่ต้องคุมแยก
+     */
+    public function summary(Request $request)
+    {
+        return response()->json($this->reports->summary($request->user()));
+    }
+
     public function register(Request $request)
     {
         $filters = $request->validate([

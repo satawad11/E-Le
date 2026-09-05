@@ -7,6 +7,7 @@ use App\Models\Saraban\DocumentNumber;
 use App\Models\Saraban\DocumentType;
 use App\Models\User;
 use App\Services\OrgScopeResolver;
+use App\Services\TrustedClock;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -21,7 +22,15 @@ use Illuminate\Support\Facades\DB;
  */
 class RegisterReportService
 {
-    public function __construct(private readonly OrgScopeResolver $scopes) {}
+    public function __construct(
+        private readonly OrgScopeResolver $scopes,
+        /*
+         * เวลาต้องมาจากนาฬิกาที่เชื่อถือได้ของระบบ ไม่ใช่นาฬิกาเครื่อง (SoT §10)
+         * — รายงานที่คำนวณช่วงเวลาจากเครื่องที่ตั้งเวลาเพี้ยน จะให้ตัวเลขที่ผิด
+         * โดยไม่มีอะไรฟ้อง · ด่าน `SarabanCoreContractTest` จับข้อนี้ได้จริง
+         */
+        private readonly TrustedClock $clock,
+    ) {}
 
     /**
      * ทะเบียนหนังสือตามหมวด
@@ -156,5 +165,63 @@ class RegisterReportService
         if ($visible !== null) {
             $query->whereIn('owner_org_unit_id', $visible);
         }
+    }
+
+    /**
+     * ตัวเลขสรุปสำหรับกราฟในหน้ารายงาน (SoT §28)
+     *
+     * **จำกัดขอบเขตเดียวกับทะเบียน** — กราฟที่นับหนังสือของหน่วยงานที่ผู้ดูไม่มี
+     * สิทธิ์เห็น คือการรั่วข้อมูลแบบที่มองไม่ออกจากตัวเลข แต่บอกได้ว่าหน่วยงานอื่น
+     * มีงานมากน้อยเพียงใด
+     *
+     * นับ **สิบสองเดือนย้อนหลังเสมอ** ไม่ใช่ตามปีปฏิทิน เพราะกราฟที่เริ่มใหม่
+     * ทุกเดือนมกราคมจะว่างเปล่าตลอดเดือนแรกของปี ซึ่งอ่านไม่ได้ความ
+     *
+     * @return array<string,mixed>
+     */
+    public function summary(User $user, array $filters = []): array
+    {
+        $months = collect(range(11, 0))
+            ->map(fn (int $back) => $this->clock->now()->startOfMonth()->subMonths($back))
+            ->values();
+
+        $since = $months->first();
+
+        $query = Document::query()->where('created_at', '>=', $since);
+        $this->applyScope($query, $user);
+
+        $documents = $query->get(['id', 'direction', 'status', 'created_at']);
+
+        $monthly = $months->map(function ($month) use ($documents) {
+            $inMonth = $documents->filter(
+                fn (Document $document) => $document->created_at?->isSameMonth($month) ?? false,
+            );
+
+            return [
+                'month' => $month->format('Y-m'),
+                'label' => $month->locale('th')->translatedFormat('M'),
+                'incoming' => $inMonth->where('direction', Document::DIRECTION_INCOMING)->count(),
+                'outgoing' => $inMonth->where('direction', Document::DIRECTION_OUTGOING)->count(),
+                'internal' => $inMonth->where('direction', Document::DIRECTION_INTERNAL)->count(),
+            ];
+        });
+
+        /*
+         * สถานะทั้งหมดที่พบจริง ไม่ใช่รายการที่ฝังไว้ในโค้ด — สถานะใหม่ที่เพิ่ม
+         * ในอนาคตจะปรากฏในกราฟเองโดยไม่ต้องแก้ที่นี่ และจะไม่มีหนังสือกลุ่มใด
+         * หายไปจากกราฟเงียบ ๆ เพราะสถานะของมันไม่อยู่ในรายการ
+         */
+        $byStatus = $documents
+            ->groupBy('status')
+            ->map(fn ($group, $status) => ['status' => $status, 'count' => $group->count()])
+            ->sortByDesc('count')
+            ->values();
+
+        return [
+            'total' => $documents->count(),
+            'monthly' => $monthly,
+            'by_status' => $byStatus,
+            'since' => $since->toDateString(),
+        ];
     }
 }

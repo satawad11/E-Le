@@ -25,6 +25,38 @@
     <ErrorState v-else-if="error" :message="error" @retry="load" />
 
     <template v-else>
+      <!--
+        สรุปภาพรวม (NAV §4.11)
+
+        กราฟใช้ตัวเลขที่ **จำกัดขอบเขตเดียวกับทะเบียน** — กราฟที่นับหนังสือของ
+        หน่วยงานที่ผู้ดูไม่มีสิทธิ์เห็น คือการรั่วข้อมูลแบบที่มองไม่ออกจากตัวเลข
+        แต่บอกได้ว่าหน่วยงานอื่นมีงานมากน้อยเพียงใด
+      -->
+      <template v-if="active === 'summary'">
+        <EmptyState
+          v-if="!data.total"
+          title="ยังไม่มีหนังสือในช่วงสิบสองเดือนที่ผ่านมา"
+          description="เมื่อมีหนังสือเข้าสู่ระบบ กราฟสรุปจะปรากฏที่นี่"
+        />
+
+        <div v-else class="grid lg:grid-cols-3 gap-4">
+          <section class="lg:col-span-2 bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+            <h2 class="font-semibold mb-4">หนังสือเข้า-ออก รายเดือน</h2>
+            <div class="h-72">
+              <Bar :data="monthlyChart" :options="barOptions" />
+            </div>
+          </section>
+
+          <section class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+            <h2 class="font-semibold mb-4">สถานะการดำเนินการ</h2>
+            <div class="h-72">
+              <Doughnut :data="statusChart" :options="doughnutOptions" />
+            </div>
+            <p class="text-sm text-gray-500 mt-3">ทั้งหมด {{ data.total }} ฉบับ</p>
+          </section>
+        </div>
+      </template>
+
       <!-- ทะเบียนหนังสือ -->
       <section v-if="active === 'register'" class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
         <header class="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-end gap-3">
@@ -142,6 +174,23 @@ import AppSelect from '../../components/ui/AppSelect.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ErrorState from '../../components/ui/ErrorState.vue'
 import LoadingState from '../../components/ui/LoadingState.vue'
+import {
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  Title,
+  Tooltip,
+} from 'chart.js'
+import { Bar, Doughnut } from 'vue-chartjs'
+
+/*
+ * ลงทะเบียนเฉพาะส่วนที่หน้านี้ใช้ — ไลบรารีตัวเดียวกับที่ `DashboardView` ใช้อยู่
+ * ไม่เพิ่ม dependency ใหม่
+ */
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend)
 
 /**
  * รายงานทะเบียนงานสารบรรณ (SoT §28 · INT-19)
@@ -169,16 +218,54 @@ const NUMBER_STATUS_LABELS = {
 }
 
 const tabs = [
+  { key: 'summary', label: 'สรุปภาพรวม' },
   { key: 'register', label: 'ทะเบียนหนังสือ' },
   { key: 'numbers', label: 'ทะเบียนเลขหนังสือ' },
   { key: 'distribution', label: 'การเวียนและการรับทราบ' },
 ]
 
-const active = ref('register')
+const active = ref('summary')
 const data = ref({})
 const loading = ref(true)
 const error = ref('')
 const filters = reactive({ direction: '' })
+
+/*
+ * สีของกราฟ — **เฉดที่ไล่จากสีแบรนด์ของระบบ ไม่ใช่ชุดสีใหม่**
+ *
+ * กราฟต้องการหลายสีเพื่อแยกชุดข้อมูล ซึ่งชุดสีเดิมสองสีไม่พอ · แทนที่จะหยิบ
+ * สีจากที่อื่นมาใช้ จึงไล่เฉดจาก `#800000` ลงมา — ได้ทั้งความเป็นระบบเดียวกัน
+ * และ **อ่านได้แม้พิมพ์ขาวดำ** เพราะความสว่างต่างกันชัด ซึ่งเป็นวิธีที่รายงาน
+ * ราชการถูกใช้จริงบ่อยกว่าการดูบนจอ
+ *
+ * เทสต์ `sarabanDocumentsView` ตรึงรายการนี้ไว้ไม่ให้มีสีนอกชุดหลุดเข้ามา
+ */
+const CHART_COLORS = ['#800000', '#a34a4a', '#c08787', '#d9b3b3', '#600000', '#4d0000']
+
+const monthlyChart = computed(() => ({
+  labels: (data.value.monthly || []).map((m) => m.label),
+  datasets: [
+    { label: 'หนังสือรับ', data: (data.value.monthly || []).map((m) => m.incoming), backgroundColor: CHART_COLORS[0] },
+    { label: 'หนังสือส่ง', data: (data.value.monthly || []).map((m) => m.outgoing), backgroundColor: CHART_COLORS[1] },
+    { label: 'หนังสือภายใน', data: (data.value.monthly || []).map((m) => m.internal), backgroundColor: CHART_COLORS[2] },
+  ],
+}))
+
+const statusChart = computed(() => ({
+  labels: (data.value.by_status || []).map((s) => statusLabel(s.status)),
+  datasets: [{
+    data: (data.value.by_status || []).map((s) => s.count),
+    backgroundColor: (data.value.by_status || []).map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+  }],
+}))
+
+const barOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+}
+
+const doughnutOptions = { responsive: true, maintainAspectRatio: false }
 
 const statusLabel = (status) => STATUS_LABELS[status] || status
 const numberStatusLabel = (status) => NUMBER_STATUS_LABELS[status] || status

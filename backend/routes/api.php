@@ -710,6 +710,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
         // รายงานทะเบียน (INT-19 · SoT §28)
         Route::middleware('ability:saraban.report.view')->group(function () {
+            Route::get('/reports/summary', [RegisterReportController::class, 'summary']);
             Route::get('/reports/register', [RegisterReportController::class, 'register']);
             Route::get('/reports/numbers', [RegisterReportController::class, 'numbers']);
             Route::get('/reports/distribution', [RegisterReportController::class, 'distribution']);

@@ -476,6 +476,50 @@ class SarabanRetentionAndReportsTest extends TestCase
         $this->assertSame('ฝ่ายอำนวยการ', $rows[0]['owner_org_unit']);
     }
 
+    /**
+     * **กราฟสรุปต้องจำกัดขอบเขตเหมือนทะเบียน**
+     *
+     * กราฟที่นับหนังสือของหน่วยงานที่ผู้ดูไม่มีสิทธิ์เห็น คือการรั่วข้อมูลแบบที่
+     * มองไม่ออกจากตัวเลข แต่บอกได้ว่าหน่วยงานอื่นมีงานมากน้อยเพียงใด
+     */
+    public function test_the_summary_chart_is_limited_to_the_readers_scope(): void
+    {
+        $this->createDocument($this->unit->id);
+        $this->createDocument($this->otherUnit->id);
+        $this->createDocument($this->otherUnit->id);
+
+        $this->actAs($this->userWith(['saraban.report.view'], $this->unit->id));
+
+        $body = $this->getJson('/api/saraban/reports/summary')->assertOk()->json();
+
+        $this->assertSame(1, $body['total'], 'ต้องนับเฉพาะหนังสือในขอบเขตของผู้ดู');
+        $this->assertCount(12, $body['monthly'], 'กราฟต้องมีสิบสองเดือนเสมอ แม้เดือนที่ไม่มีหนังสือ');
+        $this->assertSame(1, collect($body['monthly'])->sum('internal'));
+    }
+
+    /**
+     * เดือนที่ไม่มีหนังสือต้องยังอยู่ในกราฟ
+     *
+     * กราฟที่ข้ามเดือนว่างไป ทำให้แกนเวลาบิดและอ่านแนวโน้มผิด
+     */
+    public function test_the_summary_chart_keeps_empty_months(): void
+    {
+        $this->actAs($this->userWith(['saraban.report.view'], $this->unit->id));
+
+        $body = $this->getJson('/api/saraban/reports/summary')->assertOk()->json();
+
+        $this->assertSame(0, $body['total']);
+        $this->assertCount(12, $body['monthly']);
+        $this->assertSame([], $body['by_status']);
+    }
+
+    public function test_the_summary_chart_requires_the_report_permission(): void
+    {
+        $this->actAs($this->userWith(['saraban.document.view'], $this->unit->id));
+
+        $this->getJson('/api/saraban/reports/summary')->assertForbidden();
+    }
+
     public function test_the_register_report_filters_by_direction_and_date(): void
     {
         $this->createDocument();
