@@ -9,6 +9,25 @@
 # ผูกพอร์ตไว้ที่ 127.0.0.1 เท่านั้น จึงเข้าถึงได้จากเครื่องตัวเอง ไม่ใช่ทั้งวง LAN
 
 services:
+  # ให้เทสต์ที่ตรวจ "ทั้งโครงการ" ทำงานจริงบนเครื่องพัฒนา แทนที่จะ skip เงียบ ๆ
+  #
+  # ที่มา (2026-09-05): เทสต์แปดข้อที่ตรวจสัญญาข้ามฝั่ง — API ที่หน้าเว็บไม่มีใคร
+  # เรียก · เวอร์ชัน dependency ที่ยัง pin ไม่ตายตัว · compose ที่เปิด dev server
+  # บน production · เมนูที่ไม่มีหน้าจอ — **ข้ามทุกครั้งบนเครื่องพัฒนา** เพราะ
+  # container ของ backend mount แค่ `backend/` เท่านั้น
+  #
+  # ผลคือข้อบกพร่องสองข้อถูกพบครั้งแรกตอนมีคนรันด้วย container ชั่วคราวที่ mount
+  # ทั้ง repo เอง · **ด่านที่มีอยู่แล้วแต่ไม่เคยทำงาน คือด่านที่ไม่มี**
+  #
+  # อยู่ในไฟล์ dev **โดยเจตนา** — production ไม่ควรมี source ของหน้าเว็บและไฟล์
+  # CI อยู่ใน container ของ backend · mount แบบอ่านอย่างเดียวทั้งหมด
+  backend:
+    volumes:
+      - ./frontend:/var/www/frontend:ro
+      - ./.github:/var/www/.github:ro
+      - ./docker-compose.yml:/var/www/docker-compose.yml:ro
+      - ./docker-compose.dev.yml:/var/www/docker-compose.dev.yml:ro
+
   frontend:
     build:
       context: ./frontend
