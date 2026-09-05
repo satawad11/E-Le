@@ -40,6 +40,28 @@ const inFlightGets = new Map();
 
 export const isAuthenticationExpired = (error) => error?.response?.status === 401;
 
+/**
+ * หน้าที่เปิดให้คนทั่วไปเข้าถึงได้โดยไม่ต้องเข้าสู่ระบบ
+ *
+ * **ที่มา (UI QA · 2026-09-05):** app shell เรียก `/api/settings` ตอนบูตทุกครั้ง
+ * ซึ่งเป็น endpoint ที่ต้องยืนยันตัวตน · ผู้ที่ยังไม่ได้เข้าสู่ระบบจึงได้ 401
+ * แล้ว interceptor นี้พาไปหน้าเข้าสู่ระบบ — **รวมถึงตอนที่เปิดหน้าตรวจสอบเอกสาร
+ * จาก QR ด้วย**
+ *
+ * ผลคือหน้าตรวจสอบทั้งของใบลาและของหนังสือราชการ **เปิดไม่ได้เลยสำหรับผู้ที่
+ * ถือกระดาษอยู่ในมือ** ซึ่งเป็นคนกลุ่มเดียวที่หน้านั้นมีไว้ให้ (SoT §12)
+ *
+ * ต้องตรงกับ route ที่ประกาศ `meta.public` ใน `router/index.js` — มีเทสต์
+ * `publicRouteAccess` ตรึงไว้ไม่ให้สองที่นี้เดินหนีกัน
+ *
+ * @type {string[]}
+ */
+export const PUBLIC_PATH_PREFIXES = ['/login', '/verify-leave/', '/verify-saraban/'];
+
+/** เส้นทางนี้เปิดสาธารณะหรือไม่ */
+export const isPublicPath = (pathname) =>
+  typeof pathname === 'string' && PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** หน่วงก่อนลองใหม่ — ให้เกียรติ `Retry-After` ของ server ก่อนเสมอ */
@@ -89,7 +111,7 @@ api.interceptors.response.use(
      */
     if (status === 401) {
       clearStoredSession();
-      if (typeof window !== 'undefined' && window.location?.pathname !== '/login') {
+      if (typeof window !== 'undefined' && !isPublicPath(window.location?.pathname)) {
         window.location.href = '/login';
       }
     }
