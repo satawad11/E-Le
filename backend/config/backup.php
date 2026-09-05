@@ -13,6 +13,21 @@ use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes;
 
 return [
 
+    /*
+     * INT-22 — บัญชีฐานข้อมูลสำหรับซ้อมกู้คืน (SoT §26, §27)
+     *
+     * **แยกจากบัญชีของแอปโดยตั้งใจ** — บัญชีของแอปต้องสร้างฐานข้อมูลไม่ได้
+     * ตามหลัก least privilege · การซ้อมกู้คืนต้องใช้สิทธิ์ที่สูงกว่า ซึ่งควรมี
+     * เฉพาะบนเครื่องที่ซ้อมจริง ไม่ใช่ผูกไว้กับแอปตลอดเวลา
+     *
+     * ไม่ตั้ง = `backup:verify-restore` ปฏิเสธที่จะทำงานและบอกเหตุผล
+     * และทะเบียนหลักฐานยังคงเป็น NO_EVIDENCE ซึ่งถูกต้อง
+     */
+    'restore_test' => [
+        'username' => env('BACKUP_RESTORE_TEST_USERNAME'),
+        'password' => env('BACKUP_RESTORE_TEST_PASSWORD'),
+    ],
+
     'backup' => [
         /*
          * The name of this application. You can use this name to monitor
@@ -173,9 +188,28 @@ return [
         ],
 
         /*
-         * The directory where the temporary files will be stored.
+         * ไดเรกทอรีชั่วคราวระหว่างสร้างไฟล์สำรอง
+         *
+         * **ต้องไม่อยู่บน bind mount** (RISK-56 · แก้ใน INT-22)
+         *
+         * ค่าเดิมคือ `storage/app/backup-temp` ซึ่งบนเครื่องที่ bind mount `storage`
+         * มาจากโฮสต์ (Docker Desktop ใช้ **virtiofs**) จะทำให้การสำรองข้อมูล
+         * **ล้มเหลวทุกครั้ง** ด้วย `mkdir(): File exists`
+         *
+         * สาเหตุ: `spatie/temporary-directory` ทำ `rmdir()` แล้ว `mkdir()` ทันที
+         * ในบรรทัดถัดไป · virtiofs แคช metadata ของไดเรกทอรีไว้ ทำให้ไดเรกทอรี
+         * ที่เพิ่งลบยังปรากฏอยู่ชั่วขณะ `mkdir()` จึงชนกับของเดิม
+         *
+         * ค่าเริ่มต้นจึงย้ายมาอยู่บนดิสก์ของ container เอง ซึ่งถูกต้องทั้งบน
+         * เครื่องพัฒนาและ production · ไฟล์ที่พักไว้ที่นี่มีขนาดเท่าไฟล์สำรอง
+         * หนึ่งชุดเท่านั้น และถูกลบทิ้งเมื่อเสร็จ
+         *
+         * ตั้ง `BACKUP_TEMPORARY_DIRECTORY` ทับได้ถ้าพื้นที่ `/tmp` ไม่พอ
          */
-        'temporary_directory' => storage_path('app/backup-temp'),
+        'temporary_directory' => env(
+            'BACKUP_TEMPORARY_DIRECTORY',
+            rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'eleave-backup-temp',
+        ),
 
         /*
          * The password to be used for archive encryption.
@@ -219,13 +253,32 @@ return [
      * the `Spatie\Backup\Notifications\Notifications` classes.
      */
     'notifications' => [
-        'notifications' => [
+        /*
+         * INT-22 (RISK-57) — ส่งอีเมลเฉพาะเมื่อตั้งที่อยู่ไว้จริง
+         *
+         * ถ้าไม่ตั้ง `BACKUP_NOTIFICATION_EMAIL` ช่องทางจะว่าง แทนที่จะพยายามส่ง
+         * ไปยัง `null` แล้วล้มเหลวซ้อนกับความล้มเหลวเดิม
+         *
+         * **ความล้มเหลวของการสำรองยังคงมองเห็นได้เสมอ** ผ่านคิวข้อผิดพลาด
+         * (`RecordBackupOutcome` · INT-21) ซึ่งไม่ขึ้นกับการตั้งค่านี้เลย
+         *
+         * ไม่ส่งอีเมลตอนสำเร็จ — การแจ้งเตือนที่มาทุกวันจนคนเลิกอ่าน ทำให้
+         * ฉบับที่แจ้งว่าล้มเหลวถูกกวาดผ่านไปด้วย
+         */
+        'notifications' => filled(env('BACKUP_NOTIFICATION_EMAIL')) ? [
             BackupHasFailedNotification::class => ['mail'],
             UnhealthyBackupWasFoundNotification::class => ['mail'],
             CleanupHasFailedNotification::class => ['mail'],
-            BackupWasSuccessfulNotification::class => ['mail'],
-            HealthyBackupWasFoundNotification::class => ['mail'],
-            CleanupWasSuccessfulNotification::class => ['mail'],
+            BackupWasSuccessfulNotification::class => [],
+            HealthyBackupWasFoundNotification::class => [],
+            CleanupWasSuccessfulNotification::class => [],
+        ] : [
+            BackupHasFailedNotification::class => [],
+            UnhealthyBackupWasFoundNotification::class => [],
+            CleanupHasFailedNotification::class => [],
+            BackupWasSuccessfulNotification::class => [],
+            HealthyBackupWasFoundNotification::class => [],
+            CleanupWasSuccessfulNotification::class => [],
         ],
 
         /*
@@ -235,7 +288,27 @@ return [
         'notifiable' => Notifiable::class,
 
         'mail' => [
-            'to' => 'your@example.com',
+            /*
+             * INT-22 (RISK-57) — เดิมเป็น `your@example.com` ซึ่งเป็นค่าตัวอย่าง
+             * ของแพ็กเกจ · การสำรองข้อมูลที่ล้มเหลวทุกคืนจึงส่งอีเมลไปที่ที่ไม่มีใครอ่าน
+             *
+             * **ค่าเริ่มต้นเป็น `null` โดยตั้งใจ ไม่ใช่ที่อยู่สมมุติ** — ที่อยู่สมมุติ
+             * ทำให้ระบบ "ดูเหมือนแจ้งเตือนแล้ว" ทั้งที่ไม่มีใครได้รับ ซึ่งอันตราย
+             * กว่าการไม่ตั้งค่าเลย · ไม่ตั้ง = ไม่ส่งอีเมล
+             *
+             * **ความล้มเหลวไม่เงียบแม้ไม่ตั้งค่านี้** เพราะ `RecordBackupOutcome`
+             * (INT-21) ยกเข้าคิวข้อผิดพลาดระดับ critical เสมอ · อีเมลเป็นช่องทาง
+             * เสริม ไม่ใช่ช่องทางเดียว
+             */
+            /*
+             * แพ็กเกจตรวจชนิดของค่านี้เสมอแม้ไม่ได้เปิดช่องทางอีเมล จึงเป็น `null`
+             * ไม่ได้ · ค่าสำรองใช้โดเมน `.invalid` ซึ่ง RFC 2606 สงวนไว้ให้
+             * **ส่งไม่ถึงโดยเจตนา** — ต่างจาก `example.com` ที่ดูเหมือนที่อยู่จริง
+             *
+             * ค่านี้ไม่ถูกใช้เลยเมื่อไม่ได้ตั้ง `BACKUP_NOTIFICATION_EMAIL`
+             * เพราะช่องทางทั้งหมดว่างอยู่แล้ว
+             */
+            'to' => env('BACKUP_NOTIFICATION_EMAIL', 'backup-notifications@unconfigured.invalid'),
 
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),

@@ -14,7 +14,7 @@
           <input type="checkbox" v-model="viewSelf" @change="fetchDashboard" class="rounded text-[#800000] focus:ring-[#800000]">
           ดูเฉพาะข้อมูลของฉัน
         </label>
-        <select v-model="selectedYear" @change="fetchDashboard" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] block p-2 sm:p-2.5 shadow-sm">
+        <select aria-label="เลือกปีงบประมาณที่ต้องการดูสรุป" v-model="selectedYear" @change="fetchDashboard" class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] block p-2 sm:p-2.5 shadow-sm">
           <option v-for="fy in fiscalYearsList" :key="fy.year" :value="fy.year">ปีงบประมาณ {{ fy.year }} {{ fy.is_current ? '(ปัจจุบัน)' : '' }}</option>
         </select>
       </div>

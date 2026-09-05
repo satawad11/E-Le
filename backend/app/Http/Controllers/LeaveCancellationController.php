@@ -8,12 +8,13 @@ use App\Models\LeaveActionLog;
 use App\Models\LeaveApproval;
 use App\Models\LeaveAuditLog;
 use App\Models\User;
+use App\Rules\Base64Image;
 use App\Services\Attendance\LeaveAttendanceSync;
+use App\Services\Files\ImageUploadService;
 use App\Services\LeaveService;
 use App\Services\Workflow\LeaveApprovalCoordinator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * การยกเลิกใบลา
@@ -31,23 +32,41 @@ class LeaveCancellationController extends Controller
         private LeaveService $leaveService,
         private LeaveApprovalCoordinator $coordinator,
         private LeaveAttendanceSync $attendanceSync,
+        private ImageUploadService $images,
     ) {}
 
     public function cancel(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $isAdminOrHR = $user->can('leave.management.manage') || $user->can('system.user.view');
-        if ($leave->user_id !== $user->id && ! $isAdminOrHR) {
+
+        /*
+         * SEC-027 — สิทธิ์ยกเลิกใบลาของผู้อื่นต้องเป็นสิทธิ์จัดการการลาโดยเฉพาะ
+         *
+         * เดิมยอมรับ `system.user.view` ด้วย ซึ่งเป็นสิทธิ์ "ดูทะเบียนผู้ใช้"
+         * คนที่ได้สิทธิ์ไว้เพียงเพื่อเปิดดูรายชื่อบุคลากรจึงยกเลิกใบลาของคนทั้ง
+         * องค์กรได้ — เป็นการขยายอำนาจที่ไม่มีใครตั้งใจให้
+         *
+         * หัวหน้าบุคลากรยังยกเลิกใบลาของผู้อื่นได้เหมือนเดิม แต่ผ่าน
+         * `leave.approval.hr` ซึ่งเป็นสิทธิ์งานลาโดยตรงและ `OperationalPermissionSeeder`
+         * มอบให้บทบาท `HR Head` อยู่แล้ว ไม่ใช่ผ่านสิทธิ์ดูทะเบียนผู้ใช้
+         */
+        $canManageLeave = $user->can('leave.management.manage') || $user->can('leave.approval.hr');
+        if ($leave->user_id !== $user->id && ! $canManageLeave) {
             return response()->json(['message' => 'ไม่มีสิทธิ์ยกเลิกใบลานี้'], 403);
         }
-        if ($leave->status === 'Pending') {
-            $this->leaveService->restoreBalance($leave);
-            $this->attendanceSync->clear($leave->load('type'));
-            $leave->status = 'Cancelled';
-            $leave->save();
-            LeaveActionLog::create(['leave_id' => $leave->id, 'user_id' => $user->id, 'action' => 'Cancelled', 'details' => ['reason' => 'User cancelled pending leave']]);
 
-            return response()->json(['message' => 'ยกเลิกใบลาเรียบร้อยแล้ว']);
+        /*
+         * SEC-027 — กดยกเลิกซ้ำต้องได้ผลลัพธ์เดียวกัน ไม่ใช่ error ที่อธิบายไม่ได้
+         *
+         * ใบที่ยกเลิกไปแล้วคือ "สภาพปลายทาง" ที่ผู้ใช้ต้องการอยู่แล้ว จึงตอบสำเร็จ
+         * โดยไม่แตะโควตาหรือเขียนประวัติซ้ำ
+         */
+        if ($leave->status === 'Cancelled') {
+            return response()->json(['message' => 'ใบลานี้ถูกยกเลิกไปแล้ว']);
+        }
+
+        if ($leave->status === 'Pending') {
+            return $this->cancelPending($request, $leave);
         }
         if ($leave->status === 'Approved') {
             // กันการยื่นซ้ำทับคำขอเดิมที่ยังรออนุมัติอยู่ (เหตุผลและวันที่จะถูกเขียนทับ)
@@ -103,6 +122,73 @@ class LeaveCancellationController extends Controller
         return response()->json(['message' => 'ไม่สามารถยกเลิกใบลานี้ได้'], 422);
     }
 
+    /**
+     * ยกเลิกใบลาที่ยัง "รออนุมัติ" — ทำทั้งหมดใน transaction เดียว
+     *
+     * SEC-027 — เดิมห้าขั้นตอน (คืนโควตา · ล้างวันลาในตารางลงเวลา · เปลี่ยนสถานะ ·
+     * บันทึกประวัติ) วิ่งนอก transaction และไม่ล็อกแถวใบลาเลย กดปุ่มสองครั้งเร็ว ๆ
+     * หรือกดจากสองอุปกรณ์พร้อมกัน ทั้งสองคำขออ่านสถานะ `Pending` ได้พร้อมกัน
+     * แล้วคืนโควตาคนละครั้ง — วันลาคงเหลือของผู้ใช้เพิ่มขึ้นเป็นสองเท่าอย่างเงียบ ๆ
+     * และถ้าขั้นตอนกลางล้ม ใบลาจะค้างอยู่ในสภาพคืนโควตาแล้วแต่สถานะยังไม่เปลี่ยน
+     *
+     * ตอนนี้ล็อกแถวใบลาก่อน แล้ว "ตรวจสถานะซ้ำหลังได้ล็อก" คำขอที่มาทีหลังจะเห็น
+     * สถานะ `Cancelled` แล้วจึงไม่คืนโควตาซ้ำ · ตอบ 200 เหมือนกันเพื่อให้ผลลัพธ์
+     * ที่ผู้ใช้เห็นเป็น idempotent (กดซ้ำแล้วไม่ขึ้น error ที่อธิบายไม่ได้)
+     */
+    private function cancelPending(Request $request, Leave $leave)
+    {
+        $user = $request->user();
+
+        $outcome = DB::transaction(function () use ($leave, $user, $request): string {
+            $locked = Leave::whereKey($leave->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->status !== 'Pending') {
+                // สถานะเปลี่ยนไปแล้วระหว่างรอล็อก — ยกเลิกซ้ำถือว่าสำเร็จ
+                // ส่วนสถานะอื่น (เช่นเพิ่งได้รับอนุมัติ) ต้องไม่ถูกยกเลิกเงียบ ๆ
+                return $locked->status === 'Cancelled' ? 'already_cancelled' : 'status_changed';
+            }
+
+            // คืนโควตา (ล็อกแถวโควตาไว้ด้วยภายในตัวมันเอง) ก่อนเปลี่ยนสถานะเสมอ —
+            // restoreBalance ตัดสินจากสถานะปัจจุบันของใบลา
+            $this->leaveService->restoreBalance($locked);
+            $this->attendanceSync->clear($locked->load('type'));
+
+            $locked->status = 'Cancelled';
+            $locked->save();
+
+            LeaveActionLog::create([
+                'leave_id' => $locked->id,
+                'user_id' => $user->id,
+                'action' => 'Cancelled',
+                'details' => ['reason' => 'User cancelled pending leave'],
+            ]);
+
+            LeaveAuditLog::create([
+                'leave_id' => $locked->id,
+                'user_id' => $user->id,
+                'action' => 'pending_cancelled',
+                'before' => ['status' => 'Pending'],
+                'after' => ['status' => 'Cancelled'],
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
+            return 'cancelled';
+        }, 5);
+
+        if ($outcome === 'status_changed') {
+            return response()->json([
+                'message' => 'สถานะใบลาเปลี่ยนไปแล้วระหว่างดำเนินการ กรุณาโหลดข้อมูลใหม่แล้วลองอีกครั้ง',
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => $outcome === 'already_cancelled'
+                ? 'ใบลานี้ถูกยกเลิกไปแล้ว'
+                : 'ยกเลิกใบลาเรียบร้อยแล้ว',
+        ]);
+    }
+
     public function approve(Request $request, Leave $leave)
     {
         return $this->act($request, $leave, 'Approved');
@@ -123,7 +209,8 @@ class LeaveCancellationController extends Controller
     {
         $data = $request->validate([
             'comment' => 'nullable|string|max:1000',
-            'signature_base64' => 'nullable|string',
+            // SEC-028 — allowlist กลาง ตรวจจากเนื้อไฟล์จริง ไม่ใช่จากส่วนหัว data URI
+            'signature_base64' => ['nullable', 'string', new Base64Image('signatures')],
         ]);
 
         $user = $request->user();
@@ -261,22 +348,16 @@ class LeaveCancellationController extends Controller
         ]);
     }
 
-    /** ลายเซ็นที่จะประทับบนขั้นตอนนี้ — ที่วาดสดมาก่อน ถ้าไม่มีใช้ลายเซ็นในโปรไฟล์ */
+    /**
+     * ลายเซ็นที่จะประทับบนขั้นตอนนี้ — ที่วาดสดมาก่อน ถ้าไม่มีใช้ลายเซ็นในโปรไฟล์
+     *
+     * SEC-028 — เดิมตรวจชนิดไฟล์จากส่วนหัว data URI ที่ client เขียนเอง ไม่จำกัด
+     * ขนาด และ decode แบบไม่ strict · ตอนนี้ทั้งการตรวจและการเขียนไฟล์อยู่ที่
+     * `ImageUploadService` ที่เดียวกับทุกจุดที่รับภาพ
+     */
     private function resolveSignature(User $user, ?string $base64): ?string
     {
-        if (! $base64 || ! preg_match('/^data:image\/(\w+);base64,/', $base64, $matches)) {
-            return $user->profile?->signature_path;
-        }
-
-        $type = strtolower($matches[1]);
-        if (! in_array($type, ['jpg', 'jpeg', 'png'], true)) {
-            return $user->profile?->signature_path;
-        }
-
-        $binary = base64_decode(substr($base64, strpos($base64, ',') + 1));
-        $fileName = 'signatures/'.uniqid().'.'.$type;
-        Storage::disk('private_uploads')->put($fileName, $binary);
-
-        return '/storage/'.$fileName;
+        return $this->images->storeBase64($base64, 'signatures', 'signatures')
+            ?? $user->profile?->signature_path;
     }
 }

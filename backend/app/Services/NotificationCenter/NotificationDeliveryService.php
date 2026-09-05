@@ -76,6 +76,15 @@ class NotificationDeliveryService
             'status' => $terminal ? 'failed' : 'retrying',
             'next_attempt_at' => $nextAttempt,
             'last_error' => mb_substr(strip_tags($error), 0, 1000),
+
+            /*
+             * INT-14 — เข้า dead-letter เมื่อพยายามครบแล้ว (SoT §16)
+             *
+             * เดิมข้อความที่ล้มเหลวถาวรค้างอยู่ที่สถานะ `failed` เฉย ๆ ไม่มีใครรู้
+             * ว่ามีอยู่และไม่มีทางสั่งส่งใหม่ · ประทับเวลาไว้เพื่อให้ค้นเจอ นับได้
+             * และกู้ได้ที่ศูนย์ปฏิบัติการ
+             */
+            'dead_lettered_at' => $terminal ? now() : null,
         ]);
 
         if (! $terminal && $scheduleRetry) {

@@ -218,6 +218,141 @@ class MenuSeeder extends Seeder
                 ],
             ],
         ],
+        /*
+         * งานสารบรรณ (INT-05)
+         *
+         * `module` = `saraban` — เมนูทั้งกิ่งหายเองเมื่อโมดูลถูกปิด โดย `MenuService`
+         * ไม่ต้องเขียนเงื่อนไขเพิ่ม · สิทธิ์ที่ผูกไว้คือ "เห็นเมนูนี้ถ้ามีอย่างน้อยหนึ่งข้อ"
+         * ส่วนการเข้าถึงจริงยังถูกตรวจซ้ำที่ฝั่ง server ทุกครั้ง (เมนูไม่ใช่ด่านความปลอดภัย)
+         */
+        [
+            'code' => 'saraban',
+            'title_th' => 'งานสารบรรณ',
+            'title_en' => 'Saraban',
+            'module' => 'saraban',
+            'icon' => 'document',
+
+            /*
+             * INT-13 — หัวข้อนี้เปิดให้ผู้ถือสิทธิ์ใดสิทธิ์หนึ่งในสองข้อ
+             *
+             * ข้าราชการทั่วไปที่ได้รับหนังสือเวียนไม่มี `saraban.document.view`
+             * (และไม่ควรมี เพราะนั่นคือสิทธิ์ค้นทะเบียนหนังสือของหน่วยงาน)
+             * ถ้าหัวข้อผูกไว้กับข้อนั้นข้อเดียว กิ่งทั้งกิ่งจะหายไปจากเมนูของเขา
+             * และหนังสือที่เวียนถึงเขาก็ไม่มีทางเปิดเจอ
+             */
+            'permissions' => ['saraban.document.view', 'saraban.inbox.view'],
+            'children' => [
+                [
+                    'code' => 'saraban.inbox',
+                    'title_th' => 'หนังสือเวียนถึงฉัน',
+                    'title_en' => 'My Inbox',
+                    'route_name' => 'saraban-inbox',
+                    'route_path' => '/saraban/inbox',
+                    'permissions' => ['saraban.inbox.view'],
+                ],
+                [
+                    'code' => 'saraban.documents',
+                    'title_th' => 'ทะเบียนหนังสือ',
+                    'title_en' => 'Documents',
+                    'route_name' => 'saraban-documents',
+                    'route_path' => '/saraban/documents',
+                    'permissions' => ['saraban.document.view'],
+                ],
+                [
+                    'code' => 'saraban.documents.create',
+                    'title_th' => 'สร้างหนังสือ',
+                    'title_en' => 'New Document',
+                    'route_name' => 'saraban-document-create',
+                    'route_path' => '/saraban/documents/new',
+                    'permissions' => ['saraban.document.create'],
+                ],
+                [
+                    'code' => 'saraban.incoming',
+                    'title_th' => 'ทะเบียนรับหนังสือ',
+                    'title_en' => 'Incoming Register',
+                    'route_name' => 'saraban-incoming',
+                    'route_path' => '/saraban/incoming',
+                    'permissions' => ['saraban.document.view'],
+                ],
+                [
+                    'code' => 'saraban.incoming.register',
+                    'title_th' => 'ลงทะเบียนรับ',
+                    'title_en' => 'Register Incoming',
+                    'route_name' => 'saraban-incoming-register',
+                    'route_path' => '/saraban/incoming/new',
+                    'permissions' => ['saraban.incoming.register'],
+                ],
+                [
+                    // INT-16 — SoT §6, §9, §18
+                    'code' => 'saraban.authority',
+                    'title_th' => 'ตารางอำนาจหน้าที่',
+                    'title_en' => 'Authority Matrix',
+                    'route_name' => 'saraban-authority',
+                    'route_path' => '/saraban/authority',
+                    'permissions' => ['saraban.authority.view'],
+                ],
+                [
+                    'code' => 'saraban.policies',
+                    'title_th' => 'ศูนย์นโยบายงานสารบรรณ',
+                    'title_en' => 'Policy Center',
+                    'route_name' => 'saraban-policies',
+                    'route_path' => '/saraban/policies',
+                    'permissions' => ['saraban.policy.manage'],
+                ],
+                [
+                    'code' => 'saraban.number_series',
+                    'title_th' => 'ชุดเลขหนังสือ',
+                    'title_en' => 'Number Series',
+                    'route_name' => 'saraban-number-series',
+                    'route_path' => '/saraban/number-series',
+                    'permissions' => ['saraban.config.manage'],
+                ],
+                [
+                    // INT-20 — ทะเบียนหลักฐาน (SoT §23)
+                    'code' => 'saraban.compliance',
+                    'title_th' => 'ทะเบียนหลักฐานการปฏิบัติตามข้อกำหนด',
+                    'title_en' => 'Compliance Evidence',
+                    'route_name' => 'saraban-compliance',
+                    'route_path' => '/saraban/compliance',
+                    'permissions' => ['saraban.operations.view', 'saraban.report.view'],
+                ],
+                [
+                    // INT-19 — รายงานทะเบียน (SoT §28)
+                    'code' => 'saraban.reports',
+                    'title_th' => 'รายงานทะเบียนงานสารบรรณ',
+                    'title_en' => 'Register Reports',
+                    'route_name' => 'saraban-reports',
+                    'route_path' => '/saraban/reports',
+                    'permissions' => ['saraban.report.view'],
+                ],
+                [
+                    // INT-18 — สารบบเรื่อง (SoT §22)
+                    'code' => 'saraban.cases',
+                    'title_th' => 'สารบบเรื่อง',
+                    'title_en' => 'Cases',
+                    'route_name' => 'saraban-cases',
+                    'route_path' => '/saraban/cases',
+                    'permissions' => ['saraban.document.view'],
+                ],
+                [
+                    // INT-17 — SoT §19, §20, §21
+                    'code' => 'saraban.operations',
+                    'title_th' => 'ศูนย์เฝ้าระวังการปฏิบัติการ',
+                    'title_en' => 'Command Center',
+                    'route_name' => 'saraban-command-center',
+                    'route_path' => '/saraban/operations',
+                    'permissions' => ['saraban.operations.view'],
+                ],
+                [
+                    'code' => 'saraban.workflow.simulate',
+                    'title_th' => 'จำลองเส้นทางเดินหนังสือ',
+                    'title_en' => 'Workflow Simulation',
+                    'route_name' => 'saraban-workflow-simulate',
+                    'route_path' => '/saraban/workflow/simulate',
+                    'permissions' => ['saraban.workflow.simulate'],
+                ],
+            ],
+        ],
         [
             'code' => 'users',
             'title_th' => 'จัดการผู้ใช้งาน',
@@ -360,6 +495,15 @@ class MenuSeeder extends Seeder
                     'title_en' => 'System Modules',
                     'route_name' => 'admin-modules',
                     'route_path' => '/admin/modules',
+                    'permissions' => ['system.setting.manage'],
+                ],
+                [
+                    // INT-15 — ปลายทาง webhook ขาออก (SoT §17)
+                    'code' => 'settings.integrations',
+                    'title_th' => 'การเชื่อมต่อระบบภายนอก',
+                    'title_en' => 'Integrations',
+                    'route_name' => 'admin-integrations',
+                    'route_path' => '/admin/integrations',
                     'permissions' => ['system.setting.manage'],
                 ],
             ],

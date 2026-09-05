@@ -31,6 +31,31 @@ services:
       retries: 30
       start_period: 5m
 
+  #
+  # SEC-GAP-02 (INT-04) — ด่านตรวจไวรัสของไฟล์ที่ผู้ใช้อัปโหลด
+  #
+  # ระเบียบงานสารบรรณกำหนดให้ไฟล์แนบต้องผ่านการตรวจก่อนเก็บ (SoT §26) และเดิม
+  # ระบบตรวจแค่ชนิดไฟล์กับขนาดเท่านั้น — PDF ที่ฝัง payload ไว้จึงผ่านได้ทุกด่าน
+  #
+  # ไม่เปิด port ออกนอกเครื่อง เข้าถึงได้เฉพาะ service ใน network เดียวกัน
+  # `start_period` ยาวเพราะรอบแรกต้องดาวน์โหลดฐานลายเซ็นไวรัสหลายร้อยเมกะไบต์
+  # เก็บฐานลายเซ็นไว้ใน volume เพื่อไม่ต้องโหลดใหม่ทุกครั้งที่รีสตาร์ต
+  #
+  clamav:
+    image: clamav/clamav:1.5-debian13-slim
+    container_name: eleave_clamav
+    restart: unless-stopped
+    expose:
+      - "3310"
+    volumes:
+      - eleave_clamav_db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD-SHELL", "clamdcheck.sh || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 10m
+
   backend:
     image: e-le-backend
     build:
@@ -63,6 +88,10 @@ services:
       - MODULE_SARABAN_ENABLED=${MODULE_SARABAN_ENABLED:-true}
       - MODULE_NOTIFICATION_ENABLED=${MODULE_NOTIFICATION_ENABLED:-true}
       - MODULE_REPORTING_ENABLED=${MODULE_REPORTING_ENABLED:-true}
+      # SEC-GAP-02 — ปลายทางของด่านตรวจไวรัส (ดู service `clamav`)
+      - CLAMAV_HOST=${CLAMAV_HOST:-clamav}
+      - CLAMAV_PORT=${CLAMAV_PORT:-3310}
+      - UPLOAD_MALWARE_SCAN=${UPLOAD_MALWARE_SCAN:-true}
     # `exec php-fpm` เพื่อให้ php-fpm เป็น PID 1 และรับสัญญาณ stop/restart ได้ตรง ๆ
     #
     # SEC-022 — `app:verify-environment` เป็นคำสั่งแรกเสมอ ถ้าค่า APP_ENV/APP_DEBUG
@@ -78,6 +107,12 @@ services:
       db:
         condition: service_healthy
         restart: true
+      # `service_started` ไม่ใช่ `service_healthy` โดยเจตนา — รอบแรก clamav ใช้เวลา
+      # ดาวน์โหลดฐานลายเซ็นหลายนาที ถ้าผูกกับ healthy ทั้งระบบจะใช้งานไม่ได้เลย
+      # ระหว่างนั้น · แทนที่จะปิดทั้งระบบ ให้เฉพาะ "การอัปโหลดไฟล์" ที่ล้มไปก่อน
+      # พร้อมข้อความบอกเหตุ (fail closed เฉพาะจุด ไม่ใช่ปล่อยผ่านเงียบ ๆ)
+      clamav:
+        condition: service_started
 
   # ทางเข้าเดียวของ stack — production-grade web server (DEPLOY-001)
   # เดิม backend เสิร์ฟด้วย `php artisan serve` ซึ่งเป็น dev server แบบ single-threaded
@@ -125,6 +160,10 @@ services:
       - MODULE_SARABAN_ENABLED=${MODULE_SARABAN_ENABLED:-true}
       - MODULE_NOTIFICATION_ENABLED=${MODULE_NOTIFICATION_ENABLED:-true}
       - MODULE_REPORTING_ENABLED=${MODULE_REPORTING_ENABLED:-true}
+      # SEC-GAP-02 — ปลายทางของด่านตรวจไวรัส (ดู service `clamav`)
+      - CLAMAV_HOST=${CLAMAV_HOST:-clamav}
+      - CLAMAV_PORT=${CLAMAV_PORT:-3310}
+      - UPLOAD_MALWARE_SCAN=${UPLOAD_MALWARE_SCAN:-true}
     command: >
       bash -c "until [ -f vendor/autoload.php ]; do sleep 2; done;
                php artisan app:verify-environment &&
@@ -134,6 +173,8 @@ services:
         condition: service_healthy
         restart: true
       backend:
+        condition: service_started
+      clamav:
         condition: service_started
 
   scheduler:
@@ -159,6 +200,10 @@ services:
       - MODULE_SARABAN_ENABLED=${MODULE_SARABAN_ENABLED:-true}
       - MODULE_NOTIFICATION_ENABLED=${MODULE_NOTIFICATION_ENABLED:-true}
       - MODULE_REPORTING_ENABLED=${MODULE_REPORTING_ENABLED:-true}
+      # SEC-GAP-02 — ปลายทางของด่านตรวจไวรัส (ดู service `clamav`)
+      - CLAMAV_HOST=${CLAMAV_HOST:-clamav}
+      - CLAMAV_PORT=${CLAMAV_PORT:-3310}
+      - UPLOAD_MALWARE_SCAN=${UPLOAD_MALWARE_SCAN:-true}
     command: >
       bash -c "until [ -f vendor/autoload.php ]; do sleep 2; done;
                php artisan app:verify-environment &&
@@ -201,3 +246,4 @@ volumes:
   frontend_node_modules:
   eleave_mysql_data:
   backend_vendor:
+  eleave_clamav_db:

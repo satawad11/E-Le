@@ -174,11 +174,11 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">จะอุปสมบท ณ วัด</label>
-              <input type="text" v-model="form.meta_data.temple_name" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="จะอุปสมบท ณ วัด" type="text" v-model="form.meta_data.temple_name" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">ตั้งอยู่ ณ (ที่อยู่)</label>
-              <input type="text" v-model="form.meta_data.temple_location" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="ตั้งอยู่ ณ (ที่อยู่)" type="text" v-model="form.meta_data.temple_location" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -190,11 +190,11 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">จะจำพรรษาอยู่ ณ วัด</label>
-              <input type="text" v-model="form.meta_data.stay_temple_name" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="จะจำพรรษาอยู่ ณ วัด" type="text" v-model="form.meta_data.stay_temple_name" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">ตั้งอยู่ ณ (ที่อยู่)</label>
-              <input type="text" v-model="form.meta_data.stay_temple_location" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="ตั้งอยู่ ณ (ที่อยู่)" type="text" v-model="form.meta_data.stay_temple_location" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
           </div>
         </div>
@@ -215,33 +215,33 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">ชื่อคู่สมรส</label>
-              <input type="text" v-model="form.meta_data.spouse_name" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="ชื่อคู่สมรส" type="text" v-model="form.meta_data.spouse_name" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">ตำแหน่งคู่สมรส</label>
-              <input type="text" v-model="form.meta_data.spouse_position" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="ตำแหน่งคู่สมรส" type="text" v-model="form.meta_data.spouse_position" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">สังกัด</label>
-              <input type="text" v-model="form.meta_data.spouse_department" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="สังกัด" type="text" v-model="form.meta_data.spouse_department" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">ไปปฏิบัติราชการ ณ ประเทศ</label>
-              <input type="text" v-model="form.meta_data.spouse_country" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="ไปปฏิบัติราชการ ณ ประเทศ" type="text" v-model="form.meta_data.spouse_country" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
           </div>
           <hr class="border-blue-200 my-2">
           <p class="text-xs text-blue-700 font-semibold">ข้อมูลการติดตามคู่สมรสครั้งก่อน (ถ้ามี)</p>
           <div>
             <label class="block text-xs font-semibold text-gray-700 mb-1">ประเทศที่เคยติดตามไป</label>
-            <input type="text" v-model="form.meta_data.last_follow_country" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+            <input aria-label="ประเทศที่เคยติดตามไป" type="text" v-model="form.meta_data.last_follow_country" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">รวมระยะเวลา</label>
-              <input type="text" v-model="form.meta_data.last_follow_duration" placeholder="เช่น 1 ปี 2 เดือน" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="รวมระยะเวลา" type="text" v-model="form.meta_data.last_follow_duration" placeholder="เช่น 1 ปี 2 เดือน" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">ตั้งแต่วันที่</label>
@@ -259,21 +259,21 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">ระดับ (ปริญญา/หลักสูตร)</label>
-              <input type="text" v-model="form.meta_data.study_level" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="ระดับ (ปริญญา/หลักสูตร)" type="text" v-model="form.meta_data.study_level" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">สถานที่/สาขาวิชา</label>
-              <input type="text" v-model="form.meta_data.study_subject" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="สถานที่/สาขาวิชา" type="text" v-model="form.meta_data.study_subject" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">ประเทศ</label>
-              <input type="text" v-model="form.meta_data.study_country" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="ประเทศ" type="text" v-model="form.meta_data.study_country" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">ด้วยทุน</label>
-              <input type="text" v-model="form.meta_data.study_funding" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+              <input aria-label="ด้วยทุน" type="text" v-model="form.meta_data.study_funding" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             </div>
           </div>
         </div>
@@ -284,14 +284,14 @@
           <div class="space-y-4">
             <div>
               <label class="block text-xs font-semibold text-gray-700 mb-1">เลือกผู้รักษาราชการแทน</label>
-              <select v-model="form.substitute_id" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:border-[#800000] bg-white">
+              <select aria-label="เลือกผู้รักษาราชการแทน" v-model="form.substitute_id" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:border-[#800000] bg-white">
                 <option value="">-- ไม่ระบุ --</option>
                 <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }} ({{ user.department?.name || 'ไม่ระบุหน่วยงาน' }})</option>
               </select>
             </div>
             <div v-if="form.substitute_id">
               <label class="block text-xs font-semibold text-gray-700 mb-1">งานที่มอบหมาย</label>
-              <textarea v-model="form.substitute_reason" rows="2" maxlength="1000"
+              <textarea aria-label="งานที่มอบหมาย" v-model="form.substitute_reason" rows="2" maxlength="1000"
                 class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:border-[#800000] resize-none"
                 placeholder="ระบุรายละเอียดงานที่มอบหมายให้รับผิดชอบแทน..."></textarea>
             </div>

@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
@@ -92,9 +92,16 @@ class RoleController extends Controller
             'permission_ids.*' => 'exists:permissions,id',
         ]);
 
-        // Protect core system roles from renaming
-        $protectedRoles = ['SuperAdmin', 'Director', 'Employee'];
-        if (in_array($role->name, $protectedRoles) && $role->name !== $request->input('name')) {
+        /*
+         * SEC-026 — บทบาทหลักของระบบเปลี่ยนชื่อไม่ได้
+         *
+         * เดิมด่านนี้เทียบ "ชื่อที่แสดง" กับรายการ `['SuperAdmin', 'Director', 'Employee']`
+         * แต่บทบาทจริงในฐานข้อมูลชื่อ `Super Admin` (มีเว้นวรรค) ด่านจึงไม่เคยทำงาน
+         * และชื่อที่แสดงยังเป็นข้อมูลที่ผู้ดูแลแก้ได้ จึงใช้เป็นตัวระบุไม่ได้ตั้งแต่ต้น
+         *
+         * ตัวระบุที่ใช้จริงคือ `roles.system_key` ซึ่งไม่มี API ใดเปิดให้แก้
+         */
+        if ($role->isSystemRole() && trim((string) $request->input('name')) !== $role->name) {
             return response()->json([
                 'success' => false,
                 'message' => "ไม่สามารถเปลี่ยนชื่อบทบาทหลักของระบบ ({$role->name}) ได้",
@@ -124,8 +131,8 @@ class RoleController extends Controller
      */
     public function destroy(Role $role): JsonResponse
     {
-        $protectedRoles = ['SuperAdmin', 'Director', 'Employee', 'HR Head', 'Deputy Director'];
-        if (in_array($role->name, $protectedRoles)) {
+        // SEC-026 — ตัดสินจากคีย์ระบบ ไม่ใช่ชื่อที่แสดง (ดูเหตุผลใน update())
+        if ($role->isSystemRole()) {
             return response()->json([
                 'success' => false,
                 'message' => "ไม่สามารถลบบทบาทหลักของระบบ ({$role->name}) ได้",

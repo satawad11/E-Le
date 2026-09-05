@@ -10,6 +10,7 @@ use App\Models\LeaveEvidence;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\User;
+use App\Services\Attendance\LeaveAttendanceSync;
 use App\Services\Time\TimeService;
 use App\Services\Workflow\LeaveWorkflowShadow;
 use Carbon\Carbon;
@@ -76,9 +77,12 @@ class LeaveService
      *
      * ทั้งสี่อย่างเกิดพร้อมกันตอนกด "ส่งอนุมัติ" ใน `submitDraft()`
      */
-    public function createLeaveRequest(array $data, int $userId, ?UploadedFile $attachment, bool $asDraft = false): Leave
+    public function createLeaveRequest(array $data, int $userId, ?UploadedFile $attachment, bool $asDraft = false, bool $asApproved = false): Leave
     {
-        $leave = DB::transaction(function () use ($data, $userId, $attachment, $asDraft) {
+        if ($asDraft && $asApproved) {
+            throw new \InvalidArgumentException('ร่างไม่สามารถเป็นรายการอนุมัติแล้วได้');
+        }
+        $leave = DB::transaction(function () use ($data, $userId, $attachment, $asDraft, $asApproved) {
             $user = User::with(['personnel', 'currentAssignment', 'personnelType', 'profile'])->lockForUpdate()->findOrFail($userId);
 
             [$policy, $start, $end, $period, $days] = $this->resolveRequest($user, $data, (bool) $attachment);
@@ -140,17 +144,20 @@ class LeaveService
              * ไม่ได้ผูกกับ role ใด ๆ ถ้าตกหล่นจะกลายเป็นขั้นตอนแบบ ROLE ทั้งหมด
              * แล้วผู้อนุมัติตัวจริงจะถูกปฏิเสธสิทธิ์ในขั้นของตัวเอง
              */
-            if (! $asDraft) {
+            if (! $asDraft && ! $asApproved) {
                 $this->snapshotApprovalChain($leave);
             }
 
-            $this->audit->log($leave, $asDraft ? 'draft_created' : 'created', null, $leave->toArray());
+            if ($asApproved) {
+                $this->completeApproval($leave);
+            }
+            $this->audit->log($leave, $asApproved ? 'created_approved' : ($asDraft ? 'draft_created' : 'created'), null, $leave->toArray());
 
             return $leave;
         }, 5);
 
         // ร่างยังไม่เข้าสู่กระบวนการ จึงไม่เปิด workflow instance
-        if ($asDraft) {
+        if ($asDraft || $asApproved) {
             return $leave;
         }
 
@@ -449,6 +456,15 @@ class LeaveService
         $paid = min($days, $paidRemaining);
 
         return [$paid, $days - $paid];
+    }
+
+    /** ผลของการอนุมัติที่ใช้ร่วมกันทั้งสายอนุมัติและการบันทึกแทน */
+    public function completeApproval(Leave $leave): void
+    {
+        // ผู้เรียกต้องถือ lock ของใบลา (หรือเพิ่งสร้างใบลา) ภายใน transaction เดียวกัน
+        abort_unless($this->deductBalance($leave), 422, 'วันลาคงเหลือไม่เพียงพอ');
+        $leave->update(['status' => 'Approved']);
+        app(LeaveAttendanceSync::class)->apply($leave->load(['type', 'user', 'policy']));
     }
 
     /**

@@ -98,3 +98,75 @@ The application maintains strong separation of privileges, secure defaults, and 
 
 **Status:** เปิดค้าง — PROD-02 ยังไม่ผ่าน จนกว่าจะมีการตรวจซ้ำที่ครอบคลุมพื้นที่นอกเหนือจาก
 สารบรรณ / runtime / dependency ซึ่งเป็นขอบเขตของรอบนี้เท่านั้น
+
+---
+
+# ภาคผนวก ข — การแก้ไขผลการตรวจรอบที่สอง (SEC-AUDIT-2569-09)
+
+**วันที่:** 2026-09-02
+**ขอบเขต:** Leave · Authorization · User/Profile · File Security · UI
+**สถานะของรายงานหลัก:** ยังเปิดค้างตามภาคผนวก ก.4 — รอบนี้ไม่ได้เปลี่ยนสถานะเป็น PASS
+
+## ข.1 ข้อความในรายงานเดิมที่ยังไม่ตรงกับโค้ด (พบเพิ่มเมื่อ 2026-09-02)
+
+| หัวข้อในรายงานเดิม | ข้อความเดิม | สิ่งที่พบจริงเมื่อ 2026-09-02 |
+|---|---|---|
+| 1. Password Policy | "Token revocation and password resets securely invalidate previous active sessions" | จริงเฉพาะ "ตอนเปลี่ยนแล้ว" — แต่ **การเปลี่ยนรหัสผ่านไม่ต้องรู้รหัสเดิม** ช่อง `password` ปนอยู่ใน `POST /api/profile` ร่วมกับการแก้เบอร์โทรและที่อยู่ ใครยึด token ไปได้ก็ยึดบัญชีต่อได้ทันที และไม่มีช่องยืนยันรหัสใหม่ (SEC-024) |
+| 2. Authorization | "Explicit Deny overrides allow permissions" | จริงเฉพาะเมื่อเรียกผ่าน `PermissionEvaluator` โดยตรง · `$user->can()` ยังข้าม deny เมื่อผู้ใช้ถือสิทธิ์นั้นอยู่ เพราะ `Gate::before` ของ Spatie ทำงานก่อน · และ `SecureFileAccessService` ไม่ได้ผ่าน evaluator เลย (SEC-029, ADR-AUTHZ-02) |
+| 2. IDOR / BOLA — `org_unit_id` | "ensuring supervisors cannot query users outside their scope" | `GET /api/admin/users` คืนทะเบียนประวัติของบุคลากร **ทุกคนพร้อมเลขบัตรประชาชนฉบับเต็ม** โดยไม่ผ่าน scope ใด และ `UserController::show()` ที่ควรเป็นทางเข้าข้อมูลรายคนไม่มี route ชี้ถึงเลย (SEC-030) |
+| 2. Privilege Escalation | "No endpoints allow arbitrary assignment of roles" | ถูกต้อง แต่ด่านกันบทบาทหลักเทียบชื่อ `SuperAdmin` ขณะที่บทบาทจริงชื่อ `Super Admin` — **ด่านไม่เคยทำงานเลย** ผู้ดูแลลบบทบาทผู้ดูแลระบบสูงสุดหรือถอดตัวเองออกจนระบบไม่เหลือผู้ดูแลได้ (SEC-026) |
+| 3. File Upload | "MIME types and sizes are checked before persistence" | ยังไม่จริงกับช่องภาพ: `profile_photo` ไม่มีกฎ validate ใด ๆ เลยทั้งในหน้าโปรไฟล์และหน้าจัดการผู้ใช้ · `signature_base64` ทุกจุดเชื่อชนิดไฟล์จาก **ส่วนหัว data URI ที่ client เขียนเอง** ไม่จำกัดขนาด และ `base64_decode()` ไม่ strict (SEC-028) |
+| 3. File Upload | "UUID/generated filenames (`uniqid()`)" | `uniqid()` เป็นค่าจากเวลาปัจจุบัน คาดเดาลำดับได้ ไม่ใช่ UUID · เปลี่ยนเป็น `Str::uuid()` แล้ว (SEC-028) |
+| (ไม่ได้กล่าวถึง) | — | การยกเลิกใบลาที่รออนุมัติทำงานนอก transaction และไม่ล็อกแถว กดพร้อมกันคืนโควตาซ้ำได้ และไม่เขียน audit log เลย (SEC-027) |
+| (ไม่ได้กล่าวถึง) | — | สิทธิ์ `system.user.view` (ดูทะเบียนผู้ใช้) ให้อำนาจยกเลิกใบลาของผู้อื่นทั้งองค์กร (SEC-027) |
+| (ไม่ได้กล่าวถึง) | — | หน้าเว็บออกจากระบบเองเมื่อ `/api/user` ตอบ 429 หรือ 5xx ทั้งที่โทเคนยังใช้ได้ (SEC-025) |
+
+## ข.2 สิ่งที่แก้แล้วและหลักฐาน
+
+รายละเอียดการแก้อยู่ใน `docs/CHANGELOG.md` หัวข้อ `[SEC-AUDIT-2569-09]`
+การเชื่อมโยงข้อกำหนด → โค้ด → เทสต์ อยู่ใน `docs/TRACEABILITY-MATRIX.md`
+(แถว `SEC-024` ถึง `SEC-030` และ `UI-01`) · การตัดสินใจเชิงสถาปัตยกรรมอยู่ใน
+`docs/DECISION-LOG.md` (ADR-ROLE-01, ADR-AUTHZ-02)
+
+หลักฐานการตรวจ:
+
+- Backend **728 tests ผ่าน** (8 skipped · จำนวน skip เท่าเดิมกับก่อนแก้) · 2,513 assertions · Pint ผ่าน 492 ไฟล์
+- Frontend eslint / vue-tsc / **59 tests** / vite build ผ่านทั้งหมด
+- `composer audit` = 0 · `npm audit --omit=dev` = 0 · `migrate:status` ไม่มี Pending · ไม่มี failed queue job
+- **ทดสอบการยกเลิกใบลาพร้อมกันจริงบน MySQL ผ่าน nginx**: 5 คำขอขนานบนใบเดียวกัน
+  → ตอบ 200 ทั้งหมด (ใบแรก "ยกเลิกเรียบร้อย" ที่เหลือ "ถูกยกเลิกไปแล้ว")
+  → โควตาที่กันไว้ 2 วันถูกคืนเพียงครั้งเดียว (`reserved` 2 → 0 ไม่ติดลบ)
+  → `leave_action_logs` = 1 แถว · `leave_audit_logs` = 1 แถว
+- ตรวจบนเบราว์เซอร์จริง: นำทางต่อเนื่อง 12 หน้าจนชนเพดาน 429 แล้ว **ผู้ใช้ยังอยู่ในระบบ**
+  · เปลี่ยนรหัสผ่านด้วยรหัสเดิมที่ผิดได้ข้อความไทย "รหัสผ่านปัจจุบันไม่ถูกต้อง"
+  · ตารางผู้ใช้แสดงเลขบัตรประชาชนแบบปิดบัง (`x-xxxx-xxxx3-33-3`)
+  · ค้นด้วยเลขเต็ม 13 หลักยังเจอคนที่ถูกต้อง · ฟอร์มแก้ไขโหลดเลขเต็มจาก endpoint รายคน
+- Keyboard navigation: 70 จุดโฟกัสได้ · มี skip link ภาษาไทย
+- ไม่มี horizontal overflow ที่ 390px · 768px · desktop
+
+### จำนวน request ที่หน้าเว็บสร้างจริง (วัดก่อนตัดสินใจเรื่อง rate limit)
+
+การโหลดหน้าใหม่หนึ่งครั้งสร้างคำขอฐาน 4–5 รายการ (`/user`, `/user/menus`,
+`/notifications`, `/settings`) บวกคำขอเฉพาะหน้าอีก 1–4 รายการ รวม 5–8 รายการต่อการโหลด
+เพดาน `api` ที่ 60 ครั้ง/นาที จึงรองรับการโหลดหน้าใหม่ราว 8–12 ครั้งต่อนาที
+ส่วนการสลับหน้าภายใน SPA ตามการใช้งานจริงสร้างเฉพาะคำขอของหน้านั้น
+
+**จึงไม่ได้ผ่อนเพดาน rate limit ใด ๆ ในรอบนี้** — ต้นเหตุที่ผู้ใช้หลุดจากระบบคือ
+`authStore.fetchUser()` เรียก `logout()` กับความล้มเหลวทุกชนิด ไม่ใช่ตัวเพดาน
+สิ่งที่เพิ่มคือ limiter ใหม่สองตัวสำหรับเส้นทางใหม่ (`password-change` 5/นาที ·
+`personal-record` 30/นาที) ซึ่งเป็นการ **คุมเข้มขึ้น** ไม่ใช่ผ่อน
+
+## ข.3 ข้อจำกัดของการตรวจรอบนี้
+
+- ตรวจบนสภาพแวดล้อม **development ในเครื่อง** (docker compose) เท่านั้น
+  **ไม่ได้ตรวจ environment จริงของ Production และไม่ได้ deploy** จึงยังไม่มีสิทธิ์
+  เปลี่ยนสถานะรายงานหลักเป็น PASS
+- ไม่ได้ทำ penetration test หรือ load test (ขอบเขตของ PROD-04)
+- explicit deny ยังไม่มีผลกับทุก endpoint ที่ใช้ `$user->can()` — รายละเอียดและทางแก้
+  อยู่ใน ADR-AUTHZ-02 · **ต้องได้รับอนุมัติก่อนดำเนินการ**
+- ไม่ได้เปิด Workflow Engine เป็น source of truth และไม่ได้เปิด Document Engine
+
+## ข.4 สถานะ
+
+**Status:** เปิดค้าง — PROD-02 ยังไม่ผ่าน · ต้องตรวจซ้ำบน environment จริงของ Production
+ก่อนจึงจะประเมินสถานะ PASS ได้

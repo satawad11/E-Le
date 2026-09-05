@@ -30,6 +30,8 @@ class LeaveEvidenceController extends Controller
     {
         $user = $r->user();
 
+        abort_if($leave->status === 'Draft' && (int) $leave->user_id !== (int) $user->id, 403, 'เข้าถึงได้เฉพาะร่างใบลาของตนเอง');
+
         if ($leave->user_id === $user->id
             || $user->can('leave.management.manage')
             || $user->can('leave.approval.hr')) {

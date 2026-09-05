@@ -45,8 +45,15 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: mbstring, pdo_mysql
+          extensions: mbstring, pdo_mysql, zip
           coverage: none
+      # INT-18 — การปกปิดข้อมูลต้องแปลงเอกสารเป็นภาพเพื่อลบชั้นข้อความจริง
+      #
+      # กล่องดำทับข้อความไม่ใช่การปกปิด — ข้อความยังคัดลอกออกมาได้
+      # ถ้าไม่มี ghostscript เทสต์ 3 ข้อจะ skip แทนที่จะยืนยันว่าปกปิดได้จริง
+      # ซึ่งเท่ากับ CI ผ่านโดยไม่ได้ตรวจสิ่งที่สำคัญที่สุดของ INT-18
+      - name: Install ghostscript
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ghostscript
       - uses: actions/cache@v4
         with:
           path: backend/vendor
@@ -65,6 +72,20 @@ jobs:
         run: php artisan document:install-fonts
       - name: Tests
         run: php artisan test
+      # INT-20 — พิสูจน์ว่าการออกเลขหนังสือไม่ให้เลขซ้ำเมื่อมีผู้ขอพร้อมกัน (RISK-22)
+      #
+      # ชุดทดสอบปกติรันบน SQLite ซึ่งไม่มี row-level lock จริง จึงพิสูจน์เรื่องนี้
+      # ไม่ได้เลย · คำสั่งนี้เปิด process จริงหลายตัวแย่งกันออกเลขบน MySQL 8
+      # แล้วตรวจสามข้อพร้อมกัน: ได้ครบ / ไม่ซ้ำ / ไม่มีช่องว่างในลำดับ
+      - name: Numbering concurrency proof
+        run: php artisan saraban:concurrency-check --workers=8 --per-worker=15
+      # ตรวจทาน 2026-09-05 — พิสูจน์ว่าการอายัดกับการทำลายเอกสารแย่งกันแล้วไม่พัง
+      #
+      # เหตุผลเดียวกับข้างบน แต่ผลของการพลาดหนักกว่ามาก: **ไฟล์ที่ถูกลบเรียกคืน
+      # ไม่ได้** · การรันบนโค้ดก่อนแก้ทำลายไฟล์ของหนังสือที่ถูกอายัดไว้จริง 5 ฉบับ
+      # จาก 12 ฉบับที่ทดสอบ
+      - name: Disposal concurrency proof
+        run: php artisan saraban:concurrency-check --disposal --documents=12
 
   frontend:
     runs-on: ubuntu-latest

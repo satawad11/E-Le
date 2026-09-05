@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\PermissionEvaluator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
@@ -9,7 +10,7 @@ class UpdateLeaveRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->can('leave.management.manage');
+        return app(PermissionEvaluator::class)->allows($this->user(), 'leave.management.manage');
     }
 
     protected function failedAuthorization(): void

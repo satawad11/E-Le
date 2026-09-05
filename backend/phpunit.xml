@@ -30,6 +30,11 @@
         <env name="DB_USERNAME" value="root" force="true"/>
         <env name="DB_PASSWORD" value="" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
+        <!--
+            SEC-GAP-02 — ชุดทดสอบไม่ต้องพึ่ง clamd จริง
+            การตรวจไวรัสถูกทดสอบด้วยตัวปลอมใน MalwareScanningTest ซึ่งเปิดค่านี้เอง
+        -->
+        <env name="UPLOAD_MALWARE_SCAN" value="false" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

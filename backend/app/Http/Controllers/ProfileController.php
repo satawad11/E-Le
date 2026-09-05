@@ -2,12 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ChangePasswordRequest;
 use App\Models\UserDelegation;
+use App\Rules\Base64Image;
+use App\Services\AuditLogger;
+use App\Services\Files\ImageUploadService;
+use App\Support\UploadRules;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class ProfileController extends Controller
 {
+    public function __construct(private ImageUploadService $images) {}
+
     public function show(Request $request)
     {
         return response()->json($request->user()->load('profile', 'department', 'roles'));
@@ -17,25 +27,40 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
+        /*
+         * SEC-024 — การเปลี่ยนรหัสผ่านย้ายไปเส้นทางของตัวเองที่ `POST /profile/password`
+         *
+         * ตอบ 422 แทนการเงียบ ๆ ไม่ทำอะไร เพื่อไม่ให้ client รุ่นเก่าเข้าใจผิดว่า
+         * เปลี่ยนรหัสผ่านสำเร็จแล้วทั้งที่ไม่ได้เปลี่ยน
+         */
+        if ($request->has('password')) {
+            throw ValidationException::withMessages([
+                'password' => ['การเปลี่ยนรหัสผ่านต้องทำที่หัวข้อ "เปลี่ยนรหัสผ่าน" และต้องกรอกรหัสผ่านปัจจุบัน'],
+            ]);
+        }
+
+        /*
+         * SEC-028 — กฎของไฟล์ทุกช่องมาจาก allowlist กลางที่ `config/uploads.php`
+         *
+         * เดิม `profile_photo` ไม่มีกฎ validate เลยแม้แต่ข้อเดียว และ `signature_base64`
+         * เป็นเพียง `nullable|string` แล้วไปตรวจเองในตัว controller ด้วย regex
+         * ที่เชื่อชนิดไฟล์จากส่วนหัว data URI ซึ่ง client เขียนเองได้
+         */
         $request->validate([
             'phone' => 'nullable|string|max:20',
             'telegram_chat_id' => 'nullable|string|max:255',
             'line_user_id' => 'nullable|string|max:255',
             'notification_channel' => 'nullable|string|in:line,telegram,both,none',
-            'password' => 'nullable|string|min:12',
             'profile' => 'nullable|array',
-            'signature_file' => 'nullable|image|max:2048',
-            'signature_base64' => 'nullable|string',
+            'profile_photo' => array_merge(['nullable'], UploadRules::profilePhoto()),
+            'signature_file' => array_merge(['nullable'], UploadRules::signatureFile()),
+            'signature_base64' => ['nullable', 'string', new Base64Image('signatures')],
         ]);
 
         $user->phone = $request->phone;
         $user->telegram_chat_id = $request->telegram_chat_id;
         $user->line_user_id = $request->line_user_id;
         $user->notification_channel = $request->notification_channel ?? 'both';
-
-        if ($request->filled('password')) {
-            $user->password = bcrypt($request->password);
-        }
 
         $user->save();
 
@@ -56,27 +81,7 @@ class ProfileController extends Controller
                 }
             }
 
-            if ($request->hasFile('profile_photo')) {
-                $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
-                $filteredData['profile_photo_path'] = '/storage/'.$path;
-            }
-
-            if ($request->hasFile('signature_file')) {
-                $path = $request->file('signature_file')->store('signatures', 'private_uploads');
-                $filteredData['signature_path'] = '/storage/'.$path;
-            } elseif ($request->filled('signature_base64')) {
-                $base64 = $request->signature_base64;
-                if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
-                    $base64 = substr($base64, strpos($base64, ',') + 1);
-                    $type = strtolower($type[1]); // jpg, png, gif
-                    $base64 = base64_decode($base64);
-                    if ($base64 !== false) {
-                        $fileName = 'signatures/'.uniqid().'.'.$type;
-                        Storage::disk('private_uploads')->put($fileName, $base64);
-                        $filteredData['signature_path'] = '/storage/'.$fileName;
-                    }
-                }
-            }
+            $filteredData += $this->storeProfileAssets($request);
 
             if (! empty($filteredData)) {
                 $user->profile()->updateOrCreate(
@@ -85,27 +90,7 @@ class ProfileController extends Controller
                 );
             }
         } else {
-            $filteredData = [];
-            if ($request->hasFile('profile_photo')) {
-                $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
-                $filteredData['profile_photo_path'] = '/storage/'.$path;
-            }
-            if ($request->hasFile('signature_file')) {
-                $path = $request->file('signature_file')->store('signatures', 'private_uploads');
-                $filteredData['signature_path'] = '/storage/'.$path;
-            } elseif ($request->filled('signature_base64')) {
-                $base64 = $request->signature_base64;
-                if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
-                    $base64 = substr($base64, strpos($base64, ',') + 1);
-                    $type = strtolower($type[1]);
-                    $base64 = base64_decode($base64);
-                    if ($base64 !== false) {
-                        $fileName = 'signatures/'.uniqid().'.'.$type;
-                        Storage::disk('private_uploads')->put($fileName, $base64);
-                        $filteredData['signature_path'] = '/storage/'.$fileName;
-                    }
-                }
-            }
+            $filteredData = $this->storeProfileAssets($request);
 
             if (! empty($filteredData)) {
                 $user->profile()->updateOrCreate(
@@ -118,6 +103,82 @@ class ProfileController extends Controller
         return response()->json([
             'message' => 'อัปเดตข้อมูลส่วนตัวเรียบร้อยแล้ว',
             'user' => $user->load('profile', 'department', 'roles'),
+        ]);
+    }
+
+    /**
+     * SEC-028 — เก็บรูปประจำตัวและลายเซ็นผ่านบริการกลางเพียงที่เดียว
+     *
+     * เดิมตรรกะชุดนี้ถูกคัดลอกไว้สองชุดในเมธอดเดียวกัน (สาขา "ส่ง profile มาด้วย"
+     * กับ "ไม่ได้ส่ง") ซึ่งต่างกันเล็กน้อยและแก้ตกหล่นกันได้ง่าย
+     *
+     * @return array<string, string>
+     */
+    private function storeProfileAssets(Request $request): array
+    {
+        $assets = [];
+
+        if ($request->hasFile('profile_photo')) {
+            $assets['profile_photo_path'] = $this->images->storeUploadedFile(
+                $request->file('profile_photo'), 'profile_photos', 'profile_photos', 'profile_photo'
+            );
+        }
+
+        if ($request->hasFile('signature_file')) {
+            $assets['signature_path'] = $this->images->storeUploadedFile(
+                $request->file('signature_file'), 'signatures', 'signatures', 'signature_file'
+            );
+        } elseif ($request->filled('signature_base64')) {
+            $assets['signature_path'] = $this->images->storeBase64(
+                $request->string('signature_base64')->toString(), 'signatures', 'signatures'
+            );
+        }
+
+        return array_filter($assets);
+    }
+
+    /**
+     * SEC-024 — เปลี่ยนรหัสผ่านของตนเอง
+     *
+     * นโยบายเดิมของระบบ (`UserObserver::updated`) คือรหัสผ่านเปลี่ยนเมื่อไร
+     * token ทุกใบของบัญชีนั้นถูกเพิกถอนทันที ซึ่งเข้มกว่า "เพิกถอนเฉพาะใบอื่น"
+     * จึงคงไว้ตามเดิม แล้วออก token ใบใหม่ให้เฉพาะอุปกรณ์ที่ยืนยันรหัสผ่านเดิม
+     * สำเร็จในคำขอนี้ ผลคืออุปกรณ์อื่นทุกเครื่องหลุดจริง แต่เจ้าของบัญชีไม่ถูก
+     * เตะออกจากหน้าจอที่กำลังทำงานอยู่
+     *
+     * audit บันทึกเฉพาะข้อเท็จจริงว่าใครเปลี่ยนเมื่อไรและเพิกถอนไปกี่ใบ
+     * ไม่บันทึกรหัสผ่านหรือ hash ทั้งของเดิมและของใหม่
+     */
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $tokensBefore = $user->tokens()->count();
+
+        DB::transaction(function () use ($user, $request): void {
+            $user->forceFill(['password' => Hash::make($request->input('password'))])->save();
+        }, 3);
+
+        if ($request->hasSession()) {
+            $request->session()->regenerate();
+        }
+
+        app(AuditLogger::class)->log(
+            'user.password_changed',
+            'user',
+            $user->id,
+            null,
+            ['revoked_tokens' => $tokensBefore],
+        );
+
+        $expiration = (int) config('sanctum.expiration', 480);
+        $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;
+
+        return response()->json([
+            'message' => 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว ระบบได้ออกจากระบบในอุปกรณ์อื่นทั้งหมดแล้ว',
+            'revoked_sessions' => $tokensBefore,
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'expires_in' => $expiration * 60,
         ]);
     }
 

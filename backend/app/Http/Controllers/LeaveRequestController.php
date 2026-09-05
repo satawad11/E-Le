@@ -8,13 +8,16 @@ use App\Http\Requests\UpdateLeaveRequest;
 use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveType;
+use App\Models\User;
 use App\Services\Attendance\LeaveAttendanceSync;
+use App\Services\Files\ImageUploadService;
 use App\Services\LeaveAuditService;
 use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
+use App\Services\OrgScopeResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class LeaveRequestController extends Controller
 {
@@ -22,6 +25,7 @@ class LeaveRequestController extends Controller
         private LeaveService $leaveService,
         private LeaveRequestNotificationService $notifications,
         private LeaveAttendanceSync $attendanceSync,
+        private ImageUploadService $images,
     ) {}
 
     public function store(StoreLeaveRequest $request)
@@ -62,7 +66,23 @@ class LeaveRequestController extends Controller
          */
         $asDraft = $request->boolean('save_as_draft');
 
-        $leave = $this->leaveService->createLeaveRequest($data, $request->user()->id, $request->file('attachment'), $asDraft);
+        /*
+         * SEC-028 — ลายเซ็นถูกเขียนลงดิสก์ไปก่อนหน้านี้แล้ว ถ้าการสร้างใบลาล้มเหลว
+         * ไฟล์นั้นจะค้างอยู่โดยไม่มีใครอ้างถึงตลอดไป จึงเก็บกวาดให้ทันที
+         *
+         * (ไฟล์ที่ค้างไม่ใช่ช่องโหว่ — อยู่บน private disk และ `SecureFileAccessService`
+         * ปฏิเสธไฟล์ที่ไม่มีเจ้าของอยู่แล้ว — แต่เป็นขยะที่โตขึ้นเรื่อย ๆ)
+         */
+        try {
+            $leave = $this->leaveService->createLeaveRequest($data, $request->user()->id, $request->file('attachment'), $asDraft);
+        } catch (\Throwable $exception) {
+            if (($data['signature_path'] ?? null) !== ($request->user()->profile->signature_path ?? null)) {
+                $this->images->discard($data['signature_path'] ?? null);
+            }
+
+            throw $exception;
+        }
+
         LeaveActionLog::create([
             'leave_id' => $leave->id,
             'user_id' => $request->user()->id,
@@ -100,29 +120,12 @@ class LeaveRequestController extends Controller
      */
     private function signaturePathFor(Request $request, ?string $fallback): ?string
     {
-        if (! $request->filled('signature_base64')) {
-            return $fallback;
-        }
-
-        $base64Image = $request->string('signature_base64')->toString();
-
-        if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $type) !== 1) {
-            return $fallback;
-        }
-
-        $extension = strtolower($type[1]);
-
-        if (! in_array($extension, ['jpg', 'jpeg', 'png'], true)) {
-            return $fallback;
-        }
-
-        $fileName = 'signatures/'.uniqid().'.'.$extension;
-        Storage::disk('private_uploads')->put(
-            $fileName,
-            base64_decode(substr($base64Image, strpos($base64Image, ',') + 1)),
-        );
-
-        return '/storage/'.$fileName;
+        // SEC-028 — ตรวจและเขียนไฟล์ที่ `ImageUploadService` ที่เดียวกับทุกจุดที่รับภาพ
+        return $this->images->storeBase64(
+            $request->filled('signature_base64') ? $request->string('signature_base64')->toString() : null,
+            'signatures',
+            'signatures',
+        ) ?? $fallback;
     }
 
     /**
@@ -177,15 +180,22 @@ class LeaveRequestController extends Controller
         $data = $request->validated();
         $data['contact_address'] = 'บันทึกโดยฝ่ายบุคคล';
         $data['signature_path'] = null;
-        $leave = $this->leaveService->createLeaveRequest($data, $data['user_id'], null);
-        $leave->status = 'Approved';
-        $leave->save();
-        LeaveActionLog::create([
-            'leave_id' => $leave->id,
-            'user_id' => $request->user()->id,
-            'action' => 'Created & Approved',
-            'details' => ['reason' => 'บันทึกวันลาแทนพนักงานโดยฝ่ายบุคคล: '.$data['reason']],
-        ]);
+        $target = User::findOrFail($data['user_id']);
+        $scopes = app(OrgScopeResolver::class);
+        abort_unless((int) $target->id === (int) $request->user()->id
+            || $scopes->canSeeOrgUnit($request->user(), 'leave.management.manage', $scopes->homeOrgUnitId($target), OrgScopeResolver::ORGANIZATION),
+            403, 'ไม่มีสิทธิ์บันทึกใบลานอกขอบเขตหน่วยงาน');
+        $leave = DB::transaction(function () use ($data, $request) {
+            $leave = $this->leaveService->createLeaveRequest($data, $data['user_id'], null, asApproved: true);
+            LeaveActionLog::create([
+                'leave_id' => $leave->id,
+                'user_id' => $request->user()->id,
+                'action' => 'Created & Approved',
+                'details' => ['reason' => 'บันทึกวันลาแทนพนักงานโดยฝ่ายบุคคล: '.$data['reason']],
+            ]);
+
+            return $leave;
+        }, 5);
 
         return response()->json(['message' => 'บันทึกวันลาเรียบร้อยแล้ว', 'leave' => $leave->load('type')], 201);
     }
@@ -196,9 +206,9 @@ class LeaveRequestController extends Controller
         if (! $user->can('leave.management.manage')) {
             return response()->json(['message' => 'ไม่มีสิทธิ์แก้ไขใบลานี้'], 403);
         }
-        $data = $request->validated();
-        $leave->update($data);
-        LeaveActionLog::create(['leave_id' => $leave->id, 'user_id' => $user->id, 'action' => 'Updated', 'details' => $data]);
+        abort_unless((int) $leave->user_id === (int) $user->id || $leave->status !== 'Draft', 403, 'แก้ไขได้เฉพาะร่างใบลาของตนเอง');
+        abort_unless($leave->status === 'Draft', 422, 'ใบลาที่ยื่นแล้วแก้ทับไม่ได้ ให้ใช้การยกเลิกหรือเพิกถอนเอกสารเพื่อรักษาประวัติ');
+        $leave = $this->leaveService->updateDraft($leave, array_replace($leave->attributesToArray(), $request->validated()));
 
         return response()->json(['message' => 'แก้ไขใบลาเรียบร้อยแล้ว', 'leave' => $leave->load('type')]);
     }

@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Contracts\Files\MalwareScanner;
+use App\Listeners\RecordBackupOutcome;
+use App\Models\AccessToken;
 use App\Models\Personnel;
 use App\Models\PersonnelAssignment;
 use App\Models\User;
@@ -11,6 +14,8 @@ use App\Observers\PersonnelObserver;
 use App\Observers\UserObserver;
 use App\Observers\UserProfileObserver;
 use App\Services\AuditLogger;
+use App\Services\Files\ClamAvScanner;
+use App\Services\Files\ScanResult;
 use App\Services\Modules\ModuleStateResolver;
 use App\Services\PermissionEvaluator;
 use App\Services\SystemSettingService;
@@ -18,10 +23,12 @@ use App\Support\ProductionEnvironmentGuard;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
 use LogicException;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,7 +36,37 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
-    public function register(): void {}
+    public function register(): void
+    {
+        /*
+         * SEC-GAP-02 (INT-04) — ตัวตรวจไวรัสของไฟล์อัปโหลด (SoT §26)
+         *
+         * `FreeOfMalware` เรียก `app(MalwareScanner::class)` ทุกครั้งที่ตรวจไฟล์
+         * ถ้าไม่ผูกที่นี่ **ทุกการอัปโหลดจะตอบ 500** เพราะ interface สร้างเองไม่ได้
+         *
+         * ปิดการตรวจได้ผ่าน `UPLOAD_MALWARE_SCAN=false` สำหรับสภาพแวดล้อมที่
+         * ยังไม่มี ClamAV · ตัวแทนที่ใช้แทนคืน "สะอาด" เสมอ ซึ่งปลอดภัยเฉพาะ
+         * เมื่อผู้ดูแล **เลือกปิดเอง** — ต่างจากการล้มเหลวเงียบ ๆ ของตัวจริง
+         * ที่คืน `unavailable()` และทำให้ไฟล์ถูกปฏิเสธ
+         */
+        $this->app->singleton(MalwareScanner::class, function () {
+            if (! config('uploads.malware_scan.enabled', true)) {
+                return new class implements MalwareScanner
+                {
+                    public function scan(string $contents): ScanResult
+                    {
+                        return ScanResult::clean();
+                    }
+                };
+            }
+
+            return new ClamAvScanner(
+                (string) config('uploads.malware_scan.host', 'clamav'),
+                (int) config('uploads.malware_scan.port', 3310),
+                (int) config('uploads.malware_scan.timeout', 30),
+            );
+        });
+    }
 
     /**
      * Bootstrap any application services.
@@ -37,6 +74,24 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureRateLimiters();
+
+        /*
+         * SEC-GAP-01 (INT-11) — ใช้โมเดลโทเคนของโครงการเอง (SoT §24)
+         *
+         * `App\Models\AccessToken` เพิ่มคอลัมน์ `last_authenticated_at` และ cast
+         * ให้เป็น Carbon · ถ้าไม่ลงทะเบียนที่นี่ Sanctum จะใช้โมเดลของตัวเอง
+         * ซึ่งคืนค่าเป็น string ทำให้ด่านยืนยันตัวตนซ้ำเทียบเวลาไม่ได้
+         */
+        Sanctum::usePersonalAccessTokenModel(AccessToken::class);
+
+        /*
+         * INT-21 — ผลของการสำรองข้อมูลต้องมองเห็นได้ในระบบ (SoT §27)
+         *
+         * เดิม `config/backup.php` ส่งการแจ้งเตือนไปที่ `your@example.com`
+         * ซึ่งเป็นค่าตัวอย่างของแพ็กเกจ — การสำรองที่ล้มเหลวทุกคืนจึงไม่มีใครรู้
+         * จนถึงวันที่ต้องใช้ไฟล์สำรองจริง
+         */
+        Event::subscribe(RecordBackupOutcome::class);
 
         ResetPassword::createUrlUsing(function (object $notifiable, string $token): string {
             return rtrim((string) config('app.frontend_url'), '/')
@@ -152,7 +207,19 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
         RateLimiter::for('password', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
         RateLimiter::for('token-refresh', fn (Request $request) => Limit::perMinute(10)->by($perUser($request)));
+
+        /*
+         * SEC-024 — เปลี่ยนรหัสผ่านของตนเอง และยืนยันตัวตนซ้ำ (SoT §24)
+         *
+         * คุมต่อผู้ใช้ ไม่ใช่ต่อ IP เพราะทั้งสอง endpoint ต้องยืนยันตัวตนแล้ว
+         * และเป็นช่องที่ใช้เดารหัสผ่านปัจจุบันได้ถ้าไม่จำกัดอัตรา
+         */
+        RateLimiter::for('password-change', fn (Request $request) => Limit::perMinute(5)->by($perUser($request)));
+
         RateLimiter::for('personal-data', fn (Request $request) => Limit::perMinute(10)->by($perUser($request)));
+
+        // ระเบียนบุคคลรายคน — อ่านบ่อยกว่าการส่งออกทั้งชุด จึงผ่อนกว่า
+        RateLimiter::for('personal-record', fn (Request $request) => Limit::perMinute(30)->by($perUser($request)));
 
         // พิมพ์/ดาวน์โหลดเอกสารรายฉบับ (ใบลา ใบยกเลิก บัตรลา ไฟล์แนบ)
         RateLimiter::for('documents', fn (Request $request) => Limit::perMinute(30)->by($perUser($request)));

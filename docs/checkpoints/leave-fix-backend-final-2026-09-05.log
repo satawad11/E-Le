@@ -1,0 +1,166 @@
+time="2026-09-05T20:25:42+07:00" level=warning msg="Found orphan containers (eleave_frontend) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container e-le-backend-run-d0d5229d39b1 Creating 
+ Container e-le-backend-run-d0d5229d39b1 Created 
+
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[31;1m⨯[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m{"message":"Document Engine ออกเอกสารใบลาไม่สำเร็จ ใช้เส้นทางเดิมแทน","context":{"leave_id":1,"is_cancel":false,"error":"ยังไม่ได้ผูกแบบฟอร์มกับรายการนี้ กรุณาตั้งค่าที่ศูนย์จัดการเอกสาร"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-09-05T20:25:58.202379+07:00","extra":{}}
+[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m{"message":"ทดสอบ rollback","context":{"request_id":"00604bd1-c86f-454d-97be-0356fa5f6b7d","userId":2,"exception":{"class":"RuntimeException","message":"ทดสอบ rollback","code":0,"file":"/var/www/html/tests/Feature/LeaveModuleAuditTest.php:124"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-09-05T20:26:22.518657+07:00","extra":{}}
+[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m{"message":"ล้างตารางลงเวลาไม่สำเร็จ","context":{"request_id":"db1032c4-3937-49e2-a00b-ce8bc71f4b84","userId":1,"exception":{"class":"RuntimeException","message":"ล้างตารางลงเวลาไม่สำเร็จ","code":0,"file":"/var/www/html/tests/Feature/LeavePendingCancellationConcurrencyTest.php:111"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-09-05T20:26:24.165224+07:00","extra":{}}
+
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[31;1m⨯[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m{"message":"ส่งการแจ้งเตือนการเวียนหนังสือไม่สำเร็จ","context":{"request_id":"ebe91b15-70c1-484e-8106-4136dd7bf675","distribution_id":1,"error":"Unknown or inactive notification type: saraban.document.distributed"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-09-05T20:27:00.189057+07:00","extra":{}}
+[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m[90;1m.[39;22m
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\ApiSurfaceContractTest[22m [90m>[39m every api endpoint is reac…   
+[39;1m  พบ endpoint ที่ไม่มีหน้าจอใดเรียก — สร้างหน้าจอให้ใช้งานได้ ถอดออก หรือระบุเหตุผลไว้ใน CALLED_FROM_ELSEWHERE: api/health, api/saraban/verify/{hash}/qrcode, api/admin/notifications/dead-letters, api/admin/notifications/dead-letters/{delivery}/requeue, api/admin/notifications/channel-health, api/notifications/web-push/subscriptions, api/saraban/documents/{document}/endorse, api/saraban/documents/{document}/signatures, api/saraban/documents/{document}/finalize, api/saraban/incoming/duplicates, api/saraban/incoming/{registration}, api/saraban/authority/holders, api/saraban/operations/health, api/saraban/feature-flags, api/saraban/documents/{document}/compare, api/saraban/cases/{case}/documents, api/saraban/cases/{case}/documents/{document}, api/saraban/documents/{document}/redactions, api/saraban/saved-views, api/saraban/saved-views/{view}, api/saraban/documents/{document}/retention, api/saraban/documents/{document}/holds, api/saraban/holds/{hold}/release, api/saraban/retention/due, api/saraban/retention/{schedule}/approve, api/saraban/retention/{schedule}/dispose, api/v1/saraban/documents, api/v1/saraban/documents/options, api/v1/saraban/documents/{document}, api/v1/saraban/documents/{document}/submit, api/v1/saraban/documents/{document}/workflow, api/v1/saraban/documents/{document}/sign, api/v1/saraban/documents/{document}/endorse, api/v1/saraban/documents/{document}/signatures, api/v1/saraban/documents/{document}/finalize, api/v1/saraban/documents/{document}/annotations, api/v1/saraban/documents/{document}/annotations/render, api/v1/saraban/workflow/versions, api/v1/saraban/workflow/simulate, api/v1/saraban/incoming, api/v1/saraban/incoming/duplicates, api/v1/saraban/incoming/{registration}, api/v1/saraban/documents/{document}/distributions, api/v1/saraban/distribution-targets, api/v1/saraban/inbox, api/v1/saraban/inbox/{recipient}, api/v1/saraban/inbox/{recipient}/acknowledge, api/v1/saraban/inbox/{recipient}/progress, api/v1/saraban/policies, api/v1/saraban/policies/{key}/history, api/v1/saraban/policies/{key}/draft, api/v1/saraban/policies/{key}/publish, api/v1/saraban/policies/{key}/rollback, api/v1/saraban/authority, api/v1/saraban/authority/holders, api/v1/saraban/operations/command-center, api/v1/saraban/operations/exceptions, api/v1/saraban/operations/exceptions/{exception}/acknowledge, api/v1/saraban/operations/exceptions/{exception}/assign, api/v1/saraban/operations/exceptions/{exception}/resolve, api/v1/saraban/operations/exceptions/{exception}/retry, api/v1/saraban/operations/health, api/v1/saraban/operations/compliance, api/v1/saraban/feature-flags, api/v1/saraban/feature-flags/{key}, api/v1/saraban/documents/{document}/compare, api/v1/saraban/cases, api/v1/saraban/cases/{case}, api/v1/saraban/cases/{case}/documents, api/v1/saraban/cases/{case}/documents/{document}, api/v1/saraban/cases/{case}/close, api/v1/saraban/documents/{document}/redactions, api/v1/saraban/saved-views, api/v1/saraban/saved-views/{view}, api/v1/saraban/documents/{document}/retention, api/v1/saraban/documents/{document}/holds, api/v1/saraban/holds/{hold}/release, api/v1/saraban/retention/due, api/v1/saraban/retention/{schedule}/approve, api/v1/saraban/retention/{schedule}/dispose, api/v1/saraban/reports/register, api/v1/saraban/reports/numbers, api/v1/saraban/reports/distribution, api/v1/saraban/number-series, api/v1/saraban/number-series/{series}, api/v1/openapi.json, api/admin/attendances/summary/preview, api/admin/attendances/summary/export/pdf, api/admin/attendances/summary/export/word, api/admin/attendances/ot-summary/preview, api/admin/attendances/ot-summary/export/pdf, api/admin/attendances/ot-summary/export/word, api/admin/attendances/ot-summary/export/excel
+Failed asserting that two arrays are identical.
+  [39;22m[31m-Array &0 [][39m[39;1m
+  [39;22m[32m+Array &0 [[39m[39;1m
+  [39;22m[32m+    0 => 'api/health',[39m[39;1m
+  [39;22m[32m+    1 => 'api/saraban/verify/{hash}/qrcode',[39m[39;1m
+  [39;22m[32m+    2 => 'api/admin/notifications/dead-letters',[39m[39;1m
+  [39;22m[32m+    3 => 'api/admin/notifications/dead-letters/{delivery}/requeue',[39m[39;1m
+  [39;22m[32m+    4 => 'api/admin/notifications/channel-health',[39m[39;1m
+  [39;22m[32m+    5 => 'api/notifications/web-push/subscriptions',[39m[39;1m
+  [39;22m[32m+    6 => 'api/saraban/documents/{document}/endorse',[39m[39;1m
+  [39;22m[32m+    7 => 'api/saraban/documents/{document}/signatures',[39m[39;1m
+  [39;22m[32m+    8 => 'api/saraban/documents/{document}/finalize',[39m[39;1m
+  [39;22m[32m+    9 => 'api/saraban/incoming/duplicates',[39m[39;1m
+  [39;22m[32m+    10 => 'api/saraban/incoming/{registration}',[39m[39;1m
+  [39;22m[32m+    11 => 'api/saraban/authority/holders',[39m[39;1m
+  [39;22m[32m+    12 => 'api/saraban/operations/health',[39m[39;1m
+  [39;22m[32m+    13 => 'api/saraban/feature-flags',[39m[39;1m
+  [39;22m[32m+    14 => 'api/saraban/documents/{document}/compare',[39m[39;1m
+  [39;22m[32m+    15 => 'api/saraban/cases/{case}/documents',[39m[39;1m
+  [39;22m[32m+    16 => 'api/saraban/cases/{case}/documents/{document}',[39m[39;1m
+  [39;22m[32m+    17 => 'api/saraban/documents/{document}/redactions',[39m[39;1m
+  [39;22m[32m+    18 => 'api/saraban/saved-views',[39m[39;1m
+  [39;22m[32m+    19 => 'api/saraban/saved-views/{view}',[39m[39;1m
+  [39;22m[32m+    20 => 'api/saraban/documents/{document}/retention',[39m[39;1m
+  [39;22m[32m+    21 => 'api/saraban/documents/{document}/holds',[39m[39;1m
+  [39;22m[32m+    22 => 'api/saraban/holds/{hold}/release',[39m[39;1m
+  [39;22m[32m+    23 => 'api/saraban/retention/due',[39m[39;1m
+  [39;22m[32m+    24 => 'api/saraban/retention/{schedule}/approve',[39m[39;1m
+  [39;22m[32m+    25 => 'api/saraban/retention/{schedule}/dispose',[39m[39;1m
+  [39;22m[32m+    26 => 'api/v1/saraban/documents',[39m[39;1m
+  [39;22m[32m+    27 => 'api/v1/saraban/documents/options',[39m[39;1m
+  [39;22m[32m+    28 => 'api/v1/saraban/documents/{document}',[39m[39;1m
+  [39;22m[32m+    29 => 'api/v1/saraban/documents/{document}/submit',[39m[39;1m
+  [39;22m[32m+    30 => 'api/v1/saraban/documents/{document}/workflow',[39m[39;1m
+  [39;22m[32m+    31 => 'api/v1/saraban/documents/{document}/sign',[39m[39;1m
+  [39;22m[32m+    32 => 'api/v1/saraban/documents/{document}/endorse',[39m[39;1m
+  [39;22m[32m+    33 => 'api/v1/saraban/documents/{document}/signatures',[39m[39;1m
+  [39;22m[32m+    34 => 'api/v1/saraban/documents/{document}/finalize',[39m[39;1m
+  [39;22m[32m+    35 => 'api/v1/saraban/documents/{document}/annotations',[39m[39;1m
+  [39;22m[32m+    36 => 'api/v1/saraban/documents/{document}/annotations/render',[39m[39;1m
+  [39;22m[32m+    37 => 'api/v1/saraban/workflow/versions',[39m[39;1m
+  [39;22m[32m+    38 => 'api/v1/saraban/workflow/simulate',[39m[39;1m
+  [39;22m[32m+    39 => 'api/v1/saraban/incoming',[39m[39;1m
+  [39;22m[32m+    40 => 'api/v1/saraban/incoming/duplicates',[39m[39;1m
+  [39;22m[32m+    41 => 'api/v1/saraban/incoming/{registration}',[39m[39;1m
+  [39;22m[32m+    42 => 'api/v1/saraban/documents/{document}/distributions',[39m[39;1m
+  [39;22m[32m+    43 => 'api/v1/saraban/distribution-targets',[39m[39;1m
+  [39;22m[32m+    44 => 'api/v1/saraban/inbox',[39m[39;1m
+  [39;22m[32m+    45 => 'api/v1/saraban/inbox/{recipient}',[39m[39;1m
+  [39;22m[32m+    46 => 'api/v1/saraban/inbox/{recipient}/acknowledge',[39m[39;1m
+  [39;22m[32m+    47 => 'api/v1/saraban/inbox/{recipient}/progress',[39m[39;1m
+  [39;22m[32m+    48 => 'api/v1/saraban/policies',[39m[39;1m
+  [39;22m[32m+    49 => 'api/v1/saraban/policies/{key}/history',[39m[39;1m
+  [39;22m[32m+    50 => 'api/v1/saraban/policies/{key}/draft',[39m[39;1m
+  [39;22m[32m+    51 => 'api/v1/saraban/policies/{key}/publish',[39m[39;1m
+  [39;22m[32m+    52 => 'api/v1/saraban/policies/{key}/rollback',[39m[39;1m
+  [39;22m[32m+    53 => 'api/v1/saraban/authority',[39m[39;1m
+  [39;22m[32m+    54 => 'api/v1/saraban/authority/holders',[39m[39;1m
+  [39;22m[32m+    55 => 'api/v1/saraban/operations/command-center',[39m[39;1m
+  [39;22m[32m+    56 => 'api/v1/saraban/operations/exceptions',[39m[39;1m
+  [39;22m[32m+    57 => 'api/v1/saraban/operations/exceptions/{exception}/acknowledge',[39m[39;1m
+  [39;22m[32m+    58 => 'api/v1/saraban/operations/exceptions/{exception}/assign',[39m[39;1m
+  [39;22m[32m+    59 => 'api/v1/saraban/operations/exceptions/{exception}/resolve',[39m[39;1m
+  [39;22m[32m+    60 => 'api/v1/saraban/operations/exceptions/{exception}/retry',[39m[39;1m
+  [39;22m[32m+    61 => 'api/v1/saraban/operations/health',[39m[39;1m
+  [39;22m[32m+    62 => 'api/v1/saraban/operations/compliance',[39m[39;1m
+  [39;22m[32m+    63 => 'api/v1/saraban/feature-flags',[39m[39;1m
+  [39;22m[32m+    64 => 'api/v1/saraban/feature-flags/{key}',[39m[39;1m
+  [39;22m[32m+    65 => 'api/v1/saraban/documents/{document}/compare',[39m[39;1m
+  [39;22m[32m+    66 => 'api/v1/saraban/cases',[39m[39;1m
+  [39;22m[32m+    67 => 'api/v1/saraban/cases/{case}',[39m[39;1m
+  [39;22m[32m+    68 => 'api/v1/saraban/cases/{case}/documents',[39m[39;1m
+  [39;22m[32m+    69 => 'api/v1/saraban/cases/{case}/documents/{document}',[39m[39;1m
+  [39;22m[32m+    70 => 'api/v1/saraban/cases/{case}/close',[39m[39;1m
+  [39;22m[32m+    71 => 'api/v1/saraban/documents/{document}/redactions',[39m[39;1m
+  [39;22m[32m+    72 => 'api/v1/saraban/saved-views',[39m[39;1m
+  [39;22m[32m+    73 => 'api/v1/saraban/saved-views/{view}',[39m[39;1m
+  [39;22m[32m+    74 => 'api/v1/saraban/documents/{document}/retention',[39m[39;1m
+  [39;22m[32m+    75 => 'api/v1/saraban/documents/{document}/holds',[39m[39;1m
+  [39;22m[32m+    76 => 'api/v1/saraban/holds/{hold}/release',[39m[39;1m
+  [39;22m[32m+    77 => 'api/v1/saraban/retention/due',[39m[39;1m
+  [39;22m[32m+    78 => 'api/v1/saraban/retention/{schedule}/approve',[39m[39;1m
+  [39;22m[32m+    79 => 'api/v1/saraban/retention/{schedule}/dispose',[39m[39;1m
+  [39;22m[32m+    80 => 'api/v1/saraban/reports/register',[39m[39;1m
+  [39;22m[32m+    81 => 'api/v1/saraban/reports/numbers',[39m[39;1m
+  [39;22m[32m+    82 => 'api/v1/saraban/reports/distribution',[39m[39;1m
+  [39;22m[32m+    83 => 'api/v1/saraban/number-series',[39m[39;1m
+  [39;22m[32m+    84 => 'api/v1/saraban/number-series/{series}',[39m[39;1m
+  [39;22m[32m+    85 => 'api/v1/openapi.json',[39m[39;1m
+  [39;22m[32m+    86 => 'api/admin/attendances/summary/preview',[39m[39;1m
+  [39;22m[32m+    87 => 'api/admin/attendances/summary/export/pdf',[39m[39;1m
+  [39;22m[32m+    88 => 'api/admin/attendances/summary/export/word',[39m[39;1m
+  [39;22m[32m+    89 => 'api/admin/attendances/ot-summary/preview',[39m[39;1m
+  [39;22m[32m+    90 => 'api/admin/attendances/ot-summary/export/pdf',[39m[39;1m
+  [39;22m[32m+    91 => 'api/admin/attendances/ot-summary/export/word',[39m[39;1m
+  [39;22m[32m+    92 => 'api/admin/attendances/ot-summary/export/excel',[39m[39;1m
+  [39;22m[32m+][39m[39;1m
+  [39;22m
+
+  at [32mtests/Feature/ApiSurfaceContractTest.php[39m:[32m58[39m
+     54▕             ->reject(fn (string $uri) => $this->isCalledBy($uri, $frontend))
+     55▕             ->values()
+     56▕             ->all();
+     57▕ 
+  ➜  58▕         $this->assertSame(
+     59▕             [],
+     60▕             $orphans,
+     61▕             'พบ endpoint ที่ไม่มีหน้าจอใดเรียก — สร้างหน้าจอให้ใช้งานได้ ถอดออก หรือระบุเหตุผลไว้ใน CALLED_FROM_ELSEWHERE: '
+     62▕                 .implode(', ', $orphans)
+
+  [33m1   [39m[39;1mtests/Feature/ApiSurfaceContractTest.php[39;22m:[39;1m58[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\RuntimeSecurityConfigurationTest[22m [90m>[39m dependency versi…   
+[39;1m  เวอร์ชันต้อง pin ตายตัวเพื่อให้ build ซ้ำได้และรู้ตัวเมื่อมี advisory
+Failed asserting that two arrays are identical.
+  [39;22m[31m-Array &0 [][39m[39;1m
+  [39;22m[32m+Array &0 [[39m[39;1m
+  [39;22m[32m+    0 => 'backend: minishlink/web-push => ^11.0',[39m[39;1m
+  [39;22m[32m+][39m[39;1m
+  [39;22m
+
+  at [32mtests/Feature/RuntimeSecurityConfigurationTest.php[39m:[32m142[39m
+    138▕                 }
+    139▕             }
+    140▕         }
+    141▕ 
+  ➜ 142▕         $this->assertSame([], $ranges, 'เวอร์ชันต้อง pin ตายตัวเพื่อให้ build ซ้ำได้และรู้ตัวเมื่อมี advisory');
+    143▕     }
+    144▕ 
+    145▕     /**
+    146▕      * CI ต้องเป็นตัวไล่ advisory ใหม่ ไม่ใช่รอให้คนนึกได้
+
+  [33m1   [39m[39;1mtests/Feature/RuntimeSecurityConfigurationTest.php[39;22m:[39;1m142[39;22m
+
+
+  [90mTests:[39m    [31;1m2 failed[39;22m[90m,[39m[39m [39m[32;1m1067 passed[39;22m[90m (3914 assertions)[39m
+  [90mDuration:[39m [39m107.83s[39m
+
+

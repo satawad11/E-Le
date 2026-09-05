@@ -92,6 +92,36 @@ class PermissionCatalogTest extends TestCase
         );
     }
 
+    /**
+     * INT-02 — สารบัญสิทธิ์กับ manifest ของโมดูลต้องไม่แตกคอกัน
+     *
+     * ชื่อสิทธิ์ถูก "สร้าง" จากสองทางที่ไม่เคยคุยกัน: `PermissionCatalogSeeder`
+     * ซึ่งประกาศตัวเองเป็นแหล่งความจริงเดียว และ `ModulePermissionSeeder` ที่สร้าง
+     * จาก `config('modules.*.permissions')` อีกทางหนึ่ง ทั้งสองทางถูกเรียกใน
+     * `DatabaseSeeder` เหมือนกัน แต่ไม่มีอะไรบังคับว่าต้องตรงกัน
+     *
+     * ผลที่ตามมาถ้าปล่อยไว้: โมดูลประกาศสิทธิ์ที่ไม่อยู่ในสารบัญ ชื่อนั้นจะถูกสร้าง
+     * ตอนติดตั้งจริง แต่ `PermissionCatalogTest` สามข้อบนไม่เห็น จึงตรวจไม่เจอ
+     * เวลาที่ route หรือเมนูอ้างถึงมัน — เป็นรอยรั่วแบบเดียวกับที่ CLEANUP-01 (D5) แก้ไป
+     */
+    public function test_every_permission_a_module_manifest_declares_exists_in_the_catalogue(): void
+    {
+        $catalogue = array_keys(PermissionCatalogSeeder::all());
+
+        $missing = collect(config('modules', []))
+            ->flatMap(fn ($module) => array_keys($module['permissions'] ?? []))
+            ->unique()
+            ->reject(fn (string $name) => in_array($name, $catalogue, true))
+            ->values()
+            ->all();
+
+        $this->assertSame(
+            [],
+            $missing,
+            'manifest ของโมดูลประกาศสิทธิ์ที่ไม่มีในสารบัญ: '.implode(', ', $missing)
+        );
+    }
+
     public function test_seeding_the_catalogue_creates_every_name_without_granting_anything(): void
     {
         $this->seed(PermissionCatalogSeeder::class);

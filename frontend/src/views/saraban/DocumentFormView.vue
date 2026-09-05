@@ -1,0 +1,501 @@
+<template>
+  <div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">{{ pageTitle }}</h1>
+        <p class="text-sm text-gray-500 mt-1">
+          หนังสือที่เสนอเข้าสู่กระบวนการแล้วจะแก้ไขไม่ได้ การแนบไฟล์ใหม่จะบันทึกเป็นฉบับใหม่เสมอ
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <!-- INT-11 — ลงนาม (ต้องยืนยันตัวตนซ้ำ ซึ่ง modal จัดการให้เอง) -->
+        <AppButton
+          v-if="isEdit"
+          v-can="'saraban.signature.sign'"
+          variant="secondary"
+          @click="signing = true"
+        >
+          ลงนาม
+        </AppButton>
+        <!-- INT-13 — เวียนหนังสือถึงผู้รับ -->
+        <AppButton
+          v-if="isEdit"
+          v-can="'saraban.distribution.send'"
+          variant="secondary"
+          @click="distributing = true"
+        >
+          เวียนหนังสือ
+        </AppButton>
+        <!-- INT-10 — พื้นที่ประทับตราของหนังสือฉบับนี้ -->
+        <AppButton v-if="isEdit" variant="outline" @click="openWorkspace">ประทับตรา</AppButton>
+        <AppButton variant="ghost" @click="backToList">กลับสู่ทะเบียน</AppButton>
+      </div>
+
+      <SignDocumentModal
+        v-if="isEdit"
+        v-model="signing"
+        :document-id="route.params.id"
+        @signed="onSigned"
+      />
+
+      <DistributeDocumentModal
+        v-if="isEdit && distributing"
+        :document-id="route.params.id"
+        @close="distributing = false"
+        @sent="onDistributed"
+      />
+    </div>
+
+    <LoadingState v-if="loading" type="skeleton-form" />
+    <ErrorState v-else-if="loadError" :message="loadError" @retry="boot" />
+
+    <form v-else class="space-y-6" @submit.prevent="save">
+      <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+        <header class="px-5 py-4 border-b border-gray-100">
+          <h2 class="font-semibold text-gray-800">รายละเอียดหนังสือ</h2>
+        </header>
+
+        <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <AppSelect
+            v-model="form.document_type_id"
+            label="ประเภทหนังสือ"
+            required
+            :disabled="readOnly"
+            :error="errors.document_type_id"
+          >
+            <option value="">เลือกประเภท</option>
+            <option v-for="type in options.document_types" :key="type.id" :value="type.id">
+              {{ type.name }}
+            </option>
+          </AppSelect>
+
+          <AppSelect
+            v-model="form.direction"
+            label="ทิศทางของหนังสือ"
+            required
+            :disabled="readOnly"
+            :error="errors.direction"
+          >
+            <option v-for="d in DIRECTIONS" :key="d.value" :value="d.value">{{ d.label }}</option>
+          </AppSelect>
+
+          <div class="sm:col-span-2">
+            <AppInput v-model="form.subject" label="เรื่อง" required :disabled="readOnly" :error="errors.subject" />
+          </div>
+
+          <div class="sm:col-span-2">
+            <AppTextarea
+              v-model="form.summary"
+              label="สาระสำคัญ"
+              :disabled="readOnly"
+              :error="errors.summary"
+            />
+          </div>
+
+          <AppSelect
+            v-model="form.confidentiality"
+            label="ชั้นความลับ"
+            required
+            :disabled="readOnly"
+            :error="errors.confidentiality"
+          >
+            <option v-for="c in CONFIDENTIALITY" :key="c.value" :value="c.value">{{ c.label }}</option>
+          </AppSelect>
+
+          <AppSelect
+            v-model="form.urgency"
+            label="ชั้นความเร็ว"
+            required
+            :disabled="readOnly"
+            :error="errors.urgency"
+          >
+            <option v-for="u in URGENCY" :key="u.value" :value="u.value">{{ u.label }}</option>
+          </AppSelect>
+
+          <div class="sm:col-span-2">
+            <AppSelect
+              v-model="form.owner_org_unit_id"
+              label="หน่วยงานเจ้าของเรื่อง"
+              required
+              :disabled="readOnly"
+              :error="errors.owner_org_unit_id"
+            >
+              <option value="">เลือกหน่วยงาน</option>
+              <option v-for="unit in orgUnits" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
+            </AppSelect>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+        <header class="px-5 py-4 border-b border-gray-100">
+          <h2 class="font-semibold text-gray-800">ไฟล์หนังสือ</h2>
+          <p class="text-sm text-gray-500 mt-0.5">
+            รับไฟล์ PDF, JPG หรือ PNG · ทุกไฟล์ผ่านการตรวจความปลอดภัยก่อนจัดเก็บ
+          </p>
+        </header>
+
+        <div class="p-5 space-y-4">
+          <div v-if="!readOnly">
+            <label for="document-file" class="block text-sm font-semibold text-gray-700 mb-1.5">
+              แนบไฟล์{{ isEdit ? 'ฉบับใหม่' : 'ต้นฉบับ' }}
+            </label>
+            <input
+              id="document-file"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              class="block w-full text-sm text-gray-600 file:mr-3 file:rounded-xl file:border-0 file:bg-[#800000] file:px-4 file:py-2 file:text-white file:text-sm file:font-semibold hover:file:bg-[#600000]"
+              @change="onFileChange"
+            />
+            <p v-if="errors.file" class="mt-1 text-xs text-red-600" role="alert">{{ errors.file }}</p>
+          </div>
+
+          <div v-if="versions.length" class="overflow-x-auto">
+            <table class="w-full text-sm min-w-[480px]">
+              <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <tr>
+                  <th class="text-left px-4 py-2.5 font-semibold">ฉบับที่</th>
+                  <th class="text-left px-4 py-2.5 font-semibold">ขั้น</th>
+                  <th class="text-left px-4 py-2.5 font-semibold">บันทึกเมื่อ</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+                <tr v-for="version in versions" :key="version.id">
+                  <td class="px-4 py-2.5 font-medium text-gray-900">{{ version.version_no }}</td>
+                  <td class="px-4 py-2.5 text-gray-600">{{ stageLabel(version.stage) }}</td>
+                  <td class="px-4 py-2.5 text-gray-500">{{ version.created_at }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="px-4 py-2 text-xs text-gray-400">ต้นฉบับถูกเก็บไว้ทุกฉบับและไม่ถูกเขียนทับ</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- การเดินเรื่อง (INT-08) — ปุ่มที่แสดงมาจากสิทธิ์จริงที่ engine ตัดสิน -->
+      <section
+        v-if="workflow.started"
+        class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden"
+      >
+        <header class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center gap-3">
+          <div class="flex-1">
+            <h2 class="font-semibold text-gray-800">การเดินเรื่อง</h2>
+            <p class="text-sm text-gray-500 mt-0.5">
+              ขั้นปัจจุบัน: {{ workflow.current_step?.name || 'จบกระบวนการแล้ว' }}
+            </p>
+          </div>
+          <AppBadge :variant="workflowVariant">{{ workflowStatusLabel }}</AppBadge>
+        </header>
+
+        <div class="p-5 space-y-4">
+          <div v-if="workflow.transitions.length" class="space-y-3">
+            <AppTextarea v-model="workflowComment" label="ความเห็น" />
+            <div class="flex flex-wrap gap-2">
+              <AppButton
+                v-for="transition in workflow.transitions"
+                :key="transition.action"
+                :variant="transition.action === 'approve' ? 'primary' : 'outline'"
+                :loading="actingOn === transition.action"
+                @click="performWorkflow(transition)"
+              >
+                {{ transition.name }}
+              </AppButton>
+            </div>
+          </div>
+          <p v-else class="text-sm text-gray-500">
+            ขณะนี้ท่านไม่มีขั้นตอนที่ต้องดำเนินการกับหนังสือฉบับนี้
+          </p>
+
+          <div v-if="workflow.history.length" class="border-t border-gray-100 pt-4">
+            <h3 class="text-sm font-semibold text-gray-700 mb-2">ประวัติการดำเนินการ</h3>
+            <ul class="space-y-1.5">
+              <li v-for="(entry, index) in workflow.history" :key="index" class="text-sm text-gray-600">
+                <span class="font-medium text-gray-800">{{ actionLabel(entry.action) }}</span>
+                <span v-if="entry.actor"> โดย {{ entry.actor }}</span>
+                <span class="text-gray-400"> · {{ entry.at }}</span>
+                <span v-if="entry.comment" class="block text-xs text-gray-500">{{ entry.comment }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="flex flex-wrap justify-end gap-3">
+        <AppButton v-if="!readOnly" type="submit" :loading="saving">
+          {{ isEdit ? 'บันทึกการแก้ไข' : 'บันทึกฉบับร่าง' }}
+        </AppButton>
+        <AppButton v-if="canSubmit" variant="secondary" :loading="submitting" @click="submitDocument">
+          เสนอเรื่อง
+        </AppButton>
+      </div>
+    </form>
+    <DocumentTools v-if="documentRecord && !loading" :key="documentRecord.id" :document="documentRecord" @changed="boot" />
+    <RetentionPanel v-if="documentRecord && !loading" :key="`retention-${documentRecord.id}`" :document-id="documentRecord.id" />
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import api from '../../axios'
+import { getErrorMessage } from '../../utils/errorHandler'
+import { useAlertStore } from '../../stores/alert'
+import AppButton from '../../components/ui/AppButton.vue'
+import AppInput from '../../components/ui/AppInput.vue'
+import AppSelect from '../../components/ui/AppSelect.vue'
+import AppTextarea from '../../components/ui/AppTextarea.vue'
+import AppBadge from '../../components/ui/AppBadge.vue'
+import ErrorState from '../../components/ui/ErrorState.vue'
+import LoadingState from '../../components/ui/LoadingState.vue'
+import DistributeDocumentModal from '../../components/saraban/DistributeDocumentModal.vue'
+import SignDocumentModal from '../../components/saraban/SignDocumentModal.vue'
+import DocumentTools from '../../components/saraban/DocumentTools.vue'
+import RetentionPanel from '../../components/saraban/RetentionPanel.vue'
+
+const DIRECTIONS = [
+  { value: 'incoming', label: 'หนังสือรับ' },
+  { value: 'outgoing', label: 'หนังสือส่ง' },
+  { value: 'internal', label: 'หนังสือภายใน' },
+]
+const CONFIDENTIALITY = [
+  { value: 'normal', label: 'ปกติ' },
+  { value: 'confidential', label: 'ลับ' },
+  { value: 'secret', label: 'ลับมาก' },
+  { value: 'top_secret', label: 'ลับที่สุด' },
+]
+const URGENCY = [
+  { value: 'normal', label: 'ปกติ' },
+  { value: 'urgent', label: 'ด่วน' },
+  { value: 'very_urgent', label: 'ด่วนมาก' },
+  { value: 'most_urgent', label: 'ด่วนที่สุด' },
+]
+const STAGES = {
+  original: 'ต้นฉบับ',
+  revised: 'ฉบับแก้ไข',
+  reviewed: 'ผ่านการตรวจ',
+  endorsed: 'เกษียนแล้ว',
+  signed: 'ลงนามแล้ว',
+  final: 'ฉบับสมบูรณ์',
+}
+
+const route = useRoute()
+const router = useRouter()
+const alertStore = useAlertStore()
+
+const loading = ref(true)
+const loadError = ref('')
+const saving = ref(false)
+const submitting = ref(false)
+const documentRecord = ref(null)
+const options = ref({ document_types: [] })
+const orgUnits = ref([])
+const errors = reactive({})
+const selectedFile = ref(null)
+
+const form = reactive({
+  document_type_id: '',
+  direction: 'internal',
+  subject: '',
+  summary: '',
+  confidentiality: 'normal',
+  urgency: 'normal',
+  owner_org_unit_id: '',
+})
+
+const isEdit = computed(() => Boolean(route.params.id))
+const readOnly = computed(() => Boolean(documentRecord.value) && documentRecord.value.status !== 'draft')
+const versions = computed(() => documentRecord.value?.versions || [])
+const canSubmit = computed(
+  () => isEdit.value && documentRecord.value?.status === 'draft' && versions.value.length > 0,
+)
+const pageTitle = computed(() => {
+  if (!isEdit.value) return 'สร้างหนังสือ'
+
+  return readOnly.value ? 'รายละเอียดหนังสือ' : 'แก้ไขหนังสือฉบับร่าง'
+})
+
+const stageLabel = (stage) => STAGES[stage] || stage
+
+const onFileChange = (event) => {
+  selectedFile.value = event.target.files?.[0] || null
+}
+
+const clearErrors = () => Object.keys(errors).forEach((key) => delete errors[key])
+
+const applyValidationErrors = (err) => {
+  const bag = err.response?.data?.errors
+  if (!bag) return false
+
+  Object.entries(bag).forEach(([field, messages]) => {
+    errors[field] = messages[0]
+  })
+
+  return true
+}
+
+const buildPayload = () => {
+  const payload = new FormData()
+  Object.entries(form).forEach(([key, value]) => payload.append(key, value ?? ''))
+  if (selectedFile.value) payload.append('file', selectedFile.value)
+
+  return payload
+}
+
+const boot = async () => {
+  loading.value = true
+  loadError.value = ''
+  try {
+    /*
+     * หน่วยงานมาจาก endpoint ของสารบรรณเอง ไม่ใช่ `/admin/departments`
+     * ซึ่งต้องมีสิทธิ์จัดการโครงสร้างองค์กร — ผู้ที่สร้างหนังสือได้ไม่ควรต้องมีสิทธิ์นั้น
+     */
+    const { data: reference } = await api.get('/saraban/documents/options')
+
+    options.value = reference
+    orgUnits.value = reference.org_units || []
+
+    if (isEdit.value) {
+      const { data: existing } = await api.get(`/saraban/documents/${route.params.id}`)
+      documentRecord.value = existing
+      Object.keys(form).forEach((key) => {
+        if (existing[key] !== undefined && existing[key] !== null) form[key] = existing[key]
+      })
+    }
+  } catch (err) {
+    loadError.value = getErrorMessage(err, 'โหลดข้อมูลหนังสือไม่สำเร็จ')
+  } finally {
+    loading.value = false
+  }
+}
+
+const save = async () => {
+  saving.value = true
+  clearErrors()
+  try {
+    const url = isEdit.value ? `/saraban/documents/${route.params.id}` : '/saraban/documents'
+    const { data } = await api.post(url, buildPayload(), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+    alertStore.success(isEdit.value ? 'บันทึกการแก้ไขแล้ว' : 'บันทึกฉบับร่างแล้ว')
+
+    if (!isEdit.value) {
+      router.push({ name: 'saraban-document-detail', params: { id: data.id } })
+
+      return
+    }
+
+    documentRecord.value = data
+    selectedFile.value = null
+  } catch (err) {
+    if (!applyValidationErrors(err)) {
+      alertStore.error(getErrorMessage(err, 'บันทึกไม่สำเร็จ'))
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+const submitDocument = async () => {
+  submitting.value = true
+  try {
+    const { data } = await api.post(`/saraban/documents/${route.params.id}/submit`)
+    documentRecord.value = { ...documentRecord.value, ...data }
+    alertStore.success('เสนอเรื่องเรียบร้อยแล้ว')
+  } catch (err) {
+    alertStore.error(getErrorMessage(err, 'เสนอเรื่องไม่สำเร็จ'))
+  } finally {
+    submitting.value = false
+  }
+}
+
+// ── การเดินเรื่อง (INT-08) ──────────────────────────────────────────────
+const WORKFLOW_STATUS = {
+  running: { label: 'กำลังดำเนินการ', variant: 'info' },
+  completed: { label: 'ลงนามแล้ว', variant: 'success' },
+  rejected: { label: 'ไม่เห็นชอบ', variant: 'danger' },
+  returned: { label: 'ส่งกลับแก้ไข', variant: 'warning' },
+  cancelled: { label: 'ยกเลิก', variant: 'gray' },
+}
+const ACTIONS = {
+  started: 'เริ่มกระบวนการ',
+  approve: 'เห็นชอบ',
+  reject: 'ไม่เห็นชอบ',
+  return: 'ส่งกลับแก้ไข',
+  cancel: 'ยกเลิก',
+}
+
+const workflow = ref({ started: false, status: null, current_step: null, transitions: [], history: [] })
+const workflowComment = ref('')
+// INT-11 — กล่องลงนาม (จัดการการยืนยันตัวตนซ้ำเองเมื่อ server ตอบ 423)
+const signing = ref(false)
+
+const onSigned = async () => {
+  await boot()
+  await loadWorkflow()
+}
+
+// INT-13 — กล่องเวียนหนังสือ
+const distributing = ref(false)
+
+const onDistributed = async () => {
+  distributing.value = false
+  await boot()
+}
+
+const actingOn = ref(null)
+
+const workflowStatusLabel = computed(() => WORKFLOW_STATUS[workflow.value.status]?.label || '—')
+const workflowVariant = computed(() => WORKFLOW_STATUS[workflow.value.status]?.variant || 'gray')
+const actionLabel = (action) => ACTIONS[action] || action
+
+const loadWorkflow = async () => {
+  if (!isEdit.value) return
+
+  try {
+    const { data } = await api.get(`/saraban/documents/${route.params.id}/workflow`)
+    workflow.value = data
+  } catch {
+    // สถานะการเดินเรื่องโหลดไม่ได้ไม่ควรทำให้ทั้งหน้าใช้ไม่ได้ — ส่วนอื่นยังทำงานได้
+    workflow.value = { started: false, status: null, current_step: null, transitions: [], history: [] }
+  }
+}
+
+const performWorkflow = async (transition) => {
+  if (transition.requires_comment && !workflowComment.value.trim()) {
+    alertStore.error('การดำเนินการนี้ต้องระบุความเห็นประกอบ')
+
+    return
+  }
+
+  actingOn.value = transition.action
+  try {
+    const { data } = await api.post(`/saraban/documents/${route.params.id}/workflow`, {
+      action: transition.action,
+      comment: workflowComment.value || undefined,
+    })
+
+    workflow.value = data
+    workflowComment.value = ''
+    alertStore.success('บันทึกการดำเนินการแล้ว')
+
+    // สถานะของหนังสืออาจเปลี่ยน (เช่น ได้เลขหนังสือหลังลงนาม) จึงโหลดใหม่
+    await boot()
+    await loadWorkflow()
+  } catch (err) {
+    alertStore.error(getErrorMessage(err, 'ดำเนินการไม่สำเร็จ'))
+  } finally {
+    actingOn.value = null
+  }
+}
+
+const openWorkspace = () =>
+  router.push({ name: 'saraban-document-workspace', params: { id: route.params.id } })
+
+const backToList = () => router.push({ name: 'saraban-documents' })
+
+onMounted(async () => {
+  await boot()
+  await loadWorkflow()
+})
+</script>

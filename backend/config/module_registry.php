@@ -3,6 +3,7 @@
 use App\Providers\Modules\AttendanceModuleServiceProvider;
 use App\Providers\Modules\LeaveModuleServiceProvider;
 use App\Providers\Modules\NotificationModuleServiceProvider;
+use App\Providers\Modules\SarabanModuleServiceProvider;
 
 return [
     'admin' => [
@@ -96,6 +97,122 @@ return [
         'audit_events' => ['overtime.order.created', 'overtime.order.approved', 'overtime.time.certified'],
         'providers' => [],
         'route_patterns' => ['api/overtime*', 'api/attendances/ot-*', 'api/admin/attendances/ot-summary'],
+        'legacy_permissions' => [],
+    ],
+    /*
+     * INT-02 — โมดูลงานสารบรรณอิเล็กทรอนิกส์
+     *
+     * `dependencies` มีแค่ `system` โดยเจตนา แม้โมดูลนี้จะส่งการแจ้งเตือน
+     * เพราะศูนย์แจ้งเตือนเป็นโครงสร้างพื้นฐานที่ "ไม่มีก็ยังทำงานได้"
+     * (`NotificationCenter::emit()` คืน null เงียบ ๆ เมื่อโมดูลแจ้งเตือนถูกปิด)
+     * ถ้าประกาศว่าพึ่งพา การปิดศูนย์แจ้งเตือนจะทำให้ลงทะเบียนรับหนังสือไม่ได้ทั้งระบบ
+     * ซึ่งขัดกับ SoT §16 ที่ห้ามให้ธุรกรรมล้มเพราะช่องทางแจ้งเตือนล้ม
+     * โมดูลการลาและลงเวลาก็ประกาศไว้แบบเดียวกันทั้งที่ส่งแจ้งเตือนเหมือนกัน
+     *
+     * `menus` ยังว่างโดยเจตนา — `MenuIntegrityTest` บังคับสองทางว่าทุกเมนูต้องมีหน้าจอจริง
+     * ใน `frontend/src/router/index.js` และทุกหน้าที่ต้องล็อกอินต้องมีเมนูชี้ถึง
+     * เมนูของสารบรรณจึงต้องมาพร้อมหน้าจอจริง ไม่ใช่มาก่อน
+     */
+    'saraban' => [
+        'id' => 'saraban',
+        'code' => 'saraban',
+        'name' => 'ระบบงานสารบรรณอิเล็กทรอนิกส์',
+        'name_th' => 'ระบบงานสารบรรณอิเล็กทรอนิกส์',
+        'name_en' => 'Saraban (Correspondence)',
+        'description' => 'ทะเบียนหนังสือรับ-ส่ง หนังสือภายใน การเดินเรื่อง เกษียนหนังสือ ลงนาม และกระจายหนังสือ',
+        'icon' => 'document',
+        'version' => '1.0.0',
+        'enabled' => env('MODULE_SARABAN_ENABLED', true),
+        'dependencies' => ['system'],
+        'order' => 30,
+        'routes' => [],
+        'route_files' => [],
+        'menus' => [],
+        'permissions' => [
+            // เอกสารและทะเบียนหนังสือ (SoT §8)
+            'saraban.document.view' => 'ดูหนังสือและทะเบียนเอกสาร',
+            'saraban.document.create' => 'สร้างหนังสือ',
+            'saraban.document.update' => 'แก้ไขหนังสือที่ยังไม่ออกเลข',
+            'saraban.document.submit' => 'เสนอหนังสือเข้าสู่กระบวนการ',
+
+            // ทะเบียนรับ (SoT §10)
+            'saraban.incoming.register' => 'ลงทะเบียนรับหนังสือ',
+            'saraban.incoming.stamp' => 'ประทับตรารับหนังสือ',
+
+            // เลขหนังสือ (SoT §9)
+            'saraban.number.reserve' => 'จองเลขหนังสือ',
+            'saraban.number.allocate' => 'ออกเลขหนังสือ',
+            'saraban.number.release' => 'คืนเลขหนังสือที่จองไว้',
+            'saraban.number.cancel' => 'ยกเลิกเลขหนังสือ',
+
+            // การเดินเรื่อง (SoT §11, §12)
+            'saraban.workflow.review' => 'ตรวจและดำเนินการหนังสือตามสายงาน',
+            'saraban.workflow.forward' => 'ส่งหนังสือต่อไปยังขั้นถัดไป',
+            'saraban.workflow.return' => 'ส่งหนังสือกลับไปแก้ไข',
+            'saraban.workflow.simulate' => 'จำลองเส้นทางเดินหนังสือ',
+            'saraban.workflow.manage' => 'จัดการและเผยแพร่เวอร์ชันสายงานเดินหนังสือ',
+
+            // การเกษียนและลงนาม (SoT §14)
+            'saraban.endorse.create' => 'เกษียนหนังสือ',
+            'saraban.signature.sign' => 'ลงนามในหนังสือ',
+
+            // การกระจายหนังสือ (SoT §15)
+            'saraban.distribution.create' => 'จัดทำรายการกระจายหนังสือ',
+            'saraban.distribution.send' => 'ส่งหนังสือถึงผู้รับ',
+            'saraban.distribution.track' => 'ติดตามการรับทราบและการดำเนินการ',
+
+            /*
+             * INT-13 — เปิดกล่องหนังสือเวียนถึงตนเอง
+             *
+             * แยกจาก `saraban.document.view` เพราะเป็นคนละคำถาม: ข้อนั้นคือ
+             * "ค้นทะเบียนหนังสือของหน่วยงานได้" ส่วนข้อนี้คือ "เปิดหนังสือที่เวียน
+             * ถึงตนได้" — ข้าราชการส่วนใหญ่ต้องได้ข้อหลังโดยไม่ควรได้ข้อแรก
+             */
+            'saraban.inbox.view' => 'เปิดกล่องหนังสือเวียนถึงตนเอง',
+
+            /*
+             * ชั้นความลับ (SoT §18)
+             *
+             * **เป็นด่านเพิ่ม ไม่ใช่ด่านแทน** — ต้องมี `saraban.document.view`
+             * และอยู่ในขอบเขตหน่วยงานอยู่ก่อนแล้ว สิทธิ์สองข้อนี้เพียงเปิดให้
+             * เห็นหนังสือชั้นที่สูงขึ้นภายในขอบเขตเดิมเท่านั้น
+             *
+             * การจับคู่ชั้น→สิทธิ์ **ไม่ได้ฝังในโค้ด** อยู่ในนโยบาย `confidentiality`
+             * ที่แก้และย้อนกลับได้จากศูนย์นโยบาย
+             */
+            'saraban.confidential.view' => 'เปิดหนังสือชั้นลับ',
+            'saraban.secret.view' => 'เปิดหนังสือชั้นลับมาก',
+            'saraban.top_secret.view' => 'เปิดหนังสือชั้นลับที่สุด',
+
+            // รายงานและการตรวจสอบ (SoT §25, §28)
+            'saraban.report.view' => 'ดูรายงานงานสารบรรณ',
+            'saraban.report.export' => 'ส่งออกรายงานงานสารบรรณ',
+            'saraban.audit.view' => 'ดูประวัติการดำเนินการของหนังสือ',
+
+            // การกำกับดูแล (SoT §13, §18)
+            'saraban.policy.manage' => 'จัดการและเผยแพร่นโยบายงานสารบรรณ',
+            'saraban.authority.view' => 'ดูตารางอำนาจหน้าที่',
+            'saraban.config.manage' => 'ตั้งค่าทะเบียนหนังสือและหน่วยงานสารบรรณ',
+
+            // การปฏิบัติการ (SoT §19, §20, §21)
+            'saraban.exception.view' => 'ดูรายการข้อผิดพลาดที่ต้องตามแก้',
+            'saraban.exception.manage' => 'มอบหมายและปิดรายการข้อผิดพลาด',
+            'saraban.operations.view' => 'ดูศูนย์เฝ้าระวังการปฏิบัติการ',
+            'saraban.operations.retry' => 'สั่งประมวลผลงานที่ล้มเหลวซ้ำ',
+            'saraban.feature_flags.manage' => 'เปิด-ปิดความสามารถของโมดูลสารบรรณ',
+        ],
+        'policies' => ['saraban_document'],
+        'workflow_definitions' => [],
+        'settings' => [],
+        'notifications' => ['saraban.document.distributed'],
+        'reports' => [],
+        'audit_events' => [
+            'saraban.document.created', 'saraban.document.updated', 'saraban.document.submitted',
+            'saraban.distribution.sent', 'saraban.distribution.acknowledged', 'saraban.distribution.progress_reported',
+        ],
+        'providers' => [SarabanModuleServiceProvider::class],
+        // INT-15 — พื้นผิว v1 ชี้ไปยัง controller ชุดเดียวกัน จึงต้องถูกปิดพร้อมกันเมื่อโมดูลถูกปิด
+        'route_patterns' => ['api/saraban*', 'api/v1/saraban*'],
         'legacy_permissions' => [],
     ],
     'notification' => [

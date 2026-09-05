@@ -31,12 +31,36 @@ class EnsureAnyAbility
     {
         foreach ($abilities as $ability) {
             foreach (explode('|', $ability) as $name) {
-                if (Gate::allows(trim($name))) {
+                $name = trim($name);
+
+                if (Gate::allows($name) && $this->tokenAllows($request, $name)) {
                     return $next($request);
                 }
             }
         }
 
         abort(403, 'ไม่มีสิทธิ์เข้าถึงรายการนี้');
+    }
+
+    /**
+     * ขอบเขตของโทเคนต้องครอบความสามารถนี้ด้วย (SoT §17 · INT-15)
+     *
+     * **ขอบเขตจำกัดได้ แต่ขยายไม่ได้** — โทเคนของบัญชีบริการที่ออกมาเพื่ออ่าน
+     * ทะเบียนหนังสือ ต้องออกเลขหนังสือไม่ได้ แม้เจ้าของบัญชีจะมีสิทธิ์นั้นก็ตาม
+     * ส่วนโทเคนที่ขอความสามารถเกินสิทธิ์ของเจ้าของ ก็ยังถูก `Gate` ปฏิเสธอยู่ดี
+     * เพราะสองด่านนี้ต้องผ่าน **ทั้งคู่**
+     *
+     * โทเคนของผู้ใช้ทั่วไปออกด้วยขอบเขต `*` จึงผ่านข้อนี้เสมอ และคำขอที่ไม่ได้
+     * มาจากโทเคน (เซสชัน หรือชุดทดสอบ) ไม่มีขอบเขตให้ตรวจ จึงข้ามไป
+     */
+    private function tokenAllows(Request $request, string $ability): bool
+    {
+        $token = $request->user()?->currentAccessToken();
+
+        if ($token === null || ! method_exists($token, 'can')) {
+            return true;
+        }
+
+        return $token->can($ability);
     }
 }

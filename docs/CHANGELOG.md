@@ -4,6 +4,67 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### Leave Module Fix — 2026-09-05
+
+- แก้ครบ 4 ข้อจาก audit: ร่างส่วนตัวทุกทางอ่าน, ห้ามเขียนทับใบที่ยื่นแล้ว, บันทึกแทนตัดยอดและซิงค์ลงเวลาใน transaction และปฏิเสธข้ามปีงบประมาณ
+- รวมผลอนุมัติที่ LeaveService::completeApproval; รักษา module boundary และตรวจ scope/deny ของการบันทึกแทน
+- LeaveModuleAuditTest 11 tests ผ่านโดยคง regression เดิมครบ; frontend lint/typecheck/81 tests/build และ Pint ผ่าน
+- เปิดรัน tests ที่เคยข้ามเพราะไม่มีไฟล์ repo; รายงานผลชุดเต็มและความล้มเหลวนอกโมดูลลาไว้ใน `docs/checkpoints/LEAVE-MODULE-FIX-2026-09-05.md` โดยไม่ผ่อน tests
+- ไม่มี migration, dependency upgrade หรือ deploy; ไม่เขียนทับประวัติและยอดเก่าอัตโนมัติ
+
+### Leave Module Audit — 2026-09-05
+
+- ตรวจโมดูลลา พบและยืนยัน 4 ปัญหา: อ่านร่างผู้อื่น, แก้ทับใบอนุมัติ, บันทึกแทนไม่ตัดยอดใช้จริง และคิดยอดใบลาข้ามปีงบประมาณรวมกับปีแรก
+- เพิ่ม `LeaveModuleAuditTest` 4 regression tests ซึ่งยังล้มเหลวตามข้อค้นพบ พร้อมรายงาน `docs/checkpoints/LEAVE-MODULE-AUDIT-2026-09-05.md` และติดตามใน TASKS/TRACEABILITY
+- Pint และ frontend lint/typecheck/81 tests/build ผ่าน; ผล backend ชุดเต็มอยู่ในรายงานและ log ของรอบนี้
+- ไม่มีการแก้ application code, migration, API, ข้อมูลจริง หรือ deploy
+
+### SARABAN Visibility Audit — 2026-09-05
+
+- ตรวจครบ 10 ประเด็นและเพิ่ม `docs/checkpoints/SARABAN-VISIBILITY-AUDIT-2026-09-05.md` พร้อม runtime evidence และ quality-gate logs
+- ยืนยันเมนู SARABAN ใน DB มี 6/13 รายการ ทั้งที่ Super Admin ปัจจุบันผ่าน 32/32 permissions; หน้า policies/authority เปิด URL ตรงได้จริง
+- บันทึก API ที่ยังไม่ผูก UI, permission mapping ที่ไม่ตรงกัน และ ABAC gaps ที่ยังต้องแก้; ไม่เปลี่ยนสิทธิ์ ข้อมูลเมนู migration/API หรือ deploy
+- ผลรอบนี้ backend 1,039 passed / 8 skipped (3,825 assertions), Pint 657 files, frontend lint/typecheck/81 tests/build ผ่าน; output build อยู่ใน /tmp ของ container
+
+### Test & Review — 2026-09-05
+
+- ตรวจ working tree และรัน quality gates; พบ P1 เรื่อง retention scope, case scope, legal hold/disposal race และ MalwareScanner binding ที่ขาด
+- ผลรอบสุดท้าย: backend 119 failed / 914 passed / 8 skipped; Pint 1 style issue; frontend lint/typecheck/81 tests/build ผ่านในรอบที่ตรวจ
+- เพิ่ม `ReviewScopeTest` ในชุด backend ปกติ: 2 กรณี security regression ยังล้มเหลวและต้องแก้ก่อนผ่าน
+- รายงานและข้อจำกัด: `docs/checkpoints/TEST-REVIEW-2026-09-05.md`; ไม่มีการแก้ application code, migration, API หรือ deploy ในรอบนี้
+
+### [SEC-AUDIT-2569-09] - 2026-09-02
+
+การแก้ไขตามผลตรวจความปลอดภัยของระบบ E-la · ไม่มีการ deploy ขึ้น Production
+ไม่ได้เปิด Workflow Engine และไม่ได้เปิด Document Engine
+
+#### Added
+- **SEC-024 · เส้นทางเปลี่ยนรหัสผ่านของตนเอง** `POST /api/profile/password` + `App\Http\Requests\ChangePasswordRequest` — บังคับรหัสผ่านปัจจุบัน (`current_password`) ช่องยืนยัน (`confirmed`) ความยาวขั้นต่ำ 12 ตัวอักษร และรหัสใหม่ต้องไม่ซ้ำรหัสเดิม · ข้อความ validation ภาษาไทยทั้งหมด · จำกัดอัตราด้วย limiter ใหม่ `password-change` (5 ครั้ง/นาที รายผู้ใช้) · เขียน audit `user.password_changed` โดยไม่บันทึกรหัสผ่านหรือ hash · ออกโทเคนใบใหม่ให้อุปกรณ์ที่ยืนยันรหัสเดิมสำเร็จ ส่วนโทเคนใบอื่นถูกเพิกถอนทั้งหมดตามนโยบายเดิมของ `UserObserver`
+- **SEC-026 · ตัวระบุบทบาทระบบที่แก้ไม่ได้** migration `2026_09_01_140000_add_system_identity_to_roles_table` เพิ่ม `roles.system_key` (unique, nullable) และ `roles.is_system` พร้อม backfill จากชื่อที่เคยใช้ · `App\Support\SystemRoles` · `App\Services\SystemRoleGuard` กันการถอด/ลบ/ระงับผู้ดูแลระบบสูงสุดคนสุดท้าย (self-lockout)
+- **SEC-028 · ด่านกลางของไฟล์ภาพ** `App\Services\Files\ImageUploadService` และ `App\Rules\Base64Image` · เพิ่มชุด allowlist `signatures`, `profile_photos`, `attendance_photos` ใน `config/uploads.php` · `UploadRules::signatureFile()`, `UploadRules::profilePhoto()`
+- **SEC-030 · ทะเบียนประวัติรายคน** `GET /api/admin/users/{user}` (limiter ใหม่ `personal-record` 30 ครั้ง/นาที) — เมธอด `UserController::show()` มีอยู่เดิมแต่ไม่เคยมี route ชี้ถึง · พารามิเตอร์ `?id_card=` ค้นด้วยเลข 13 หลักผ่านค่าแฮช โดยไม่ต้องส่งเลขของใครออกไป
+- เทสต์ใหม่ฝั่ง backend: `ProfilePasswordChangeTest` (10) `SystemRoleProtectionTest` (8) `LeavePendingCancellationConcurrencyTest` (4) `SignatureAndPhotoUploadSecurityTest` (10) `PersonalIdentifierMaskingTest` (7) และเพิ่ม 5 ข้อใน `SecureFileAuthorizationTest`
+- เทสต์ใหม่ฝั่ง frontend: `tests/httpClient.test.js` (11) `tests/authStore.test.js` (10) `tests/thaiUiAndAccessibility.test.js` (24)
+
+#### Fixed
+- **SEC-024** ช่อง `password` เคยปนอยู่ในคำขออัปเดตโปรไฟล์ทั่วไป (`POST /api/profile`) โดยไม่ต้องรู้รหัสเดิมและไม่มีช่องยืนยัน · ตอนนี้เส้นทางเดิมตอบ 422 พร้อมชี้ทางที่ถูกต้อง และการแก้โปรไฟล์ทั่วไปไม่ต้องส่งรหัสผ่านเลย
+- **SEC-025 · ผู้ใช้ถูกเตะออกจากระบบเพราะ 429/5xx** `authStore.fetchUser()` เคยเรียก `logout()` ใน `catch` ที่ครอบความล้มเหลวทุกชนิด · ตอนนี้ล้างเซสชันเฉพาะ HTTP 401 เท่านั้น · `axios.js` ลองใหม่แบบ exponential backoff เฉพาะคำขออ่านข้อมูลที่เจอ 429 (สูงสุด 2 ครั้ง เคารพ `Retry-After`) · รวมคำขอที่ซ้ำและกำลังวิ่งอยู่ของ `/user`, `/user/menus`, `/settings`, `/notifications` ให้เหลือใบเดียว · `refreshToken()` รวมคำขอพร้อมกันและกลืนความล้มเหลวชั่วคราว · `menuStore` ไม่ล้างเมนูทิ้งเมื่อโหลดไม่สำเร็จ
+- **SEC-026 · ด่านป้องกันบทบาทระบบไม่เคยทำงาน** `RoleController` เทียบชื่อ `'SuperAdmin'` แต่บทบาทจริงชื่อ `'Super Admin'` (มีเว้นวรรค) · เปลี่ยนไปตัดสินจาก `system_key` ซึ่งไม่มี API ใดเปิดให้แก้
+- **SEC-027 · race condition ในการยกเลิกใบลาที่รออนุมัติ** เดิมคืนโควตา ล้างตารางลงเวลา เปลี่ยนสถานะ และเขียนประวัติ วิ่งนอก transaction และไม่ล็อกแถวใบลา · กดสองครั้งพร้อมกันคืนโควตาสองรอบ · ตอนนี้ทั้งหมดอยู่ใน transaction เดียวพร้อม `lockForUpdate()` และตรวจสถานะซ้ำหลังได้ล็อก · กดซ้ำได้ผลลัพธ์เดิม (idempotent) · เพิ่ม `LeaveAuditLog` ที่เดิมไม่มี
+- **SEC-027 · การขยายอำนาจโดยไม่ตั้งใจ** สิทธิ์ `system.user.view` (ดูทะเบียนผู้ใช้) เคยให้อำนาจยกเลิกใบลาของผู้อื่น · เปลี่ยนเป็น `leave.management.manage` หรือ `leave.approval.hr` ซึ่งเป็นสิทธิ์งานลาโดยตรง (หัวหน้าบุคลากรยังทำได้เหมือนเดิม)
+- **SEC-028 · ช่องอัปโหลดที่ไม่มีการตรวจ** `profile_photo` ไม่มีกฎ validate ใด ๆ เลยทั้งใน `ProfileController` และ `Admin\UserController` · `signature_base64` ทุกจุดเชื่อชนิดไฟล์จากส่วนหัว data URI ที่ client เขียนเอง ไม่จำกัดขนาด และ `base64_decode()` ไม่ strict · ตอนนี้ตรวจชนิดจาก magic bytes ของเนื้อไฟล์ จำกัดขนาดก่อน decode ตั้งชื่อไฟล์ด้วย UUID และเก็บบน private storage เสมอ
+- **SEC-029 · ไฟล์ข้ามชั้นตัดสินสิทธิ์กลาง** `SecureFileAccessService` ถาม Spatie ตรง ๆ ด้วย `hasAnyPermission()` จึงไม่รู้จัก explicit deny · ไม่เทียบชื่อ permission ข้ามรุ่น · และไม่มี organization scope · ตอนนี้ตัดสินผ่าน `PermissionEvaluator` + `OrgScopeResolver`
+- **SEC-030 · เลขบัตรประชาชนทั้งองค์กรในคำขอเดียว** `GET /api/admin/users` เคยคืนเลขฉบับเต็มของบุคลากรทุกคน · ตอนนี้ปิดบังเหลือ 4 หลักท้าย ตัด `id_card_number_hash` และ `passport_number` ออกจากรายการ · หน้ารายละเอียดตรวจขอบเขตหน่วยงานและบันทึก personal-data audit · กันไม่ให้ค่าที่ปิดบังถูกเขียนทับข้อมูลจริง
+- **UI-01** แปลข้อความที่ผู้ใช้เห็นเป็นภาษาไทย: `Real-time`, `Personnel & Org Structure`, `Close` (sr-only), `404 Not Found`, `Field Dictionary`, `Document Engine` (คงตัวระบุภาษาอังกฤษไว้ในวงเล็บพร้อมคำอธิบายไทย) · ขนาดกระดาษ Letter/Legal มีหน่วยกำกับ
+- **UI-01** เติม `aria-label` ภาษาไทยให้ช่องกรอก ตัวเลือก และปุ่มไอคอนที่ยังไม่มีป้ายกำกับ 65 จุดใน 9 หน้าจอหลัก
+- **UI-01** ข้อความอังกฤษของเฟรมเวิร์กใน 429/5xx (เช่น `Too Many Attempts.`) ถูกแทนด้วยข้อความไทยที่ชั้น HTTP client ก่อนถึงหน้าจอทุกจุด
+
+#### Changed
+- หน้าโปรไฟล์แยกการ์ด "เปลี่ยนรหัสผ่าน" ออกจากฟอร์มข้อมูลส่วนตัว
+- หน้าจัดการผู้ใช้โหลดทะเบียนประวัติฉบับเต็มจาก `GET /admin/users/{id}` ก่อนเปิดฟอร์มแก้ไข (เดิมใช้ค่าจากแถวในตาราง ซึ่งตอนนี้เป็นค่าที่ปิดบังแล้ว)
+- หน้าโปรไฟล์ใช้ `GET /users/list` แทน `GET /admin/users` สำหรับช่องเลือกผู้ปฏิบัติงานแทน — ต้องการเพียงชื่อ ไม่ใช่ทะเบียนประวัติทั้งหมด
+- `AttendanceController::storeAttendanceImage()` เรียกบริการกลางแทนตรรกะสำเนาที่สองซึ่งมีเพดานขนาดและรายการชนิดไฟล์เขียนตายไว้ในตัวเมธอด
+
 ### [LEAVE-DRAFT-2] - 2026-09-01
 
 #### Added

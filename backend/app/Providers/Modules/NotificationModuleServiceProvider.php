@@ -7,6 +7,7 @@ use App\Services\NotificationCenter\Adapters\EmailChannelAdapter;
 use App\Services\NotificationCenter\Adapters\InAppChannelAdapter;
 use App\Services\NotificationCenter\Adapters\LineOaChannelAdapter;
 use App\Services\NotificationCenter\Adapters\TelegramChannelAdapter;
+use App\Services\NotificationCenter\Adapters\WebPushChannelAdapter;
 use App\Services\NotificationCenter\ChannelAdapterRegistry;
 use App\Services\NotificationCenter\NotificationDeliveryService;
 use App\Services\NotificationCenter\TemplateRenderer;
@@ -21,6 +22,7 @@ class NotificationModuleServiceProvider extends ServiceProvider
             $app->make(EmailChannelAdapter::class),
             $app->make(LineOaChannelAdapter::class),
             $app->make(TelegramChannelAdapter::class),
+            $app->make(WebPushChannelAdapter::class),
         ]));
 
         $this->app->bind(NotificationDeliveryService::class, fn ($app): NotificationDeliveryService => new NotificationDeliveryService(

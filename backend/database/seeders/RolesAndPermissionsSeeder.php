@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Support\SystemRoles;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -84,6 +85,9 @@ class RolesAndPermissionsSeeder extends Seeder
          * ต้องรันหลังจาก role ทั้งหมดถูกสร้างแล้ว เพราะมันแจกสิทธิ์ตามชื่อ role
          * รายละเอียดการแจกอยู่ใน OperationalPermissionSeeder ที่เดียว
          */
+        // SEC-026 — ติดคีย์ระบบที่แก้ไม่ได้ให้บทบาทหลัก ก่อนที่ผู้ดูแลจะเปลี่ยนชื่อได้
+        SystemRoles::backfillExistingRoles();
+
         $this->call(OperationalPermissionSeeder::class);
     }
 }

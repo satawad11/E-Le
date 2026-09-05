@@ -10,22 +10,33 @@ import api from '../axios';
  * `/api/user/menus` (ซึ่งกรองด้วย ModuleRegistry ฝั่ง server ให้แล้ว) ก็ไม่มีที่ใดอ่านอีก
  * การเปิด-ปิดโมดูลตั้งได้ที่หน้า "โมดูลระบบ" และมีผลกับทั้งเมนูและ API พร้อมกัน
  */
+let fetchSettingsPromise = null;
+
 export const useSettingStore = defineStore('setting', {
   state: () => ({
     settings: {},
     loaded: false,
   }),
   actions: {
+    /** SEC-025 — รวมคำขอที่วิ่งพร้อมกันให้เหลือใบเดียว และคงค่าเดิมไว้เมื่อโหลดไม่สำเร็จ */
     async fetchSettings() {
-      try {
-        const res = await api.get('/settings');
-        if (res.data) {
-          this.settings = { ...this.settings, ...res.data };
-          this.loaded = true;
+      if (fetchSettingsPromise) return fetchSettingsPromise;
+
+      fetchSettingsPromise = (async () => {
+        try {
+          const res = await api.get('/settings');
+          if (res.data) {
+            this.settings = { ...this.settings, ...res.data };
+            this.loaded = true;
+          }
+        } catch (e) {
+          console.error('Failed to fetch settings:', e);
+        } finally {
+          fetchSettingsPromise = null;
         }
-      } catch (e) {
-        console.error('Failed to fetch settings:', e);
-      }
+      })();
+
+      return fetchSettingsPromise;
     },
     async updateSetting(key, value) {
       try {

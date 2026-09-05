@@ -34,6 +34,10 @@ class MenuIntegrityTest extends TestCase
         '/admin/document-center/templates/:templateId' => 'เข้าจากศูนย์จัดการเอกสาร',
         '/admin/document-templates' => 'ยุบเข้าศูนย์จัดการเอกสารแล้ว คงเส้นทางไว้ให้ลิงก์เดิมใช้ได้',
         '/leave-services' => 'ยุบเข้ารายการใบลาของฉันแล้ว คงเส้นทางไว้ให้ลิงก์เดิมใช้ได้',
+        // INT-05 — เปิดจากแถวในทะเบียนหนังสือ ไม่ใช่เมนู (เป็นหน้ารายฉบับ)
+        '/saraban/documents/:id' => 'เข้าจากทะเบียนหนังสือ',
+        // INT-10 — พื้นที่ประทับตราของหนังสือฉบับหนึ่ง เปิดจากหน้ารายละเอียดหนังสือ
+        '/saraban/documents/:id/workspace' => 'เข้าจากหน้ารายละเอียดหนังสือ',
     ];
 
     public function test_seeded_menus_match_the_declared_tree(): void

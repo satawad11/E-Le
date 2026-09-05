@@ -1,17 +1,12 @@
-# E-la Integrated Administration Platform
+# SARABAN V1.2 Existing-System Module Pack
 
-ชุดเอกสารพัฒนาระบบบริหารงานสถานศึกษาแบบ Modular สำหรับใช้ร่วมกับ Claude Code และ Codex
+ใช้เมื่อจะเพิ่ม SARABAN เข้าในระบบเดิม โดย UI ต้องตามระบบเดิม
 
-## เริ่มต้น
-1. อ่าน `AGENTS.md` และ `CLAUDE.md`
-2. อ่าน `PROJECT_RULES.md`
-3. อ่าน `docs/00-MASTER-BLUEPRINT.md`
-4. ตรวจ `CURRENT_PHASE.md` และ `TASKS.md`
-5. พัฒนาเฉพาะ Phase ที่อนุญาต
-6. หยุดที่ Checkpoint ก่อนเริ่ม Phase ถัดไป
-
-## Stack
-Next.js + TypeScript + PostgreSQL + Redis + Tailwind CSS + Docker + MinIO/S3 + Nginx
-
-## หลักการ
-Configuration over Hard-code, Policy-driven, Workflow-driven, Permission-driven, Event-driven, Audit everything, Secure by default, Modular by design.
+ลำดับ:
+1. ใส่ไฟล์ใน repository
+2. ส่ง `01-FIRST-PROMPT.md`
+3. ทำ INT-00
+4. ต่อด้วย `02-NEXT-CHECKPOINT-PROMPT.md`
+5. ถ้าไม่รู้ว่าถึงไหน ใช้ `03-RESUME-VERIFY-STATE.md`
+6. ถ้า AI หลุดกรอบ ใช้ `04-RESET-SCOPE.md`
+7. ก่อน Go-live ใช้ `05-FINAL-ACCEPTANCE-PROMPT.md`

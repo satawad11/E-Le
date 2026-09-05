@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ModuleController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WorkflowController;
+use App\Http\Controllers\Api\ApiDescriptorController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\ApprovalController;
@@ -22,15 +23,39 @@ use App\Http\Controllers\LeaveQueryController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\LeaveVerificationController;
 use App\Http\Controllers\LeaveWorkflowActionController;
+use App\Http\Controllers\NotificationCenter\NotificationOperationsController;
+use App\Http\Controllers\NotificationCenter\WebPushSubscriptionController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Operations\CommandCenterController;
+use App\Http\Controllers\Operations\ComplianceEvidenceController;
+use App\Http\Controllers\Operations\ExceptionQueueController;
+use App\Http\Controllers\Operations\FeatureFlagController;
+use App\Http\Controllers\Operations\HealthController;
 use App\Http\Controllers\Overtime\OvertimeOrderController;
 use App\Http\Controllers\Overtime\OvertimeReportController;
 use App\Http\Controllers\Overtime\OvertimeTimeController;
 use App\Http\Controllers\PersonalDataController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportingController;
+use App\Http\Controllers\Saraban\AnnotationController;
+use App\Http\Controllers\Saraban\AuthorityMatrixController;
+use App\Http\Controllers\Saraban\CaseController;
+use App\Http\Controllers\Saraban\DistributionController;
+use App\Http\Controllers\Saraban\DocumentController;
+use App\Http\Controllers\Saraban\DocumentVerificationController;
+use App\Http\Controllers\Saraban\InboxController;
+use App\Http\Controllers\Saraban\IncomingRegistrationController;
+use App\Http\Controllers\Saraban\NumberSeriesController;
+use App\Http\Controllers\Saraban\PolicyController;
+use App\Http\Controllers\Saraban\RedactionController;
+use App\Http\Controllers\Saraban\RegisterReportController;
+use App\Http\Controllers\Saraban\RetentionController;
+use App\Http\Controllers\Saraban\SavedViewController;
+use App\Http\Controllers\Saraban\SignatureController;
+use App\Http\Controllers\Saraban\WorkflowSimulationController;
 use App\Http\Controllers\SecureFileController;
 use App\Http\Controllers\SecureSettingController;
+use App\Http\Controllers\Webhooks\WebhookEndpointController;
 use App\Services\Reporting\ReportingDataService;
 use Illuminate\Support\Facades\Route;
 
@@ -40,10 +65,33 @@ Route::middleware('throttle:public-api')->group(function () {
         return response()->json(['message' => 'pong']);
     });
 
+    /*
+     * INT-21 — สุขภาพระบบสำหรับ uptime monitor ภายนอก (SoT §27)
+     *
+     * เปิดสาธารณะโดยตั้งใจ และ **คืนแค่ ok/degraded/down ไม่มีรายละเอียดใด ๆ**
+     * — monitor ภายนอกต้องเรียกได้โดยไม่มีบัญชีผู้ใช้ ส่วนรายละเอียดของแต่ละชิ้น
+     * เป็นข้อมูลภายในที่อยู่หลังด่านสิทธิ์ที่ `/api/saraban/operations/health`
+     *
+     * คืน 503 เมื่อระบบใช้งานไม่ได้ เพื่อให้ monitor จับได้จาก status code
+     * โดยไม่ต้องอ่าน body
+     */
+    Route::get('/health', [HealthController::class, 'summary']);
+
     // ตรวจสอบใบลาจาก QR บนเอกสารที่พิมพ์ออกไป — จำกัดอัตราเพื่อกันการสุ่มโทเคน
     Route::middleware('throttle:verify')->group(function () {
         Route::get('/leaves/verify/{hash}', [LeaveVerificationController::class, 'verify']);
         Route::get('/leaves/verify/{hash}/qrcode', [LeaveVerificationController::class, 'qrcode']);
+    });
+
+    /*
+     * ตรวจสอบหนังสือของงานสารบรรณ (INT-12 · SoT §12)
+     *
+     * เปิดสาธารณะเช่นเดียวกับการตรวจสอบใบลา และใช้ throttle ชุดเดียวกัน
+     * เพื่อกันการสุ่มโทเคน
+     */
+    Route::middleware('throttle:verify')->group(function () {
+        Route::get('/saraban/verify/{hash}', [DocumentVerificationController::class, 'verify']);
+        Route::get('/saraban/verify/{hash}/qrcode', [DocumentVerificationController::class, 'qrcode']);
     });
 });
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
@@ -58,6 +106,15 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/users/list', [UserController::class, 'list']);
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile', [ProfileController::class, 'update']);
+    // SEC-024 — เปลี่ยนรหัสผ่านของตนเอง (ต้องกรอกรหัสผ่านปัจจุบัน) แยกจากการแก้โปรไฟล์ทั่วไป
+    Route::post('/profile/password', [ProfileController::class, 'changePassword'])->middleware('throttle:password-change');
+    /*
+     * SEC-GAP-01 (INT-11) — ยืนยันตัวตนซ้ำก่อนทำสิ่งที่อ่อนไหว (SoT §24)
+     *
+     * ไม่ออกโทเคนใหม่ เพียงบันทึกว่าโทเคนใบปัจจุบันเพิ่งยืนยันตัวตน
+     * จำกัดอัตราด้วย throttle ชุดเดิมของรหัสผ่าน เพื่อไม่ให้ใช้เดารหัสผ่าน
+     */
+    Route::post('/auth/confirm-password', [AuthController::class, 'confirmPassword'])->middleware('throttle:password-change');
     // สิทธิขอรับสำเนาข้อมูลส่วนบุคคลของตนเอง (ม.30 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล)
     Route::get('/profile/personal-data', [PersonalDataController::class, 'export'])->middleware('throttle:personal-data');
     Route::get('/profile/access-history', [PersonalDataController::class, 'accessHistory']);
@@ -172,6 +229,21 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // Admin routes
     Route::group(['middleware' => ['can:view_users']], function () {
         Route::get('/admin/users', [UserController::class, 'index']);
+
+        /*
+         * SEC-030 — ทะเบียนประวัติรายคน
+         *
+         * `UserController::show()` มีอยู่มาตลอดแต่ไม่เคยมี route ชี้ถึง หน้าจอจึงต้อง
+         * อาศัยข้อมูลจากรายการซึ่งบังคับให้รายการต้องส่งเลขบัตรประชาชนฉบับเต็มออกมา
+         *
+         * เปิดเส้นทางนี้แล้วรายการจึงส่งเลขแบบปิดบังได้ · เส้นทางนี้ตรวจขอบเขต
+         * หน่วยงานและบันทึกการเข้าถึงข้อมูลส่วนบุคคลรายครั้ง (ดูในตัว controller)
+         *
+         * จำกัดอัตราด้วยถังเดียวกับการขอข้อมูลส่วนบุคคล เพื่อไม่ให้ไล่ดึงทีละคน
+         * จนได้เลขครบทั้งองค์กรแทนการเรียกรายการ
+         */
+        Route::get('/admin/users/{user}', [UserController::class, 'show'])
+            ->middleware('throttle:personal-record');
     });
 
     /*
@@ -244,6 +316,30 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::delete('/admin/settings/logo', [SecureSettingController::class, 'deleteLogo']);
         Route::delete('/admin/settings/secrets/{key}', [SecureSettingController::class, 'clearSecret']);
         Route::post('/admin/settings/test-notification/{channel}', [SecureSettingController::class, 'testNotification']);
+
+        /*
+         * INT-14 — dead-letter และสุขภาพช่องทางส่ง (SoT §16)
+         *
+         * อยู่ใต้ `system.setting.manage` ซึ่งเป็นเจ้าของการตั้งค่าช่องทาง
+         * แจ้งเตือนอยู่แล้ว · INT-17 จะดึงข้อมูลชุดนี้ไปแสดงในศูนย์เฝ้าระวัง
+         * การปฏิบัติการ (SoT §20) โดยไม่ต้องเปลี่ยนสัญญาที่นี่
+         */
+        Route::get('/admin/notifications/dead-letters', [NotificationOperationsController::class, 'deadLetters']);
+        Route::post('/admin/notifications/dead-letters/{delivery}/requeue', [NotificationOperationsController::class, 'requeue']);
+        Route::get('/admin/notifications/channel-health', [NotificationOperationsController::class, 'channelHealth']);
+
+        /*
+         * INT-15 — ปลายทาง webhook ขาออก (SoT §17)
+         *
+         * การเปิดทางให้ข้อมูลไหลออกนอกระบบเป็นการตัดสินใจระดับผู้ดูแลระบบ
+         * ไม่ใช่ระดับผู้ใช้งานโมดูล จึงอยู่ใต้สิทธิ์เดียวกับการตั้งค่าช่องทางแจ้งเตือน
+         */
+        Route::get('/admin/webhooks', [WebhookEndpointController::class, 'index']);
+        Route::post('/admin/webhooks', [WebhookEndpointController::class, 'store']);
+        Route::put('/admin/webhooks/{endpoint}', [WebhookEndpointController::class, 'update']);
+        Route::delete('/admin/webhooks/{endpoint}', [WebhookEndpointController::class, 'destroy']);
+        Route::get('/admin/webhooks/{endpoint}/deliveries', [WebhookEndpointController::class, 'deliveries']);
+        Route::post('/admin/webhooks/deliveries/{delivery}/requeue', [WebhookEndpointController::class, 'requeue']);
 
         // CLEANUP-02 — เปิด-ปิดโมดูลด้วยกลไกเดียวกับที่เมนูและด่าน route ใช้จริง
         Route::get('/admin/modules', [ModuleController::class, 'index']);
@@ -327,6 +423,18 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
     Route::get('/notification-preferences', [NotificationController::class, 'preferences']);
     Route::put('/notification-preferences', [NotificationController::class, 'updatePreference']);
+
+    /*
+     * INT-14 — การแจ้งเตือนผ่านเบราว์เซอร์ (SoT §16)
+     *
+     * ไม่มีด่าน `ability:` เพราะเป็นการตั้งค่าของ **ตัวผู้เรียกเอง** เช่นเดียวกับ
+     * `notification-preferences` ที่อยู่เหนือขึ้นไป · ทุก endpoint ผูกกับ
+     * `$request->user()` เสมอ ไม่มีพารามิเตอร์ที่ระบุผู้ใช้คนอื่นได้
+     */
+    Route::get('/notifications/web-push/key', [WebPushSubscriptionController::class, 'publicKey']);
+    Route::get('/notifications/web-push/subscriptions', [WebPushSubscriptionController::class, 'index']);
+    Route::post('/notifications/web-push/subscribe', [WebPushSubscriptionController::class, 'subscribe']);
+    Route::post('/notifications/web-push/unsubscribe', [WebPushSubscriptionController::class, 'unsubscribe']);
     // Dynamic Menu & Role Management routes
     Route::get('/user/menus', [MenuController::class, 'index']);
     /*
@@ -345,6 +453,266 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         // CLEANUP-01 — `show` ไม่มีเมธอดใน RoleController และไม่มีหน้าใดเรียก
         Route::apiResource('/admin/roles', RoleController::class)->except('show');
     });
+
+    /*
+     * งานสารบรรณ (INT-05)
+     *
+     * เส้นทางอยู่ใต้ `api/saraban*` ซึ่งตรงกับ `route_patterns` ของโมดูล
+     * `EnsureModuleEnabled` จึงปิดทั้งชุดให้เองเมื่อโมดูลถูกปิด โดยไม่ต้องเขียน guard
+     *
+     * `ability:` เป็นด่านระดับความสามารถ ส่วนสิทธิ์รายฉบับตัดสินที่ `DocumentPolicy`
+     * ใน controller — สองชั้นนี้ทำหน้าที่คนละอย่างและต้องมีทั้งคู่ (SoT §6)
+     */
+    $sarabanRoutes = function () {
+        Route::get('/documents', [DocumentController::class, 'index'])->middleware('ability:saraban.document.view');
+        Route::get('/documents/options', [DocumentController::class, 'options'])->middleware('ability:saraban.document.view');
+        Route::post('/documents', [DocumentController::class, 'store'])->middleware('ability:saraban.document.create');
+        Route::get('/documents/{document}', [DocumentController::class, 'show'])->middleware('ability:saraban.document.view');
+        Route::post('/documents/{document}', [DocumentController::class, 'update'])->middleware('ability:saraban.document.update');
+        Route::post('/documents/{document}/submit', [DocumentController::class, 'submit'])->middleware('ability:saraban.document.submit');
+
+        /*
+         * การเดินเรื่อง (INT-08)
+         *
+         * ใช้ `saraban.document.view` เป็นด่านระดับความสามารถ เพราะสิทธิ์ในการ
+         * "ทำขั้นตอน" ขึ้นกับว่าเป็นผู้ได้รับมอบหมายของขั้นนั้นหรือไม่ ซึ่ง
+         * `WorkflowEngine::authorize()` เป็นผู้ตัดสิน ไม่ใช่ชื่อสิทธิ์ที่ route
+         */
+        Route::get('/documents/{document}/workflow', [DocumentController::class, 'workflow'])->middleware('ability:saraban.document.view');
+        Route::post('/documents/{document}/workflow', [DocumentController::class, 'performWorkflowAction'])->middleware('ability:saraban.document.view');
+
+        /*
+         * การลงนามและการเกษียน (INT-11)
+         *
+         * **การลงนามมีด่าน `step_up`** — ต้องยืนยันตัวตนซ้ำภายในช่วงที่กำหนด
+         * ก่อนจึงลงนามได้ (SoT §24) · การเกษียนไม่ต้อง เพราะลายมือ ≠ ลายเซ็น (SoT §15)
+         */
+        Route::post('/documents/{document}/sign', [SignatureController::class, 'sign'])
+            ->middleware(['ability:saraban.signature.sign', 'step_up']);
+        Route::post('/documents/{document}/endorse', [SignatureController::class, 'endorse'])
+            ->middleware('ability:saraban.endorse.create');
+        Route::get('/documents/{document}/signatures', [SignatureController::class, 'evidence'])
+            ->middleware('ability:saraban.document.view');
+
+        /*
+         * ออกหนังสือฉบับสมบูรณ์พร้อม QR (INT-12)
+         *
+         * มีด่าน `step_up` เช่นเดียวกับการลงนาม เพราะเป็นการทำให้หนังสือมีผล
+         * ต่อบุคคลภายนอกอย่างถาวร — เป็นการกระทำที่ย้อนกลับไม่ได้ตาม SoT §24
+         */
+        Route::post('/documents/{document}/finalize', [SignatureController::class, 'finalize'])
+            ->middleware(['ability:saraban.signature.sign', 'step_up']);
+
+        /*
+         * PDF Workspace (INT-10)
+         *
+         * ไม่มี endpoint ใดรับภาพจากเบราว์เซอร์ — รับเฉพาะพิกัดเป็นข้อมูล
+         * แล้วเรนเดอร์ที่ฝั่ง server (SoT §14)
+         */
+        Route::get('/documents/{document}/annotations', [AnnotationController::class, 'index'])->middleware('ability:saraban.document.view');
+        Route::put('/documents/{document}/annotations', [AnnotationController::class, 'store'])->middleware('ability:saraban.incoming.stamp');
+        Route::post('/documents/{document}/annotations/render', [AnnotationController::class, 'render'])->middleware('ability:saraban.incoming.stamp');
+
+        /*
+         * จำลองเส้นทางเดินหนังสือ (INT-09)
+         *
+         * ใช้ POST เพราะรับพารามิเตอร์เป็น body แต่เป็นการอ่านอย่างเดียว
+         * ไม่สร้าง instance ไม่ออกเลข ไม่ส่งแจ้งเตือน (SoT §12)
+         */
+        Route::get('/workflow/versions', [WorkflowSimulationController::class, 'versions'])->middleware('ability:saraban.workflow.simulate');
+        Route::post('/workflow/simulate', [WorkflowSimulationController::class, 'simulate'])->middleware('ability:saraban.workflow.simulate');
+
+        // ทะเบียนรับหนังสือ (INT-07)
+        Route::get('/incoming', [IncomingRegistrationController::class, 'index'])->middleware('ability:saraban.document.view');
+        Route::post('/incoming/duplicates', [IncomingRegistrationController::class, 'duplicates'])->middleware('ability:saraban.incoming.register');
+        Route::post('/incoming', [IncomingRegistrationController::class, 'store'])->middleware('ability:saraban.incoming.register');
+        Route::get('/incoming/{registration}', [IncomingRegistrationController::class, 'show'])->middleware('ability:saraban.document.view');
+
+        /*
+         * การเวียนหนังสือ (INT-13 · SoT §15)
+         *
+         * `create` คือสิทธิ์จัดทำรายการเวียน ส่วน `send` คือสิทธิ์ส่งจริง — ที่นี่
+         * ใช้ `send` เพราะ endpoint นี้ส่งถึงผู้รับทันที การจัดทำรายการเวียนไว้ล่วงหน้า
+         * โดยยังไม่ส่งเป็นความสามารถแยกที่ยังไม่มีในรอบนี้
+         */
+        Route::post('/documents/{document}/distributions', [DistributionController::class, 'store'])
+            ->middleware('ability:saraban.distribution.send');
+        Route::get('/documents/{document}/distributions', [DistributionController::class, 'index'])
+            ->middleware('ability:saraban.distribution.track');
+        Route::get('/distribution-targets', [DistributionController::class, 'targets'])
+            ->middleware('ability:saraban.distribution.send');
+
+        /*
+         * กล่องหนังสือเข้า (INT-13 · SoT §15)
+         *
+         * ใช้ `saraban.inbox.view` ไม่ใช่ `saraban.document.view` — สองข้อนี้เป็นคนละ
+         * คำถาม ข้าราชการทั่วไปต้องเปิดหนังสือที่เวียนถึงตนได้โดยไม่ต้องค้นทะเบียน
+         * หนังสือของหน่วยงานได้
+         *
+         * สิทธิ์นี้เป็นเพียงด่านความสามารถ · **ขอบเขตจริงคือการเป็นผู้รับ** ซึ่ง
+         * `InboxController` บังคับกับทุก query และทุกการกระทำ ผู้ถือสิทธิ์นี้จึงเห็น
+         * ได้เฉพาะกล่องของตัวเองเสมอ
+         */
+        Route::middleware('ability:saraban.inbox.view')->group(function () {
+            Route::get('/inbox', [InboxController::class, 'index']);
+            Route::get('/inbox/{recipient}', [InboxController::class, 'show']);
+            Route::post('/inbox/{recipient}/acknowledge', [InboxController::class, 'acknowledge']);
+            Route::post('/inbox/{recipient}/progress', [InboxController::class, 'reportProgress']);
+        });
+
+        /*
+         * ศูนย์นโยบาย (INT-16 · SoT §18)
+         *
+         * **อ่านได้กว้าง แก้ได้แคบ** — ผู้ปฏิบัติงานต้องรู้กติกาที่ตนถูกตัดสิน
+         * จึงใช้สิทธิ์ดูหนังสือเป็นด่านการอ่าน ส่วนการแก้จำกัดที่ `policy.manage`
+         *
+         * **การเผยแพร่ต้องยืนยันตัวตนซ้ำ (SoT §24)** เพราะนโยบายที่เปลี่ยนไป
+         * มีผลกับหนังสือทุกฉบับที่ออกหลังจากนั้น และ "ย้อนกลับ" ได้เฉพาะในความหมาย
+         * ของการประกาศกติกาใหม่ ไม่ใช่ลบสิ่งที่เกิดไปแล้ว
+         */
+        Route::get('/policies', [PolicyController::class, 'index'])->middleware('ability:saraban.document.view');
+        Route::get('/policies/{key}/history', [PolicyController::class, 'history'])->middleware('ability:saraban.document.view');
+        Route::post('/policies/{key}/draft', [PolicyController::class, 'draft'])->middleware('ability:saraban.policy.manage');
+        Route::post('/policies/{key}/publish', [PolicyController::class, 'publish'])
+            ->middleware(['ability:saraban.policy.manage', 'step_up']);
+        Route::post('/policies/{key}/rollback', [PolicyController::class, 'rollback'])
+            ->middleware(['ability:saraban.policy.manage', 'step_up']);
+
+        /*
+         * ตารางอำนาจหน้าที่ (INT-16 · SoT §6)
+         *
+         * `authority` ไม่มีด่าน `ability:` เพราะทุกคนต้องตรวจสอบอำนาจ **ของตนเอง**
+         * ได้โดยไม่ต้องขอสิทธิ์เพิ่ม · การดูของผู้อื่นถูกตรวจใน controller
+         * ด้วย `saraban.authority.view`
+         */
+        Route::get('/authority', [AuthorityMatrixController::class, 'show']);
+        Route::get('/authority/holders', [AuthorityMatrixController::class, 'holders'])
+            ->middleware('ability:saraban.authority.view');
+
+        /*
+         * ศูนย์เฝ้าระวังการปฏิบัติการและคิวข้อผิดพลาด (INT-17 · SoT §19, §20, §21)
+         *
+         * **แยกสิทธิ์ดูออกจากสิทธิ์แก้** — ผู้บริหารที่ต้องเห็นสถานะไม่จำเป็นต้องมี
+         * สิทธิ์ไปกดสั่งงานระบบ · `operations.view` สำหรับดู `operations.retry`
+         * สำหรับสั่งทำซ้ำ มอบหมาย และปิดเรื่อง
+         */
+        Route::get('/operations/command-center', CommandCenterController::class)
+            ->middleware('ability:saraban.operations.view');
+        Route::get('/operations/exceptions', [ExceptionQueueController::class, 'index'])
+            ->middleware('ability:saraban.exception.view|saraban.operations.view');
+
+        Route::middleware('ability:saraban.exception.manage|saraban.operations.retry')->group(function () {
+            Route::post('/operations/exceptions/{exception}/acknowledge', [ExceptionQueueController::class, 'acknowledge']);
+            Route::post('/operations/exceptions/{exception}/assign', [ExceptionQueueController::class, 'assign']);
+            Route::post('/operations/exceptions/{exception}/resolve', [ExceptionQueueController::class, 'resolve']);
+            Route::post('/operations/exceptions/{exception}/retry', [ExceptionQueueController::class, 'retry']);
+        });
+
+        /*
+         * ทะเบียนหลักฐานการปฏิบัติตามข้อกำหนด (INT-20 · SoT §23)
+         *
+         * **อ่านอย่างเดียว** — ไม่มี endpoint ที่ตั้งสถานะได้ · สถานะทุกช่อง
+         * คำนวณสดจากการตรวจจริง ซึ่งเป็นการบังคับข้อ "ห้าม claim PASS
+         * โดยไม่มี evidence จริง" ด้วยการออกแบบ ไม่ใช่ด้วยความไว้ใจ
+         */
+        Route::get('/operations/health', [HealthController::class, 'details'])
+            ->middleware('ability:saraban.operations.view');
+        Route::get('/operations/compliance', ComplianceEvidenceController::class)
+            ->middleware('ability:saraban.operations.view|saraban.report.view');
+        Route::get('/feature-flags', [FeatureFlagController::class, 'index'])
+            ->middleware('ability:saraban.operations.view|saraban.feature_flags.manage');
+        Route::put('/feature-flags/{key}', [FeatureFlagController::class, 'update'])
+            ->middleware('ability:saraban.feature_flags.manage');
+
+        /*
+         * สารบบเรื่อง การปกปิดข้อมูล และมุมมองที่บันทึกไว้ (INT-18 · SoT §22)
+         *
+         * **ไม่มี endpoint ใดในกลุ่มนี้แก้ตัวหนังสือ** — ทั้งสามเรื่องเป็นชั้นบน
+         * ที่เกิดรอบ ๆ หนังสือ ตัวตนและเลขที่หนังสือไม่เปลี่ยนแปลง
+         */
+        Route::get('/documents/{document}/compare', [DocumentController::class, 'compare'])
+            ->middleware('ability:saraban.document.view');
+
+        Route::get('/cases', [CaseController::class, 'index'])->middleware('ability:saraban.document.view');
+        Route::get('/cases/{case}', [CaseController::class, 'show'])->middleware('ability:saraban.document.view');
+        Route::post('/cases', [CaseController::class, 'store'])->middleware('ability:saraban.document.create');
+        Route::post('/cases/{case}/documents', [CaseController::class, 'attach'])->middleware('ability:saraban.document.create');
+        Route::delete('/cases/{case}/documents/{document}', [CaseController::class, 'detach'])->middleware('ability:saraban.document.create');
+        Route::post('/cases/{case}/close', [CaseController::class, 'close'])->middleware('ability:saraban.document.create');
+
+        /*
+         * การปกปิดข้อมูลใช้สิทธิ์เดียวกับการลงนาม เพราะเป็นการรับรองว่าสำเนานี้
+         * ปล่อยออกนอกระบบได้ ซึ่งเป็นอำนาจระดับเดียวกัน · ผลลัพธ์เรียกคืนไม่ได้
+         */
+        Route::get('/documents/{document}/redactions', [RedactionController::class, 'index'])
+            ->middleware('ability:saraban.document.view');
+        Route::post('/documents/{document}/redactions', [RedactionController::class, 'store'])
+            ->middleware(['ability:saraban.signature.sign', 'step_up']);
+
+        // มุมมองที่บันทึกไว้เป็นของผู้เรียกเอง จึงไม่มีด่านความสามารถเพิ่ม
+        Route::get('/saved-views', [SavedViewController::class, 'index']);
+        Route::post('/saved-views', [SavedViewController::class, 'store']);
+        Route::put('/saved-views/{view}', [SavedViewController::class, 'update']);
+        Route::delete('/saved-views/{view}', [SavedViewController::class, 'destroy']);
+        /*
+         * การเก็บรักษา การอายัด และการทำลายเอกสาร (INT-19 · SoT §25)
+         *
+         * **การทำลายเอกสารราชการย้อนกลับไม่ได้** — จึงบังคับ `step_up` และ
+         * แยก endpoint การอนุมัติออกจากการลงมือทำ เพื่อให้แยกหน้าที่กันได้จริง
+         * ตาม SoT §26 (separation of duties)
+         */
+        Route::get('/documents/{document}/retention', [RetentionController::class, 'show'])
+            ->middleware('ability:saraban.document.view');
+        Route::post('/documents/{document}/holds', [RetentionController::class, 'placeHold'])
+            ->middleware('ability:saraban.policy.manage|saraban.config.manage');
+        Route::post('/holds/{hold}/release', [RetentionController::class, 'releaseHold'])
+            ->middleware(['ability:saraban.policy.manage|saraban.config.manage', 'step_up']);
+        Route::post('/documents/{document}/retention', [RetentionController::class, 'schedule'])
+            ->middleware('ability:saraban.config.manage');
+        Route::get('/retention/due', [RetentionController::class, 'dueForDisposal'])
+            ->middleware('ability:saraban.config.manage');
+        Route::post('/retention/{schedule}/approve', [RetentionController::class, 'approveDisposal'])
+            ->middleware(['ability:saraban.policy.manage', 'step_up']);
+        Route::post('/retention/{schedule}/dispose', [RetentionController::class, 'dispose'])
+            ->middleware(['ability:saraban.config.manage', 'step_up']);
+
+        // รายงานทะเบียน (INT-19 · SoT §28)
+        Route::middleware('ability:saraban.report.view')->group(function () {
+            Route::get('/reports/register', [RegisterReportController::class, 'register']);
+            Route::get('/reports/numbers', [RegisterReportController::class, 'numbers']);
+            Route::get('/reports/distribution', [RegisterReportController::class, 'distribution']);
+        });
+        // ตั้งค่าชุดเลขหนังสือ (INT-16 · ปิด RISK-21)
+        Route::middleware('ability:saraban.config.manage')->group(function () {
+            Route::get('/number-series', [NumberSeriesController::class, 'index']);
+            Route::post('/number-series', [NumberSeriesController::class, 'store']);
+            Route::put('/number-series/{series}', [NumberSeriesController::class, 'update']);
+            Route::delete('/number-series/{series}', [NumberSeriesController::class, 'destroy']);
+        });
+    };
+
+    /*
+     * INT-15 — พื้นผิว API สองทางที่ชี้ไปยัง controller ชุดเดียวกัน (SoT §17)
+     *
+     *   `api/saraban/...`     เส้นทางเดิมที่หน้าเว็บของระบบใช้อยู่
+     *   `api/v1/saraban/...`  เส้นทางที่มีเลขรุ่นสำหรับผู้เรียกภายนอก
+     *
+     * **นิยามชุดเดียว ผูกสองที่** ไม่คัดลอกรายการ route มาวางซ้ำ — ถ้าคัดลอก
+     * วันหนึ่งสองชุดจะไม่ตรงกันโดยไม่มีใครรู้ว่าชุดไหนคือของจริง
+     *
+     * เส้นทาง v1 บังคับผ่าน `idempotent` เพิ่ม เพราะผู้เรียกภายนอกคือฝ่ายที่
+     * ส่งซ้ำหลัง timeout บ่อยที่สุด (SEC-GAP-04)
+     */
+    Route::prefix('saraban')->group($sarabanRoutes);
+    Route::prefix('v1/saraban')->middleware('idempotent')->group($sarabanRoutes);
+
+    /*
+     * คำอธิบายพื้นผิว API แบบอ่านด้วยเครื่องได้ (SoT §17 · MCP-ready)
+     *
+     * สร้างจากตาราง route จริง ผู้เรียกภายนอกจึงรู้ว่ามี endpoint อะไร
+     * ต้องมีสิทธิ์อะไร และต้องยืนยันตัวตนซ้ำหรือไม่ **โดยไม่ต้องแตะฐานข้อมูลตรง**
+     */
+    Route::get('/v1/openapi.json', ApiDescriptorController::class);
 
 });
 

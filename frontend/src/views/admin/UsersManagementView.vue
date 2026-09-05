@@ -52,6 +52,7 @@
             </svg>
           </span>
           <input
+            aria-label="ค้นหาบุคลากรจากชื่อหรือเลขประจำตัวประชาชน"
             v-model="filters.search"
             type="text"
             placeholder="ค้นหาชื่อ, เลขประจำตัวประชาชน..."
@@ -62,6 +63,7 @@
         <!-- Department filter -->
         <div>
           <select
+            aria-label="กรองตามแผนก"
             v-model="filters.department_id"
             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#800000] text-sm transition-colors text-gray-700 bg-white"
           >
@@ -75,6 +77,7 @@
         <!-- Status filter -->
         <div>
           <select
+            aria-label="กรองตามสถานะ"
             v-model="filters.status"
             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#800000] text-sm transition-colors text-gray-700 bg-white"
           >
@@ -235,7 +238,7 @@
                 <div v-show="activeTab === 'personal'" class="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">เลขประจำตัวประชาชน *</label>
-                    <input v-model="form.profile.id_card_number" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
+                    <input aria-label="เลขประจำตัวประชาชน" v-model="form.profile.id_card_number" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">วันเกิด *</label>
@@ -243,14 +246,14 @@
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">สัญชาติ *</label>
-                    <input v-model="form.profile.nationality" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
+                    <input aria-label="สัญชาติ" v-model="form.profile.nationality" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
                   </div>
                   <!-- เลิกเก็บ "เชื้อชาติ" — เป็นข้อมูลอ่อนไหวตาม ม.26 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล
                        และไม่มีส่วนใดของระบบนำไปใช้ จึงไม่มีฐานทางกฎหมายรองรับการเก็บ -->
                   
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">คำนำหน้าชื่อ *</label>
-                    <select v-model="form.profile.title" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required>
+                    <select aria-label="คำนำหน้าชื่อ" v-model="form.profile.title" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required>
                       <option value="นาย">นาย</option>
                       <option value="นาง">นาง</option>
                       <option value="นางสาว">นางสาว</option>
@@ -258,31 +261,31 @@
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">ชื่อ *</label>
-                    <input v-model="form.profile.first_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required @input="updateFullName" />
+                    <input aria-label="ชื่อ" v-model="form.profile.first_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required @input="updateFullName" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">นามสกุล *</label>
-                    <input v-model="form.profile.last_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required @input="updateFullName" />
+                    <input aria-label="นามสกุล" v-model="form.profile.last_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required @input="updateFullName" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">ชื่อกลาง</label>
-                    <input v-model="form.profile.middle_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="ชื่อกลาง" v-model="form.profile.middle_name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
 
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">เพศ *</label>
-                    <select v-model="form.profile.gender" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required>
+                    <select aria-label="เพศ" v-model="form.profile.gender" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required>
                       <option value="ชาย">ชาย</option>
                       <option value="หญิง">หญิง</option>
                     </select>
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">ชื่อ (อังกฤษ)</label>
-                    <input v-model="form.profile.first_name_en" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="ชื่อ (อังกฤษ)" v-model="form.profile.first_name_en" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">นามสกุล (อังกฤษ)</label>
-                    <input v-model="form.profile.last_name_en" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="นามสกุล (อังกฤษ)" v-model="form.profile.last_name_en" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <!-- เลิกเก็บ "ศาสนา" ด้วยเหตุผลเดียวกับเชื้อชาติ (ข้อมูลอ่อนไหวตาม ม.26) -->
                 </div>
@@ -291,57 +294,57 @@
                 <div v-show="activeTab === 'address'" class="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">รหัสประจำบ้าน</label>
-                    <input v-model="form.profile.house_registration_number" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="รหัสประจำบ้าน" v-model="form.profile.house_registration_number" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">บ้านเลขที่ *</label>
-                    <input v-model="form.profile.house_number" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
+                    <input aria-label="บ้านเลขที่" v-model="form.profile.house_number" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">หมู่ที่</label>
-                    <input v-model="form.profile.moo" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="หมู่ที่" v-model="form.profile.moo" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">ซอย</label>
-                    <input v-model="form.profile.soi" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="ซอย" v-model="form.profile.soi" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-4">
                     <label class="block text-xs text-gray-700 mb-1">ถนน</label>
-                    <input v-model="form.profile.road" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="ถนน" v-model="form.profile.road" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
 
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">จังหวัด *</label>
-                    <input v-model="form.profile.province" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
+                    <input aria-label="จังหวัด" v-model="form.profile.province" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">อำเภอ/เขต *</label>
-                    <input v-model="form.profile.district" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
+                    <input aria-label="อำเภอ/เขต" v-model="form.profile.district" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">ตำบล/แขวง *</label>
-                    <input v-model="form.profile.sub_district" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
+                    <input aria-label="ตำบล/แขวง" v-model="form.profile.sub_district" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">รหัสไปรษณีย์ *</label>
-                    <input v-model="form.profile.zipcode" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
+                    <input aria-label="รหัสไปรษณีย์" v-model="form.profile.zipcode" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" required />
                   </div>
 
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">เบอร์โทรศัพท์</label>
-                    <input v-model="form.phone" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="เบอร์โทรศัพท์" v-model="form.phone" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">Fax</label>
-                    <input v-model="form.profile.fax" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="โทรสาร (Fax)" v-model="form.profile.fax" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">E-Mail</label>
-                    <input v-model="form.email" type="email" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="อีเมล" v-model="form.email" type="email" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">เว็บไซต์</label>
-                    <input v-model="form.profile.website" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="เว็บไซต์" v-model="form.profile.website" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                 </div>
 
@@ -349,34 +352,34 @@
                 <div v-show="activeTab === 'employment'" class="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">รหัสบุคลากร</label>
-                    <input v-model="form.profile.personnel_code" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="รหัสบุคลากร" v-model="form.profile.personnel_code" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">ตำแหน่ง</label>
-                    <input v-model="form.profile.position" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="ตำแหน่ง" v-model="form.profile.position" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-xs text-gray-700 mb-1">แผนกวิชา</label>
-                    <select v-model="form.department_id" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
+                    <select aria-label="แผนกวิชา" v-model="form.department_id" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
                       <option value="">เลือกแผนกวิชา</option>
                       <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
                     </select>
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-xs text-gray-700 mb-1">วุฒิการศึกษา</label>
-                    <input v-model="form.profile.education_level" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="วุฒิการศึกษา" v-model="form.profile.education_level" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-xs text-gray-700 mb-1">วุฒิที่ได้รับการบรรจุ</label>
-                    <input v-model="form.profile.degree" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="วุฒิที่ได้รับการบรรจุ" v-model="form.profile.degree" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-xs text-gray-700 mb-1">ประเภทใบประกอบวิชาชีพ</label>
-                    <input v-model="form.profile.license_type" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="ประเภทใบประกอบวิชาชีพ" v-model="form.profile.license_type" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-xs text-gray-700 mb-1">เลขที่การอนุญาต</label>
-                    <input v-model="form.profile.license_number" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="เลขที่การอนุญาต" v-model="form.profile.license_number" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">วันที่ออกใบฯ</label>
@@ -392,7 +395,7 @@
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">สถานะ</label>
-                    <select v-model="form.profile.status" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
+                    <select aria-label="สถานะ" v-model="form.profile.status" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
                       <option value="ปฏิบัติหน้าที่">ปฏิบัติหน้าที่</option>
                       <option value="ลาออก">ลาออก</option>
                       <option value="พักงาน">พักงาน</option>
@@ -400,11 +403,11 @@
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">เวลาเข้างาน</label>
-                    <input v-model="form.work_start_time" type="time" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="เวลาเข้างาน" v-model="form.work_start_time" type="time" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">เวลาออกงาน</label>
-                    <input v-model="form.work_end_time" type="time" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="เวลาออกงาน" v-model="form.work_end_time" type="time" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                 </div>
 
@@ -412,23 +415,23 @@
                 <div v-show="activeTab === 'system'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div class="md:col-span-2">
                     <label class="block text-xs text-gray-700 mb-1">ชื่อที่แสดงในระบบ</label>
-                    <input v-model="form.name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" readonly />
+                    <input aria-label="ชื่อที่แสดงในระบบ" v-model="form.name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" readonly />
                     <span class="text-xs text-gray-400">สร้างอัตโนมัติจาก ชื่อและนามสกุล</span>
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">บทบาทในระบบ *</label>
-                    <select v-model="form.role_id" required class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
+                    <select aria-label="บทบาทในระบบ" v-model="form.role_id" required class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
                       <option value="" disabled>เลือกสิทธิ์</option>
                       <option v-for="role in roles" :key="role.id" :value="role.id">{{ roleLabel(role.name) }}</option>
                     </select>
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">รหัสผ่าน <span v-if="modal.isEdit" class="text-gray-400 font-normal">(เว้นว่างหากไม่เปลี่ยน)</span></label>
-                    <input v-model="form.password" type="password" :required="!modal.isEdit" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="รหัสผ่าน" v-model="form.password" type="password" :required="!modal.isEdit" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">รหัสห้องแชท Telegram (Chat ID)</label>
-                    <input v-model="form.telegram_chat_id" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <input aria-label="รหัสห้องแชท Telegram (Chat ID)" v-model="form.telegram_chat_id" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                 </div>
 
@@ -503,7 +506,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import { useAlertStore } from '../../stores/alert'
 import api from '../../axios'
@@ -695,10 +698,35 @@ onMounted(() => {
   loadInitialData()
 })
 
-const fetchUsers = async () => {
-  const res = await api.get('/admin/users')
+/**
+ * SEC-030 — รายการบุคลากรไม่มีเลขประจำตัวประชาชนฉบับเต็มอีกต่อไป
+ *
+ * ตารางแสดงเลขแบบปิดบัง (เห็น 4 หลักท้าย) ส่วนการค้นหาด้วยเลขเต็ม 13 หลัก
+ * ส่งไปให้ server เทียบด้วยค่าแฮช จึงยังค้นเจอได้โดยไม่ต้องส่งเลขของใครออกมา
+ */
+const fetchUsers = async (idCard = '') => {
+  const res = await api.get('/admin/users', idCard ? { params: { id_card: idCard } } : undefined)
   users.value = res.data
 }
+
+/** ข้อความค้นหาเป็นเลขบัตรประชาชนครบ 13 หลักหรือไม่ */
+const asFullIdCard = (value) => {
+  const digits = String(value || '').replace(/\D/g, '')
+  return digits.length === 13 ? digits : ''
+}
+
+const lastServerIdCardSearch = ref('')
+
+/* ค้นด้วยเลขเต็มเมื่อไร ให้ถามฝั่ง server เมื่อนั้น (ที่เหลือกรองในหน้าจอตามเดิม) */
+watch(() => filters.search, (value) => {
+  const fullIdCard = asFullIdCard(value)
+  if (fullIdCard) {
+    fetchUsers(fullIdCard)
+  } else if (lastServerIdCardSearch.value) {
+    fetchUsers()
+  }
+  lastServerIdCardSearch.value = fullIdCard
+})
 
 const fetchDepartments = async () => {
   const res = await api.get('/admin/departments')
@@ -731,9 +759,12 @@ const formatDate = (dateStr) => {
 
 const filteredUsers = computed(() => {
   return users.value.filter(u => {
+    // ค้นด้วยเลขเต็มถูกกรองมาจาก server แล้ว ที่นี่จึงเทียบชื่อและ 4 หลักท้ายพอ
+    const searchDigits = String(filters.search || '').replace(/\D/g, '')
     const searchMatch = !filters.search ||
+      asFullIdCard(filters.search) !== '' ||
       u.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-      (u.profile?.id_card_number && u.profile.id_card_number.includes(filters.search))
+      (searchDigits !== '' && u.profile?.id_card_last_four?.includes(searchDigits))
     
     const deptMatch = !filters.department_id || u.department_id === Number(filters.department_id)
     const statusMatch = !filters.status || (u.profile?.status || 'ปฏิบัติหน้าที่') === filters.status
@@ -765,11 +796,27 @@ const openAddModal = () => {
   modal.show = true
 }
 
-const openEditModal = (user) => {
+/**
+ * SEC-030 — โหลดทะเบียนประวัติฉบับเต็มก่อนเปิดฟอร์มแก้ไข
+ *
+ * รายการส่งเลขประจำตัวประชาชนมาแบบปิดบัง ถ้าเอาค่าจากแถวในตารางไปใส่ฟอร์มตรง ๆ
+ * แล้วกดบันทึก เลขที่ถูกปิดบังจะถูกเขียนทับข้อมูลจริง · เลขเต็มมาจาก endpoint
+ * รายละเอียดเท่านั้น ซึ่งตรวจสิทธิ์ ขอบเขต และบันทึกการเข้าถึงข้อมูลส่วนบุคคลให้แล้ว
+ */
+const openEditModal = async (row) => {
+  let user
+  try {
+    const res = await api.get(`/admin/users/${row.id}`)
+    user = res.data
+  } catch (e) {
+    alertStore.error(getErrorMessage(e, 'เปิดทะเบียนประวัติของบุคลากรรายนี้ไม่สำเร็จ'))
+    return
+  }
+
   modal.isEdit = true
   modal.userId = user.id
   activeTab.value = 'personal'
-  
+
   form.name = user.name
   form.email = user.email
   form.phone = user.phone || ''

@@ -58,6 +58,11 @@ export function getErrorMessage(error, defaultMessage = 'เกิดข้อ�
       break;
   }
 
+  // 5xx อื่น ๆ ที่ไม่ได้ระบุไว้ข้างบน — ต้องไม่หลุดเป็นข้อความดิบจาก server
+  if (typeof status === 'number' && status >= 500) {
+    return 'เกิดข้อผิดพลาดภายในระบบ กรุณาลองใหม่อีกครั้ง หรือติดต่อผู้ดูแลระบบ';
+  }
+
   if (typeof error === 'string') {
     return sanitizeErrorMessage(error);
   }

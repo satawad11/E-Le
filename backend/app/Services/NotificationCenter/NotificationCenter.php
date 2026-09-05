@@ -18,7 +18,15 @@ use InvalidArgumentException;
 
 class NotificationCenter
 {
-    public const CHANNELS = ['in_app', 'email', 'line_oa', 'telegram'];
+    /*
+     * INT-14 — เพิ่ม `web_push` (SoT §16)
+     *
+     * ยังไม่มี `mobile_push` ในรายการนี้โดยตั้งใจ · SoT ระบุว่า "MOBILE_PUSH_READY"
+     * คือ *พร้อมรองรับ* ไม่ใช่ *ต้องมี* — สัญญา `NotificationChannelAdapter`
+     * รับช่องทางใหม่ได้โดยไม่ต้องแก้ศูนย์แจ้งเตือน การใส่ชื่อช่องทางที่ยังไม่มี
+     * adapter จะสร้างแถวสถานะ `skipped` ให้ผู้รับทุกคนทุกครั้งโดยไม่มีประโยชน์
+     */
+    public const CHANNELS = ['in_app', 'email', 'line_oa', 'telegram', 'web_push'];
 
     public function __construct(
         private NotificationPayloadSanitizer $sanitizer,

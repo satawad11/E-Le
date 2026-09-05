@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\LeaveType;
+use App\Rules\Base64Image;
 use App\Support\UploadRules;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -36,7 +37,8 @@ class StoreLeaveRequest extends FormRequest
             'substitute_id' => 'nullable|exists:users,id',
             'substitute_reason' => 'nullable|string|max:1000',
             'meta_data' => 'nullable|json',
-            'signature_base64' => 'nullable|string',
+            // SEC-028 — ตรวจจากเนื้อไฟล์จริงและจำกัดขนาดผ่าน allowlist กลาง
+            'signature_base64' => ['nullable', 'string', new Base64Image('signatures')],
             // ช่องกรอกเฉพาะแบบฟอร์มของประเภทการลานั้น (ผู้ดูแลกำหนดเองได้)
             'extra_fields' => 'nullable|array',
             'extra_fields.*' => 'nullable|string|max:500',

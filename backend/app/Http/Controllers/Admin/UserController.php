@@ -10,8 +10,13 @@ use App\Models\LeaveType;
 use App\Models\PersonnelType;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Files\ImageUploadService;
 use App\Services\LeavePolicyService;
+use App\Services\OrgScopeResolver;
+use App\Services\PermissionEvaluator;
 use App\Services\PersonalDataAccessLogger;
+use App\Services\SystemRoleGuard;
+use App\Support\UploadRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -21,15 +26,86 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    /**
+     * ทะเบียนบุคลากรทั้งหมด
+     *
+     * SEC-030 — endpoint แบบรายการไม่ส่งเลขประจำตัวประชาชนและเลขหนังสือเดินทาง
+     * ฉบับเต็มออกไปอีกต่อไป
+     *
+     * เดิมหน้าจัดการผู้ใช้ดึงเลขบัตรประชาชนเต็มของบุคลากร "ทุกคน" มาพร้อมกัน
+     * ในคำขอเดียว แล้วแสดงเป็นคอลัมน์ในตาราง · ใครก็ตามที่เปิดหน้านี้ได้
+     * (หรือดักอ่าน response ได้) จึงได้ฐานเลขบัตรประชาชนทั้งสถานศึกษาไปในคราวเดียว
+     *
+     * รายการส่งเฉพาะเลขแบบปิดบัง (4 หลักท้าย) ซึ่งพอสำหรับการยืนยันตัวบุคคลบนตาราง
+     * ส่วนเลขเต็มเปิดได้ที่ `show()` ทีละคน ซึ่งตรวจสิทธิ์ ขอบเขต และบันทึกการเข้าถึง
+     *
+     * การค้นหาด้วยเลขเต็มยังทำได้ผ่านพารามิเตอร์ `id_card` ซึ่งเทียบด้วยค่าแฮช
+     * จึงไม่ต้องส่งเลขของใครออกไปเลย
+     */
     public function index(Request $request)
     {
-        $users = User::with(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType'])->orderBy('name', 'asc')->get();
+        $query = User::with(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType'])
+            ->orderBy('name', 'asc');
+
+        $idCard = preg_replace('/\D/', '', (string) $request->query('id_card', ''));
+
+        if ($idCard !== '') {
+            $hash = hash('sha256', $idCard.config('app.key'));
+            $query->whereHas('profile', fn ($profile) => $profile->where('id_card_number_hash', $hash));
+        }
+
+        $users = $query->get();
 
         // คืนทะเบียนประวัติของบุคลากรทุกคน จึงถือเป็นการเข้าถึงข้อมูลส่วนบุคคลแบบรวม
         app(PersonalDataAccessLogger::class)
             ->recordBulk($request, 'user_directory', $users->count(), 'เปิดหน้าจัดการผู้ใช้งาน (ทะเบียนประวัติบุคลากรทั้งหมด)');
 
-        return response()->json($users);
+        return response()->json($users->map(fn (User $user) => $this->withMaskedIdentifiers($user)));
+    }
+
+    /**
+     * SEC-030 — เลขประจำตัวประชาชนที่ถูกส่งเข้ามาต้องเป็นเลขจริงเท่านั้น
+     *
+     * รายการส่งเลขออกไปแบบปิดบัง ถ้า client ส่งค่าที่ปิดบังนั้นกลับเข้ามาโดยไม่ตั้งใจ
+     * (เช่นเอาค่าจากตารางไปใส่ฟอร์มแล้วกดบันทึก) ข้อมูลจริงจะถูกเขียนทับด้วย `x`
+     * และกู้คืนไม่ได้ เพราะคอลัมน์นี้เข้ารหัสไว้และไม่มีสำเนาอื่น
+     *
+     * @param  array<string, mixed>  $profileData
+     */
+    private function assertIdCardIsNotMasked(array $profileData): void
+    {
+        $idCard = $profileData['id_card_number'] ?? null;
+
+        if ($idCard === null || $idCard === '') {
+            return;
+        }
+
+        if (preg_match('/^\d{13}$/', preg_replace('/\D/', '', (string) $idCard) ?? '') !== 1
+            || str_contains((string) $idCard, 'x')) {
+            throw ValidationException::withMessages([
+                'profile.id_card_number' => ['เลขประจำตัวประชาชนต้องเป็นตัวเลข 13 หลัก กรุณาเปิดทะเบียนประวัติของบุคลากรรายนี้แล้วกรอกใหม่'],
+            ]);
+        }
+    }
+
+    /**
+     * ปิดบังตัวระบุที่อ่อนไหวก่อนส่งออกจาก endpoint แบบรายการ
+     *
+     * แทนที่ค่าในผลลัพธ์ที่ serialize แล้ว ไม่ได้แก้ระเบียนในฐานข้อมูล
+     *
+     * @return array<string, mixed>
+     */
+    private function withMaskedIdentifiers(User $user): array
+    {
+        $payload = $user->toArray();
+
+        if (isset($payload['profile']) && is_array($payload['profile'])) {
+            $payload['profile']['id_card_number'] = $user->profile?->maskedIdCard();
+            $payload['profile']['id_card_last_four'] = $user->profile?->idCardLastFour();
+            unset($payload['profile']['id_card_number_hash'], $payload['profile']['passport_number']);
+        }
+
+        return $payload;
     }
 
     public function list(Request $request)
@@ -50,10 +126,13 @@ class UserController extends Controller
             'telegram_chat_id' => 'nullable|string|max:255',
             'personnel_type_id' => 'nullable|exists:personnel_types,id',
             'profile' => 'nullable|array',
+            // SEC-028 — เดิมช่องนี้ไม่มีกฎ validate ใด ๆ เลย อัปโหลดไฟล์ชนิดใดขนาดใดก็ได้
+            'profile_photo' => array_merge(['nullable'], UploadRules::profilePhoto()),
             'custom_permissions' => 'nullable',
         ]);
 
         $profileData = $request->has('profile') ? (is_string($request->profile) ? json_decode($request->profile, true) : $request->profile) : [];
+        $this->assertIdCardIsNotMasked((array) $profileData);
         $idCard = $profileData['id_card_number'] ?? null;
 
         $password = $request->password;
@@ -91,8 +170,8 @@ class UserController extends Controller
             }
 
             if ($request->hasFile('profile_photo')) {
-                $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
-                $profileData['profile_photo_path'] = '/storage/'.$path;
+                $path = app(ImageUploadService::class)->storeUploadedFile($request->file('profile_photo'), 'profile_photos', 'profile_photos', 'profile_photo');
+                $profileData['profile_photo_path'] = $path;
             }
             $user->profile()->create($profileData);
 
@@ -225,8 +304,29 @@ class UserController extends Controller
 
     public function show(Request $request, User $user)
     {
+        /*
+         * SEC-030 — หน้ารายละเอียดเปิดเลขประจำตัวประชาชนฉบับเต็ม จึงต้องตรวจขอบเขต
+         * หน่วยงานด้วย ไม่ใช่แค่ว่ามีสิทธิ์เปิดหน้านี้หรือไม่
+         *
+         * ผู้ดูแลที่ถูกจำกัดขอบเขตไว้ที่หน่วยงานของตน (`permission_scopes`) ต้องเปิด
+         * ทะเบียนประวัติของหน่วยงานอื่นไม่ได้ · ถ้าไม่ได้กำหนดขอบเขตไว้ = ไม่จำกัด
+         * ตามพฤติกรรมเดิม
+         */
+        $viewer = $request->user();
+        $ability = app(PermissionEvaluator::class)->allows($viewer, 'system.user.manage')
+            ? 'system.user.manage'
+            : 'system.user.view';
+
+        abort_unless(
+            $viewer->is($user) || app(OrgScopeResolver::class)->canSeeOrgUnit(
+                $viewer, $ability, $user->org_unit_id, OrgScopeResolver::ORGANIZATION
+            ),
+            403,
+            'ไม่มีสิทธิ์เปิดทะเบียนประวัติของบุคลากรนอกขอบเขตที่รับผิดชอบ',
+        );
+
         app(PersonalDataAccessLogger::class)
-            ->record($request, $user->id, 'user_profile', 'เปิดดูทะเบียนประวัติบุคลากร');
+            ->record($request, $user->id, 'user_profile', 'เปิดดูทะเบียนประวัติบุคลากร (รวมเลขประจำตัวประชาชนฉบับเต็ม)');
 
         return response()->json($user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']));
     }
@@ -244,8 +344,20 @@ class UserController extends Controller
             'department_id' => 'required|exists:departments,id',
             'telegram_chat_id' => 'nullable|string|max:255',
             'profile' => 'nullable|array',
+            // SEC-028 — เดิมช่องนี้ไม่มีกฎ validate ใด ๆ เลย อัปโหลดไฟล์ชนิดใดขนาดใดก็ได้
+            'profile_photo' => array_merge(['nullable'], UploadRules::profilePhoto()),
             'custom_permissions' => 'nullable',
         ]);
+
+        /*
+         * SEC-026 — กัน self-lockout และการถอดผู้ดูแลระบบสูงสุดคนสุดท้าย
+         *
+         * ตรวจก่อนแตะข้อมูลใด ๆ เพื่อไม่ให้เกิดสภาพแก้ไปแล้วครึ่งทาง
+         */
+        $guard = app(SystemRoleGuard::class);
+        if ($guard->roleChangeWouldRemoveLastSuperAdmin($user, (int) $request->role_id)) {
+            return response()->json(['message' => $guard->blockedMessage()], 422);
+        }
 
         $user->name = $request->name;
         $user->email = $request->email;
@@ -274,19 +386,20 @@ class UserController extends Controller
 
         if ($request->has('profile')) {
             $profileData = is_string($request->profile) ? json_decode($request->profile, true) : $request->profile;
+            $this->assertIdCardIsNotMasked((array) $profileData);
             if ($request->hasFile('profile_photo')) {
-                $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
-                $profileData['profile_photo_path'] = '/storage/'.$path;
+                $path = app(ImageUploadService::class)->storeUploadedFile($request->file('profile_photo'), 'profile_photos', 'profile_photos', 'profile_photo');
+                $profileData['profile_photo_path'] = $path;
             }
             $user->profile()->updateOrCreate(
                 ['user_id' => $user->id],
                 $profileData
             );
         } elseif ($request->hasFile('profile_photo')) {
-            $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
+            $path = app(ImageUploadService::class)->storeUploadedFile($request->file('profile_photo'), 'profile_photos', 'profile_photos', 'profile_photo');
             $user->profile()->updateOrCreate(
                 ['user_id' => $user->id],
-                ['profile_photo_path' => '/storage/'.$path]
+                ['profile_photo_path' => $path]
             );
         }
 
@@ -328,6 +441,12 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        // SEC-026 — ลบผู้ดูแลระบบสูงสุดคนสุดท้ายไม่ได้ ระบบจะไม่เหลือใครแก้กลับ
+        $guard = app(SystemRoleGuard::class);
+        if ($guard->isLastActiveSuperAdmin($user)) {
+            return response()->json(['message' => $guard->blockedMessage()], 422);
+        }
+
         $user->delete();
 
         return response()->json(['message' => 'ลบผู้ใช้เรียบร้อยแล้ว']);
@@ -335,6 +454,12 @@ class UserController extends Controller
 
     public function toggleStatus(User $user)
     {
+        // SEC-026 — ระงับการใช้งานผู้ดูแลระบบสูงสุดคนสุดท้ายไม่ได้ด้วยเหตุผลเดียวกัน
+        $guard = app(SystemRoleGuard::class);
+        if ($user->is_active && $guard->isLastActiveSuperAdmin($user)) {
+            return response()->json(['message' => $guard->blockedMessage()], 422);
+        }
+
         $user->is_active = ! $user->is_active;
         $user->save();
 

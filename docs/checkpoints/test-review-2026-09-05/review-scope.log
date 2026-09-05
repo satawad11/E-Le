@@ -1,0 +1,45 @@
+
+  [31;1m⨯[39;22m[31;1m⨯[39;22m
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\ReviewScopeTest[22m [90m>[39m cannot close a case owned by anot…   
+[39;1m  Out-of-scope case was closed; HTTP 200
+Failed asserting that two strings are identical.
+  [39;22m[31m-'open'[39m[39;1m
+  [39;22m[32m+'closed'[39m[39;1m
+  [39;22m
+
+  at [32mtests/Feature/ReviewScopeTest.php[39m:[32m49[39m
+     45▕     public function test_cannot_close_a_case_owned_by_another_unit(): void
+     46▕     {
+     47▕         $case = DocumentCase::create(['code' => 'REVIEW-CASE', 'title' => 'เรื่องของหน่วยอื่น', 'owner_org_unit_id' => $this->foreignUnit->id, 'created_by' => $this->owner->id]);
+     48▕         $response = $this->postJson('/api/saraban/cases/'.$case->id.'/close');
+  ➜  49▕         $this->assertSame('open', $case->fresh()->status, 'Out-of-scope case was closed; HTTP '.$response->status());
+     50▕         $response->assertForbidden();
+     51▕     }
+     52▕ 
+     53▕     public function test_cannot_dispose_a_document_that_the_actor_cannot_view(): void
+
+  [33m1   [39m[39;1mtests/Feature/ReviewScopeTest.php[39;22m:[39;1m49[39;22m
+
+  [31m────────────────────────────────────────────────────────────────────────────[39m  
+  [41;1m FAILED [49;22m [1mTests\Feature\ReviewScopeTest[22m [90m>[39m cannot dispose a document that th…   
+[39;1m  Out-of-scope file was deleted; HTTP 200
+Failed asserting that false is true.[39;22m
+
+  at [32mtests/Feature/ReviewScopeTest.php[39m:[32m62[39m
+     58▕         Storage::disk('private_uploads')->put('review/foreign.pdf', 'review-only fixture');
+     59▕         DocumentVersion::create(['document_id' => $document->id, 'version_no' => 1, 'stage' => 'original', 'pdf_file_path' => 'review/foreign.pdf', 'file_hash' => hash('sha512', 'review-only fixture'), 'created_by' => $this->owner->id]);
+     60▕         $schedule = RetentionSchedule::create(['document_id' => $document->id, 'retain_years' => 1, 'retain_until' => '2020-01-01', 'status' => 'approved', 'approved_by' => $this->owner->id, 'approved_at' => now()]);
+     61▕         $response = $this->postJson('/api/saraban/retention/'.$schedule->id.'/dispose');
+  ➜  62▕         $this->assertTrue(Storage::disk('private_uploads')->exists('review/foreign.pdf'), 'Out-of-scope file was deleted; HTTP '.$response->status());
+     63▕         $response->assertForbidden();
+     64▕     }
+     65▕ }
+     66▕
+
+  [33m1   [39m[39;1mtests/Feature/ReviewScopeTest.php[39;22m:[39;1m62[39;22m
+
+
+  [90mTests:[39m    [31;1m2 failed[39;22m[90m (3 assertions)[39m
+  [90mDuration:[39m [39m2.15s[39m
+

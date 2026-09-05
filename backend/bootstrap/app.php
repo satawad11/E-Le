@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Middleware\AttachRequestContext;
+use App\Http\Middleware\EnforceReadOnlyMode;
 use App\Http\Middleware\EnsureAnyAbility;
+use App\Http\Middleware\EnsureIdempotentRequest;
 use App\Http\Middleware\EnsureModuleEnabled;
+use App\Http\Middleware\RequireRecentAuthentication;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -26,6 +29,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->api(append: [
             EnsureModuleEnabled::class,
+            /*
+             * INT-21 — โหมดอ่านอย่างเดียว (SoT §27)
+             *
+             * วางไว้ในชั้น api ทั้งชุด เพราะจุดประสงค์คือหยุดการเขียน **ทุกทาง**
+             * ไม่ใช่เฉพาะของสารบรรณ · การผูกทีละ route จะมีคนลืมเสมอ
+             */
+            EnforceReadOnlyMode::class,
             AttachRequestContext::class,
             SecurityHeaders::class,
         ]);
@@ -38,6 +48,16 @@ return Application::configure(basePath: dirname(__DIR__))
              * จึงรู้จักทั้งชื่อที่เทียบเท่ากันและ explicit deny ต่างจาก `permission:`
              */
             'ability' => EnsureAnyAbility::class,
+            /*
+             * SEC-GAP-01 (INT-11) — ด่านยืนยันตัวตนซ้ำก่อนทำสิ่งที่อ่อนไหว (SoT §24)
+             * เป็นความสามารถของระบบกลาง ทุกโมดูลใช้ได้ ไม่ใช่ของสารบรรณโดยเฉพาะ
+             */
+            'step_up' => RequireRecentAuthentication::class,
+            /*
+             * SEC-GAP-04 (INT-15) — กันการทำซ้ำจากคำขอเดิม (SoT §17)
+             * เป็นความสามารถของระบบกลาง ทุกโมดูลผูกเข้ากับ route ของตนได้
+             */
+            'idempotent' => EnsureIdempotentRequest::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

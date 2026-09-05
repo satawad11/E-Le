@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Services\PermissionEvaluator;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreLeaveAsAdminRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->can('leave.management.manage');
+        return app(PermissionEvaluator::class)->allows($this->user(), 'leave.management.manage');
     }
 
     public function rules(): array

@@ -1,5 +1,38 @@
 # TASKS
 
+## LEAVE MODULE AUDIT — 2026-09-05
+
+- [x] ตรวจโมดูลลาและเพิ่ม regression tests ยืนยัน 4 ปัญหา — `docs/checkpoints/LEAVE-MODULE-AUDIT-2026-09-05.md`
+- [x] LEAVE-AUDIT-01 (P1): ปิดอ่านร่างผู้อื่นทั้ง API รายฉบับ/PDF/Word/evidence รวม Super Admin
+- [x] LEAVE-AUDIT-02 (P1): ปิดแก้ทับใบที่ยื่นแล้ว; ร่างของตนใช้การคำนวณใหม่และ lock
+- [x] LEAVE-AUDIT-03 (P1): บันทึกแทนตัดยอด/seal/sync attendance/audit ใน transaction และตรวจ scope/deny
+- [x] LEAVE-AUDIT-04 (P1): ปฏิเสธใบลาข้ามรอบปีที่ด่านนโยบายร่วมทุกทางเข้า
+- [x] ผลการแก้: LeaveModuleAuditTest 11 passed / 41 assertions ไม่ข้าม regression เดิม — `docs/checkpoints/LEAVE-MODULE-FIX-2026-09-05.md`
+- [x] รันชุดเต็มหลังแก้พร้อมไฟล์ repository ครบ: 1,067 passed / 2 failed / 0 skipped; Pint 662 files และ frontend lint/typecheck/81 tests/build ผ่าน
+- [ ] Quality gate รวมยังติด ApiSurfaceContractTest (API นอกโมดูลลายังไม่มี UI call) และ RuntimeSecurityConfigurationTest (minishlink/web-push ยังเป็น ^11.0) ไม่ผ่อน/ข้าม tests
+- [x] รันครบ: backend 1,042 passed / 4 failed / 8 skipped (3,842 assertions); 4 failed เป็น regression ใหม่ตรงข้อค้นพบ; Pint 660 files และ frontend lint/typecheck/81 tests/build ผ่าน ยังไม่แก้ application code
+
+## SARABAN VISIBILITY AUDIT — 2026-09-05
+
+- [x] ตรวจ registry/menu/routes/permission/ABAC/flags/guards/UI/API และ role ปัจจุบันครบ 10 ประเด็น — `docs/checkpoints/SARABAN-VISIBILITY-AUDIT-2026-09-05.md`
+- [x] ยืนยัน runtime: Super Admin ผ่าน SARABAN 32/32; module enabled; DB มีเมนูลูก 6/13; ขาด 7 เมนูที่มี UI แล้ว
+- [x] รอบตรวจนี้ backend 1,039 passed / 8 skipped / 3,825 assertions; Pint 657 files; frontend lint/typecheck/81 tests/build ผ่าน (ผลใหม่ ไม่แก้ผลประวัติ TEST-REVIEW)
+- [ ] SARABAN-VIS-01: sync เมนูที่ขาดแบบจำกัดขอบเขตและเพิ่มตรวจ installed-DB drift
+- [ ] SARABAN-VIS-02: ทำ parent menu / options / policy read / authority / exception permission mapping ให้ตรง API
+- [ ] SARABAN-VIS-03: ผูก UI สำหรับ finalize, endorse, tracking, comparison, redaction, retention และ saved views ตามรายงาน
+- [ ] SARABAN-VIS-04: ทบทวน case read scope, confidentiality และ explicit deny; ตรวจ role + scope ตามหน้าที่ก่อนมอบสิทธิ์
+- [ ] SARABAN-VIS-05: เติม Module Registry metadata ให้ตรง implementation
+
+## TEST-REVIEW — 2026-09-05
+
+- [x] รัน backend suite, Pint, frontend lint/typecheck/tests/build และรีวิว working tree — `docs/checkpoints/TEST-REVIEW-2026-09-05.md`
+- [x] เพิ่ม regression tests ยืนยัน IDOR การปิดสารบบและทำลายเอกสารข้ามหน่วยงาน (2 failed; ยังไม่แก้ application code)
+- [ ] REVIEW-20260905-01 (P1): ตรวจ resource scope ก่อนอนุมัติ/ทำลายเอกสารและแสดงคิวครบกำหนด
+- [ ] REVIEW-20260905-02 (P1): เพิ่ม case policy/scope สำหรับการอ่านและแก้สารบบเรื่อง
+- [ ] REVIEW-20260905-03 (P1): ป้องกัน race ระหว่าง legal hold กับ disposal ด้วยล็อกร่วมและ concurrency test
+- [ ] REVIEW-20260905-04 (P1): bind MalwareScanner กับ ClamAvScanner ที่ Core และพิสูจน์การ resolve จริง
+- [ ] Quality gates รอบสุดท้ายยังไม่ผ่าน: backend 119 failed / 914 passed / 8 skipped; Pint 1 style issue ใน OperationalPermissionSeeder
+
 ## LEGACY-ASSESSMENT — CURRENT (รอบที่ 1 เสร็จ 2026-08-12 · รออนุมัติ)
 
 - [x] อ่าน START-HERE / AGENTS / CLAUDE / PROJECT_RULES
@@ -603,3 +636,37 @@
 #### เจอระหว่างทำ — ต้องแก้ก่อนขึ้น production
 - [x] **DEPLOY-007 stack ที่ขึ้นจากศูนย์ backend วนรีสตาร์ตตลอดไป** — compose ส่ง `DB_APP_USERNAME`/`DB_APP_PASSWORD` ให้ backend แต่ไม่มีอะไรสร้างบัญชีนั้นใน MySQL เลย มีแต่ root · ที่ผ่านมาใช้ได้เพราะมีคนสร้างด้วยมือไว้ครั้งหนึ่ง · เพิ่ม `MYSQL_USER`/`MYSQL_PASSWORD` ใน service `db`
 - [x] เทสต์ `LeaveBalanceLifecycleTest` แดงเองเมื่อวันที่เปลี่ยน (นับวันตามปฏิทิน) — ตรึงวันเป็นวันจันทร์เสมอ
+
+### ตรวจความปลอดภัยและแก้ไข (2026-09-02)
+
+คำสั่งเจ้าของระบบ: แก้ช่องโหว่และข้อผิดพลาดที่พบจากการ audit โดยไม่ลดมาตรฐานความปลอดภัย
+และไม่ deploy ขึ้น Production
+
+#### ระยะที่ 1 — ประเด็นเร่งด่วน (P1)
+- [x] **SEC-024 การเปลี่ยนรหัสผ่าน** — เดิมช่อง `password` ปนอยู่ในคำขออัปเดตโปรไฟล์ทั่วไป ไม่ต้องรู้รหัสเดิม ไม่มีช่องยืนยัน · แยกเป็น `POST /profile/password` บังคับ `current_password` + `confirmed` + ความยาว 12 · เพิกถอนโทเคนอื่นตามนโยบายเดิมแล้วออกใบใหม่ให้อุปกรณ์ที่ยืนยันสำเร็จ · audit ไม่บันทึกรหัสผ่านหรือ hash · เทสต์ 10 ข้อ
+- [x] **SEC-025 ถูกเตะออกจากระบบเมื่อเจอ 429/5xx** — ต้นเหตุอยู่ที่ `authStore.fetchUser()` เรียก `logout()` ใน `catch` ที่ครอบทุกความล้มเหลว ไม่ใช่ที่ rate limit · ล้างเซสชันเฉพาะ 401 · 429 ลองใหม่แบบ backoff เฉพาะคำขออ่าน (สูงสุด 2 ครั้ง เคารพ `Retry-After`) · รวมคำขอซ้ำของ `/user` `/user/menus` `/settings` `/notifications` · **ไม่ได้ผ่อนเพดาน rate limit ใด ๆ** · เทสต์ frontend 21 ข้อ
+- [x] **SEC-026 การป้องกันบทบาทระบบ** — ด่านเดิมเทียบชื่อ `SuperAdmin` แต่บทบาทจริงชื่อ `Super Admin` จึงไม่เคยทำงานเลย · เพิ่ม `roles.system_key` + `is_system` (migration additive, ADR-ROLE-01) · กัน self-lockout และการลบ/ระงับผู้ดูแลคนสุดท้าย · เทสต์ 8 ข้อ
+- [x] **SEC-027 race condition ในการยกเลิกใบลา** — ครอบทั้งการคืนโควตา ล้างตารางลงเวลา เปลี่ยนสถานะ และเขียน log/audit ไว้ใน transaction เดียวพร้อม `lockForUpdate()` และตรวจสถานะซ้ำหลังได้ล็อก · กดซ้ำ idempotent · ตัด `system.user.view` ออกจากสิทธิ์ยกเลิกใบลาผู้อื่น · **ทดสอบพร้อมกันจริงบน MySQL 5 คำขอขนาน → คืนโควตาครั้งเดียว**
+
+#### ระยะที่ 2 — ความปลอดภัยที่ไม่เปลี่ยน public contract
+- [x] **SEC-028 upload และลายเซ็น** — `profile_photo` เดิมไม่มีกฎ validate เลยแม้แต่ข้อเดียว · `signature_base64` ทุกจุดเชื่อชนิดไฟล์จากส่วนหัว data URI ที่ client เขียนเอง ไม่จำกัดขนาด decode ไม่ strict และตั้งชื่อไฟล์จาก `uniqid()` · รวมเป็นด่านกลาง `ImageUploadService` + `Base64Image` + allowlist ที่ `config/uploads.php` · เทสต์ 10 ข้อ
+- [x] **SEC-029 file authorization** — `SecureFileAccessService` ใช้ `PermissionEvaluator` + `OrgScopeResolver` แทน `hasAnyPermission()` · รองรับ canonical/alias/explicit deny/organization scope/owner · เทสต์ 8 ข้อ
+- [x] **SEC-030 ข้อมูลส่วนบุคคล** — รายการผู้ใช้ปิดบังเลขบัตรประชาชนเหลือ 4 หลักท้าย ตัดแฮชและเลขหนังสือเดินทางออก · เปิด `GET /admin/users/{user}` ที่มีอยู่แต่ไม่เคยมี route พร้อม scope check และ personal-data audit · ค้นด้วยเลขเต็ม 13 หลักผ่านแฮชจึงไม่กระทบ workflow เดิม · กันค่าที่ปิดบังเขียนทับข้อมูลจริง · เทสต์ 7 ข้อ
+
+#### ระยะที่ 3 — UI ภาษาไทยและ Accessibility
+- [x] แปล `Real-time` · `Personnel & Org Structure` · `Close` (sr-only) · `404 Not Found` · `Field Dictionary` · `Document Engine` (คงตัวระบุอังกฤษในวงเล็บพร้อมคำอธิบายไทย) · ขนาดกระดาษ Letter/Legal
+- [x] เติม `aria-label` ภาษาไทย 65 จุดใน 9 หน้าจอหลัก
+- [x] ข้อความอังกฤษของเฟรมเวิร์กใน 429/5xx ถูกแทนด้วยข้อความไทยที่ชั้น HTTP client
+- [x] ตรวจ keyboard navigation (70 จุดโฟกัสได้ · skip link ภาษาไทย) และ responsive 390px / 768px / desktop — ไม่มี horizontal overflow
+
+#### Verification
+- [x] backend **728 ผ่าน** (8 skipped · เท่าเดิม) · 2,513 assertions · Pint สะอาด 492 ไฟล์
+- [x] frontend eslint / vue-tsc / vitest **59 ผ่าน** / vite build ผ่านทั้งหมด
+- [x] `composer audit` = 0 · `npm audit --omit=dev` = 0 · `migrate:status` ไม่มี Pending · ไม่มี failed queue job
+- [x] ตรวจจริงบนเบราว์เซอร์: เข้าสู่ระบบ · นำทางต่อเนื่อง 12 หน้าจนชน 429 แล้วยังอยู่ในระบบ · เปลี่ยนรหัสผ่านผิดได้ข้อความไทย · เลขบัตรประชาชนถูกปิดบังในตาราง · ค้นด้วยเลขเต็มยังเจอ · ฟอร์มแก้ไขโหลดเลขเต็มถูกต้อง
+
+#### ที่ยังไม่ทำ — ต้องขออนุมัติก่อน
+- [ ] **explicit deny ยังไม่มีผลทั้งระบบ** — `$user->can()` ข้าม deny เมื่อผู้ใช้ถือสิทธิ์นั้นอยู่ เพราะ `Gate::before` ของ Spatie ทำงานก่อนของเรา · แก้ได้ด้วยการปิด `permission.register_permission_check_method` ซึ่งเปลี่ยนพฤติกรรมการตรวจสิทธิ์ของทุก endpoint พร้อมกัน (ดู ADR-AUTHZ-02)
+- [ ] เปลี่ยน public API จาก numeric ID เป็น UUID — ต้องทำ impact analysis ก่อน
+- [ ] ย้าย bearer token จาก localStorage ไป HttpOnly cookie — ต้องทำ impact analysis ก่อน
+- [ ] เปิด Workflow Engine เป็น source of truth · เปิด Document Engine — **ไม่ได้แตะในรอบนี้**

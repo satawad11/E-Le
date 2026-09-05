@@ -3,6 +3,7 @@
 
 | Requirement | Spec | Implementation | Test | Status |
 |---|---|---|---|---|
+| SARABAN-VISIBILITY-AUDIT-20260905 | คำสั่งตรวจ SARABAN 10 ประเด็น; 06-RBAC-ABAC; 08-MODULE-STANDARDS; master §6–25 | Registry/MenuSeeder/MenuService/routes/guards/policies/UI; รายงาน SARABAN-VISIBILITY-AUDIT-2026-09-05 | Runtime DB/config/routes + browser 2 missing-menu pages; backend 1,039 passed/8 skipped; frontend 81 passed; lint/typecheck/build ผ่าน | Audit complete; พบ DB menus 6/13 และ UI/API/ABAC gaps; ยังไม่แก้ application |
 | REQ-CORE-001 | 08-MODULE-STANDARDS, CORE specs | TBD | TBD | Planned |
 | REQ-PER-001 | CORE-02-PERSONNEL | TBD | TBD | Planned |
 | REQ-LEAVE-002 | LEAVE-01-OVERVIEW | TBD | TBD | Planned |
@@ -177,3 +178,44 @@
 | LEAVE-AUDIT-05 | ยกเลิกลาบางช่วงคืนวันลาพอดี ไม่ขาดไม่เกิน | `LeaveAdjustmentController` (กันซ้อนทับ · นับวันตามตารางเจ้าตัว · paid/unpaid) | `LeavePartialCancellationTest` (6 เคส) | Verified |
 | LEAVE-DRAFT-01 | ใบลาที่เข้าสู่กระบวนการแล้วลบไม่ได้ และการลบทุกครั้งมีร่องรอย | `LeaveRequestController::destroy()`, `LeaveAuditService`, `MyLeavesView.vue` (ถอดปุ่มลบของผู้ดูแล) | `LeaveDraftAndDeletionTest` (ผู้ดูแลลบใบที่ยื่น/อนุมัติแล้วไม่ได้ · การลบร่างเขียน audit · คนอื่นลบร่างเราไม่ได้) · ตรวจกับ API จริง 422 | Verified |
 | LEAVE-DRAFT-02 | ร่างใบลาไม่แตะสิ่งที่เป็นของทางราชการ และเลขที่หนังสือไม่ขาดช่วง | `LeaveService::createLeaveRequest($asDraft)`, `submitDraft()`, `POST /leaves/{leave}/submit`, `LeaveRequestView.vue`, `MyLeavesView.vue` | `LeaveDraftAndDeletionTest` (ไม่ออกเลข/ไม่กันโควตา/ไม่ผนึกสายอนุมัติ · ลบร่างแล้วเลขไม่ขาด · ร่างเป็นส่วนตัว · ร่างไม่กันช่วงเวลา) | Verified |
+| SEC-024 | เปลี่ยนรหัสผ่านต้องยืนยันรหัสเดิม มีช่องยืนยันรหัสใหม่ และไม่บังคับให้การแก้โปรไฟล์ทั่วไปส่งรหัสผ่าน | `ChangePasswordRequest`, `ProfileController::changePassword()`, `POST /api/profile/password`, limiter `password-change`, `UserProfileView.vue` (การ์ดแยก) | `ProfilePasswordChangeTest` (10 เคส: รหัสเดิมถูก/ผิด · ยืนยันไม่ตรง · ไม่ส่งรหัสเดิม · สั้นเกิน · ซ้ำรหัสเดิม · โทเคนเก่าใช้ไม่ได้ · โทเคนใหม่ใช้ได้ · audit ไม่มีรหัสผ่าน · โปรไฟล์ทั่วไปไม่ต้องใช้รหัสผ่าน) · ตรวจจริงบนเบราว์เซอร์ (ข้อความ "รหัสผ่านปัจจุบันไม่ถูกต้อง") | Verified |
+| SEC-025 | ผู้ใช้ต้องไม่ถูกออกจากระบบเมื่อเจอ 429 / 5xx / network error | `frontend/src/stores/auth.js` (`fetchUser`, `refreshToken`), `frontend/src/axios.js` (401 เท่านั้น · backoff 429 · dedup), `menuStore`, `settingStore` | `tests/authStore.test.js` (10 เคส รวมนำทางต่อเนื่อง 30 ครั้งโดยเจอ 429 สลับ) · `tests/httpClient.test.js` (11 เคส) · ตรวจจริงบนเบราว์เซอร์: นำทางต่อเนื่อง 12 หน้าจนเจอ 429 แล้วยังอยู่ในระบบ | Verified |
+| SEC-026 | บทบาทระบบระบุด้วยคีย์ที่แก้ไม่ได้ และระบบต้องไม่เหลือศูนย์ผู้ดูแล | migration `2026_09_01_140000_add_system_identity_to_roles_table`, `App\Support\SystemRoles`, `App\Models\Role`, `App\Services\SystemRoleGuard`, `Api\RoleController`, `Admin\UserController` | `SystemRoleProtectionTest` (8 เคส: หาเจอด้วยคีย์ · alias ชื่อเดิม · เปลี่ยนชื่อ/ลบไม่ได้ · บทบาททั่วไปยังแก้ได้พร้อม audit · self-lockout · ลบ/ระงับผู้ดูแลคนสุดท้ายไม่ได้) · ตรวจ backfill บนฐานข้อมูลจริง | Verified |
+| SEC-027 | ยกเลิกใบลาที่รออนุมัติเป็น atomic คืนโควตาครั้งเดียว และมี audit | `LeaveCancellationController::cancelPending()` (transaction + `lockForUpdate()` + ตรวจสถานะซ้ำ), permission `leave.management.manage` / `leave.approval.hr` | `LeavePendingCancellationConcurrencyTest` (4 เคส: กดซ้ำคืนครั้งเดียว · log/audit ครั้งเดียว · rollback เมื่อขั้นกลางล้ม · ใบที่เปลี่ยนสถานะแล้วไม่ถูกยกเลิกเงียบ) · `LeaveCancellationAuthorizationTest` · **ทดสอบพร้อมกันจริงบน MySQL: 5 คำขอขนาน → โควตาคืนครั้งเดียว, action log 1, audit 1** | Verified |
+| SEC-028 | ทุกจุดที่รับภาพใช้ allowlist กลาง ตรวจจากเนื้อไฟล์จริง จำกัดขนาด ชื่อไฟล์สุ่ม เก็บ private | `config/uploads.php` (`signatures`/`profile_photos`/`attendance_photos`), `App\Support\UploadRules`, `App\Rules\Base64Image`, `App\Services\Files\ImageUploadService`, `ProfileController`, `Admin\UserController`, `LeaveRequestController`, `LeaveCancellationController`, `AttendanceController`, `StoreLeaveRequest` | `SignatureAndPhotoUploadSecurityTest` (10 เคส: MIME ปลอม · นามสกุลต้องห้าม · Base64 เสีย · เกินขนาด · polyglot · ไฟล์อัปโหลดชนิดต้องห้าม · รูปโปรไฟล์ไม่มี validate เดิม · ชื่อไฟล์ UUID บน private disk) · `UploadAllowlistTest` · `AttendanceImageSecurityTest` | Verified |
+| SEC-029 | การเข้าถึงไฟล์ใช้ authorization engine กลาง รองรับ canonical/alias/deny/scope/owner | `App\Services\SecureFileAccessService` (`PermissionEvaluator` + `OrgScopeResolver`) | `SecureFileAuthorizationTest` (8 เคส: เจ้าของ · ผู้ดูแลที่ได้รับอนุญาต · alias ชื่อเดิม · explicit deny · ต่าง scope · ใน scope · ไฟล์กำพร้า · ภาพลงเวลา) | Verified |
+| SEC-030 | เลขประจำตัวประชาชนถูกปิดบังในรายการ และเลขเต็มเปิดได้เฉพาะรายคนที่มีสิทธิ์+scope+audit | `UserProfile::maskedIdCard()`, `Admin\UserController::index()/show()`, `GET /api/admin/users/{user}` (limiter `personal-record`), `?id_card=` ค้นด้วยแฮช, `UsersManagementView.vue`, `UserProfileView.vue` | `PersonalIdentifierMaskingTest` (7 เคส: รายการไม่มีเลขเต็ม · ไม่รั่วแฮช/หนังสือเดินทาง · ค้นด้วยเลขเต็มยังเจอ · รายละเอียดคืนเลขเต็ม+เขียน audit · นอก scope 403 · ไม่มีสิทธิ์ 403 · ค่าปิดบังเขียนทับไม่ได้) · ตรวจจริงบนเบราว์เซอร์ | Verified |
+| UI-01 | ข้อความที่ผู้ใช้เห็นเป็นภาษาไทย 100% และตัวควบคุมมีป้ายกำกับ/ARIA ภาษาไทย | 9 หน้าจอหลัก + `AlertList.vue`, `NotFoundView.vue`, `axios.js` (แทนข้อความอังกฤษของเฟรมเวิร์กใน 429/5xx) | `tests/thaiUiAndAccessibility.test.js` (24 เคส) · ตรวจจริงบนเบราว์เซอร์: keyboard navigation 70 จุด · ไม่มี horizontal overflow ที่ 390px / 768px / desktop | Verified |
+
+## Test & Review — 2026-09-05
+
+| ID | ข้อกำหนด | จุดที่ตรวจ | หลักฐาน | สถานะ |
+|---|---|---|---|---|
+| REVIEW-20260905-01 | ทุก resource mutation ต้องตรวจ organization scope | RetentionController::approveDisposal/dispose และคิว due | ReviewScopeTest::test_cannot_dispose_a_document_that_the_actor_cannot_view — HTTP 200 และไฟล์ถูกลบ | FAIL — P1 |
+| REVIEW-20260905-02 | สารบบเรื่องต้องมี resource authorization และ scope | CaseController โดยเฉพาะ close/detach | ReviewScopeTest::test_cannot_close_a_case_owned_by_another_unit — HTTP 200 และสถานะ closed | FAIL — P1 |
+| REVIEW-20260905-03 | Legal hold ต้องขัดขวาง disposal ภายใต้ concurrency | RetentionService::placeHold/dispose | Static control-flow review; ยังไม่ได้ทดสอบ MySQL ขนาน | OPEN — P1 |
+| REVIEW-20260905-04 | ด่านตรวจไวรัสต้อง resolve implementation ได้จริง | FreeOfMalware::validate และ Core providers | application bootstrap: scanner_bound=no; backend รอบสุดท้ายพบ BindingResolutionException | FAIL — P1 |
+
+รายละเอียด: `docs/checkpoints/TEST-REVIEW-2026-09-05.md`
+
+## Leave Module Audit — 2026-09-05
+
+| ID | ข้อกำหนด | จุดที่ตรวจ | หลักฐาน | สถานะ |
+|---|---|---|---|---|
+| LEAVE-AUDIT-01 | ร่างเป็นส่วนตัวจนกว่าจะส่ง | LeavePolicy::view / LeaveRequestController::show | LeaveModuleAuditTest: อ่านร่างคนอื่นได้ 200 แทน 403 | FAIL — P1 |
+| LEAVE-AUDIT-02 | ใบอนุมัติรักษาประวัติและยอดลา | LeaveRequestController::update | LeaveModuleAuditTest: แก้วันใบอนุมัติได้ 200 แทน 422 | FAIL — P1 |
+| LEAVE-AUDIT-03 | Approved ต้องตัดยอดใช้จริง | LeaveRequestController::storeAsAdmin | LeaveModuleAuditTest: status Approved แต่ used=0 แทน 2 | FAIL — P1 |
+| LEAVE-AUDIT-04 | คิดโควตาตรงรอบปีงบประมาณ | LeavePolicyService::assertEligible/balance | LeaveModuleAuditTest: 30 ก.ย.–2 ต.ค. ผ่าน 201 แทน 422 | FAIL — P1 |
+
+รายละเอียดและข้อจำกัด: `docs/checkpoints/LEAVE-MODULE-AUDIT-2026-09-05.md`
+
+### ผลแก้ไข LEAVE-AUDIT — 2026-09-05
+
+| ID | Implementation | Verification | สถานะล่าสุด |
+|---|---|---|---|
+| LEAVE-AUDIT-01 | LeavePolicy + LeaveModuleServiceProvider + LeaveEvidenceController | เจ้าของอ่านได้; manager และ Super Admin เปิดร่าง/PDF/Word/evidence ของผู้อื่นไม่ได้ | FIXED |
+| LEAVE-AUDIT-02 | LeaveRequestController::update → LeaveService::updateDraft | ร่างคำนวณใหม่; Pending/Approved แก้ทับไม่ได้ | FIXED |
+| LEAVE-AUDIT-03 | completeApproval ร่วมกับ GovernmentApprovalController; admin transaction และ scope/deny | used/reserved, seal, attendance, audit, no pending workflow, rollback และ authorization ผ่าน | FIXED |
+| LEAVE-AUDIT-04 | LeavePolicyService::assertEligible ตรวจ periodYear ทั้งสองวัน | create/draft update/draft submit/admin create ข้าม fiscal year ถูกปฏิเสธ | FIXED |
+
+LeaveModuleAuditTest 11 passed / 41 assertions; ผล full suite และข้อจำกัดนอกโมดูลลา: `docs/checkpoints/LEAVE-MODULE-FIX-2026-09-05.md` ผล FAIL ด้านบนเก็บไว้เป็นหลักฐานรอบ audit ก่อนแก้

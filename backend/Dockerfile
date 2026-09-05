@@ -21,6 +21,15 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     default-mysql-client \
+    # INT-18 — ghostscript สำหรับ "ปกปิดข้อมูลจริง" (SoT §22)
+    #
+    # การวาดกล่องทึบทับข้อความ **ไม่ใช่การปกปิด** — ข้อความยังอยู่ใต้กล่องและ
+    # คัดลอกออกมาได้ด้วยการเลือกข้อความหรือเครื่องมืออ่าน PDF ทั่วไป
+    # ซึ่งเป็นความผิดพลาดที่หน่วยงานราชการทั่วโลกเคยทำจนข้อมูลลับหลุด
+    #
+    # สำเนาที่ปกปิดจึงต้องถูกแปลงเป็นภาพ (`pdfimage24`) เพื่อทำลายชั้นข้อความ
+    # ทั้งแผ่นอย่างถาวร · ไม่มีทางอื่นที่ทำได้ด้วย FPDI เพียงลำพัง
+    ghostscript \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 

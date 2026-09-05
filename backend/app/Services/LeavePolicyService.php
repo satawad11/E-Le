@@ -104,8 +104,10 @@ class LeavePolicyService
             throw ValidationException::withMessages(['leave_period' => 'การลาประเภทนี้ไม่อนุญาตให้ลาครึ่งวัน']);
         }if ($policy->attachment_required_after_days !== null && $days >= $policy->attachment_required_after_days && ! $hasEvidence) {
             throw ValidationException::withMessages(['attachment' => 'ต้องแนบหลักฐานประกอบการลาตามหลักเกณฑ์']);
-        }if ($start->year !== $end->year && $policy->period_basis === 'calendar_year') {
-            throw ValidationException::withMessages(['end_date' => 'กรุณาแยกใบลาที่ข้ามปีปฏิทิน']);
+        }if ($this->periodYear($policy, $start) !== $this->periodYear($policy, $end)) {
+            throw ValidationException::withMessages(['end_date' => $policy->period_basis === 'calendar_year'
+                ? 'กรุณาแยกใบลาที่ข้ามปีปฏิทิน'
+                : 'กรุณาแยกใบลาที่ข้ามปีงบประมาณ']);
         }
     }
 

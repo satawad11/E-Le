@@ -20,8 +20,9 @@ class ModuleRegistryTest extends TestCase
     public function test_current_modules_declare_the_complete_extension_contract(): void
     {
         $registry = app(ModuleRegistry::class);
+        // INT-02 — `saraban` แทรกที่ order 30 จึงอยู่ระหว่าง `overtime` (25) กับ `notification` (40)
         $this->assertSame(
-            ['system', 'leave', 'attendance', 'overtime', 'notification', 'reporting'],
+            ['system', 'leave', 'attendance', 'overtime', 'saraban', 'notification', 'reporting'],
             array_keys($registry->all()),
         );
 

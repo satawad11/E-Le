@@ -130,6 +130,60 @@ class OperationalPermissionSeeder extends Seeder
      */
     public const SUPER_ADMIN_ROLES = ['Super Admin', 'SuperAdmin'];
 
+    /**
+     * INT-22 (RISK-34) — สิทธิ์เปิดกล่องหนังสือเวียนถึงตนเอง
+     *
+     * **หนังสือราชการเวียนถึงข้าราชการทุกคน** ไม่ใช่เฉพาะงานสารบรรณ ·
+     * ถ้าต้องรอผู้ดูแลมามอบหมายให้ทีละบทบาทหลังติดตั้ง หนังสือที่เวียนไป
+     * ในสัปดาห์แรกจะไม่มีใครเปิดเจอ และไม่มีอะไรบอกว่าทำไม
+     *
+     * `saraban.inbox.view` เป็นสิทธิ์ **อ่านของตัวเองเท่านั้น** — ขอบเขตจริง
+     * คือการเป็นผู้รับ ซึ่ง `InboxController` บังคับกับทุก query · การให้สิทธิ์นี้
+     * กับทุกบทบาทจึงไม่เปิดเผยหนังสือของใครเพิ่มแม้แต่ฉบับเดียว
+     *
+     * **ต่างจาก `saraban.document.view`** ซึ่งเป็นสิทธิ์ค้นทะเบียนหนังสือของ
+     * หน่วยงาน และยังคงไม่ถูกแจกให้ใครโดยอัตโนมัติ
+     *
+     * @var array<int,string>
+     */
+    public const SARABAN_INBOX_ROLES = [
+        'Employee',
+        'HR Head',
+        'Deputy Director',
+        'Director',
+        'Document Officer',
+    ];
+
+    /**
+     * ผู้ได้รับอนุญาตเข้าถึงชั้นความลับตั้งต้น ตามลำดับบังคับบัญชาของสถานศึกษา
+     * (ระเบียบว่าด้วยการรักษาความลับของทางราชการ พ.ศ. 2544)
+     *
+     * **ระเบียบไม่ได้กำหนดว่าตำแหน่งใดได้รับอนุญาตชั้นใด** — เป็นอำนาจของ
+     * หัวหน้าหน่วยงานตามหมวด 2 · ค่าตั้งต้นนี้จึงยึดตามลำดับบังคับบัญชาซึ่ง
+     * เป็นแนวปฏิบัติทั่วไป และ **ผู้อำนวยการแก้ได้ทุกเมื่อ** จากหน้าจอจัดการสิทธิ์
+     *
+     * | บทบาท | ชั้นที่ได้รับอนุญาต | เหตุผล |
+     * |---|---|---|
+     * | ผู้อำนวยการ | ลับที่สุด | หัวหน้าสถานศึกษา · ผู้รับผิดชอบสูงสุดของหน่วยงาน |
+     * | รองผู้อำนวยการ | ลับมาก | ผู้ปฏิบัติราชการแทนในสายงานที่รับผิดชอบ |
+     * | หัวหน้าบุคลากร | ลับ | เรื่องบุคคล วินัย และการประเมิน เป็นชั้นลับตามปกติ |
+     * | เจ้าหน้าที่ธุรการ | ลับ | ต้องลงทะเบียนและเดินเรื่องหนังสือลับที่เข้ามาในระบบ |
+     * | ข้าราชการทั่วไป | — | เข้าถึงได้เฉพาะเรื่องที่ตนเกี่ยวข้อง ตามหลักความจำเป็นต้องรู้ |
+     *
+     * **ข้าราชการทั่วไปไม่ได้ถูกตัดออกจากหนังสือลับ** — ผู้ที่อยู่ในสายงานเดินเรื่อง
+     * เป็นผู้รับหนังสือ หรือเป็นเจ้าของเรื่อง เข้าถึงเรื่องนั้นได้เสมอโดยไม่ต้องมี
+     * สิทธิ์ชั้นความลับ (`workflow_participant_bypass` · `owner_and_recipient_bypass`)
+     * สิทธิ์ในตารางนี้ตอบคำถามคนละข้อ คือ "ค้นเจอหนังสือลับของหน่วยงานได้ไหม"
+     *
+     * @var array<string,string>
+     */
+    public const SARABAN_CLEARANCE = [
+        'Director' => 'saraban.top_secret.view',
+        'Deputy Director' => 'saraban.secret.view',
+        'HR Head' => 'saraban.confidential.view',
+        'Document Officer' => 'saraban.confidential.view',
+    ];
+
     public function run(): void
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
@@ -163,6 +217,41 @@ class OperationalPermissionSeeder extends Seeder
             foreach ($names as $name) {
                 $this->attach($this->permissionId($name, $guard, $permissionIds), $roleId);
             }
+        }
+
+        /*
+         * RISK-34 — แจกสิทธิ์เปิดกล่องหนังสือเวียนให้ทุกบทบาทที่คนถือได้
+         *
+         * แยกออกจาก `GRANTS` เพราะเป็นสิทธิ์ที่ **ทุกบทบาทได้เหมือนกันหมด**
+         * การเขียนซ้ำในทุกบล็อกของ GRANTS จะทำให้คนอ่านคิดว่ามีเหตุผล
+         * ต่างกันในแต่ละบทบาท ทั้งที่เหตุผลเดียวกันคือ "ทุกคนได้รับหนังสือเวียน"
+         */
+        foreach (self::SARABAN_INBOX_ROLES as $roleName) {
+            $roleId = DB::table('roles')->where('name', $roleName)->where('guard_name', $guard)->value('id');
+
+            if ($roleId === null) {
+                continue;
+            }
+
+            $this->attach($this->permissionId('saraban.inbox.view', $guard, $permissionIds), $roleId);
+        }
+
+        /*
+         * ผู้ได้รับอนุญาตเข้าถึงชั้นความลับ
+         * (ระเบียบว่าด้วยการรักษาความลับของทางราชการ พ.ศ. 2544)
+         *
+         * แจกทีละหนึ่งข้อ **ไม่ใช่แจกทุกชั้นที่ต่ำกว่าซ้ำ** เพราะผู้ได้รับอนุญาต
+         * ชั้นสูงกว่าเข้าถึงชั้นต่ำกว่าได้อยู่แล้วโดยตัวนโยบายเอง (ระเบียบฯ ข้อ 26)
+         * การแจกซ้ำจะทำให้การถอนสิทธิ์ในอนาคตทำได้ไม่หมดและตรวจสอบยาก
+         */
+        foreach (self::SARABAN_CLEARANCE as $roleName => $permission) {
+            $roleId = DB::table('roles')->where('name', $roleName)->where('guard_name', $guard)->value('id');
+
+            if ($roleId === null) {
+                continue;
+            }
+
+            $this->attach($this->permissionId($permission, $guard, $permissionIds), $roleId);
         }
 
         foreach (self::SUPER_ADMIN_ROLES as $roleName) {

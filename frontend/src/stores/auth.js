@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia';
-import api from '../axios';
+import api, { isAuthenticationExpired } from '../axios';
 import { useLeaveStore } from './leave';
 
 let fetchUserPromise = null;
+let refreshTokenPromise = null;
 
 // Helper to extract flat string array of permission names regardless of whether permissions is array of objects or strings
 const getPermissionNames = (state) => {
@@ -140,8 +141,16 @@ export const useAuthStore = defineStore('auth', {
         throw error;
       }
     },
+    /**
+     * โหลดข้อมูลผู้ใช้ปัจจุบัน
+     *
+     * SEC-025 — เดิม `catch` ตัวนี้เรียก `logout()` กับความล้มเหลวทุกชนิด
+     * ผู้ใช้จึงถูกเตะออกจากระบบเมื่อเจอ 429 (คำขอถี่) หรือ 5xx (ระบบขัดข้องชั่วคราว)
+     * ทั้งที่โทเคนยังใช้ได้ · ตอนนี้ล้างเซสชันเฉพาะเมื่อ server ตอบ 401 เท่านั้น
+     * กรณีอื่นคืน `null` และคงเซสชันไว้ให้หน้าถัดไปลองใหม่ได้
+     */
     async fetchUser({ force = false } = {}) {
-      if (!this.token) return;
+      if (!this.token) return null;
       if (this.tokenExpiresAt && this.tokenExpiresAt - Date.now() < 30 * 60 * 1000) {
         await this.refreshToken();
       }
@@ -153,8 +162,10 @@ export const useAuthStore = defineStore('auth', {
           const response = await api.get('/user');
           this.user = response.data;
           return this.user;
-        } catch {
-          this.logout();
+        } catch (error) {
+          if (isAuthenticationExpired(error)) {
+            this.logout();
+          }
           return null;
         } finally {
           fetchUserPromise = null;
@@ -181,10 +192,38 @@ export const useAuthStore = defineStore('auth', {
         api.post('/logout').catch(() => {});
       }
     },
+    /**
+     * ต่ออายุโทเคน
+     *
+     * SEC-025 — รวมคำขอที่วิ่งพร้อมกันให้เหลือใบเดียว (การสลับหน้าเร็ว ๆ เคยยิงซ้ำ
+     * จนชนเพดาน `token-refresh` แล้วได้ 429) และกลืนความล้มเหลวชั่วคราวทิ้ง
+     * โทเคนใบเดิมยังไม่หมดอายุ ณ จุดที่เรียก จึงใช้ต่อได้จนกว่าจะต่ออายุสำเร็จ
+     * ถ้าโทเคนหมดอายุจริง คำขอถัดไปจะได้ 401 แล้วเส้นทาง logout ปกติทำงานเอง
+     */
     async refreshToken() {
-      const response = await api.post('/refresh-token');
-      this.token = response.data.access_token;
-      this.tokenExpiresAt = Date.now() + (response.data.expires_in * 1000);
+      if (refreshTokenPromise) return refreshTokenPromise;
+
+      refreshTokenPromise = (async () => {
+        try {
+          const response = await api.post('/refresh-token');
+          this.adoptToken(response.data.access_token, response.data.expires_in);
+        } catch (error) {
+          if (isAuthenticationExpired(error)) {
+            this.logout();
+          }
+        } finally {
+          refreshTokenPromise = null;
+        }
+      })();
+
+      return refreshTokenPromise;
+    },
+
+    /** รับโทเคนใบใหม่มาใช้ต่อ (ต่ออายุ หรือหลังเปลี่ยนรหัสผ่านตาม SEC-024) */
+    adoptToken(accessToken, expiresInSeconds) {
+      if (!accessToken) return;
+      this.token = accessToken;
+      this.tokenExpiresAt = Date.now() + (Number(expiresInSeconds) || 0) * 1000;
       localStorage.setItem('token', this.token);
       localStorage.setItem('token_expires_at', String(this.tokenExpiresAt));
     }

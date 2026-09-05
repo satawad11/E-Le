@@ -51,6 +51,10 @@ class LeavePolicy
      */
     public function view(User $user, Leave $leave): bool
     {
+        if ($leave->status === 'Draft') {
+            return $this->isOwner($user, $leave);
+        }
+
         if ($this->isOwner($user, $leave)) {
             return true;
         }

@@ -233,6 +233,70 @@ class OperationalPermissionMatrixTest extends TestCase
         $this->assertSame($before, $this->grantSnapshot(), 'การรัน seeder ซ้ำต้องไม่เปลี่ยนสิทธิ์ของใคร');
     }
 
+    /**
+     * ผู้ได้รับอนุญาตเข้าถึงชั้นความลับตั้งต้น เรียงตามลำดับบังคับบัญชา
+     * (ระเบียบว่าด้วยการรักษาความลับของทางราชการ พ.ศ. 2544)
+     *
+     * ตรึงไว้เพราะเป็น **การตัดสินใจเชิงนโยบาย ไม่ใช่รายละเอียดการทำงาน** —
+     * การเปลี่ยนต้องเป็นความตั้งใจของผู้อำนวยการตามอำนาจในหมวด 2
+     * ไม่ใช่ผลข้างเคียงของการแก้ seeder
+     */
+    public function test_confidentiality_clearance_follows_the_chain_of_command(): void
+    {
+        $this->seed(OperationalPermissionSeeder::class);
+
+        $expected = [
+            'Director' => 'saraban.top_secret.view',
+            'Deputy Director' => 'saraban.secret.view',
+            'HR Head' => 'saraban.confidential.view',
+            'Document Officer' => 'saraban.confidential.view',
+        ];
+
+        foreach ($expected as $role => $permission) {
+            $this->assertTrue(
+                $this->userWithRole($role)->can($permission),
+                "{$role} ต้องได้รับอนุญาตชั้นความลับ {$permission}",
+            );
+        }
+    }
+
+    /**
+     * **ข้าราชการทั่วไปไม่ได้รับอนุญาตชั้นความลับ** — และนั่นถูกต้องแล้ว
+     *
+     * เขายังเข้าถึงหนังสือลับ *ที่ตนเกี่ยวข้อง* ได้เสมอผ่านการเป็นเจ้าของเรื่อง
+     * ผู้รับหนังสือ หรือผู้อยู่ในสายงาน (หลักความจำเป็นต้องรู้) · สิทธิ์ชั้นความลับ
+     * ตอบคำถามคนละข้อ คือ "ค้นเจอหนังสือลับของหน่วยงานได้ไหม"
+     */
+    public function test_an_ordinary_officer_holds_no_blanket_clearance(): void
+    {
+        $this->seed(OperationalPermissionSeeder::class);
+
+        $employee = $this->userWithRole('Employee');
+
+        foreach (['saraban.confidential.view', 'saraban.secret.view', 'saraban.top_secret.view'] as $permission) {
+            $this->assertFalse($employee->can($permission), "Employee ต้องไม่ได้รับ {$permission} แบบเหมารวม");
+        }
+    }
+
+    /**
+     * แจกทีละชั้น ไม่แจกชั้นที่ต่ำกว่าซ้ำ (ระเบียบฯ ข้อ 26)
+     *
+     * ผู้ได้รับอนุญาตชั้นสูงกว่าเข้าถึงชั้นต่ำกว่าได้อยู่แล้วโดยตัวนโยบายเอง ·
+     * การแจกซ้ำจะทำให้การถอนสิทธิ์ในอนาคตทำได้ไม่หมดและตรวจสอบยาก
+     */
+    public function test_a_higher_clearance_is_not_granted_together_with_the_lower_ones(): void
+    {
+        $this->seed(OperationalPermissionSeeder::class);
+
+        $director = $this->userWithRole('Director');
+
+        $this->assertTrue($director->can('saraban.top_secret.view'));
+        $this->assertFalse(
+            $director->hasPermissionTo('saraban.confidential.view'),
+            'ไม่ควรแจกชั้นที่ต่ำกว่าซ้ำ — ลำดับชั้นจัดการให้แล้วที่ DocumentPolicy',
+        );
+    }
+
     /** @return array<string,array<int,string>> */
     private function grantSnapshot(): array
     {

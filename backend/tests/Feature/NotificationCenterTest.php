@@ -32,8 +32,15 @@ class NotificationCenterTest extends TestCase
             'leave.submitted', 'leave.approval_requested', 'leave.approved',
             'leave.rejected', 'leave.returned', 'attendance.correction',
             'attendance.late', 'attendance.early_leave', 'attendance.leave_conflict', 'overtime.approval',
+            // INT-13 — การเวียนหนังสือใช้ศูนย์แจ้งเตือนกลางนี้ ไม่มีชั้นแจ้งเตือนของตัวเอง
+            'saraban.document.distributed',
         ], $codes);
-        $this->assertDatabaseCount('notification_templates', 40);
+        /*
+         * 11 ชนิด × 4 ช่องทางเดิม + 11 ช่องทาง `web_push` ที่ INT-14 เพิ่ม (SoT §16)
+         * — ทุกชนิดต้องมี template ครบทุกช่องทาง ไม่งั้นช่องที่ผู้ใช้เปิดไว้จะถูก
+         * ข้ามเงียบ ๆ ด้วยเหตุผล "ไม่มี template"
+         */
+        $this->assertDatabaseCount('notification_templates', 55);
     }
 
     public function test_emit_is_atomic_deduplicates_recipients_and_removes_sensitive_payload(): void

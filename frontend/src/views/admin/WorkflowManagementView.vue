@@ -9,7 +9,7 @@
             ยังไม่ได้บันทึก
           </span>
         </div>
-        <p class="text-gray-500 mt-1 text-sm">กำหนดขั้นตอนและเงื่อนไขการค้นหาผู้อนุมัติใบลาตามโครงสร้างองค์กร (Personnel & Org Structure)</p>
+        <p class="text-gray-500 mt-1 text-sm">กำหนดขั้นตอนและเงื่อนไขการค้นหาผู้อนุมัติใบลาตามโครงสร้างบุคลากรและหน่วยงาน</p>
       </div>
 
       <div class="flex items-center gap-2 flex-wrap">
@@ -161,6 +161,7 @@
                   ชื่อขั้นตอนการทำงาน <span class="text-red-500">*</span>
                 </label>
                 <input
+                  aria-label="ชื่อขั้นตอนการอนุมัติ"
                   v-model="step.name"
                   type="text"
                   required
@@ -174,6 +175,7 @@
                   เงื่อนไขผู้อนุมัติ (Resolver) <span class="text-red-500">*</span>
                 </label>
                 <select
+                  aria-label="วิธีค้นหาผู้อนุมัติของขั้นตอนนี้"
                   v-model="step.approver_type"
                   required
                   class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#800000] text-sm transition-colors text-gray-700 bg-white"
@@ -190,6 +192,7 @@
                   บทบาทที่รับผิดชอบ <span class="text-red-500">*</span>
                 </label>
                 <select
+                  aria-label="บทบาทของผู้อนุมัติ"
                   v-model="step.role_id"
                   required
                   class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#800000] text-sm transition-colors text-gray-700 bg-white"
@@ -207,6 +210,7 @@
                   ระบุผู้ใช้งานเฉพาะเจาะจง <span class="text-red-500">*</span>
                 </label>
                 <select
+                  aria-label="ผู้อนุมัติที่ระบุตัวบุคคล"
                   v-model="step.specific_user_id"
                   required
                   class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#800000] text-sm transition-colors text-gray-700 bg-white"
@@ -300,6 +304,7 @@
 
         <div class="flex flex-col sm:flex-row gap-3">
           <select
+            aria-label="เลือกผู้ยื่นใบลาเพื่อทดลองแสดงสายอนุมัติ"
             v-model="previewModal.requesterId"
             class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#800000] text-sm bg-white text-gray-700"
           >

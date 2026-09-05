@@ -27,7 +27,7 @@
       :class="overview.engine_enabled ? 'bg-green-50 border-green-200 text-green-900' : 'bg-amber-50 border-amber-200 text-amber-900'"
     >
       <span class="font-bold">
-        {{ overview.engine_enabled ? 'Document Engine เปิดใช้งานอยู่' : 'Document Engine ปิดอยู่ (ระบบใช้เส้นทางพิมพ์เอกสารเดิม)' }}
+        {{ overview.engine_enabled ? 'ระบบจัดทำเอกสารอัตโนมัติ (Document Engine) เปิดใช้งานอยู่' : 'ระบบจัดทำเอกสารอัตโนมัติ (Document Engine) ปิดอยู่ — ระบบใช้เส้นทางพิมพ์เอกสารเดิม' }}
       </span>
       <span v-if="overview.engine_enabled">
         ประเภทการลาที่เปิด: {{ overview.enabled_leave_types.length ? overview.enabled_leave_types.join(', ') : 'ยังไม่ได้ระบุ' }}
@@ -165,7 +165,7 @@
         </div>
       </section>
 
-      <!-- Field Dictionary -->
+      <!-- สารบัญตัวแปรเอกสาร (Field Dictionary) -->
       <section v-else-if="activeTab === 'fields'" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <p class="text-sm text-gray-500 mb-4">
           ตัวแปรทั้งหมดที่แบบฟอร์มและรายงานอ้างถึงได้ ค่าเหล่านี้มาจากแหล่งข้อมูลที่ระบบลงทะเบียนไว้ ไม่ได้มาจากการเขียน SQL เอง
@@ -423,24 +423,24 @@
           <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <div>
               <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">ระดับ</label>
-              <select v-model="calibrationForm.scope" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
+              <select aria-label="ระดับ" v-model="calibrationForm.scope" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
                 <option value="GLOBAL">ทั้งระบบ</option>
                 <option value="TEMPLATE">เฉพาะแม่แบบ</option>
               </select>
             </div>
             <div v-if="calibrationForm.scope === 'TEMPLATE'">
               <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">แม่แบบ</label>
-              <select v-model="calibrationForm.document_template_id" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
+              <select aria-label="แม่แบบ" v-model="calibrationForm.document_template_id" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
                 <option v-for="t in templates" :key="t.id" :value="t.id">{{ t.name }}</option>
               </select>
             </div>
             <div>
               <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">เลื่อนแนวนอน (pt)</label>
-              <input v-model.number="calibrationForm.x_offset" type="number" step="0.5" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm" />
+              <input aria-label="เลื่อนแนวนอน (pt)" v-model.number="calibrationForm.x_offset" type="number" step="0.5" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm" />
             </div>
             <div>
               <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">เลื่อนแนวตั้ง (pt)</label>
-              <input v-model.number="calibrationForm.y_offset" type="number" step="0.5" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm" />
+              <input aria-label="เลื่อนแนวตั้ง (pt)" v-model.number="calibrationForm.y_offset" type="number" step="0.5" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm" />
             </div>
             <button
               @click="saveCalibration"
@@ -467,16 +467,16 @@
         <div class="space-y-3">
           <div>
             <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">ชื่อแม่แบบ *</label>
-            <input v-model="createForm.name" type="text" placeholder="เช่น แบบใบขอลาพักผ่อน" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm" />
+            <input aria-label="ชื่อแม่แบบ" v-model="createForm.name" type="text" placeholder="เช่น แบบใบขอลาพักผ่อน" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm" />
           </div>
           <div>
             <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">รหัส (ภาษาอังกฤษ) *</label>
-            <input v-model="createForm.code" type="text" placeholder="form_leave_vacation" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-mono" />
+            <input aria-label="รหัส (ภาษาอังกฤษ)" v-model="createForm.code" type="text" placeholder="form_leave_vacation" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-mono" />
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">โมดูล</label>
-              <select v-model="createForm.module" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
+              <select aria-label="โมดูล" v-model="createForm.module" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
                 <option value="leave">ระบบการลา</option>
                 <option value="hr">งานบุคคล</option>
                 <option value="finance">การเงิน</option>
@@ -486,14 +486,14 @@
             </div>
             <div>
               <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">ชนิดเอกสาร</label>
-              <select v-model="createForm.document_type" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
+              <select aria-label="ชนิดเอกสาร" v-model="createForm.document_type" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
                 <option v-for="type in documentTypes" :key="type.value" :value="type.value">{{ type.label }}</option>
               </select>
             </div>
           </div>
           <div>
             <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">วิธีเรนเดอร์</label>
-            <select v-model="createForm.render_mode" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
+            <select aria-label="วิธีเรนเดอร์" v-model="createForm.render_mode" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
               <option value="pdf_overlay">วางฟิลด์บนแบบฟอร์ม PDF (แนะนำสำหรับแบบฟอร์มราชการ)</option>
               <option value="html">แม่แบบ HTML แบบเดิม</option>
             </select>
@@ -537,8 +537,8 @@
                 ขนาดกระดาษ
                 <select v-model="contentForm.paper_size" class="mt-1 w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]">
                   <option value="A4">A4</option>
-                  <option value="Letter">Letter</option>
-                  <option value="Legal">Legal</option>
+                  <option value="Letter">Letter (8.5 × 11 นิ้ว)</option>
+                  <option value="Legal">Legal (8.5 × 14 นิ้ว)</option>
                 </select>
               </label>
               <label class="text-xs font-semibold text-gray-600">
@@ -635,7 +635,7 @@ const bindingForm = ref({ id: null, module: 'LEAVE', entity_type: 'LEAVE_TYPE', 
 const tabs = [
   { value: 'templates', label: 'แบบฟอร์มเอกสาร' },
   { value: 'bindings', label: 'การผูกแบบฟอร์ม' },
-  { value: 'fields', label: 'Field Dictionary' },
+  { value: 'fields', label: 'สารบัญตัวแปรเอกสาร' },
   { value: 'sources', label: 'แหล่งข้อมูล' },
   { value: 'reports', label: 'รายงาน' },
   { value: 'generated', label: 'เอกสารที่สร้างแล้ว' },

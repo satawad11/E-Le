@@ -1,5 +1,71 @@
 # DECISION LOG
 
+## ADR-LEAVE-20260905: ผลอนุมัติร่วมและการคงสภาพร่าง/เอกสารที่ยื่นแล้ว
+
+- Status: Implemented ตามคำสั่งแก้ข้อค้นพบทั้ง 4 รายการ 2026-09-05
+- ใช้ LeaveService::completeApproval ร่วมกันระหว่างการอนุมัติตามสายและการบันทึกแทน ให้ตัดยอด, seal, เปลี่ยนสถานะ และ sync attendance ใน transaction ของผู้เรียกเดียวกัน รายการบันทึกแทนเก็บ audit ผู้บันทึกโดยไม่สร้างขั้นอนุมัติหรือลายเซ็นสมมุติ
+- วางข้อห้ามอ่านร่างผู้อื่นก่อนสิทธิ์ผู้ดูแลใน LeaveModuleServiceProvider ไม่ให้ Core import โมดูลธุรกิจ
+- generic update ใช้ได้เฉพาะร่างของตนและคำนวณผ่านบริการร่าง ใบที่ยื่นแล้วใช้ยกเลิก/เพิกถอนเพื่อรักษาประวัติ
+- หนึ่งใบมีรอบยอดเดียว จึงปฏิเสธการข้ามรอบ fiscal/calendar year และให้แยกใบ แทนการเพิ่ม schema แบ่งยอดในรอบนี้
+- ไม่ cutover workflow หรือแก้ historical records; หลักฐานและข้อจำกัดอยู่ที่ `docs/checkpoints/LEAVE-MODULE-FIX-2026-09-05.md`
+
+## ADR-ROLE-01: ตัวระบุบทบาทระบบต้องเป็นคีย์ ไม่ใช่ชื่อที่แสดง
+
+- **Status**: Accepted
+- **Date**: 2026-09-02
+- **Context**:
+  `PROJECT_RULES.md` ห้าม hard-code ชื่อ role เพื่อใช้เป็น identity แต่ `RoleController`
+  ยังกันบทบาทหลักด้วยรายชื่อที่เขียนตายไว้ `['SuperAdmin', 'Director', 'Employee']`
+  ขณะที่บทบาทจริงในฐานข้อมูลชื่อ `Super Admin` (มีเว้นวรรค) — **ด่านนี้จึงไม่เคยทำงานเลย**
+  ผู้ดูแลเปลี่ยนชื่อหรือลบบทบาทผู้ดูแลระบบสูงสุดทิ้งได้ และเมื่อทำแล้วจะไม่มีใครในระบบ
+  แก้กลับได้อีก นอกจากเข้าไปแก้ฐานข้อมูลโดยตรง
+
+  ระบบอยู่ใน `PROD-00 Architecture Freeze` ซึ่งห้ามแก้ schema เว้นแต่เป็น Critical Bug Fix
+- **Decision**:
+  1. เพิ่มคอลัมน์ `roles.system_key` (varchar 64, nullable, unique) และ `roles.is_system`
+     เป็น migration แบบ **additive** — ไม่แตะคอลัมน์เดิม ไม่ลบข้อมูล โค้ดเดิมทุกบรรทัด
+     ยังทำงานได้เหมือนเดิม จึงถือเป็น backward-compatible
+  2. จัดคู่แถวเดิมเข้ากับคีย์ด้วยชื่อที่เคยใช้ **ครั้งเดียว** ตอน migrate/seed
+     (`App\Support\SystemRoles::backfillExistingRoles()`) หลังจากนั้นระบบอ้างถึงบทบาท
+     ด้วย `system_key` เท่านั้น ชื่อที่แสดงกลับไปเป็น "ข้อมูล" ที่ผู้ดูแลแก้ได้ตามเดิม
+  3. `system_key` ไม่อยู่ใน fillable และไม่มี endpoint ใดเปิดให้แก้
+  4. เพิ่ม `App\Services\SystemRoleGuard` กันสามทางที่ทำให้ระบบเหลือศูนย์ผู้ดูแล:
+     เปลี่ยนบทบาทของผู้ดูแลคนสุดท้าย · ลบบัญชีนั้น · ระงับการใช้งานบัญชีนั้น
+- **Consequences**:
+  - เข้าข่าย Critical Bug Fix ตาม `PROJECT_RULES.md` ข้อ PROD PHASE — บันทึกเหตุผลไว้ที่นี่
+  - บทบาทที่ผู้ดูแลสร้างเองยังเปลี่ยนชื่อและลบได้ตามปกติ ด่านนี้ครอบเฉพาะบทบาทที่มีคีย์
+  - ระบบที่ไม่มี `Super Admin` เลย (ยังไม่ได้ seed) `SystemRoleGuard` จะไม่ขวางอะไร
+    เพราะไม่มีข้อมูลพอจะตัดสิน — ไม่ทำให้การติดตั้งครั้งแรกล็อกตัวเอง
+  - `RoleController` ผูก type-hint กับ `App\Models\Role` แทน `Spatie\Permission\Models\Role`
+    เพื่อให้ route model binding คืนคลาสที่มีเมธอด `isSystemRole()` · ไม่ได้เปลี่ยน
+    `config/permission.php` จึงไม่กระทบการ resolve role ที่อื่นในระบบ
+
+## ADR-AUTHZ-02: ไฟล์บน private storage ตัดสินสิทธิ์ผ่าน PermissionEvaluator ไม่ใช่ Gate
+
+- **Status**: Accepted
+- **Date**: 2026-09-02
+- **Context**:
+  `SecureFileAccessService` เดิมถาม Spatie ตรง ๆ ด้วย `hasAnyPermission()` จึงข้าม
+  explicit deny · ไม่รู้จักชื่อ permission ที่เทียบเท่ากัน · และไม่มี organization scope
+
+  ทางเลือกตามธรรมชาติคือเปลี่ยนไปใช้ `$user->can()` แต่มีข้อจำกัดที่ตรวจพบระหว่างทำ:
+  **Spatie ลงทะเบียน `Gate::before` ของตัวเองไว้ด้วย** และ package provider boot ก่อน
+  `AppServiceProvider` เสมอ เมื่อผู้ใช้ "ถือ" สิทธิ์นั้นอยู่จริง before ของ Spatie จะคืน
+  `true` ก่อนที่ before ของเรา (ซึ่งตรวจ explicit deny) จะได้ทำงาน — เทสต์
+  `PermissionEvaluatorTest::test_explicit_deny_beats_an_allow` ตรึงข้อจำกัดนี้ไว้แล้ว
+  โดยตรวจผ่าน evaluator ไม่ใช่ผ่าน `can()`
+- **Decision**:
+  เรียก `PermissionEvaluator::allows()` ตรง ๆ ในเส้นทางการเข้าถึงไฟล์ และถามขอบเขต
+  หน่วยงานจาก `OrgScopeResolver::canSeeOrgUnit()` · การเข้าถึงไฟล์ของใบลายังใช้
+  `LeavePolicy` ผ่าน `Gate` ตามเดิม เพราะเป็นการตัดสินระดับ resource ไม่ใช่ระดับ ability
+- **Consequences**:
+  - explicit deny มีผลจริงกับการเข้าถึงไฟล์แล้ว
+  - **ยังเหลือช่องว่างทั้งระบบ**: ทุก endpoint ที่ใช้ `$user->can()` ยังข้าม explicit deny
+    เมื่อผู้ใช้ถือสิทธิ์นั้นอยู่ · การปิดช่องนี้ทั้งระบบต้องตั้ง
+    `config('permission.register_permission_check_method') = false` แล้วให้ `Gate::before`
+    ของเราเป็นผู้ตัดสินเพียงผู้เดียว ซึ่งเปลี่ยนพฤติกรรมการตรวจสิทธิ์ของทุก endpoint
+    พร้อมกัน · **ยังไม่ทำในรอบนี้ ต้องขออนุมัติเจ้าของระบบก่อน** (ดูรายงานปิดงาน)
+
 ## ADR-USER-01: Additive Personnel Entity Separation & 1:1 Identity Binding
 
 - **Status**: Accepted

@@ -30,6 +30,9 @@ class ApiSurfaceContractTest extends TestCase
      */
     private const CALLED_FROM_ELSEWHERE = [
         'api/ping' => 'ใช้ตรวจสุขภาพระบบจากภายนอก',
+        'api/health' => 'สัญญาสุขภาพสำหรับเครื่องมือเฝ้าระวัง ตรวจโดย OperationsHealthAndReadOnlyTest',
+        'api/saraban/verify/{hash}/qrcode' => 'QR สาธารณะสำหรับเอกสาร ตรวจโดย SarabanFinalizationAndVerificationTest',
+        'api/v1/openapi.json' => 'คำอธิบาย API สำหรับผู้เชื่อมต่อ ตรวจโดย ApiIdempotencyAndWebhookTest',
         'api/login' => 'เรียกจาก auth store',
         'api/logout' => 'เรียกจาก auth store',
         'api/refresh-token' => 'เรียกจาก auth store',
@@ -51,7 +54,7 @@ class ApiSurfaceContractTest extends TestCase
             ->map(fn (Route $route) => $route->uri())
             ->unique()
             ->reject(fn (string $uri) => array_key_exists($uri, self::CALLED_FROM_ELSEWHERE))
-            ->reject(fn (string $uri) => $this->isCalledBy($uri, $frontend))
+            ->reject(fn (string $uri) => $this->isCalledBy($this->frontendUri($uri), $frontend))
             ->values()
             ->all();
 
@@ -61,6 +64,25 @@ class ApiSurfaceContractTest extends TestCase
             'พบ endpoint ที่ไม่มีหน้าจอใดเรียก — สร้างหน้าจอให้ใช้งานได้ ถอดออก หรือระบุเหตุผลไว้ใน CALLED_FROM_ELSEWHERE: '
                 .implode(', ', $orphans)
         );
+    }
+
+    /** alias ยอมรับได้ต่อเมื่อคง action, HTTP methods และ security middleware ครบ */
+    private function frontendUri(string $uri): string
+    {
+        if (! str_starts_with($uri, 'api/v1/saraban/')) {
+            return $uri;
+        }
+        $canonical = str_replace('api/v1/saraban/', 'api/saraban/', $uri);
+        $routes = collect(RouteFacade::getRoutes()->getRoutes());
+        foreach ($routes->filter(fn (Route $route) => $route->uri() === $uri) as $alias) {
+            $original = $routes->first(fn (Route $route) => $route->uri() === $canonical && $route->methods() === $alias->methods());
+            $this->assertNotNull($original, "alias ต้องมีคู่เดิม: {$uri}");
+            $this->assertSame($original->getActionName(), $alias->getActionName(), $uri);
+            $this->assertSame([], array_values(array_diff($original->gatherMiddleware(), $alias->gatherMiddleware())), $uri);
+            $this->assertContains('idempotent', $alias->gatherMiddleware(), $uri);
+        }
+
+        return $canonical;
     }
 
     /**
@@ -95,6 +117,18 @@ class ApiSurfaceContractTest extends TestCase
 
             foreach ($matches[2] as $path) {
                 $patterns[] = $this->normalise($path);
+            }
+
+            // ประกอบ URL จาก composable จริง: ตรวจทั้งจุดเรียกและ suffix ใน implementation
+            preg_match_all('/useAttendanceSummary\([\'"](\/[^\'"]+)[\'"]\)/', $contents, $summaryCalls);
+            if ($summaryCalls[1] !== []) {
+                $composable = file_get_contents($source.'/composables/useAttendanceSummary.js');
+                preg_match_all('/runReport\(`\$\{basePath\}([^`]+)`\)/', $composable, $suffixes);
+                foreach ($summaryCalls[1] as $base) {
+                    foreach ($suffixes[1] as $suffix) {
+                        $patterns[] = $this->normalise($base.$suffix);
+                    }
+                }
             }
 
             /*

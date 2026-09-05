@@ -15,6 +15,24 @@ class RouteAuthorizationAuditTest extends TestCase
         'api/reset-password',
         'api/leaves/verify/{hash}',
         'api/leaves/verify/{hash}/qrcode',
+        /*
+         * INT-12 — ตรวจสอบหนังสือราชการจาก QR (SoT §12)
+         *
+         * เปิดสาธารณะโดยเจตนา เช่นเดียวกับการตรวจสอบใบลา — ผู้ตรวจสอบคือคนทั่วไป
+         * ที่ถือกระดาษอยู่ในมือ ไม่ใช่ผู้ใช้ของระบบ · การเข้าถึงคุมด้วยโทเคนสุ่ม
+         * 40 ตัวอักษรที่เดาไม่ได้ + `throttle:verify` และคืนเฉพาะข้อมูลที่ปรากฏ
+         * บนหน้าเอกสารอยู่แล้ว
+         */
+        'api/saraban/verify/{hash}',
+        'api/saraban/verify/{hash}/qrcode',
+        /*
+         * INT-21 — สุขภาพระบบสำหรับ uptime monitor ภายนอก (SoT §27)
+         *
+         * เปิดสาธารณะโดยเจตนา · คืนแค่ ok/degraded/down ไม่มีรายละเอียดใด ๆ
+         * — monitor ต้องเรียกได้โดยไม่มีบัญชีผู้ใช้ · รายละเอียดอยู่หลังด่านสิทธิ์
+         * ที่ `api/saraban/operations/health`
+         */
+        'api/health',
     ];
 
     public function test_every_non_public_api_route_requires_authentication(): void
@@ -29,6 +47,78 @@ class RouteAuthorizationAuditTest extends TestCase
             ->all();
 
         $this->assertSame([], $unprotected, 'พบ API ที่ไม่มี auth:sanctum: '.implode(', ', $unprotected));
+    }
+
+    /**
+     * เส้นทางของโมดูลสารบรรณที่ **ตั้งใจ** ไม่มีด่านความสามารถ
+     *
+     * ทุกชื่อในรายการนี้ต้องมีเหตุผลกำกับ · การเพิ่มชื่อเข้ามาเท่ากับประกาศว่า
+     * "ผู้ใช้ที่ล็อกอินแล้วทุกคนเรียกเส้นทางนี้ได้" ซึ่งต้องเป็นการตัดสินใจ
+     * ที่มีคนเห็น ไม่ใช่การลืมใส่ middleware
+     *
+     * @var array<int,string>
+     */
+    private const SARABAN_URIS_WITHOUT_ABILITY = [
+        /*
+         * ดูอำนาจ **ของตัวเอง** ไม่ต้องมีสิทธิ์ — ทุกคนควรตรวจสอบได้ว่าตนทำอะไรได้บ้าง
+         * การดูของผู้อื่นถูกกั้นด้วย `saraban.authority.view` ในตัว controller
+         */
+        'api/saraban/authority',
+
+        /*
+         * มุมมองที่บันทึกไว้เป็นของผู้ใช้รายคน ไม่ใช่ข้อมูลราชการ — เจ้าของเท่านั้น
+         * ที่แก้ได้ (`assertOwner` ตอบ 404 ไม่ใช่ 403 เพื่อไม่ยืนยันว่ามีอยู่จริง)
+         * และตัวมุมมองเก็บ "เงื่อนไขการค้น" ไม่ใช่ผลลัพธ์ · ผลที่ได้ยังผ่าน
+         * `DocumentPolicy` รายฉบับตามปกติเสมอ
+         */
+        'api/saraban/saved-views',
+        'api/saraban/saved-views/{view}',
+
+        // เปิดสาธารณะโดยเจตนา — เหตุผลเดียวกับที่อธิบายไว้ใน PUBLIC_API_URIS
+        'api/saraban/verify/{hash}',
+        'api/saraban/verify/{hash}/qrcode',
+    ];
+
+    /**
+     * ทุกเส้นทางของโมดูลสารบรรณต้องประกาศความสามารถที่ต้องใช้
+     *
+     * **ที่มา (ตรวจทาน 2026-09-05):** การตรวจทานรอบปิดงานพบช่องโหว่สิทธิ์รายวัตถุ
+     * สองจุด ซึ่งทั้งคู่ **มีด่าน `ability:` ครบ** — ด่านระดับความสามารถจึงไม่พอ
+     * แต่การ**ไม่มีเลย**ยิ่งแย่กว่า · เทสต์นี้กันกรณีหลัง ส่วนกรณีแรกกันด้วย
+     * `DocumentPolicy` / `DocumentCasePolicy` และเทสต์ขอบเขตของแต่ละหน้าที่
+     */
+    public function test_every_saraban_route_declares_the_ability_it_requires(): void
+    {
+        $undeclared = collect(RouteFacade::getRoutes()->getRoutes())
+            ->filter(fn (Route $route) => str_starts_with($route->uri(), 'api/saraban/'))
+            ->reject(fn (Route $route) => in_array($route->uri(), self::SARABAN_URIS_WITHOUT_ABILITY, true))
+            ->reject(fn (Route $route) => collect($route->gatherMiddleware())
+                ->contains(fn ($middleware) => is_string($middleware)
+                    && str_starts_with($middleware, 'ability:')))
+            ->map(fn (Route $route) => implode('|', $route->methods()).' '.$route->uri())
+            ->values()
+            ->all();
+
+        $this->assertSame(
+            [],
+            $undeclared,
+            "เส้นทางสารบรรณที่ไม่ได้ประกาศความสามารถ — ผู้ใช้ที่ล็อกอินแล้วทุกคนเรียกได้:\n  ".
+            implode("\n  ", $undeclared),
+        );
+    }
+
+    /** รายการยกเว้นต้องสะท้อนความจริง — เส้นทางที่หายไปแล้วต้องถูกถอดออก */
+    public function test_the_ability_exemption_list_has_no_stale_entries(): void
+    {
+        $existing = collect(RouteFacade::getRoutes()->getRoutes())
+            ->map(fn (Route $route) => $route->uri());
+
+        $stale = collect(self::SARABAN_URIS_WITHOUT_ABILITY)
+            ->reject(fn (string $uri) => $existing->contains($uri))
+            ->values()
+            ->all();
+
+        $this->assertSame([], $stale, 'มีชื่อในรายการยกเว้นที่ไม่ตรงกับเส้นทางจริงแล้ว: '.implode(', ', $stale));
     }
 
     public function test_sensitive_exports_and_downloads_have_specific_throttles(): void

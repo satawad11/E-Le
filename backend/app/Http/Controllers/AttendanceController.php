@@ -13,6 +13,7 @@ use App\Services\Attendance\AttendanceReconciliationService;
 use App\Services\Attendance\AttendanceScopeService;
 use App\Services\Attendance\LeaveAttendanceSync;
 use App\Services\Attendance\LeaveDayClassifier;
+use App\Services\Files\ImageUploadService;
 use App\Services\NotificationCenter\NotificationCenter;
 use App\Services\SystemSettingService;
 use App\Services\ThaiDateService;
@@ -20,9 +21,6 @@ use App\Services\Time\TimeService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class AttendanceController extends Controller
 {
@@ -862,42 +860,16 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Validate a selfie from its decoded bytes, never from the client-supplied extension/MIME.
+     * ภาพถ่ายตอนลงเวลา — ตรวจจากเนื้อไฟล์จริง ไม่ใช่จากนามสกุล/MIME ที่ client ส่งมา
+     *
+     * SEC-028 — เดิมตรรกะชุดนี้ถูกต้องอยู่แล้วแต่เป็นสำเนาที่สอง เพดานขนาดและ
+     * รายการชนิดไฟล์เขียนตายไว้ในตัวเมธอด ไม่ตรงกับ allowlist กลาง
+     * ตอนนี้เรียกบริการเดียวกับทุกจุดที่รับภาพ โดยใช้ชุด `attendance_photos`
      */
     private function storeAttendanceImage(string $dataUrl): string
     {
-        if (! preg_match('#^data:[^;,]+;base64,(.+)$#s', $dataUrl, $matches)) {
-            throw ValidationException::withMessages([
-                'image' => 'รูปแบบไฟล์ภาพไม่ถูกต้อง',
-            ]);
-        }
-
-        $contents = base64_decode($matches[1], true);
-
-        if ($contents === false || strlen($contents) > 5 * 1024 * 1024) {
-            throw ValidationException::withMessages([
-                'image' => 'ไฟล์ภาพต้องมีขนาดไม่เกิน 5 MB',
-            ]);
-        }
-
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($contents);
-        $extension = match ($mime) {
-            'image/jpeg' => 'jpg',
-            'image/png' => 'png',
-            'image/webp' => 'webp',
-            default => null,
-        };
-
-        if ($extension === null) {
-            throw ValidationException::withMessages([
-                'image' => 'อนุญาตเฉพาะไฟล์ภาพ JPEG, PNG หรือ WebP',
-            ]);
-        }
-
-        $relative = 'attendances/'.Str::uuid().'.'.$extension;
-        Storage::disk('private_uploads')->put($relative, $contents);
-
-        return '/storage/'.$relative;
+        return app(ImageUploadService::class)
+            ->storeBase64($dataUrl, 'attendance_photos', 'attendances', 'image');
     }
 
     private function getOTSummaryData(Request $request)

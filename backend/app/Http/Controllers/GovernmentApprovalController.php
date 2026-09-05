@@ -106,15 +106,13 @@ class GovernmentApprovalController extends Controller
             if (! $decision['final']) {
                 $locked->update(['approval_level' => $decision['next_step_order']]);
             } else {
-                abort_unless($this->service->deductBalance($locked), 422, 'วันลาคงเหลือไม่เพียงพอ');
-                $locked->update(['status' => 'Approved']);
                 /*
                  * ลงวันลาในตารางลงเวลาทันทีที่อนุมัติครบสาย
                  *
                  * เดิมต้องรอให้ผู้ดูแลกดปุ่ม "ซิงค์ข้อมูลการลา" เอง ถ้าไม่มีใครกด
                  * ใบลงเวลารายเดือนจะแสดงว่าคนที่ลาถูกต้องแล้ว "ขาดงาน"
                  */
-                $this->attendanceSync->apply($locked->load(['type', 'user', 'policy']));
+                $this->service->completeApproval($locked);
             }
 
             LeaveAuditLog::create([

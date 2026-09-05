@@ -190,7 +190,7 @@ const focusPass  = ref(false)
 const features = [
   { icon: ICONS.clipboard, text: 'ยื่นใบลาออนไลน์ทุกประเภท' },
   { icon: ICONS.check,     text: 'อนุมัติใบลาผ่านระบบ' },
-  { icon: ICONS.chart,     text: 'ติดตามสถิติวันลาแบบ Real-time' },
+  { icon: ICONS.chart,     text: 'ติดตามสถิติวันลาแบบทันเวลา' },
   { icon: ICONS.lock,      text: 'ระบบสิทธิ์ตามตำแหน่งงาน' },
 ]
 

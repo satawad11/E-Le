@@ -1,0 +1,2043 @@
+{
+    "module_enabled": true,
+    "expected_child_menus": 13,
+    "actual_child_menus": 6,
+    "missing": [
+        {
+            "code": "saraban.authority",
+            "path": "/saraban/authority",
+            "permissions": [
+                "saraban.authority.view"
+            ]
+        },
+        {
+            "code": "saraban.policies",
+            "path": "/saraban/policies",
+            "permissions": [
+                "saraban.policy.manage"
+            ]
+        },
+        {
+            "code": "saraban.number_series",
+            "path": "/saraban/number-series",
+            "permissions": [
+                "saraban.config.manage"
+            ]
+        },
+        {
+            "code": "saraban.compliance",
+            "path": "/saraban/compliance",
+            "permissions": [
+                "saraban.operations.view",
+                "saraban.report.view"
+            ]
+        },
+        {
+            "code": "saraban.reports",
+            "path": "/saraban/reports",
+            "permissions": [
+                "saraban.report.view"
+            ]
+        },
+        {
+            "code": "saraban.cases",
+            "path": "/saraban/cases",
+            "permissions": [
+                "saraban.document.view"
+            ]
+        },
+        {
+            "code": "saraban.operations",
+            "path": "/saraban/operations",
+            "permissions": [
+                "saraban.operations.view"
+            ]
+        }
+    ],
+    "current_user": {
+        "id": 1,
+        "name": "ทดสอบ ระบบ",
+        "roles": [
+            "Super Admin"
+        ],
+        "allowed_saraban_permissions": [
+            "saraban.document.view",
+            "saraban.document.create",
+            "saraban.document.update",
+            "saraban.document.submit",
+            "saraban.incoming.register",
+            "saraban.incoming.stamp",
+            "saraban.number.reserve",
+            "saraban.number.allocate",
+            "saraban.number.release",
+            "saraban.number.cancel",
+            "saraban.workflow.review",
+            "saraban.workflow.forward",
+            "saraban.workflow.return",
+            "saraban.workflow.simulate",
+            "saraban.workflow.manage",
+            "saraban.endorse.create",
+            "saraban.signature.sign",
+            "saraban.distribution.create",
+            "saraban.distribution.send",
+            "saraban.distribution.track",
+            "saraban.inbox.view",
+            "saraban.report.view",
+            "saraban.report.export",
+            "saraban.audit.view",
+            "saraban.policy.manage",
+            "saraban.authority.view",
+            "saraban.config.manage",
+            "saraban.exception.view",
+            "saraban.exception.manage",
+            "saraban.operations.view",
+            "saraban.operations.retry",
+            "saraban.feature_flags.manage"
+        ]
+    },
+    "flags": [
+        {
+            "key": "saraban.webhooks",
+            "name": "ส่งเหตุการณ์ออกทาง webhook",
+            "description": "ปิดเพื่อหยุดส่งข้อมูลออกนอกระบบชั่วคราวโดยไม่ต้องลบปลายทางที่ตั้งไว้",
+            "module": "saraban",
+            "default": true,
+            "enabled": true,
+            "overridden": false,
+            "updated_by": null,
+            "updated_at": null
+        },
+        {
+            "key": "saraban.distribution.all_authorized",
+            "name": "เวียนหนังสือถึงผู้มีสิทธิ์ทั้งหมด",
+            "description": "ปิดเพื่อบังคับให้ระบุหน่วยงานหรือรายบุคคลเสมอ ในองค์กรที่มีผู้ใช้จำนวนมาก",
+            "module": "saraban",
+            "default": true,
+            "enabled": true,
+            "overridden": false,
+            "updated_by": null,
+            "updated_at": null
+        },
+        {
+            "key": "system.read_only",
+            "name": "โหมดอ่านอย่างเดียว",
+            "description": "หยุดการบันทึกทุกอย่างชั่วคราวโดยยังให้ค้นหาและเปิดดูเอกสารได้",
+            "module": "system",
+            "default": false,
+            "enabled": false,
+            "overridden": false,
+            "updated_by": null,
+            "updated_at": null
+        },
+        {
+            "key": "notification.web_push",
+            "name": "การแจ้งเตือนผ่านเบราว์เซอร์",
+            "description": "ปิดเพื่อหยุดช่องทาง Web Push ทั้งระบบโดยไม่ต้องลบการสมัครของผู้ใช้",
+            "module": "notification",
+            "default": true,
+            "enabled": true,
+            "overridden": false,
+            "updated_by": null,
+            "updated_at": null
+        }
+    ],
+    "registered_routes": [
+        {
+            "uri": "api/saraban/verify/{hash}",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "throttle:public-api",
+                "throttle:verify"
+            ]
+        },
+        {
+            "uri": "api/saraban/verify/{hash}/qrcode",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "throttle:public-api",
+                "throttle:verify"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/options",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.create"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.update"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/submit",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.submit"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/workflow",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/workflow",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/sign",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.signature.sign",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/endorse",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.endorse.create"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/signatures",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/finalize",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.signature.sign",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/annotations",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/annotations",
+            "methods": [
+                "PUT"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.incoming.stamp"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/annotations/render",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.incoming.stamp"
+            ]
+        },
+        {
+            "uri": "api/saraban/workflow/versions",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.workflow.simulate"
+            ]
+        },
+        {
+            "uri": "api/saraban/workflow/simulate",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.workflow.simulate"
+            ]
+        },
+        {
+            "uri": "api/saraban/incoming",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/incoming/duplicates",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.incoming.register"
+            ]
+        },
+        {
+            "uri": "api/saraban/incoming",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.incoming.register"
+            ]
+        },
+        {
+            "uri": "api/saraban/incoming/{registration}",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/distributions",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.distribution.send"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/distributions",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.distribution.track"
+            ]
+        },
+        {
+            "uri": "api/saraban/distribution-targets",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.distribution.send"
+            ]
+        },
+        {
+            "uri": "api/saraban/inbox",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.inbox.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/inbox/{recipient}",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.inbox.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/inbox/{recipient}/acknowledge",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.inbox.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/inbox/{recipient}/progress",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.inbox.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/policies",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/policies/{key}/history",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/policies/{key}/draft",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.policy.manage"
+            ]
+        },
+        {
+            "uri": "api/saraban/policies/{key}/publish",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.policy.manage",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/saraban/policies/{key}/rollback",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.policy.manage",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/saraban/authority",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api"
+            ]
+        },
+        {
+            "uri": "api/saraban/authority/holders",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.authority.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/operations/command-center",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.operations.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/operations/exceptions",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.exception.view|saraban.operations.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/operations/exceptions/{exception}/acknowledge",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.exception.manage|saraban.operations.retry"
+            ]
+        },
+        {
+            "uri": "api/saraban/operations/exceptions/{exception}/assign",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.exception.manage|saraban.operations.retry"
+            ]
+        },
+        {
+            "uri": "api/saraban/operations/exceptions/{exception}/resolve",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.exception.manage|saraban.operations.retry"
+            ]
+        },
+        {
+            "uri": "api/saraban/operations/exceptions/{exception}/retry",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.exception.manage|saraban.operations.retry"
+            ]
+        },
+        {
+            "uri": "api/saraban/operations/health",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.operations.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/operations/compliance",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.operations.view|saraban.report.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/feature-flags",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.operations.view|saraban.feature_flags.manage"
+            ]
+        },
+        {
+            "uri": "api/saraban/feature-flags/{key}",
+            "methods": [
+                "PUT"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.feature_flags.manage"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/compare",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/cases",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/cases/{case}",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/cases",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.create"
+            ]
+        },
+        {
+            "uri": "api/saraban/cases/{case}/documents",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.create"
+            ]
+        },
+        {
+            "uri": "api/saraban/cases/{case}/documents/{document}",
+            "methods": [
+                "DELETE"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.create"
+            ]
+        },
+        {
+            "uri": "api/saraban/cases/{case}/close",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.create"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/redactions",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/redactions",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.signature.sign",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/saraban/saved-views",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api"
+            ]
+        },
+        {
+            "uri": "api/saraban/saved-views",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api"
+            ]
+        },
+        {
+            "uri": "api/saraban/saved-views/{view}",
+            "methods": [
+                "PUT"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api"
+            ]
+        },
+        {
+            "uri": "api/saraban/saved-views/{view}",
+            "methods": [
+                "DELETE"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/retention",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/holds",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.policy.manage|saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/saraban/holds/{hold}/release",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.policy.manage|saraban.config.manage",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/saraban/documents/{document}/retention",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/saraban/retention/due",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/saraban/retention/{schedule}/approve",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.policy.manage",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/saraban/retention/{schedule}/dispose",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.config.manage",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/saraban/reports/register",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.report.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/reports/numbers",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.report.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/reports/distribution",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.report.view"
+            ]
+        },
+        {
+            "uri": "api/saraban/number-series",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/saraban/number-series",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/saraban/number-series/{series}",
+            "methods": [
+                "PUT"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/saraban/number-series/{series}",
+            "methods": [
+                "DELETE"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "ability:saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/options",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.create"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.update"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/submit",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.submit"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/workflow",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/workflow",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/sign",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.signature.sign",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/endorse",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.endorse.create"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/signatures",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/finalize",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.signature.sign",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/annotations",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/annotations",
+            "methods": [
+                "PUT"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.incoming.stamp"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/annotations/render",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.incoming.stamp"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/workflow/versions",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.workflow.simulate"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/workflow/simulate",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.workflow.simulate"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/incoming",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/incoming/duplicates",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.incoming.register"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/incoming",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.incoming.register"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/incoming/{registration}",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/distributions",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.distribution.send"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/distributions",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.distribution.track"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/distribution-targets",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.distribution.send"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/inbox",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.inbox.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/inbox/{recipient}",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.inbox.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/inbox/{recipient}/acknowledge",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.inbox.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/inbox/{recipient}/progress",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.inbox.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/policies",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/policies/{key}/history",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/policies/{key}/draft",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.policy.manage"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/policies/{key}/publish",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.policy.manage",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/policies/{key}/rollback",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.policy.manage",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/authority",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/authority/holders",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.authority.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/operations/command-center",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.operations.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/operations/exceptions",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.exception.view|saraban.operations.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/operations/exceptions/{exception}/acknowledge",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.exception.manage|saraban.operations.retry"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/operations/exceptions/{exception}/assign",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.exception.manage|saraban.operations.retry"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/operations/exceptions/{exception}/resolve",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.exception.manage|saraban.operations.retry"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/operations/exceptions/{exception}/retry",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.exception.manage|saraban.operations.retry"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/operations/health",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.operations.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/operations/compliance",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.operations.view|saraban.report.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/feature-flags",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.operations.view|saraban.feature_flags.manage"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/feature-flags/{key}",
+            "methods": [
+                "PUT"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.feature_flags.manage"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/compare",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/cases",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/cases/{case}",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/cases",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.create"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/cases/{case}/documents",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.create"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/cases/{case}/documents/{document}",
+            "methods": [
+                "DELETE"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.create"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/cases/{case}/close",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.create"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/redactions",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/redactions",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.signature.sign",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/saved-views",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/saved-views",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/saved-views/{view}",
+            "methods": [
+                "PUT"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/saved-views/{view}",
+            "methods": [
+                "DELETE"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/retention",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.document.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/holds",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.policy.manage|saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/holds/{hold}/release",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.policy.manage|saraban.config.manage",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/documents/{document}/retention",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/retention/due",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/retention/{schedule}/approve",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.policy.manage",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/retention/{schedule}/dispose",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.config.manage",
+                "step_up"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/reports/register",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.report.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/reports/numbers",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.report.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/reports/distribution",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.report.view"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/number-series",
+            "methods": [
+                "GET",
+                "HEAD"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/number-series",
+            "methods": [
+                "POST"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/number-series/{series}",
+            "methods": [
+                "PUT"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.config.manage"
+            ]
+        },
+        {
+            "uri": "api/v1/saraban/number-series/{series}",
+            "methods": [
+                "DELETE"
+            ],
+            "middleware": [
+                "api",
+                "auth:sanctum",
+                "throttle:api",
+                "idempotent",
+                "ability:saraban.config.manage"
+            ]
+        }
+    ],
+    "menu_migration_ran": true
+}

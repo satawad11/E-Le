@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\PermissionEvaluator;
+use App\Services\StepUpAuthentication;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -65,7 +66,16 @@ class AuthController extends Controller
 
         Auth::login($user);
         $expiration = (int) config('sanctum.expiration', 480);
-        $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;
+        $accessToken = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration));
+
+        /*
+         * SEC-GAP-01 (INT-11) — การเข้าสู่ระบบคือการยืนยันตัวตนแข็งครั้งหนึ่ง
+         * บันทึกเวลาไว้ที่โทเคน เพื่อให้ผู้ที่เพิ่งล็อกอินทำสิ่งที่อ่อนไหวได้ทันที
+         * โดยไม่ต้องกรอกรหัสผ่านซ้ำในนาทีเดียวกัน (SoT §24)
+         */
+        $accessToken->accessToken->forceFill(['last_authenticated_at' => now()])->save();
+
+        $token = $accessToken->plainTextToken;
 
         $user->load(['department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']);
         $user->permission_names = $this->effectivePermissionNames($user);
@@ -99,17 +109,53 @@ class AuthController extends Controller
         return response()->json(['message' => 'ออกจากระบบเรียบร้อยแล้ว']);
     }
 
+    /**
+     * ยืนยันตัวตนซ้ำก่อนทำสิ่งที่อ่อนไหว (SEC-GAP-01 · SoT §24)
+     *
+     * ไม่ออกโทเคนใหม่และไม่เปลี่ยนสิทธิ์ใด ๆ — เพียงบันทึกว่าโทเคนใบที่กำลังใช้
+     * เพิ่งผ่านการยืนยันตัวตน เพื่อให้ผ่านด่าน `step_up` ได้ภายในช่วงเวลาที่กำหนด
+     *
+     * จำกัดอัตราด้วย `throttle:password` ชุดเดิมของระบบ เพื่อไม่ให้ใช้ endpoint นี้
+     * เดารหัสผ่านของผู้ใช้ที่ล็อกอินค้างไว้
+     */
+    public function confirmPassword(Request $request, StepUpAuthentication $stepUp)
+    {
+        $request->validate(['password' => ['required', 'string']]);
+
+        if (! $stepUp->confirm($request->user(), $request->string('password')->toString())) {
+            return response()->json(['message' => 'รหัสผ่านไม่ถูกต้อง'], 422);
+        }
+
+        return response()->json([
+            'message' => 'ยืนยันตัวตนเรียบร้อยแล้ว',
+            'valid_for_minutes' => $stepUp->windowMinutes(),
+        ]);
+    }
+
     public function refresh(Request $request)
     {
         $user = $request->user();
         $accessToken = $user->currentAccessToken();
+
+        /*
+         * SEC-GAP-01 (INT-11) — ยกเวลายืนยันตัวตน "เดิม" ข้ามมาที่โทเคนใบใหม่
+         *
+         * ยกค่าเดิมมา ไม่ใช่ตั้งเป็นเวลาปัจจุบัน — ถ้าตั้งใหม่ทุกครั้งที่ต่ออายุโทเคน
+         * ผู้ใช้จะยืดช่วงยืนยันตัวตนได้ไม่รู้จบเพียงแค่กดต่ออายุ ซึ่งทำให้ด่านนี้
+         * ไม่มีความหมาย · การยกค่าเดิมมาทำให้ช่วงเวลายังหมดอายุตามกำหนดเดิม
+         * แต่คนที่เพิ่งยืนยันไปก็ไม่ถูกบังคับกรอกซ้ำเพราะโทเคนต่ออายุพอดี
+         */
+        $previouslyAuthenticatedAt = $accessToken?->last_authenticated_at;
 
         if ($accessToken && method_exists($accessToken, 'delete')) {
             $accessToken->delete();
         }
 
         $expiration = (int) config('sanctum.expiration', 480);
-        $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;
+        $issued = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration));
+        $issued->accessToken->forceFill(['last_authenticated_at' => $previouslyAuthenticatedAt])->save();
+
+        $token = $issued->plainTextToken;
 
         return response()->json([
             'access_token' => $token,

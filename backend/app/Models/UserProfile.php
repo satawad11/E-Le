@@ -63,6 +63,43 @@ class UserProfile extends Model
         'passport_number' => 'encrypted',
     ];
 
+    /**
+     * เลขประจำตัวประชาชนแบบปิดบัง — เปิดเฉพาะ 4 หลักท้าย
+     *
+     * SEC-030 — endpoint แบบ "รายการ" ต้องไม่ส่งเลขเต็มของบุคลากรทั้งสถานศึกษา
+     * ออกไปพร้อมกันทีเดียว หน้าจอใช้เพียงเพื่อ "ยืนยันว่าใช่คนนี้" ซึ่ง 4 หลักท้าย
+     * เพียงพอแล้ว · เลขเต็มยังเปิดได้ที่หน้ารายละเอียดรายคน ซึ่งมีทั้งการตรวจสิทธิ์
+     * ขอบเขตหน่วยงาน และบันทึกการเข้าถึงข้อมูลส่วนบุคคลรายครั้ง
+     *
+     * รูปแบบตามบัตรจริง: 0-0000-00000-00-0
+     */
+    public function maskedIdCard(): ?string
+    {
+        $number = preg_replace('/\D/', '', (string) $this->id_card_number);
+
+        if ($number === null || $number === '') {
+            return null;
+        }
+
+        if (strlen($number) !== 13) {
+            // เลขที่ไม่ใช่ 13 หลัก (ข้อมูลเก่า/ต่างชาติ) — ปิดบังทั้งหมดยกเว้น 4 หลักท้าย
+            return strlen($number) <= 4
+                ? str_repeat('x', strlen($number))
+                : str_repeat('x', strlen($number) - 4).substr($number, -4);
+        }
+
+        // รูปแบบตามบัตรจริง D-DDDD-DDDDD-DD-D โดยเปิดเฉพาะ 4 หลักท้าย
+        return 'x-xxxx-xxxx'.$number[9].'-'.$number[10].$number[11].'-'.$number[12];
+    }
+
+    /** 4 หลักท้ายของเลขประจำตัวประชาชน — ใช้ค้นหาในหน้าจอโดยไม่เปิดเลขเต็ม */
+    public function idCardLastFour(): ?string
+    {
+        $number = preg_replace('/\D/', '', (string) $this->id_card_number);
+
+        return $number === null || strlen($number) < 4 ? null : substr($number, -4);
+    }
+
     protected static function booted()
     {
         static::saving(function ($profile) {

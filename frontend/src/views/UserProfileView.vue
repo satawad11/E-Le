@@ -111,14 +111,6 @@
             </select>
           </div>
           <div class="md:col-span-2">
-            <h3 class="text-lg font-bold text-red-700 mb-2 border-b pb-2 mt-4">ตั้งค่ารหัสผ่านใหม่</h3>
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-xs text-gray-700 mb-1">รหัสผ่านใหม่ <span class="text-gray-400 font-normal">(เว้นว่างหากไม่ต้องการเปลี่ยน)</span></label>
-            <input v-model="form.password" type="password" placeholder="••••••••" class="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
-          </div>
-
-          <div class="md:col-span-2">
             <h3 class="text-lg font-bold text-red-700 mb-2 border-b pb-2 mt-4">ข้อมูลที่อยู่</h3>
           </div>
           <div>
@@ -228,6 +220,70 @@
     </div>
 
     <!--
+      เปลี่ยนรหัสผ่าน (SEC-024)
+      แยกออกจากฟอร์มโปรไฟล์โดยตั้งใจ — การแก้เบอร์โทรหรือที่อยู่ต้องไม่ต้องกรอกรหัสผ่าน
+      และการเปลี่ยนรหัสผ่านต้องยืนยันตัวตนด้วยรหัสผ่านปัจจุบันเสมอ
+    -->
+    <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 max-w-4xl mt-6">
+      <h2 class="text-lg font-bold text-red-700 mb-1">เปลี่ยนรหัสผ่าน</h2>
+      <p class="text-sm text-gray-500 mb-4">
+        ต้องกรอกรหัสผ่านปัจจุบันเพื่อยืนยันตัวตน · เมื่อเปลี่ยนสำเร็จ ระบบจะออกจากระบบในอุปกรณ์อื่นทั้งหมด
+      </p>
+      <form class="grid grid-cols-1 md:grid-cols-2 gap-4" @submit.prevent="submitPasswordChange">
+        <div class="md:col-span-2">
+          <label for="current-password" class="block text-xs text-gray-700 mb-1">รหัสผ่านปัจจุบัน</label>
+          <input
+            id="current-password"
+            v-model="passwordForm.current_password"
+            type="password"
+            autocomplete="current-password"
+            required
+            aria-describedby="password-help"
+            class="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500"
+          />
+        </div>
+        <div>
+          <label for="new-password" class="block text-xs text-gray-700 mb-1">รหัสผ่านใหม่</label>
+          <input
+            id="new-password"
+            v-model="passwordForm.password"
+            type="password"
+            autocomplete="new-password"
+            minlength="12"
+            required
+            aria-describedby="password-help"
+            class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500"
+          />
+        </div>
+        <div>
+          <label for="confirm-password" class="block text-xs text-gray-700 mb-1">ยืนยันรหัสผ่านใหม่</label>
+          <input
+            id="confirm-password"
+            v-model="passwordForm.password_confirmation"
+            type="password"
+            autocomplete="new-password"
+            minlength="12"
+            required
+            aria-describedby="password-help"
+            class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500"
+          />
+        </div>
+        <p id="password-help" class="md:col-span-2 text-xs text-gray-500">
+          รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 12 ตัวอักษร และต้องไม่ซ้ำกับรหัสผ่านเดิม
+        </p>
+        <div class="md:col-span-2">
+          <button
+            type="submit"
+            :disabled="changingPassword"
+            class="px-5 py-2.5 bg-red-700 text-white rounded-lg text-sm font-semibold hover:bg-red-800 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          >
+            {{ changingPassword ? 'กำลังเปลี่ยนรหัสผ่าน…' : 'เปลี่ยนรหัสผ่าน' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!--
       การแจ้งเตือนของฉัน (CLEANUP-02)
       Notification Center รองรับ preference รายบุคคลมาตั้งแต่ LEGACY-10 แต่ไม่มีหน้าจอให้ตั้งค่า
     -->
@@ -238,6 +294,9 @@
           เลือกช่องทางที่ต้องการรับแจ้งเตือนของแต่ละเหตุการณ์ · การแจ้งเตือนในระบบของเหตุการณ์บังคับปิดไม่ได้
         </p>
       </header>
+
+      <!-- INT-14 — เปิด-ปิดการแจ้งเตือนผ่านเบราว์เซอร์บนเครื่องนี้ -->
+      <WebPushToggle />
 
       <div v-if="notificationTypes.length === 0" class="px-6 py-8 text-center text-sm text-gray-500">
         ยังไม่มีประเภทการแจ้งเตือนในระบบ
@@ -283,6 +342,7 @@ import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
 import api from '../axios'
 import { ICONS } from '../utils/icons'
+import WebPushToggle from '../components/notifications/WebPushToggle.vue'
 
 const authStore = useAuthStore()
 const alertStore = useAlertStore()
@@ -328,11 +388,18 @@ const form = reactive({
   telegram_chat_id: '',
   line_user_id: '',
   notification_channel: 'both',
-  password: '',
   role: null,
   department: null,
   profile: {}
 })
+
+/* SEC-024 — ฟอร์มเปลี่ยนรหัสผ่านแยกจากฟอร์มโปรไฟล์ */
+const passwordForm = reactive({
+  current_password: '',
+  password: '',
+  password_confirmation: ''
+})
+const changingPassword = ref(false)
 
 const delegationForm = reactive({
   delegate_id: null,
@@ -358,6 +425,8 @@ const CHANNEL_LABELS = {
   email: 'อีเมล',
   line_oa: 'LINE',
   telegram: 'Telegram',
+  // INT-14 — ช่องทางใหม่ (SoT §16)
+  web_push: 'เบราว์เซอร์',
 }
 
 const channelLabel = (channel) => CHANNEL_LABELS[channel] || channel
@@ -429,9 +498,15 @@ onMounted(async () => {
       }
     }
 
-    // Load users list for delegation
+    /*
+     * รายชื่อผู้รับมอบหมาย (SEC-030)
+     *
+     * เดิมหน้านี้ดึง `/admin/users` ซึ่งเป็นทะเบียนประวัติบุคลากรทั้งหมด
+     * ทั้งที่ต้องการเพียง "ชื่อ" ไปใส่ในช่องเลือกผู้ปฏิบัติงานแทน
+     * `/users/list` คืนเฉพาะ id · uuid · ชื่อ · หน่วยงาน ซึ่งพอดีกับที่หน้าจอใช้จริง
+     */
     if (authStore.isManager || authStore.isSuperAdmin) {
-      const uRes = await api.get('/admin/users')
+      const uRes = await api.get('/users/list')
       usersList.value = uRes.data.filter(u => u.id !== authStore.user.id)
     }
 
@@ -559,10 +634,6 @@ const submitProfile = async () => {
     }
 
 
-    if (form.password) {
-      formData.append('password', form.password)
-    }
-
     if (imageFile.value) {
       formData.append('profile_photo', imageFile.value)
     }
@@ -590,6 +661,44 @@ const submitProfile = async () => {
     }
   } finally {
     submitting.value = false
+  }
+}
+
+/**
+ * เปลี่ยนรหัสผ่าน (SEC-024)
+ *
+ * ตรวจความตรงกันฝั่งหน้าเว็บก่อนเพื่อ UX เท่านั้น — ฝั่ง server ตรวจซ้ำเสมอ
+ */
+const submitPasswordChange = async () => {
+  if (passwordForm.password !== passwordForm.password_confirmation) {
+    alertStore.error('การยืนยันรหัสผ่านใหม่ไม่ตรงกับรหัสผ่านใหม่')
+    return
+  }
+
+  changingPassword.value = true
+  try {
+    const res = await api.post('/profile/password', {
+      current_password: passwordForm.current_password,
+      password: passwordForm.password,
+      password_confirmation: passwordForm.password_confirmation
+    })
+    passwordForm.current_password = ''
+    passwordForm.password = ''
+    passwordForm.password_confirmation = ''
+    // การเปลี่ยนรหัสผ่านเพิกถอน token ทุกใบ — รับใบใหม่ของอุปกรณ์นี้มาใช้ต่อทันที
+    if (res.data.access_token) {
+      authStore.adoptToken(res.data.access_token, res.data.expires_in)
+    }
+    alertStore.success(res.data.message || 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว')
+  } catch (e) {
+    const errors = e.response?.data?.errors
+    if (errors) {
+      alertStore.error(Object.values(errors).flat().join(' | '))
+    } else {
+      alertStore.error(e.thaiMessage || e.response?.data?.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ')
+    }
+  } finally {
+    changingPassword.value = false
   }
 }
 

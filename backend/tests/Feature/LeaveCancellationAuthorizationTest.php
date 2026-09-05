@@ -18,6 +18,15 @@ use Tests\TestCase;
  *
  * ถ้า refactor แล้วใช้ `leave.management.manage` อย่างเดียว HR Head จะเสียสิทธิ์
  * ที่เคยมี เทสต์ชุดนี้กันไม่ให้เกิดกรณีนั้น และกันไม่ให้บทบาทอื่นได้สิทธิ์เพิ่ม
+ *
+ * SEC-027 (2026-09-01) — แก้ทางที่ HR Head ผ่านด่านนี้
+ *
+ * รอบนี้ตัด `system.user.view` ออกจากชุดที่ให้อำนาจยกเลิกใบลาของผู้อื่น เพราะเป็น
+ * สิทธิ์ "ดูทะเบียนผู้ใช้" ไม่ใช่สิทธิ์งานลา ใครก็ตามที่ได้สิทธิ์ไว้เพียงเพื่อเปิดดู
+ * รายชื่อบุคลากรจึงยกเลิกใบลาของคนทั้งองค์กรได้
+ *
+ * HR Head ยังทำได้เหมือนเดิม แต่ผ่าน `leave.approval.hr` ซึ่งเป็นสิทธิ์งานลาโดยตรง
+ * และ `OperationalPermissionSeeder` มอบให้บทบาทนี้อยู่แล้ว (ดู TASKS.md รอบสี่)
  */
 class LeaveCancellationAuthorizationTest extends TestCase
 {
@@ -30,7 +39,7 @@ class LeaveCancellationAuthorizationTest extends TestCase
         parent::setUp();
 
         foreach ([
-            'leave.management.manage', 'system.user.view',
+            'leave.management.manage', 'system.user.view', 'leave.approval.hr',
             'leave.report.view', 'leave.approval.dept', 'attendance.view_all',
         ] as $name) {
             Permission::findOrCreate($name, 'web');
@@ -69,10 +78,18 @@ class LeaveCancellationAuthorizationTest extends TestCase
             ->status();
     }
 
-    /** HR Head ถือ system.user.view — ต้องยังยกเลิกใบลาของผู้อื่นได้เหมือนเดิม */
+    /** HR Head ถือ leave.approval.hr — ต้องยังยกเลิกใบลาของผู้อื่นได้เหมือนเดิม */
     public function test_hr_head_can_still_cancel_someone_elses_leave(): void
     {
-        $this->assertNotSame(403, $this->cancel($this->userWith(['system.user.view'])));
+        $this->assertNotSame(403, $this->cancel($this->userWith(['leave.approval.hr'])));
+    }
+
+    /**
+     * SEC-027 — สิทธิ์ "ดูทะเบียนผู้ใช้" ต้องไม่แถมอำนาจยกเลิกใบลาของผู้อื่นมาด้วย
+     */
+    public function test_user_directory_permission_alone_cannot_cancel_someone_elses_leave(): void
+    {
+        $this->assertSame(403, $this->cancel($this->userWith(['system.user.view'])));
     }
 
     public function test_leave_manager_can_cancel_someone_elses_leave(): void

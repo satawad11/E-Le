@@ -75,10 +75,15 @@ class ModuleToggleTest extends TestCase
             ->assertJsonValidationErrors('module');
     }
 
+    /*
+     * INT-02 — เดิมตัวอย่าง "โมดูลที่ไม่รู้จัก" ในเทสต์นี้คือ `saraban`
+     * ซึ่งใช้ได้ตราบใดที่โมดูลสารบรรณยังไม่มีอยู่จริง เมื่อลงทะเบียนโมดูลแล้ว
+     * ชื่อนั้นกลายเป็นโมดูลที่ระบบรู้จัก จึงเปลี่ยนไปใช้ชื่อที่ไม่มีวันมีอยู่แทน
+     */
     public function test_an_unknown_module_is_refused(): void
     {
         $this->actingAs($this->admin())
-            ->postJson('/api/admin/modules', ['module' => 'saraban', 'enabled' => false])
+            ->postJson('/api/admin/modules', ['module' => 'not_a_real_module', 'enabled' => false])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('module');
     }

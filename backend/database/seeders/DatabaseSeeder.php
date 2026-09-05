@@ -8,6 +8,7 @@ use App\Models\LeaveBalance;
 use App\Models\LeaveType;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\SystemRoles;
 use Faker\Factory;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -71,6 +72,10 @@ class DatabaseSeeder extends Seeder
         $directorRole = Role::firstOrCreate(['name' => 'Director'], ['description' => 'ผู้อำนวยการ']);
         $superAdminRole = Role::firstOrCreate(['name' => 'Super Admin'], ['description' => 'ผู้ดูแลระบบสูงสุด']);
         $docOfficerRole = Role::firstOrCreate(['name' => 'Document Officer'], ['description' => 'เจ้าหน้าที่สารบัญ']);
+
+        // SEC-026 — ติดคีย์ระบบให้บทบาทหลัก (migration ทำให้ระบบที่ติดตั้งแล้ว
+        // ส่วนการติดตั้งใหม่ seeder สร้างบทบาทหลัง migration จึงต้องติดที่นี่)
+        SystemRoles::backfillExistingRoles();
 
         // Core Thai government leave types. The complete set is maintained by
         // NewLeaveTypesSeeder so fresh and existing installations stay aligned.

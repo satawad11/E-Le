@@ -49,7 +49,8 @@ class UploadAllowlistTest extends TestCase
         $this->assertNotEmpty($forbiddenMimes);
         $this->assertNotEmpty($forbiddenExtensions);
 
-        foreach (['attachments', 'images', 'document_templates'] as $profile) {
+        // INT-04 — ชุดไฟล์แนบของสารบรรณต้องอยู่ใต้กฎเดียวกับชุดที่มีมาก่อน
+        foreach (['attachments', 'images', 'document_templates', 'saraban_attachments'] as $profile) {
             $mimeTypes = (array) config("uploads.{$profile}.mime_types");
             $extensions = (array) config("uploads.{$profile}.extensions");
 
@@ -69,8 +70,9 @@ class UploadAllowlistTest extends TestCase
      */
     public function test_every_upload_rule_checks_both_content_and_extension(): void
     {
-        foreach ([UploadRules::attachment(), UploadRules::image(), UploadRules::documentTemplate()] as $rules) {
-            $joined = implode('|', $rules);
+        foreach ([UploadRules::attachment(), UploadRules::image(), UploadRules::documentTemplate(), UploadRules::sarabanAttachment()] as $rules) {
+            // INT-04 — ชุดกฎมีทั้งกฎแบบข้อความและ object (ด่านตรวจไวรัส) จึงรวมเฉพาะแบบข้อความ
+            $joined = implode('|', array_filter($rules, 'is_string'));
 
             $this->assertStringContainsString('mimetypes:', $joined);
             $this->assertStringContainsString('extensions:', $joined);
