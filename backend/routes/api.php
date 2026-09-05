@@ -45,6 +45,7 @@ use App\Http\Controllers\Saraban\DocumentController;
 use App\Http\Controllers\Saraban\DocumentVerificationController;
 use App\Http\Controllers\Saraban\InboxController;
 use App\Http\Controllers\Saraban\IncomingRegistrationController;
+use App\Http\Controllers\Saraban\NumberReservationController;
 use App\Http\Controllers\Saraban\NumberSeriesController;
 use App\Http\Controllers\Saraban\PolicyController;
 use App\Http\Controllers\Saraban\RedactionController;
@@ -713,6 +714,25 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
             Route::get('/reports/numbers', [RegisterReportController::class, 'numbers']);
             Route::get('/reports/distribution', [RegisterReportController::class, 'distribution']);
         });
+        /*
+         * การจองและคืนเลขหนังสือ (SoT §9 · NAV §4.3)
+         *
+         * **แยกความรุนแรงของแต่ละการกระทำ** — จองและคืนเลขเป็นงานประจำวันของ
+         * เจ้าหน้าที่ธุรการ ส่วน **การยกเลิกเลขทำให้เลขนั้นไม่ถูกใช้อีกเลย**
+         * และทะเบียนจะมีช่องว่างถาวรที่ผู้ตรวจสอบต้องอธิบายได้ จึงบังคับ `step_up`
+         * ตามที่ NAV §3.2 จัดไว้เป็น sensitive action
+         *
+         * ดูรายการเลขที่จองไว้ใช้สิทธิ์เดียวกับการจอง เพราะเป็นคิวงานของคนกลุ่มเดียวกัน
+         */
+        Route::get('/numbers/reserved', [NumberReservationController::class, 'index'])
+            ->middleware('ability:saraban.number.reserve');
+        Route::post('/numbers/reserve', [NumberReservationController::class, 'store'])
+            ->middleware('ability:saraban.number.reserve');
+        Route::post('/numbers/{number}/release', [NumberReservationController::class, 'release'])
+            ->middleware('ability:saraban.number.release');
+        Route::post('/numbers/{number}/cancel', [NumberReservationController::class, 'cancel'])
+            ->middleware(['ability:saraban.number.cancel', 'step_up']);
+
         // ตั้งค่าชุดเลขหนังสือ (INT-16 · ปิด RISK-21)
         Route::middleware('ability:saraban.config.manage')->group(function () {
             Route::get('/number-series', [NumberSeriesController::class, 'index']);

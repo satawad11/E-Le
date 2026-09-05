@@ -245,6 +245,7 @@ class MenuSeeder extends Seeder
                 'saraban.inbox.view',
                 'saraban.document.create',
                 'saraban.incoming.register',
+                'saraban.number.reserve',
                 'saraban.report.view',
             ],
             'children' => [
@@ -305,6 +306,21 @@ class MenuSeeder extends Seeder
                     'route_name' => 'saraban-incoming-register',
                     'route_path' => '/saraban/incoming/new',
                     'permissions' => ['saraban.incoming.register'],
+                ],
+                /*
+                 * จองเลขหนังสือ (SoT §9 · NAV §4.3)
+                 *
+                 * แยกจาก "ชุดเลขหนังสือ" ในกลุ่มการจัดการโดยเจตนา — ชุดเลขคือ
+                 * **การตั้งค่า** ที่ทำปีละครั้ง ส่วนการจองเลขคือ **งานประจำวัน**
+                 * ของเจ้าหน้าที่ธุรการ · สองอย่างนี้คนละคนทำและคนละความถี่
+                 */
+                [
+                    'code' => 'saraban.numbers',
+                    'title_th' => 'จองเลขหนังสือ',
+                    'title_en' => 'Reserve Number',
+                    'route_name' => 'saraban-numbers',
+                    'route_path' => '/saraban/numbers',
+                    'permissions' => ['saraban.number.reserve'],
                 ],
                 [
                     // INT-18 — สารบบเรื่อง (SoT §22)
