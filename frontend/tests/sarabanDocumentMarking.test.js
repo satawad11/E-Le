@@ -12,6 +12,7 @@ vi.mock('../src/stores/alert', () => ({ useAlertStore: () => ({ success: vi.fn()
 const PdfWorkspace = (await import('../src/components/saraban/PdfWorkspace.vue')).default
 const EndorseDocumentView = (await import('../src/views/saraban/EndorseDocumentView.vue')).default
 const SignDocumentView = (await import('../src/views/saraban/SignDocumentView.vue')).default
+const RenderedPreview = (await import('../src/components/saraban/RenderedPreview.vue')).default
 
 /**
  * การวางลายเซ็นและรอยเกษียนบนเอกสารจริง (SoT §14, §15 · NAV §4.7)
@@ -29,11 +30,22 @@ const stubWorkspace = {
   template: '<div class="workspace"></div>',
 }
 
+/*
+ * ตัวอย่างฉบับจริงถูกทดสอบแยกด้านล่าง — ที่นี่แทนด้วยปุ่มยืนยัน เพื่อพิสูจน์ว่า
+ * ขั้นตอนบังคับให้ผ่านตัวอย่างก่อนเสมอ
+ */
+const stubPreview = {
+  props: ['documentId', 'objects', 'confirmLabel'],
+  emits: ['back', 'confirm'],
+  template: '<button class="preview-confirm" @click="$emit(\'confirm\')">ยืนยันจากตัวอย่าง</button>',
+}
+
 const mountView = (component) =>
   mount(component, {
     global: {
       stubs: {
         PdfWorkspace: stubWorkspace,
+        RenderedPreview: stubPreview,
         AppModal: { template: '<div><slot/><slot name="footer"/></div>' },
         HandwritingCanvas: { name: 'HandwritingCanvas', emits: ['change'], template: '<div class="pad"></div>' },
       },
@@ -124,7 +136,12 @@ describe('หน้าเกษียนหนังสือ', () => {
 
     expect(api.post).not.toHaveBeenCalled()
 
-    await click(wrapper, 'ตรวจและบันทึกเกษียน')
+    // ต้องผ่านขั้นตัวอย่างก่อน จึงจะถึงกล่องยืนยัน
+    await click(wrapper, 'ตรวจตัวอย่างและบันทึกเกษียน')
+    expect(wrapper.findComponent(stubPreview).props('objects')).toHaveLength(1)
+    expect(api.post).not.toHaveBeenCalled()
+
+    await click(wrapper, 'ยืนยันจากตัวอย่าง')
     await click(wrapper, 'ยืนยันบันทึกเกษียน')
 
     expect(api.post).toHaveBeenCalledWith('/saraban/documents/7/endorse', {
@@ -141,6 +158,50 @@ describe('หน้าเกษียนหนังสือ', () => {
   })
 })
 
+describe('ตัวอย่างฉบับจริงก่อนยืนยัน', () => {
+  it('ขอไฟล์ที่เรนเดอร์จาก server ด้วยวัตถุที่วางไว้ ไม่ใช่ภาพจากหน้าจอ', async () => {
+    api.post.mockResolvedValue({ data: new Blob(['%PDF-1.4'], { type: 'application/pdf' }) })
+    URL.createObjectURL = vi.fn(() => 'blob:preview')
+
+    const wrapper = mount(RenderedPreview, {
+      props: {
+        documentId: 7,
+        objects: [{ page: 2, type: 'note', x: 10, y: 20, width: 240, height: 40, payload: { text: 'ความเห็น' } }],
+        confirmLabel: 'ยืนยันลงนาม',
+      },
+      global: { stubs: { PdfWorkspace: stubWorkspace } },
+    })
+    await flushPromises()
+
+    expect(api.post).toHaveBeenCalledWith(
+      '/saraban/documents/7/annotations/preview',
+      { objects: [{ page: 2, type: 'note', x: 10, y: 20, width: 240, height: 40, payload: { text: 'ความเห็น' } }] },
+      { responseType: 'blob' },
+    )
+    expect(wrapper.findComponent(stubWorkspace).props('source')).toBe('blob:preview')
+    expect(wrapper.text()).toContain('ยืนยันลงนาม')
+  })
+
+  /*
+   * คำตอบที่ผิดพลาดกลับมาเป็น blob จึงอ่านข้อความจาก server ไม่ได้
+   * ต้องไม่ปล่อยให้ผู้ใช้เห็นข้อความกำกวมแล้วกดยืนยันต่อไปได้
+   */
+  it('บอกเหตุผลตามสถานะ และไม่ให้กดยืนยันเมื่อสร้างตัวอย่างไม่สำเร็จ', async () => {
+    api.post.mockRejectedValue({ response: { status: 403 } })
+
+    const wrapper = mount(RenderedPreview, {
+      props: { documentId: 7, objects: [], confirmLabel: 'ยืนยันลงนาม' },
+      global: { stubs: { PdfWorkspace: stubWorkspace } },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('ไม่มีสิทธิ์วางวัตถุบนหนังสือฉบับนี้')
+
+    const confirm = wrapper.findAll('button').find((b) => b.text() === 'ยืนยันลงนาม')
+    expect(confirm.attributes('disabled')).toBeDefined()
+  })
+})
+
 describe('หน้าลงนาม', () => {
   it('ส่งลายเซ็นตามหน้าและพิกัดที่วางไว้จริง', async () => {
     const wrapper = mountView(SignDocumentView)
@@ -153,7 +214,8 @@ describe('หน้าลงนาม', () => {
     wrapper.findComponent(stubWorkspace).vm.$emit('place', { page: 2, x: 300, y: 500 })
     await flushPromises()
 
-    await click(wrapper, 'ตรวจและลงนาม')
+    await click(wrapper, 'ตรวจตัวอย่างและลงนาม')
+    await click(wrapper, 'ยืนยันจากตัวอย่าง')
     await click(wrapper, 'ยืนยันลงนามในหนังสือ')
 
     expect(api.post).toHaveBeenCalledWith('/saraban/documents/7/sign', expect.objectContaining({

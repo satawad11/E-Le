@@ -24,7 +24,20 @@
       -->
       <SigningContextPanel :workflow="workflow" :evidences="evidences" :version="documentRecord" />
 
-      <div class="grid lg:grid-cols-3 gap-4">
+      <!--
+        ขั้นตรวจตัวอย่าง — เห็นไฟล์ที่จะออกมาจริงก่อน จึงจะกดยืนยันได้
+        แทนที่พื้นที่วางทั้งหมด เพื่อไม่ให้เผลอแก้ตำแหน่งระหว่างที่ตัวอย่างค้างอยู่
+      -->
+      <RenderedPreview
+        v-if="previewing"
+        :document-id="route.params.id"
+        :objects="objects"
+        confirm-label="ยืนยันลงนาม"
+        @back="previewing = false"
+        @confirm="confirming = true"
+      />
+
+      <div v-else class="grid lg:grid-cols-3 gap-4">
         <!-- แผงเครื่องมือ — เขียนลายเซ็นแล้วคลิกวางลงบนเอกสาร -->
         <section class="space-y-4">
           <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-3">
@@ -65,7 +78,7 @@
               **ต้องเห็นตัวอย่างก่อนจึงกดลงนามได้** — การลงนามย้อนกลับไม่ได้
               ผู้ลงนามจึงต้องเห็นสิ่งที่ตนกำลังรับรองก่อนเสมอ
             -->
-            <AppButton :disabled="!hasSignature" @click="confirming = true">ตรวจและลงนาม</AppButton>
+            <AppButton :disabled="!hasSignature" @click="previewing = true">ตรวจตัวอย่างและลงนาม</AppButton>
           </div>
         </section>
 
@@ -120,6 +133,7 @@ import HandwritingCanvas from '../../components/ui/HandwritingCanvas.vue'
 import LoadingState from '../../components/ui/LoadingState.vue'
 import ConfirmOperation from '../../components/saraban/ConfirmOperation.vue'
 import PdfWorkspace from '../../components/saraban/PdfWorkspace.vue'
+import RenderedPreview from '../../components/saraban/RenderedPreview.vue'
 import SigningContextPanel from '../../components/saraban/SigningContextPanel.vue'
 
 const route = useRoute()
@@ -138,6 +152,7 @@ const placing = ref(null)
 const loading = ref(true)
 const loadError = ref('')
 const error = ref('')
+const previewing = ref(false)
 const confirming = ref(false)
 
 const signature = computed(() => objects.value.find((o) => o.type === 'signature'))

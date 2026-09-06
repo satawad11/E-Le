@@ -31,6 +31,19 @@
         description="แนบไฟล์หนังสือก่อนจึงจะเกษียนได้"
       />
 
+      <!--
+        ขั้นตรวจตัวอย่าง — ไฟล์ที่เห็นสร้างจากตัวเรนเดอร์ตัวเดียวกับของจริง
+        แทนที่พื้นที่วาง เพื่อไม่ให้เผลอแก้ตำแหน่งขณะที่ตัวอย่างค้างอยู่
+      -->
+      <RenderedPreview
+        v-else-if="previewing"
+        :document-id="route.params.id"
+        :objects="objects"
+        confirm-label="ยืนยันบันทึกเกษียน"
+        @back="previewing = false"
+        @confirm="confirming = true"
+      />
+
       <div v-else class="grid lg:grid-cols-3 gap-4">
         <section class="space-y-4">
           <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-3">
@@ -61,7 +74,7 @@
               </li>
             </ul>
             <p v-else class="text-sm text-gray-500">ยังไม่ได้วางสิ่งใดบนเอกสาร</p>
-            <AppButton :disabled="!objects.length" @click="confirming = true">ตรวจและบันทึกเกษียน</AppButton>
+            <AppButton :disabled="!objects.length" @click="previewing = true">ตรวจตัวอย่างและบันทึกเกษียน</AppButton>
           </div>
         </section>
 
@@ -105,6 +118,7 @@ import HandwritingCanvas from '../../components/ui/HandwritingCanvas.vue'
 import LoadingState from '../../components/ui/LoadingState.vue'
 import ConfirmOperation from '../../components/saraban/ConfirmOperation.vue'
 import PdfWorkspace from '../../components/saraban/PdfWorkspace.vue'
+import RenderedPreview from '../../components/saraban/RenderedPreview.vue'
 import SigningContextPanel from '../../components/saraban/SigningContextPanel.vue'
 
 /**
@@ -144,6 +158,7 @@ const noteText = ref('')
 const placing = ref(null)
 const loading = ref(true)
 const loadError = ref('')
+const previewing = ref(false)
 const confirming = ref(false)
 
 const confirmationText = computed(

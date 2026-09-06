@@ -7,6 +7,7 @@ use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentAnnotation;
 use App\Models\Saraban\DocumentVersion;
 use App\Services\Saraban\AnnotationService;
+use App\Services\Saraban\SarabanPdfRenderer;
 use App\Support\StoredFile;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -118,6 +119,68 @@ class AnnotationController extends Controller
         return response()->json([
             'file_path' => $version->pdf_file_path,
             'exists' => StoredFile::exists('/storage/'.$version->pdf_file_path),
+        ]);
+    }
+
+    /**
+     * ตัวอย่างฉบับจริงก่อนยืนยัน — เรนเดอร์ด้วยตัวเดียวกับของจริง แต่ไม่บันทึก
+     *
+     * **ทำไมต้องมี:** หน้าจอวางวัตถุแสดงเพียงกล่องทับ PDF ตำแหน่งตรงแต่หน้าตา
+     * ไม่ใช่ผลจริง — ลายเส้น ฟอนต์ไทย และการตัดบรรทัดเกิดที่ฝั่ง server เท่านั้น ·
+     * การลงนามย้อนกลับไม่ได้ ผู้ลงนามจึงต้องเห็น **ไฟล์ที่จะออกมาจริง** ก่อนกดยืนยัน
+     * ไม่ใช่ภาพประมาณการ
+     *
+     * **ไม่เขียนอะไรลงฐานข้อมูลหรือดิสก์เลย** — ไม่สร้างเวอร์ชัน ไม่บันทึกวัตถุ
+     * ถ้าเผลอให้บันทึก การกดดูตัวอย่างจะกลายเป็นการเกษียนไปโดยปริยาย
+     */
+    public function preview(Request $request, Document $document)
+    {
+        $this->authorize('view', $document);
+
+        /*
+         * ผู้ที่วางวัตถุบนหนังสือได้เท่านั้นจึงขอตัวอย่างได้ — ผู้อ่านทั่วไปไม่มี
+         * อะไรให้ดูตัวอย่าง และการเรนเดอร์เป็นงานหนักที่ไม่ควรเปิดให้ทุกคนเรียก
+         */
+        abort_unless(
+            $request->user()->can('stamp', $document)
+                || $request->user()->can('endorse', $document)
+                || $request->user()->can('sign', $document),
+            403,
+            'ไม่มีสิทธิ์วางวัตถุบนหนังสือฉบับนี้'
+        );
+
+        $version = $document->currentVersion;
+
+        abort_if($version === null, 422, 'หนังสือฉบับนี้ยังไม่มีไฟล์ให้ดูตัวอย่าง');
+
+        $data = $request->validate([
+            'objects' => ['present', 'array', 'max:20'],
+            'objects.*.page' => ['required', 'integer', 'min:1'],
+            'objects.*.type' => ['required', 'string', Rule::in(DocumentAnnotation::types())],
+            'objects.*.x' => ['required', 'numeric', 'min:0', 'max:5000'],
+            'objects.*.y' => ['required', 'numeric', 'min:0', 'max:5000'],
+            'objects.*.width' => ['nullable', 'numeric', 'min:1', 'max:5000'],
+            'objects.*.height' => ['nullable', 'numeric', 'min:1', 'max:5000'],
+            'objects.*.payload' => ['nullable', 'array'],
+        ]);
+
+        // `make()` ไม่บันทึก — วัตถุเหล่านี้มีชีวิตอยู่แค่ในคำขอนี้
+        $draft = collect($data['objects'])->map(fn (array $object) => DocumentAnnotation::make([
+            'document_version_id' => $version->id,
+            'page' => $object['page'],
+            'type' => $object['type'],
+            'x' => $object['x'],
+            'y' => $object['y'],
+            'width' => $object['width'] ?? null,
+            'height' => $object['height'] ?? null,
+            'payload' => $object['payload'] ?? null,
+        ]));
+
+        return response(app(SarabanPdfRenderer::class)->render($version, $draft), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="preview.pdf"',
+            // ตัวอย่างเปลี่ยนตามสิ่งที่วางอยู่ทุกครั้ง จึงต้องไม่ถูกเก็บไว้ใช้ซ้ำ
+            'Cache-Control' => 'no-store',
         ]);
     }
 }

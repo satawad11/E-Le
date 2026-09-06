@@ -548,6 +548,15 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/documents/{document}/annotations/render', [AnnotationController::class, 'render'])->middleware('ability:saraban.incoming.stamp');
 
         /*
+         * ตัวอย่างฉบับจริงก่อนยืนยัน — ไม่บันทึกอะไรทั้งสิ้น
+         *
+         * รับได้ทั้งผู้ประทับตรา ผู้เกษียน และผู้ลงนาม เพราะทั้งสามฝ่ายวางวัตถุ
+         * บนหนังสือได้ · policy ตัดสินรายฉบับอีกชั้นใน controller
+         */
+        Route::post('/documents/{document}/annotations/preview', [AnnotationController::class, 'preview'])
+            ->middleware('ability:saraban.incoming.stamp|saraban.endorse.create|saraban.signature.sign');
+
+        /*
          * จำลองเส้นทางเดินหนังสือ (INT-09)
          *
          * ใช้ POST เพราะรับพารามิเตอร์เป็น body แต่เป็นการอ่านอย่างเดียว

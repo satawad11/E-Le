@@ -429,4 +429,91 @@ class SarabanPdfWorkspaceTest extends TestCase
             ]);
         }
     }
+
+    // ── ตัวอย่างฉบับจริงก่อนยืนยัน ──────────────────────────────────────────
+
+    /**
+     * ตัวอย่างต้องเป็นไฟล์ที่เรนเดอร์จริง ไม่ใช่ภาพประมาณการจากหน้าจอ
+     *
+     * ผู้ลงนามรับรองสิ่งที่ตนเห็น การให้ดูภาพที่ "ใกล้เคียง" ผลจริงจึงไม่พอ
+     */
+    public function test_preview_returns_a_rendered_pdf_of_what_will_be_produced(): void
+    {
+        $officer = $this->officer();
+        $document = $this->documentWithFile($officer);
+
+        $response = $this->actingAs($officer)
+            ->post("/api/saraban/documents/{$document->id}/annotations/preview", [
+                'objects' => [[
+                    'page' => 1, 'type' => 'note', 'x' => 60, 'y' => 100,
+                    'width' => 240, 'height' => 40, 'payload' => ['text' => 'โปรดพิจารณา'],
+                ]],
+            ])
+            ->assertOk();
+
+        $this->assertSame('application/pdf', $response->headers->get('content-type'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    /**
+     * **การดูตัวอย่างต้องไม่เขียนอะไรเลย**
+     *
+     * ถ้าตัวอย่างบันทึกวัตถุหรือสร้างเวอร์ชัน การกดดูก่อนตัดสินใจจะกลายเป็น
+     * การเกษียนไปโดยปริยาย และผู้ที่ดูแล้วเปลี่ยนใจจะทิ้งร่องรอยไว้บนหนังสือ
+     */
+    public function test_preview_saves_nothing_at_all(): void
+    {
+        $officer = $this->officer();
+        $document = $this->documentWithFile($officer);
+        $versionsBefore = $document->versions()->count();
+
+        $this->actingAs($officer)
+            ->post("/api/saraban/documents/{$document->id}/annotations/preview", [
+                'objects' => [['page' => 1, 'type' => 'checkmark', 'x' => 10, 'y' => 10, 'width' => 14, 'height' => 14]],
+            ])
+            ->assertOk();
+
+        $this->assertSame(0, DocumentAnnotation::query()->count());
+        $this->assertSame($versionsBefore, $document->fresh()->versions()->count());
+    }
+
+    /** ตัวอย่างต้องวาดของที่บันทึกไว้แล้วด้วย ไม่ใช่เฉพาะของที่กำลังวาง */
+    public function test_preview_draws_saved_objects_together_with_the_draft_ones(): void
+    {
+        $officer = $this->officer();
+        $document = $this->documentWithFile($officer);
+
+        $this->actingAs($officer)
+            ->putJson("/api/saraban/documents/{$document->id}/annotations", [
+                'annotations' => [['page' => 1, 'type' => 'text', 'x' => 20, 'y' => 20, 'payload' => ['text' => 'ตราที่วางไว้แล้ว']]],
+            ])
+            ->assertOk();
+
+        $version = $document->fresh()->currentVersion;
+        $renderer = app(SarabanPdfRenderer::class);
+
+        $withoutDraft = strlen($renderer->render($version));
+        $withDraft = strlen($renderer->render($version, [DocumentAnnotation::make([
+            'document_version_id' => $version->id,
+            'page' => 1, 'type' => 'note', 'x' => 60, 'y' => 300,
+            'width' => 240, 'height' => 40, 'payload' => ['text' => 'ความเห็นที่ยังไม่บันทึก'],
+        ])]));
+
+        $this->assertGreaterThan($withoutDraft, $withDraft, 'วัตถุที่ยังไม่บันทึกต้องถูกวาดเพิ่มลงในตัวอย่าง');
+        $this->assertSame(1, DocumentAnnotation::query()->count(), 'การเรนเดอร์ตัวอย่างต้องไม่บันทึกวัตถุ');
+    }
+
+    /** ผู้ที่อ่านได้อย่างเดียวขอตัวอย่างไม่ได้ — ไม่มีอะไรให้ตัวอย่าง และเปลืองเครื่อง */
+    public function test_a_read_only_viewer_cannot_ask_for_a_preview(): void
+    {
+        $officer = $this->officer();
+        $document = $this->documentWithFile($officer);
+
+        $reader = User::factory()->create(['org_unit_id' => $this->unit->id]);
+        $reader->givePermissionTo(Permission::findOrCreate('saraban.document.view', 'web'));
+
+        $this->actingAs($reader->fresh())
+            ->postJson("/api/saraban/documents/{$document->id}/annotations/preview", ['objects' => []])
+            ->assertForbidden();
+    }
 }

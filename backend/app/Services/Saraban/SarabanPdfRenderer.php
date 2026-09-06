@@ -35,8 +35,11 @@ class SarabanPdfRenderer
      * วางวัตถุทั้งหมดของเวอร์ชันนี้ลงบนไฟล์ แล้วคืนเนื้อไฟล์ PDF ใหม่
      *
      * ไฟล์ต้นฉบับไม่ถูกแตะ — ผู้เรียกเป็นผู้บันทึกผลเป็นเวอร์ชันใหม่ (SoT §8)
+     *
+     * @param  iterable<int,DocumentAnnotation>  $extra  วัตถุที่ยังไม่ได้บันทึก
+     *                                                   ใช้สำหรับตัวอย่างก่อนยืนยันเท่านั้น
      */
-    public function render(DocumentVersion $version): string
+    public function render(DocumentVersion $version, iterable $extra = []): string
     {
         $disk = Storage::disk(StoredFile::DISK);
 
@@ -44,10 +47,15 @@ class SarabanPdfRenderer
             throw new RuntimeException('ไม่พบไฟล์ของเวอร์ชันนี้');
         }
 
+        /*
+         * วัตถุที่ยังไม่ได้บันทึกถูกวาด **ทับ** ของที่บันทึกไว้แล้ว ตามลำดับเดียวกับ
+         * ตอนบันทึกจริง — ตัวอย่างจึงตรงกับผลลัพธ์ ไม่ใช่ใกล้เคียง
+         */
         $annotations = DocumentAnnotation::query()
             ->where('document_version_id', $version->id)
             ->orderBy('page')
-            ->get();
+            ->get()
+            ->concat($extra);
 
         $this->bootFontPath();
 
