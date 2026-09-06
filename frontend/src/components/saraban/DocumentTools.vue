@@ -101,13 +101,15 @@
     </details>
     <details v-if="!document.finalized_at" v-can="'saraban.endorse.create'" class="border-t pt-3">
       <summary class="cursor-pointer font-medium">เกษียนหนังสือ</summary>
-      <AppInput v-model="note" label="ข้อความเกษียน" />
-      <div class="grid grid-cols-3 gap-3 my-3">
-        <AppInput v-model.number="placement.page" type="number" min="1" label="หน้า" />
-        <AppInput v-model.number="placement.x" type="number" min="0" label="แนวนอน (จุด)" />
-        <AppInput v-model.number="placement.y" type="number" min="0" label="แนวตั้ง (จุด)" />
-      </div>
-      <AppButton :disabled="!note.trim()" @click="endorse">บันทึกเกษียน</AppButton>
+      <!--
+        เดิมช่องนี้ให้กรอกเลขหน้าและพิกัดเป็นตัวเลขโดยไม่เห็นเอกสาร ซึ่งผู้เกษียน
+        ไม่มีทางเดาถูกว่าความเห็นจะไปตกตรงไหน · ย้ายไปหน้าเกษียนที่เห็นเอกสารจริง
+        และคลิกวางได้ทุกตำแหน่งทุกหน้า
+      -->
+      <p class="text-sm text-gray-600 my-3">
+        เกษียนโดยเขียนลายมือหรือวางข้อความลงบนหน้าเอกสารจริง
+      </p>
+      <AppButton @click="openEndorsePage">เปิดหน้าเกษียนหนังสือ</AppButton>
     </details>
     <details class="border-t pt-3" @toggle="loadRedactions">
       <summary class="cursor-pointer font-medium">สำเนาปกปิดข้อมูล</summary>
@@ -136,6 +138,7 @@
 </template>
 <script setup>
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../../axios'
 import { fetchObjectUrl } from '../../utils/secureFile'
 import { getErrorMessage } from '../../utils/errorHandler'
@@ -146,12 +149,15 @@ import PdfWorkspace from './PdfWorkspace.vue'
 import ConfirmOperation from './ConfirmOperation.vue'
 const props = defineProps({ document: { type: Object, required: true } })
 const emit = defineEmits(['changed'])
+const router = useRouter()
+
+/** เกษียนทำที่หน้าเต็มซึ่งเห็นเอกสารจริง — ตรงนี้เป็นเพียงทางเข้า */
+const openEndorsePage = () => router.push({ name: 'saraban-document-endorse', params: { id: props.document.id } })
 const versions = computed(() => props.document.versions || [])
 const evidence = ref(null), comparison = ref(null), redactions = ref(null), operation = ref(null), verification = ref(null)
-const left = ref(''), right = ref(''), note = ref(''), sourceId = ref(''), redactionReason = ref(''), error = ref(''), fileUrl = ref('')
+const left = ref(''), right = ref(''), sourceId = ref(''), redactionReason = ref(''), error = ref(''), fileUrl = ref('')
 const revocationReason = ref(''), decisionNote = ref(''), report = ref(null)
 const busy = ref(false), areas = ref([])
-const placement = reactive({ page: 1, x: 60, y: 100 })
 const area = reactive({ page: 1, x: 60, y: 100, width: 160, height: 30 })
 async function read(action) { busy.value = true; error.value = ''; try { await action() } catch (e) { error.value = getErrorMessage(e, 'โหลดข้อมูลไม่สำเร็จ') } finally { busy.value = false } }
 const loadEvidence = () => read(async () => { evidence.value = (await api.get(`/saraban/documents/${props.document.id}/signatures`)).data.evidences })
@@ -215,7 +221,6 @@ const loadRedactions = (event) => { if (!event || event.target.open) return read
 async function openFile(path) { return read(async () => { if (fileUrl.value) URL.revokeObjectURL(fileUrl.value); fileUrl.value = ''; areas.value = []; if (path) fileUrl.value = await fetchObjectUrl(`/storage/${path}`) }) }
 function preview(id) { const version = versions.value.find(v => String(v.id) === String(id)); return openFile(version?.pdf_file_path || version?.original_file_path) }
 function finalize() { operation.value = { title: 'ออกฉบับสมบูรณ์', description: 'ยืนยันออกหนังสือฉบับสมบูรณ์พร้อมรหัสตรวจสอบ หลังจากนี้แก้ไขฉบับนี้ไม่ได้', action: () => api.post(`/saraban/documents/${props.document.id}/finalize`) } }
-function endorse() { operation.value = { title: 'บันทึกเกษียน', description: note.value, action: () => api.post(`/saraban/documents/${props.document.id}/endorse`, { objects: [{ ...placement, type: 'note', width: 240, height: 40, payload: { text: note.value } }] }) } }
 function redact() { operation.value = { title: 'สร้างสำเนาปกปิด', description: `ตรวจพื้นที่ปกปิด ${areas.value.length} แห่งแล้ว เหตุผล: ${redactionReason.value}`, action: () => api.post(`/saraban/documents/${props.document.id}/redactions`, { source_version_id: Number(sourceId.value), reason: redactionReason.value, areas: areas.value.map(({ page, x, y, width, height }) => ({ page, x, y, width, height })) }) } }
 async function done() { operation.value = null; emit('changed'); if (redactions.value) await loadRedactions() }
 onBeforeUnmount(() => { if (fileUrl.value) URL.revokeObjectURL(fileUrl.value) })

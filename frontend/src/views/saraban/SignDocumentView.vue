@@ -4,7 +4,7 @@
       <div>
         <h1 class="text-2xl font-bold text-gray-800">ลงนามในหนังสือ</h1>
         <p class="text-sm text-gray-500 mt-1">
-          วางลายเซ็นบนหน้าเอกสารจริง · ตำแหน่งที่วางคือตำแหน่งที่จะออกมาบนหนังสือ
+          วางลายเซ็นบนหน้าเอกสารจริง · คลิกตำแหน่งใดก็ได้บนหน้าใดก็ได้
         </p>
       </div>
       <AppButton variant="ghost" @click="back">กลับสู่หนังสือ</AppButton>
@@ -18,8 +18,14 @@
         {{ error }}
       </p>
 
+      <!--
+        บริบทของกระบวนการ — ผู้ลงนามต้องรู้ว่าตนอยู่ตรงไหนของเรื่อง
+        ก่อนลงนาม ไม่ใช่เห็นแต่หน้ากระดาษเปล่า ๆ
+      -->
+      <SigningContextPanel :workflow="workflow" :evidences="evidences" :version="documentRecord" />
+
       <div class="grid lg:grid-cols-3 gap-4">
-        <!-- แผงเครื่องมือ — เขียนลายเซ็นแล้วกดวางลงบนเอกสาร -->
+        <!-- แผงเครื่องมือ — เขียนลายเซ็นแล้วคลิกวางลงบนเอกสาร -->
         <section class="space-y-4">
           <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-3">
             <h2 class="font-semibold text-gray-800">ลายเซ็นของท่าน</h2>
@@ -29,7 +35,7 @@
               label="พื้นที่เขียนลายเซ็น"
               @change="strokes = $event"
             />
-            <AppButton :disabled="!strokes.length || hasSignature" @click="placeSignature">
+            <AppButton :disabled="!strokes.length || hasSignature" @click="armSignature">
               วางลายเซ็นบนเอกสาร
             </AppButton>
             <p v-if="hasSignature" class="text-xs text-gray-500">
@@ -42,16 +48,16 @@
             <p class="text-xs text-gray-500">
               หนังสือราชการที่ลงนามประกอบด้วยลายเซ็น ชื่อ-ตำแหน่ง และวันที่ ซึ่งเป็นบล็อกเดียวกัน
             </p>
-            <AppButton variant="secondary" :disabled="hasDate" @click="placeDate">วางวันที่ที่ลงนาม</AppButton>
+            <AppButton variant="secondary" :disabled="hasDate" @click="armDate">วางวันที่ที่ลงนาม</AppButton>
             <AppInput v-model="noteText" label="ข้อความกำกับ (เช่น ชื่อและตำแหน่ง)" />
-            <AppButton variant="secondary" :disabled="!noteText.trim()" @click="placeNote">วางข้อความ</AppButton>
+            <AppButton variant="secondary" :disabled="!noteText.trim()" @click="armNote">วางข้อความ</AppButton>
           </div>
 
           <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-3">
             <h2 class="font-semibold text-gray-800">ยืนยันการลงนาม</h2>
             <ul class="text-sm text-gray-600 list-disc ms-5 space-y-1">
               <li :class="hasSignature ? 'text-emerald-700' : ''">
-                {{ hasSignature ? 'วางลายเซ็นแล้ว' : 'ยังไม่ได้วางลายเซ็น' }}
+                {{ hasSignature ? `วางลายเซ็นแล้วที่หน้า ${signature.page}` : 'ยังไม่ได้วางลายเซ็น' }}
               </li>
               <li>วางเพิ่มเติม {{ extras.length }} รายการ</li>
             </ul>
@@ -63,9 +69,18 @@
           </div>
         </section>
 
-        <!-- เอกสารจริง — ลากวางตำแหน่งได้ (ปิด RISK-30) -->
+        <!-- เอกสารจริง — คลิกวางและลากปรับตำแหน่งได้ (ปิด RISK-30) -->
         <section class="lg:col-span-2 bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
-          <PdfWorkspace v-if="fileUrl" v-model="objects" :locked="existing" :source="fileUrl" editable />
+          <PdfWorkspace
+            v-if="fileUrl"
+            v-model="objects"
+            :locked="existing"
+            :source="fileUrl"
+            :placing="placing"
+            editable
+            @place="drop"
+            @cancel-placing="placing = null"
+          />
           <EmptyState
             v-else
             title="หนังสือฉบับนี้ยังไม่มีไฟล์ให้ลงนาม"
@@ -105,6 +120,7 @@ import HandwritingCanvas from '../../components/ui/HandwritingCanvas.vue'
 import LoadingState from '../../components/ui/LoadingState.vue'
 import ConfirmOperation from '../../components/saraban/ConfirmOperation.vue'
 import PdfWorkspace from '../../components/saraban/PdfWorkspace.vue'
+import SigningContextPanel from '../../components/saraban/SigningContextPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -112,23 +128,26 @@ const alertStore = useAlertStore()
 
 const documentRecord = ref(null)
 const existing = ref([])
+const workflow = ref(null)
+const evidences = ref([])
 const fileUrl = ref('')
 const objects = ref([])
 const strokes = ref([])
 const noteText = ref('')
+const placing = ref(null)
 const loading = ref(true)
 const loadError = ref('')
 const error = ref('')
 const confirming = ref(false)
 
-const hasSignature = computed(() => objects.value.some((o) => o.type === 'signature'))
+const signature = computed(() => objects.value.find((o) => o.type === 'signature'))
+const hasSignature = computed(() => signature.value !== undefined)
 const hasDate = computed(() => objects.value.some((o) => o.type === 'date'))
 const extras = computed(() => objects.value.filter((o) => o.type !== 'signature'))
 
 const confirmationText = computed(() => {
-  const signature = objects.value.find((o) => o.type === 'signature')
   const parts = [
-    `ลายเซ็นที่หน้า ${signature?.page} ตำแหน่ง (${Math.round(signature?.x)}, ${Math.round(signature?.y)})`,
+    `ลายเซ็นที่หน้า ${signature.value?.page} ตำแหน่ง (${Math.round(signature.value?.x)}, ${Math.round(signature.value?.y)})`,
     ...extras.value.map((o) => `${o.type === 'date' ? 'วันที่' : 'ข้อความ'} "${o.payload?.text}" ที่หน้า ${o.page}`),
   ]
 
@@ -136,34 +155,44 @@ const confirmationText = computed(() => {
 })
 
 /*
- * วางวัตถุที่ตำแหน่งตั้งต้นมุมขวาล่างของหน้า ซึ่งเป็นที่ลงนามตามแบบหนังสือราชการ
- * แล้วให้ผู้ลงนามลากปรับเอง — เริ่มที่ตำแหน่งที่ถูกต้องส่วนใหญ่ ดีกว่าเริ่มกลางหน้า
+ * เตรียมเครื่องมือแล้วรอให้ผู้ลงนามคลิกตำแหน่งเอง — ไม่วางที่พิกัดตายตัว
+ *
+ * แบบเดิมวางไว้ที่มุมขวาล่างของ **หน้า 1** เสมอ ซึ่งใช้ไม่ได้กับหนังสือที่ที่
+ * ลงนามอยู่หน้าอื่น หรือแบบฟอร์มที่มีช่องลงนามอยู่ตำแหน่งอื่น · ผู้ลงนามคลิก
+ * ตรงช่องลงนามจริงบนหน้าจริงได้เลย ซึ่งตรงกับวิธีลงนามบนกระดาษ
  */
-const placeSignature = () => {
-  objects.value = [...objects.value, {
-    page: 1, x: 380, y: 620, width: 150, height: 50,
-    type: 'signature',
-    payload: { strokes: strokes.value, line_width: 1.2 },
-  }]
+const armSignature = () => {
+  placing.value = { type: 'signature', label: 'ลายเซ็น', width: 150, height: 50 }
 }
 
-const placeDate = () => {
-  const today = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
-
-  objects.value = [...objects.value, {
-    page: 1, x: 380, y: 580, width: 150, height: 20,
-    type: 'date',
-    payload: { text: today },
-  }]
+const armDate = () => {
+  placing.value = { type: 'date', label: 'วันที่', width: 150, height: 20 }
 }
 
-const placeNote = () => {
+const armNote = () => {
+  placing.value = { type: 'note', label: 'ข้อความกำกับ', width: 200, height: 20 }
+}
+
+const payloadFor = (type) => {
+  if (type === 'signature') return { strokes: strokes.value, line_width: 1.2 }
+  if (type === 'date') {
+    return { text: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) }
+  }
+
+  return { text: noteText.value.trim() }
+}
+
+/** วางวัตถุที่ตำแหน่งที่คลิก แล้วปลดเครื่องมือเพื่อไม่ให้วางซ้ำโดยไม่ตั้งใจ */
+const drop = ({ page, x, y }) => {
+  const tool = placing.value
+  if (!tool) return
+
   objects.value = [...objects.value, {
-    page: 1, x: 380, y: 600, width: 200, height: 20,
-    type: 'note',
-    payload: { text: noteText.value.trim() },
+    page, x, y, width: tool.width, height: tool.height, type: tool.type, payload: payloadFor(tool.type),
   }]
-  noteText.value = ''
+
+  if (tool.type === 'note') noteText.value = ''
+  placing.value = null
 }
 
 /**
@@ -175,20 +204,33 @@ const placeNote = () => {
  * สำคัญเพราะตอนลงนาม `SarabanPdfRenderer` วาด **วัตถุทั้งหมด** บนเวอร์ชันนั้น
  * ลงไปในฉบับที่ลงนาม — ถ้าหน้านี้แสดงแต่ไฟล์ดิบ ผู้ลงนามจะรับรองเอกสารที่หน้าตา
  * ไม่ตรงกับที่จะออกมาจริง ซึ่งเป็นการรับรองสิ่งที่ตนไม่ได้เห็น
+ *
+ * ดึงบริบทของกระบวนการมาพร้อมกัน แต่ **ไม่ให้ล้มทั้งหน้า** ถ้าดึงไม่ได้ —
+ * บริบทช่วยตัดสินใจ ส่วนการลงนามเป็นสิทธิ์ที่ policy ฝั่ง server ตัดสินอยู่แล้ว
  */
 async function boot() {
   loading.value = true
   loadError.value = ''
 
   try {
-    const { data } = await api.get(`/saraban/documents/${route.params.id}/annotations`)
+    const [annotations, context] = await Promise.all([
+      api.get(`/saraban/documents/${route.params.id}/annotations`),
+      Promise.allSettled([
+        api.get(`/saraban/documents/${route.params.id}/workflow`),
+        api.get(`/saraban/documents/${route.params.id}/signatures`),
+      ]),
+    ])
 
-    documentRecord.value = data.version
-    existing.value = data.annotations || []
+    documentRecord.value = annotations.data.version
+    existing.value = annotations.data.annotations || []
 
-    if (!data.version?.file_path) return
+    const [workflowResult, evidenceResult] = context
+    workflow.value = workflowResult.status === 'fulfilled' ? workflowResult.value.data : null
+    evidences.value = evidenceResult.status === 'fulfilled' ? evidenceResult.value.data.evidences || [] : []
 
-    fileUrl.value = await fetchObjectUrl(`/storage/${data.version.file_path}`)
+    if (!annotations.data.version?.file_path) return
+
+    fileUrl.value = await fetchObjectUrl(`/storage/${annotations.data.version.file_path}`)
   } catch (e) {
     loadError.value = getErrorMessage(e, 'เปิดหนังสือเพื่อลงนามไม่สำเร็จ')
   } finally {
@@ -200,21 +242,18 @@ async function boot() {
  * ส่งลายเซ็นเป็นวัตถุหลัก และวันที่/ข้อความเป็น `objects` ในคำขอเดียว —
  * ทั้งหมดถูกวางลงเวอร์ชันเดียวกันแล้วเรนเดอร์ครั้งเดียวที่ฝั่ง server
  */
-const submit = () => {
-  const signature = objects.value.find((o) => o.type === 'signature')
-
-  return api.post(`/saraban/documents/${route.params.id}/sign`, {
-    page: signature.page,
-    x: signature.x,
-    y: signature.y,
-    width: signature.width,
-    height: signature.height,
-    strokes: signature.payload.strokes,
+const submit = () =>
+  api.post(`/saraban/documents/${route.params.id}/sign`, {
+    page: signature.value.page,
+    x: signature.value.x,
+    y: signature.value.y,
+    width: signature.value.width,
+    height: signature.value.height,
+    strokes: signature.value.payload.strokes,
     objects: extras.value.map((o) => ({
       page: o.page, type: o.type, x: o.x, y: o.y, width: o.width, height: o.height, payload: o.payload,
     })),
   })
-}
 
 const onSigned = () => {
   confirming.value = false

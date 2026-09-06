@@ -17,7 +17,19 @@
       </AppButton>
     </div>
 
-    <p v-if="editable" class="text-xs text-gray-500">
+    <!--
+      แถบบอกสถานะการวาง — ต้องบอกให้ชัดว่าตอนนี้กำลังรอคลิกอยู่
+      ไม่งั้นผู้ใช้กดปุ่มเครื่องมือแล้วไม่เห็นอะไรเกิดขึ้น จะกดซ้ำ
+    -->
+    <p
+      v-if="placing"
+      role="status"
+      class="text-sm text-[#800000] bg-[#800000]/5 border border-[#800000]/20 rounded-xl px-4 py-2"
+    >
+      คลิกตำแหน่งบนหน้าเอกสารเพื่อวาง{{ placing.label }} · วางได้ทุกตำแหน่งและทุกหน้า ·
+      กด Esc เพื่อยกเลิก
+    </p>
+    <p v-else-if="editable" class="text-xs text-gray-500">
       ลากวัตถุเพื่อย้ายตำแหน่ง · ตำแหน่งที่บันทึกเป็นพิกัดบนหน้ากระดาษจริง
       จึงออกมาตรงกันทุกเครื่องไม่ว่าจะย่อขยายเท่าใด
     </p>
@@ -26,7 +38,9 @@
       <div
         ref="stage"
         class="relative mx-auto bg-white shadow"
+        :class="placing ? 'cursor-crosshair' : ''"
         :style="{ width: `${displayWidth}px`, height: `${displayHeight}px` }"
+        @click="dropHere"
       >
         <canvas ref="canvas" class="block w-full h-full" />
 
@@ -113,9 +127,16 @@ const props = defineProps({
   editable: { type: Boolean, default: false },
   /** วัตถุที่บันทึกไว้แล้ว — แสดงเป็นบริบท ลากและลบไม่ได้ */
   locked: { type: Array, default: () => [] },
+  /**
+   * เครื่องมือที่กำลังรอวาง — `{ label, width, height }` หรือ `null`
+   *
+   * เมื่อมีค่า การคลิกบนหน้าเอกสารจะส่ง `place` พร้อมหน้าและพิกัดที่คลิก
+   * ทำให้ **วางได้ทุกตำแหน่งบนทุกหน้า** แทนที่จะโผล่ที่พิกัดตายตัวเสมอ
+   */
+  placing: { type: Object, default: null },
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'place', 'cancel-placing'])
 
 const canvas = ref(null)
 const stage = ref(null)
@@ -164,6 +185,9 @@ const labelFor = (item) =>
     // ใช้ในหน้าลงนาม — ผู้ลงนามต้องอ่านออกว่าวัตถุที่ลากอยู่คืออะไร
     signature: 'ลายเซ็น',
     note: 'ข้อความกำกับ',
+    // ใช้ในหน้าเกษียน — ทั้งสามชนิดเป็นการให้ความเห็น ไม่ใช่การลงนาม (SoT §15)
+    handwriting: 'ลายมือ',
+    checkmark: 'เครื่องหมายถูก',
   })[item.type] || item.type
 
 const styleFor = (item) => ({
@@ -177,6 +201,40 @@ const remove = (item) => {
   const next = props.modelValue.filter((_, index) => index !== item.index)
   emit('update:modelValue', next)
 }
+
+/**
+ * วางวัตถุ ณ จุดที่คลิก บนหน้าที่กำลังเปิดอยู่
+ *
+ * จุดที่คลิกคือ **จุดกึ่งกลาง** ของวัตถุ เพราะผู้ใช้เล็งที่ตรงกลางของสิ่งที่
+ * กำลังจะวาง ไม่ใช่มุมซ้ายบนที่มองไม่เห็น · แปลงเป็น PDF point ทันทีด้วยการ
+ * หารด้วยระดับซูม จึงไม่ขึ้นกับขนาดจอของผู้วาง
+ */
+const dropHere = (event) => {
+  if (!props.placing || !stage.value) return
+
+  const bounds = stage.value.getBoundingClientRect()
+  const width = props.placing.width || 150
+  const height = props.placing.height || 40
+
+  emit('place', {
+    page: page.value,
+    x: Math.max(0, round((event.clientX - bounds.left) / zoom.value - width / 2)),
+    y: Math.max(0, round((event.clientY - bounds.top) / zoom.value - height / 2)),
+  })
+}
+
+// ยกเลิกการวางด้วย Esc — ทางออกที่ผู้ใช้ลองเป็นอย่างแรกเสมอ
+const onKeydown = (event) => {
+  if (event.key === 'Escape' && props.placing) emit('cancel-placing')
+}
+
+watch(
+  () => props.placing,
+  (value) => {
+    if (value) window.addEventListener('keydown', onKeydown)
+    else window.removeEventListener('keydown', onKeydown)
+  },
+)
 
 // ── ลากย้ายตำแหน่ง — แปลงระยะที่ลากบนจอกลับเป็น PDF point ทันที ──
 const startDrag = (event, indexInPage) => {
@@ -266,6 +324,7 @@ watch([page, zoom], renderPage)
 
 onBeforeUnmount(() => {
   endDrag()
+  window.removeEventListener('keydown', onKeydown)
   renderTask?.cancel()
   pdfDocument?.destroy()
 })

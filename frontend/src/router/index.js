@@ -153,6 +153,18 @@ const router = createRouter({
       component: () => import('../views/saraban/SignDocumentView.vue'),
       meta: { requiresAuth: true, title: 'ลงนามในหนังสือ', parent: 'งานสารบรรณ' }
     },
+    /*
+     * หน้าเกษียน — ใช้พื้นที่ทำงานเดียวกับหน้าลงนาม
+     *
+     * เดิมเกษียนด้วยการกรอกเลขหน้าและพิกัดเป็นตัวเลขโดยไม่เห็นเอกสาร
+     * ซึ่งไม่มีทางวางตรงที่ตั้งใจได้
+     */
+    {
+      path: '/saraban/documents/:id/endorse',
+      name: 'saraban-document-endorse',
+      component: () => import('../views/saraban/EndorseDocumentView.vue'),
+      meta: { requiresAuth: true, title: 'เกษียนหนังสือ', parent: 'งานสารบรรณ' }
+    },
     {
       path: '/saraban/documents/:id/workspace',
       name: 'saraban-document-workspace',

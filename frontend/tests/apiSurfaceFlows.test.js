@@ -5,6 +5,8 @@ const access = vi.hoisted(() => ({ allowed: true }))
 vi.mock('../src/axios', () => ({ default: api }))
 vi.mock('../src/stores/auth', () => ({ useAuthStore: () => ({ hasPermission: () => access.allowed, hasAnyPermission: () => access.allowed }) }))
 vi.mock('../src/utils/secureFile', () => ({ fetchObjectUrl: vi.fn(async () => 'blob:preview') }))
+const push = vi.hoisted(() => vi.fn())
+vi.mock('vue-router', () => ({ useRouter: () => ({ push }), useRoute: () => ({ params: {} }) }))
 import ConfirmOperation from '../src/components/saraban/ConfirmOperation.vue'
 import DocumentTools from '../src/components/saraban/DocumentTools.vue'
 import RetentionPanel from '../src/components/saraban/RetentionPanel.vue'
@@ -17,7 +19,7 @@ const global = {
 const render = (component, props = {}) => mount(component, { props, global })
 async function click(w, text) { const button = w.findAll('button').find(b => b.text() === text); expect(button, text).toBeTruthy(); await button.trigger('click'); await flushPromises() }
 const doc = { id: 7, status: 'signed', finalized_at: null, versions: [{ id: 10, version_no: 1, pdf_file_path: 'saraban/one.pdf' }, { id: 20, version_no: 2, pdf_file_path: 'saraban/two.pdf' }] }
-beforeEach(() => { for (const fn of Object.values(api)) fn.mockReset(); api.post.mockResolvedValue({ data: {} }); access.allowed = true; URL.revokeObjectURL = vi.fn() })
+beforeEach(() => { for (const fn of Object.values(api)) fn.mockReset(); push.mockReset(); api.post.mockResolvedValue({ data: {} }); access.allowed = true; URL.revokeObjectURL = vi.fn() })
 
 describe('ยืนยันการทำงานที่มีผลต่อเอกสาร', () => {
   it('ไม่ส่งคำขอก่อนยืนยัน และยืนยันรหัสผ่านใหม่เมื่อ server ตอบ 423', async () => {
@@ -66,11 +68,15 @@ describe('เครื่องมือรายฉบับ', () => {
     const w = render(DocumentTools, { document: { ...doc, status: 'draft' } })
     expect(w.findAll('button').find(b => b.text() === 'ออกฉบับสมบูรณ์พร้อมรหัสตรวจสอบ').attributes('disabled')).toBeDefined()
   })
-  it('ส่งข้อความเกษียนพร้อมตำแหน่งที่เลือก', async () => {
+  /*
+   * เดิมช่องนี้ให้กรอกพิกัดเป็นตัวเลขแล้วยิง endorse ได้ทันทีโดยไม่เห็นเอกสาร
+   * ตอนนี้ต้องพาไปหน้าเกษียนที่เห็นเอกสารจริง และ **ต้องไม่ยิงคำขอเอง**
+   */
+  it('เกษียนต้องพาไปหน้าที่เห็นเอกสารจริง ไม่ยิงคำขอจากแผงเครื่องมือ', async () => {
     const w = render(DocumentTools, { document: doc })
-    await w.find('input:not([type])').setValue('โปรดพิจารณาดำเนินการ')
-    await click(w, 'บันทึกเกษียน'); await click(w, 'ยืนยันบันทึกเกษียน')
-    expect(api.post).toHaveBeenCalledWith('/saraban/documents/7/endorse', expect.objectContaining({ objects: [expect.objectContaining({ type: 'note', payload: { text: 'โปรดพิจารณาดำเนินการ' } })] }))
+    await click(w, 'เปิดหน้าเกษียนหนังสือ')
+    expect(push).toHaveBeenCalledWith({ name: 'saraban-document-endorse', params: { id: 7 } })
+    expect(api.post).not.toHaveBeenCalled()
   })
   it('เปรียบเทียบด้วย id ของสองฉบับและแสดงผลจาก server', async () => {
     api.get.mockResolvedValue({ data: { identical_file: false, file: { left_pages: 1, right_pages: 2 } } })

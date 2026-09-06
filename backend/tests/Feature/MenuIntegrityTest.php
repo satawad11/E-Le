@@ -46,6 +46,11 @@ class MenuIntegrityTest extends TestCase
          * ผู้ลงนามเข้าถึงงานของตนผ่านเมนู "รอฉันดำเนินการ"
          */
         '/saraban/documents/:id/sign' => 'เข้าจากหน้ารายละเอียดหนังสือ',
+        /*
+         * หน้าเกษียนของหนังสือฉบับหนึ่ง — ด้วยเหตุผลเดียวกับหน้าลงนาม
+         * การเกษียนผูกกับหนังสือฉบับใดฉบับหนึ่งเสมอ เมนูลอย ๆ จึงไม่มีความหมาย
+         */
+        '/saraban/documents/:id/endorse' => 'เข้าจากหน้ารายละเอียดหนังสือ',
     ];
 
     public function test_seeded_menus_match_the_declared_tree(): void
