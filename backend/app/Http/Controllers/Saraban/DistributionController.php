@@ -95,6 +95,63 @@ class DistributionController extends Controller
         ]);
     }
 
+    /**
+     * ติดตามการกระจายเอกสารข้ามฉบับ (NAV §2 · §4.8)
+     *
+     * **ทำไมต้องมีหน้ารวม:** การติดตามผลเดิมดูได้ทีละฉบับเท่านั้น เจ้าหน้าที่ที่
+     * เวียนหนังสือสิบฉบับในวันเดียวจึงต้องเปิดทีละฉบับเพื่อตอบคำถามเดียวว่า
+     * "ยังมีใครไม่รับทราบบ้าง" · หน้ารวมตอบคำถามนั้นในหน้าจอเดียว
+     *
+     * ขอบเขตใช้ `saraban.distribution.track` ตัวเดียวกับการติดตามรายฉบับ
+     * — ผู้ที่เห็นในหน้ารวมต้องเป็นชุดเดียวกับที่กดเข้าไปดูรายฉบับได้ ไม่งั้น
+     * หน้ารวมจะกลายเป็นช่องรั่วของเรื่องที่เจ้าตัวเปิดไม่ได้
+     */
+    public function overview(Request $request, OrgScopeResolver $scopes)
+    {
+        $this->authorize('viewAny', Document::class);
+
+        $visible = $scopes->visibleOrgUnitIds($request->user(), 'saraban.distribution.track', OrgScopeResolver::UNIT);
+
+        $distributions = Distribution::query()
+            ->with(['recipients', 'sender:id,name', 'document:id,subject,owner_org_unit_id'])
+            ->when($visible !== null, fn ($query) => $query->whereHas(
+                'document',
+                fn ($document) => $document->whereIn('owner_org_unit_id', $visible),
+            ))
+            ->orderByDesc('sent_at')
+            ->paginate(20);
+
+        return response()->json([
+            'data' => collect($distributions->items())->map(fn (Distribution $distribution) => [
+                'id' => $distribution->id,
+                'uuid' => $distribution->uuid,
+                'sent_at' => $distribution->sent_at,
+                'sent_by' => $distribution->sender?->name,
+                'document_id' => $distribution->document_id,
+                'subject' => $distribution->document?->subject,
+                'total' => $distribution->recipients->count(),
+                /*
+                 * นับ "รับทราบแล้ว" ตามนิยามเดียวกับรายงานการกระจาย — ผู้ที่
+                 * แสดงเจตนาแล้วทุกขั้น ไม่ใช่เฉพาะคำว่า acknowledged อย่างเดียว
+                 * มิฉะนั้นคนที่รับไปทำต่อจนเสร็จจะถูกนับว่ายังไม่รับทราบ
+                 */
+                'acknowledged' => $distribution->recipients
+                    ->whereIn('status', [
+                        DistributionRecipient::STATUS_ACKNOWLEDGED,
+                        DistributionRecipient::STATUS_ACCEPTED,
+                        DistributionRecipient::STATUS_IN_PROGRESS,
+                        DistributionRecipient::STATUS_COMPLETED,
+                    ])
+                    ->count(),
+            ]),
+            'meta' => [
+                'current_page' => $distributions->currentPage(),
+                'last_page' => $distributions->lastPage(),
+                'total' => $distributions->total(),
+            ],
+        ]);
+    }
+
     /** ติดตามผล — หนังสือฉบับนี้เวียนไปกี่ครั้ง ถึงใคร และแต่ละคนอยู่ขั้นไหน */
     public function index(Document $document)
     {

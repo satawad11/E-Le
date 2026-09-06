@@ -103,10 +103,55 @@ const router = createRouter({
       path: '/saraban/documents',
       name: 'saraban-documents',
       component: () => import('../views/saraban/DocumentsView.vue'),
-      meta: { requiresAuth: true, title: 'ทะเบียนหนังสือ', parent: 'งานสารบรรณ' }
+      meta: {
+        requiresAuth: true,
+        title: 'ค้นหาและคลังเอกสาร',
+        parent: 'งานสารบรรณ',
+        saraban: {
+          title: 'ค้นหาและคลังเอกสาร',
+          description: 'หนังสือรับ หนังสือส่ง และหนังสือภายในที่อยู่ในขอบเขตของท่าน',
+        },
+      }
     },
     /*
-     * คิวงานของผู้ใช้ (NAV §4.7)
+     * ทะเบียนแยกตามทิศทาง (NAV §2)
+     *
+     * ต้องอยู่ **ก่อน** `/saraban/documents/:id` ด้วยเหตุผลเดียวกับคิวงาน
+     * มิฉะนั้น `outgoing` จะถูกจับเป็นรหัสหนังสือ · ใช้ component เดียวกับ
+     * ทะเบียนรวม ต่างกันเฉพาะค่าตั้งต้นใน `meta.saraban`
+     */
+    {
+      path: '/saraban/documents/outgoing',
+      name: 'saraban-documents-outgoing',
+      component: () => import('../views/saraban/DocumentsView.vue'),
+      meta: {
+        requiresAuth: true,
+        title: 'ทะเบียนหนังสือส่ง',
+        parent: 'งานสารบรรณ',
+        saraban: {
+          direction: 'outgoing',
+          title: 'ทะเบียนหนังสือส่ง',
+          description: 'หนังสือที่ออกจากหน่วยงานของท่าน',
+        },
+      }
+    },
+    {
+      path: '/saraban/documents/internal',
+      name: 'saraban-documents-internal',
+      component: () => import('../views/saraban/DocumentsView.vue'),
+      meta: {
+        requiresAuth: true,
+        title: 'ทะเบียนหนังสือภายใน',
+        parent: 'งานสารบรรณ',
+        saraban: {
+          direction: 'internal',
+          title: 'ทะเบียนหนังสือภายใน',
+          description: 'หนังสือที่เวียนภายในหน่วยงาน',
+        },
+      }
+    },
+    /*
+     * คิวงานของผู้ใช้ (NAV §2 · §4.7)
      *
      * ต้องอยู่ **ก่อน** `/saraban/documents/:id` มิฉะนั้น `queue` จะถูกจับเป็นรหัสหนังสือ
      * — ข้อผิดพลาดเดียวกับที่ต้องระวังฝั่ง route ของ API
@@ -127,7 +172,7 @@ const router = createRouter({
       path: '/saraban/numbers',
       name: 'saraban-numbers',
       component: () => import('../views/saraban/NumberReservationView.vue'),
-      meta: { requiresAuth: true, title: 'จองเลขหนังสือ', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'จองและออกเลขหนังสือ', parent: 'งานสารบรรณ' }
     },
     {
       path: '/saraban/documents/new',
@@ -228,19 +273,47 @@ const router = createRouter({
       path: '/saraban/inbox',
       name: 'saraban-inbox',
       component: () => import('../views/saraban/InboxView.vue'),
-      meta: { requiresAuth: true, title: 'หนังสือเวียนถึงฉัน', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'กล่องหนังสือของฉัน', parent: 'งานสารบรรณ' }
     },
     {
       path: '/saraban/incoming',
       name: 'saraban-incoming',
       component: () => import('../views/saraban/IncomingView.vue'),
-      meta: { requiresAuth: true, title: 'ทะเบียนรับหนังสือ', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'ทะเบียนหนังสือรับ', parent: 'งานสารบรรณ' }
     },
     {
       path: '/saraban/incoming/new',
       name: 'saraban-incoming-register',
       component: () => import('../views/saraban/IncomingRegisterView.vue'),
       meta: { requiresAuth: true, title: 'ลงทะเบียนรับ', parent: 'งานสารบรรณ' }
+    },
+    /*
+     * กล่องรอลงทะเบียน (NAV §2 · §4.2) — หนังสือรับที่ยังไม่มีเลขรับ
+     *
+     * ใช้ทะเบียนหนังสือเป็นหน้าจอ เพราะเป็นรายการหนังสือชุดเดียวกัน
+     * ต่างกันแค่เงื่อนไข ไม่ใช่คนละเรื่อง
+     */
+    {
+      path: '/saraban/incoming/pending',
+      name: 'saraban-incoming-pending',
+      component: () => import('../views/saraban/DocumentsView.vue'),
+      meta: {
+        requiresAuth: true,
+        title: 'กล่องรอลงทะเบียน',
+        parent: 'งานสารบรรณ',
+        saraban: {
+          pendingRegistration: true,
+          title: 'กล่องรอลงทะเบียน',
+          description: 'หนังสือรับที่เข้ามาแล้วแต่ยังไม่ได้ออกเลขรับ',
+        },
+      }
+    },
+    {
+      // NAV §2 · §4.8 — ติดตามการกระจายเอกสารข้ามฉบับ
+      path: '/saraban/distributions',
+      name: 'saraban-distributions',
+      component: () => import('../views/saraban/DistributionTrackingView.vue'),
+      meta: { requiresAuth: true, title: 'ติดตามการกระจายเอกสาร', parent: 'งานสารบรรณ' }
     },
     {
       path: '/leave-card',

@@ -276,4 +276,60 @@ class SarabanIncomingRegistrationTest extends TestCase
             'actor_id' => $registrar->id,
         ]);
     }
+
+    // ── กล่องรอลงทะเบียน (NAV §2 · §4.2) ────────────────────────────────────
+
+    /**
+     * คิวงานประจำวันของเจ้าหน้าที่ธุรการ — หนังสือรับที่ยังไม่มีเลขรับ
+     *
+     * ตัวกรองอยู่ฝั่ง server เพราะต้องดูว่ามีทะเบียนรับผูกอยู่หรือยัง
+     * ซึ่งเป็นสิ่งที่หน้าจอไม่มีทางรู้จากรายการที่ได้รับไป
+     */
+    public function test_the_pending_registration_queue_shows_only_incoming_documents_without_a_register_number(): void
+    {
+        $registrar = $this->registrar();
+
+        // หนังสือรับที่ลงทะเบียนแล้ว — ต้องหลุดออกจากคิว
+        $registered = $this->actingAs($registrar)
+            ->postJson('/api/saraban/incoming', $this->payload())
+            ->assertCreated()
+            ->json('document_id');
+
+        // หนังสือรับที่ยังไม่ได้ลงทะเบียน — ต้องอยู่ในคิว
+        $waiting = Document::create([
+            'uuid' => (string) Str::uuid(),
+            'document_type_id' => $this->type->id,
+            'direction' => Document::DIRECTION_INCOMING,
+            'subject' => 'หนังสือที่ยังไม่ได้ออกเลขรับ',
+            'confidentiality' => 'normal',
+            'urgency' => 'normal',
+            'status' => Document::STATUS_DRAFT,
+            'owner_org_unit_id' => $this->unit->id,
+            'created_by' => $registrar->id,
+        ]);
+
+        // หนังสือส่ง — ไม่ใช่เรื่องของคิวนี้เลย แม้จะไม่มีเลขรับเหมือนกัน
+        $outgoing = Document::create([
+            'uuid' => (string) Str::uuid(),
+            'document_type_id' => $this->type->id,
+            'direction' => Document::DIRECTION_OUTGOING,
+            'subject' => 'หนังสือส่งออก',
+            'confidentiality' => 'normal',
+            'urgency' => 'normal',
+            'status' => Document::STATUS_DRAFT,
+            'owner_org_unit_id' => $this->unit->id,
+            'created_by' => $registrar->id,
+        ]);
+
+        $ids = collect(
+            $this->actingAs($registrar)
+                ->getJson('/api/saraban/documents?pending_registration=1')
+                ->assertOk()
+                ->json('data')
+        )->pluck('id')->all();
+
+        $this->assertContains($waiting->id, $ids);
+        $this->assertNotContains($registered, $ids, 'หนังสือที่ออกเลขรับแล้วต้องหลุดออกจากคิว');
+        $this->assertNotContains($outgoing->id, $ids, 'คิวนี้เป็นของหนังสือรับเท่านั้น');
+    }
 }

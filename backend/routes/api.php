@@ -585,6 +585,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/distribution-targets', [DistributionController::class, 'targets'])
             ->middleware('ability:saraban.distribution.send');
 
+        // หน้ารวมการกระจายเอกสาร (NAV §2 · §4.8) — สิทธิ์เดียวกับการติดตามรายฉบับ
+        Route::get('/distributions', [DistributionController::class, 'overview'])
+            ->middleware('ability:saraban.distribution.track');
+
         /*
          * กล่องหนังสือเข้า (INT-13 · SoT §15)
          *

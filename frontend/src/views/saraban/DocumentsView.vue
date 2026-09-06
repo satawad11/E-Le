@@ -2,9 +2,9 @@
   <div class="max-w-7xl mx-auto space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-gray-800">ทะเบียนหนังสือ</h1>
+        <h1 class="text-2xl font-bold text-gray-800">{{ preset.title || 'ทะเบียนหนังสือ' }}</h1>
         <p class="text-sm text-gray-500 mt-1">
-          หนังสือรับ หนังสือส่ง และหนังสือภายในที่อยู่ในขอบเขตของท่าน
+          {{ preset.description || 'หนังสือรับ หนังสือส่ง และหนังสือภายในที่อยู่ในขอบเขตของท่าน' }}
         </p>
       </div>
       <AppButton v-can="'saraban.document.create'" @click="goToCreate">+ สร้างหนังสือ</AppButton>
@@ -114,8 +114,8 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../../axios'
 import SavedViews from '../../components/saraban/SavedViews.vue'
 import { getErrorMessage } from '../../utils/errorHandler'
@@ -142,6 +142,17 @@ const URGENCY = {
 }
 
 const router = useRouter()
+const route = useRoute()
+
+/**
+ * ค่าตั้งต้นของทะเบียนที่กำลังเปิดอยู่ (NAV §2)
+ *
+ * งานสารบรรณไทยแยกทะเบียนรับ ทะเบียนส่ง และทะเบียนภายในตามระเบียบ · ทั้งสาม
+ * ใช้หน้าเดียวกัน ต่างกันแค่ค่าตั้งต้น จึงประกาศไว้ที่ `meta` ของเส้นทางแทนที่
+ * จะทำ component ซ้ำสามตัวที่ต้องแก้พร้อมกันทุกครั้ง
+ */
+const preset = computed(() => route.meta?.saraban || {})
+
 const documents = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -156,9 +167,15 @@ const applySavedView = (saved) => { filters.direction = saved.direction || ''; f
 
 const applyFilters = () => { page.value = 1; load() }
 
-/* ล้างทุกช่อง ไม่ใช่เฉพาะที่เห็นอยู่ — เงื่อนไขที่ซ่อนอยู่แล้วยังมีผล คือกับดักที่ผู้ใช้หาไม่เจอ */
+/*
+ * ล้างทุกช่อง ไม่ใช่เฉพาะที่เห็นอยู่ — เงื่อนไขที่ซ่อนอยู่แล้วยังมีผล คือกับดักที่ผู้ใช้หาไม่เจอ
+ *
+ * **ยกเว้นทิศทางที่มากับหน้า** — ถ้าล้างทิ้งด้วย หน้า "ทะเบียนหนังสือส่ง"
+ * จะกลายเป็นทะเบียนรวมทั้งที่หัวข้อยังบอกว่าเป็นทะเบียนหนังสือส่ง
+ */
 const resetFilters = () => {
   Object.keys(filters).forEach((key) => { filters[key] = '' })
+  filters.direction = preset.value.direction || ''
   applyFilters()
 }
 
@@ -175,6 +192,8 @@ const load = async () => {
         page: page.value,
         // ส่งเฉพาะช่องที่กรอกจริง — พารามิเตอร์ว่างทำให้ query ฝั่ง server ซับซ้อนโดยเปล่าประโยชน์
         ...Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== '')),
+        // กล่องรอลงทะเบียน — ตัวกรองอยู่ฝั่ง server เพราะต้องดูว่ามีเลขรับแล้วหรือยัง
+        ...(preset.value.pendingRegistration ? { pending_registration: 1 } : {}),
       },
     })
     documents.value = data.data
@@ -195,6 +214,8 @@ const goToCreate = () => router.push({ name: 'saraban-document-create' })
 const open = (doc) => router.push({ name: 'saraban-document-detail', params: { id: doc.id } })
 
 onMounted(async () => {
+  filters.direction = preset.value.direction || ''
+
   await load()
 
   /*

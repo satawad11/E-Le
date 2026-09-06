@@ -246,8 +246,19 @@ class MenuSeeder extends Seeder
                 'saraban.document.create',
                 'saraban.incoming.register',
                 'saraban.number.reserve',
+                'saraban.distribution.track',
                 'saraban.report.view',
             ],
+
+            /*
+             * ลำดับของลูกเรียงตาม NAV §2 — ตามเส้นทางเดินของหนังสือจริง
+             * (แดชบอร์ด → หนังสือรับ → หนังสือส่ง → หนังสือภายใน → งานที่รอเรา
+             * → การกระจาย → กล่องของฉัน → คลังเอกสาร → รายงาน)
+             *
+             * เอกสารต้นทางจัดสามชั้น (สารบรรณ → หนังสือรับ → กล่องรอลงทะเบียน)
+             * แต่ระบบเมนูรองรับสองชั้น — จึงยุบชั้นกลางที่เป็นเพียงหัวข้อจัดกลุ่ม
+             * ทิ้ง แล้วคงปลายทางไว้ครบทุกรายการ พร้อมเรียงให้อยู่ติดกันเป็นกลุ่ม
+             */
             'children' => [
                 [
                     // หน้าแรกของโมดูล (NAV §4.1) — ตัวเลขสรุปและงานของฉัน
@@ -258,51 +269,25 @@ class MenuSeeder extends Seeder
                     'route_path' => '/saraban',
                     'permissions' => ['saraban.document.view'],
                 ],
-                [
-                    'code' => 'saraban.inbox',
-                    'title_th' => 'หนังสือเวียนถึงฉัน',
-                    'title_en' => 'My Inbox',
-                    'route_name' => 'saraban-inbox',
-                    'route_path' => '/saraban/inbox',
-                    'permissions' => ['saraban.inbox.view'],
-                ],
                 /*
-                 * คิวงานของผู้ใช้ (NAV §4.7)
+                 * กล่องรอลงทะเบียน (NAV §2 · §4.2)
                  *
-                 * วางไว้ลำดับที่สองต่อจากกล่องหนังสือเวียน เพราะเป็นสองคำถามที่
-                 * ผู้ใช้ถามทุกเช้า: "มีอะไรส่งถึงฉัน" กับ "มีอะไรรอฉันตัดสิน"
-                 *
-                 * ใช้สิทธิ์เดียวกับทะเบียนหนังสือ — ตัวที่กรองว่าใครเห็นอะไรจริง ๆ
-                 * คือสายงานและ policy รายฉบับ ไม่ใช่สิทธิ์ระดับเมนู · ผู้ที่ไม่มี
-                 * เรื่องรออยู่จะเห็นหน้าว่าง ซึ่งเป็นคำตอบที่ถูกต้อง
+                 * หนังสือรับที่เข้ามาแล้วแต่ยังไม่มีเลขรับ — เป็น **คิวงาน**
+                 * ของเจ้าหน้าที่ธุรการ ไม่ใช่การค้นทะเบียน จึงต้องมีทางเข้าของ
+                 * ตัวเอง · ผูกกับสิทธิ์ลงทะเบียนรับ เพราะผู้ที่ลงทะเบียนไม่ได้
+                 * ก็ไม่มีอะไรทำกับคิวนี้
                  */
                 [
-                    'code' => 'saraban.queue',
-                    'title_th' => 'รอฉันดำเนินการ',
-                    'title_en' => 'Waiting for Me',
-                    'route_name' => 'saraban-work-queue',
-                    'route_path' => '/saraban/documents/queue',
-                    'permissions' => ['saraban.document.view'],
-                ],
-                [
-                    'code' => 'saraban.documents',
-                    'title_th' => 'ทะเบียนหนังสือ',
-                    'title_en' => 'Documents',
-                    'route_name' => 'saraban-documents',
-                    'route_path' => '/saraban/documents',
-                    'permissions' => ['saraban.document.view'],
-                ],
-                [
-                    'code' => 'saraban.documents.create',
-                    'title_th' => 'สร้างหนังสือ',
-                    'title_en' => 'New Document',
-                    'route_name' => 'saraban-document-create',
-                    'route_path' => '/saraban/documents/new',
-                    'permissions' => ['saraban.document.create'],
+                    'code' => 'saraban.incoming.pending',
+                    'title_th' => 'กล่องรอลงทะเบียน',
+                    'title_en' => 'Pending Registration',
+                    'route_name' => 'saraban-incoming-pending',
+                    'route_path' => '/saraban/incoming/pending',
+                    'permissions' => ['saraban.incoming.register'],
                 ],
                 [
                     'code' => 'saraban.incoming',
-                    'title_th' => 'ทะเบียนรับหนังสือ',
+                    'title_th' => 'ทะเบียนหนังสือรับ',
                     'title_en' => 'Incoming Register',
                     'route_name' => 'saraban-incoming',
                     'route_path' => '/saraban/incoming',
@@ -316,6 +301,14 @@ class MenuSeeder extends Seeder
                     'route_path' => '/saraban/incoming/new',
                     'permissions' => ['saraban.incoming.register'],
                 ],
+                [
+                    'code' => 'saraban.documents.create',
+                    'title_th' => 'สร้างหนังสือ',
+                    'title_en' => 'New Document',
+                    'route_name' => 'saraban-document-create',
+                    'route_path' => '/saraban/documents/new',
+                    'permissions' => ['saraban.document.create'],
+                ],
                 /*
                  * จองเลขหนังสือ (SoT §9 · NAV §4.3)
                  *
@@ -325,11 +318,83 @@ class MenuSeeder extends Seeder
                  */
                 [
                     'code' => 'saraban.numbers',
-                    'title_th' => 'จองเลขหนังสือ',
+                    'title_th' => 'จองและออกเลขหนังสือ',
                     'title_en' => 'Reserve Number',
                     'route_name' => 'saraban-numbers',
                     'route_path' => '/saraban/numbers',
                     'permissions' => ['saraban.number.reserve'],
+                ],
+                /*
+                 * ทะเบียนแยกตามทิศทาง (NAV §2 — หนังสือส่ง / หนังสือภายใน)
+                 *
+                 * เป็นหน้าเดียวกับทะเบียนหนังสือ ต่างกันที่ทิศทางที่ตั้งไว้ให้แล้ว
+                 * — งานสารบรรณไทยแยกทะเบียนรับ ทะเบียนส่ง และทะเบียนภายในออกจากกัน
+                 * ตามระเบียบ ผู้ใช้จึงคาดหวังทางเข้าแยก ไม่ใช่ต้องมาเลือกตัวกรองเอง
+                 *
+                 * ใช้ component เดิม ไม่ทำหน้าจอใหม่ — ต่างกันแค่ค่าตั้งต้น
+                 */
+                [
+                    'code' => 'saraban.documents.outgoing',
+                    'title_th' => 'ทะเบียนหนังสือส่ง',
+                    'title_en' => 'Outgoing Register',
+                    'route_name' => 'saraban-documents-outgoing',
+                    'route_path' => '/saraban/documents/outgoing',
+                    'permissions' => ['saraban.document.view'],
+                ],
+                [
+                    'code' => 'saraban.documents.internal',
+                    'title_th' => 'ทะเบียนหนังสือภายใน',
+                    'title_en' => 'Internal Register',
+                    'route_name' => 'saraban-documents-internal',
+                    'route_path' => '/saraban/documents/internal',
+                    'permissions' => ['saraban.document.view'],
+                ],
+                /*
+                 * คิวงานของผู้ใช้ (NAV §2 · §4.7 — รอพิจารณา / รอลงนาม)
+                 *
+                 * ใช้สิทธิ์เดียวกับทะเบียนหนังสือ — ตัวที่กรองว่าใครเห็นอะไรจริง ๆ
+                 * คือสายงานและ policy รายฉบับ ไม่ใช่สิทธิ์ระดับเมนู · ผู้ที่ไม่มี
+                 * เรื่องรออยู่จะเห็นหน้าว่าง ซึ่งเป็นคำตอบที่ถูกต้อง
+                 */
+                [
+                    'code' => 'saraban.queue',
+                    'title_th' => 'รอฉันดำเนินการ',
+                    'title_en' => 'Waiting for Me',
+                    'route_name' => 'saraban-work-queue',
+                    'route_path' => '/saraban/documents/queue',
+                    'permissions' => ['saraban.document.view'],
+                ],
+                /*
+                 * กระจายเอกสาร (NAV §2 · §4.8)
+                 *
+                 * การส่งทำจากหน้าหนังสือแต่ละฉบับ ส่วนหน้านี้ตอบคำถาม
+                 * "ที่เวียนไปแล้ว ใครยังไม่รับทราบ" ซึ่งเดิมต้องเปิดดูทีละฉบับ
+                 */
+                [
+                    'code' => 'saraban.distribution',
+                    'title_th' => 'ติดตามการกระจายเอกสาร',
+                    'title_en' => 'Distribution Tracking',
+                    'route_name' => 'saraban-distributions',
+                    'route_path' => '/saraban/distributions',
+                    'permissions' => ['saraban.distribution.track'],
+                ],
+                [
+                    // NAV §2 · §4.9 — กล่องหนังสือของฉัน
+                    'code' => 'saraban.inbox',
+                    'title_th' => 'กล่องหนังสือของฉัน',
+                    'title_en' => 'My Inbox',
+                    'route_name' => 'saraban-inbox',
+                    'route_path' => '/saraban/inbox',
+                    'permissions' => ['saraban.inbox.view'],
+                ],
+                [
+                    // NAV §2 · §4.10 — ค้นหา / คลังเอกสาร
+                    'code' => 'saraban.documents',
+                    'title_th' => 'ค้นหาและคลังเอกสาร',
+                    'title_en' => 'Documents',
+                    'route_name' => 'saraban-documents',
+                    'route_path' => '/saraban/documents',
+                    'permissions' => ['saraban.document.view'],
                 ],
                 [
                     // INT-18 — สารบบเรื่อง (SoT §22)
@@ -438,6 +503,20 @@ class MenuSeeder extends Seeder
                     'route_path' => '/saraban/operations',
                     'permissions' => ['saraban.operations.view'],
                 ],
+                /*
+                 * NAV §2 · §5 ระบุ Feature Flags และ Integration ไว้ในกลุ่มนี้ด้วย
+                 * แต่ **ไม่เพิ่มเป็นเมนูสารบรรณโดยเจตนา**
+                 *
+                 * ทั้งสองเป็นการตั้งค่าระดับระบบที่มีหน้าอยู่แล้วที่ "ตั้งค่าระบบ"
+                 * (โมดูลระบบ / การเชื่อมต่อระบบภายนอก) และคุมด้วย
+                 * `system.setting.manage` ซึ่งอยู่นอก namespace ของสารบรรณ ·
+                 * `SarabanModuleRegistrationTest` บังคับไว้ว่าเมนูสารบรรณทุกตัว
+                 * ต้องคุมด้วยสิทธิ์สารบรรณเท่านั้น — ขอบเขตของโมดูลต้องไม่รั่ว
+                 * ผ่านสิทธิ์ของระบบ
+                 *
+                 * ถ้าผูกด้วยสิทธิ์สารบรรณแทน จะได้เมนูที่ผู้ถือสิทธิ์สารบรรณเห็น
+                 * แล้วกดไปเจอหน้าปฏิเสธสิทธิ์ ซึ่งแย่กว่าการไม่มีเมนู
+                 */
                 [
                     // INT-20 — ทะเบียนหลักฐาน (SoT §23)
                     'code' => 'saraban.compliance',

@@ -575,6 +575,69 @@ class SarabanDistributionAndInboxTest extends TestCase
         ];
     }
 
+    // ── หน้ารวมการติดตามการกระจาย (NAV §2 · §4.8) ──────────────────────────
+
+    /** หน้ารวมต้องสรุปยอดตรงกับสถานะจริงของผู้รับ */
+    public function test_the_distribution_overview_lists_what_was_sent_with_acknowledgement_counts(): void
+    {
+        [$document, $recipient, $reader] = $this->distributedDocument();
+
+        $this->actAs($this->sender());
+        $before = $this->getJson('/api/saraban/distributions')->assertOk()->json();
+
+        $this->assertSame(1, $before['meta']['total']);
+        $this->assertSame($document->id, $before['data'][0]['document_id']);
+        $this->assertSame(1, $before['data'][0]['total']);
+        $this->assertSame(0, $before['data'][0]['acknowledged'], 'ยังไม่มีใครรับทราบ');
+
+        /*
+         * นับ "รับทราบแล้ว" ให้รวมผู้ที่เดินหน้าต่อไปแล้วด้วย — ผู้ที่รับเรื่อง
+         * ไปดำเนินการต้องไม่ถูกนับว่ายังไม่รับทราบ ไม่งั้นหน้าจอจะสั่งให้ตามคน
+         * ที่ทำงานอยู่แล้ว
+         */
+        $recipient->forceFill([
+            'status' => DistributionRecipient::STATUS_IN_PROGRESS,
+            'acknowledged_at' => now(),
+        ])->save();
+
+        $this->actAs($this->sender());
+        $after = $this->getJson('/api/saraban/distributions')->assertOk()->json();
+
+        $this->assertSame(1, $after['data'][0]['acknowledged']);
+        $this->assertNotNull($reader->id);
+    }
+
+    /**
+     * ขอบเขตของหน้ารวมต้องเป็นชุดเดียวกับการติดตามรายฉบับ
+     *
+     * ถ้าหน้ารวมกว้างกว่า มันจะกลายเป็นช่องบอกว่ามีหนังสือเรื่องอะไรเวียนอยู่
+     * ในหน่วยงานอื่น ทั้งที่ผู้เรียกกดเข้าไปดูรายฉบับไม่ได้
+     */
+    public function test_the_distribution_overview_hides_documents_outside_the_viewers_scope(): void
+    {
+        $this->distributedDocument();
+
+        $outsider = $this->userWith([
+            'saraban.document.view',
+            'saraban.distribution.track',
+        ], $this->otherUnit->id);
+
+        $this->grantScope($outsider, 'saraban.distribution.track', 'UNIT', $this->otherUnit->id);
+
+        $this->actAs($outsider);
+        $response = $this->getJson('/api/saraban/distributions')->assertOk()->json();
+
+        $this->assertSame([], $response['data']);
+    }
+
+    /** ผู้ที่ไม่มีสิทธิ์ติดตาม เปิดหน้ารวมไม่ได้ */
+    public function test_the_distribution_overview_requires_the_tracking_permission(): void
+    {
+        $this->actAs($this->userWith(['saraban.document.view']));
+
+        $this->getJson('/api/saraban/distributions')->assertForbidden();
+    }
+
     /** กำหนดขอบเขตให้ผู้ใช้ผ่านทะเบียนขอบเขตกลาง ไม่ใช่กติกาของสารบรรณ */
     private function grantScope(User $user, string $ability, string $scope, ?int $orgUnitId): void
     {
