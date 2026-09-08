@@ -99,6 +99,36 @@
         <AppButton variant="secondary" @click="preview(right)">เปิดฉบับหลัง</AppButton>
       </div>
     </details>
+    <!--
+      ผูกเลขที่จองไว้ (SoT §9)
+
+      **เลขจะออกจริงตอนลงนาม ไม่ใช่ตอนผูก** — บอกไว้บนหน้าจอเพราะเจ้าหน้าที่
+      ที่กดผูกแล้วไม่เห็นเลขบนหนังสือจะเข้าใจว่าระบบไม่ทำงาน
+    -->
+    <details
+      v-if="!document.finalized_at && !document.document_number_id"
+      v-can="'saraban.number.allocate'"
+      class="border-t pt-3"
+      @toggle="loadReservedNumbers"
+    >
+      <summary class="cursor-pointer font-medium">ผูกเลขหนังสือที่จองไว้</summary>
+      <p class="text-sm text-gray-600 my-3">
+        เลือกเลขที่จองไว้สำหรับหนังสือฉบับนี้ · เลขจะออกเป็นทางการเมื่อลงนามแล้วเท่านั้น
+        และคืนเลขได้ตราบใดที่ยังไม่ลงนาม
+      </p>
+      <template v-if="reservedNumbers !== null">
+        <AppSelect v-if="reservedNumbers.length" v-model="numberId" label="เลขที่จองไว้">
+          <option value="">เลือกเลข</option>
+          <option v-for="n in reservedNumbers" :key="n.id" :value="n.id">
+            {{ n.formatted }} · {{ n.series }}
+          </option>
+        </AppSelect>
+        <p v-else class="text-sm text-gray-500">ยังไม่มีเลขที่จองไว้ — จองได้ที่เมนู "จอง/ออกเลข"</p>
+        <AppButton v-if="reservedNumbers.length" class="mt-3" :disabled="!numberId" @click="allocateNumber">
+          ผูกเลขกับหนังสือฉบับนี้
+        </AppButton>
+      </template>
+    </details>
     <details v-if="!document.finalized_at" v-can="'saraban.endorse.create'" class="border-t pt-3">
       <summary class="cursor-pointer font-medium">เกษียนหนังสือ</summary>
       <!--
@@ -116,7 +146,7 @@
       <p class="text-sm my-3">เลือกฉบับและตรวจพื้นที่บนเอกสารก่อนสร้างสำเนา ต้นฉบับยังคงอยู่</p>
       <template v-if="redactions?.available">
         <div v-can="'saraban.signature.sign'" class="space-y-3">
-          <AppSelect v-model="sourceId" label="ฉบับต้นทาง" @update:model-value="preview(sourceId)"><option value="">เลือกฉบับ</option><option v-for="v in versions" :key="v.id" :value="v.id">ฉบับที่ {{ v.version_no }}</option></AppSelect>
+          <AppSelect v-model="sourceId" label="ฉบับต้นทาง" @update:model-value="preview($event, true)"><option value="">เลือกฉบับ</option><option v-for="v in versions" :key="v.id" :value="v.id">ฉบับที่ {{ v.version_no }}</option></AppSelect>
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
             <AppInput v-model.number="area.page" type="number" min="1" label="หน้า" />
             <AppInput v-model.number="area.x" type="number" min="0" label="แนวนอน (จุด)" />
@@ -124,15 +154,15 @@
             <AppInput v-model.number="area.width" type="number" min="1" label="กว้าง (จุด)" />
             <AppInput v-model.number="area.height" type="number" min="1" label="สูง (จุด)" />
           </div>
-          <AppButton variant="secondary" :disabled="!sourceId || !fileUrl" @click="areas.push({ ...area, type: 'text', payload: { text: 'พื้นที่ปกปิด' } })">เพิ่มพื้นที่ปกปิด</AppButton>
+          <AppButton variant="secondary" :disabled="!canRedact" @click="areas.push({ ...area, type: 'text', payload: { text: 'พื้นที่ปกปิด' } })">เพิ่มพื้นที่ปกปิด</AppButton>
           <AppInput v-model="redactionReason" label="เหตุผลการปกปิด" />
-          <AppButton :disabled="!sourceId || !areas.length || redactionReason.trim().length < 5 || !fileUrl" @click="redact">สร้างสำเนาปกปิด</AppButton>
+          <AppButton :disabled="!canRedact || !areas.length || redactionReason.trim().length < 5" @click="redact">สร้างสำเนาปกปิด</AppButton>
         </div>
       </template>
       <p v-else-if="redactions" class="text-amber-800">ระบบยังไม่พร้อมสร้างสำเนาปกปิด กรุณาติดต่อผู้ดูแล</p>
       <ul class="mt-3 space-y-2"><li v-for="r in redactions?.redactions || []" :key="r.id"><AppButton variant="ghost" @click="openFile(r.pdf_file_path)">{{ r.reason }} · {{ r.area_count }} พื้นที่ — เปิดสำเนา</AppButton></li></ul>
     </details>
-    <PdfWorkspace v-if="fileUrl" v-model="areas" :source="fileUrl" :editable="Boolean(sourceId)" />
+    <PdfWorkspace v-if="fileUrl" v-model="areas" :source="fileUrl" :editable="canRedact" />
     <ConfirmOperation v-if="operation" v-bind="operation" @close="operation = null" @done="done" />
   </section>
 </template>
@@ -157,7 +187,11 @@ const versions = computed(() => props.document.versions || [])
 const evidence = ref(null), comparison = ref(null), redactions = ref(null), operation = ref(null), verification = ref(null)
 const left = ref(''), right = ref(''), sourceId = ref(''), redactionReason = ref(''), error = ref(''), fileUrl = ref('')
 const revocationReason = ref(''), decisionNote = ref(''), report = ref(null)
+const reservedNumbers = ref(null), numberId = ref('')
 const busy = ref(false), areas = ref([])
+const previewSourceId = ref(null)
+let previewRequest = 0
+const canRedact = computed(() => Boolean(fileUrl.value && sourceId.value && String(previewSourceId.value) === String(sourceId.value)))
 const area = reactive({ page: 1, x: 60, y: 100, width: 160, height: 30 })
 async function read(action) { busy.value = true; error.value = ''; try { await action() } catch (e) { error.value = getErrorMessage(e, 'โหลดข้อมูลไม่สำเร็จ') } finally { busy.value = false } }
 const loadEvidence = () => read(async () => { evidence.value = (await api.get(`/saraban/documents/${props.document.id}/signatures`)).data.evidences })
@@ -218,10 +252,63 @@ function requestRevocation() {
 }
 const compare = () => read(async () => { comparison.value = (await api.get(`/saraban/documents/${props.document.id}/compare`, { params: { left: Number(left.value), right: Number(right.value) } })).data })
 const loadRedactions = (event) => { if (!event || event.target.open) return read(async () => { redactions.value = (await api.get(`/saraban/documents/${props.document.id}/redactions`)).data }) }
-async function openFile(path) { return read(async () => { if (fileUrl.value) URL.revokeObjectURL(fileUrl.value); fileUrl.value = ''; areas.value = []; if (path) fileUrl.value = await fetchObjectUrl(`/storage/${path}`) }) }
-function preview(id) { const version = versions.value.find(v => String(v.id) === String(id)); return openFile(version?.pdf_file_path || version?.original_file_path) }
-function finalize() { operation.value = { title: 'ออกฉบับสมบูรณ์', description: 'ยืนยันออกหนังสือฉบับสมบูรณ์พร้อมรหัสตรวจสอบ หลังจากนี้แก้ไขฉบับนี้ไม่ได้', action: () => api.post(`/saraban/documents/${props.document.id}/finalize`) } }
-function redact() { operation.value = { title: 'สร้างสำเนาปกปิด', description: `ตรวจพื้นที่ปกปิด ${areas.value.length} แห่งแล้ว เหตุผล: ${redactionReason.value}`, action: () => api.post(`/saraban/documents/${props.document.id}/redactions`, { source_version_id: Number(sourceId.value), reason: redactionReason.value, areas: areas.value.map(({ page, x, y, width, height }) => ({ page, x, y, width, height })) }) } }
+async function openFile(path, source = null) {
+  const request = ++previewRequest
+  previewSourceId.value = null
+  if (fileUrl.value) URL.revokeObjectURL(fileUrl.value)
+  fileUrl.value = ''
+  areas.value = []
+  error.value = ''
+  if (!path) return
+  try {
+    const url = await fetchObjectUrl(`/storage/${path}`)
+    // A slower earlier selection must never replace the currently selected file.
+    if (request !== previewRequest) { URL.revokeObjectURL(url); return }
+    fileUrl.value = url
+    previewSourceId.value = source
+  } catch (e) {
+    if (request === previewRequest) error.value = getErrorMessage(e, 'เปิดเอกสารไม่สำเร็จ')
+  }
+}
+function preview(id, forRedaction = false) {
+  const version = versions.value.find(v => String(v.id) === String(id))
+  return openFile(version?.pdf_file_path || version?.original_file_path, forRedaction ? version?.id : null)
+}
+/*
+ * เลขที่จองไว้และยังไม่ถูกผูกกับหนังสือใด — โหลดตอนเปิดช่องเท่านั้น
+ * เพราะเจ้าหน้าที่ส่วนใหญ่ไม่ได้ผูกเลขทุกครั้งที่เปิดหน้าหนังสือ
+ */
+const loadReservedNumbers = () => read(async () => {
+  const { data } = await api.get('/saraban/numbers/reserved')
+
+  reservedNumbers.value = (data.reserved || []).filter((n) => n.status === 'reserved')
+})
+
+function allocateNumber() {
+  const chosen = reservedNumbers.value.find((n) => String(n.id) === String(numberId.value))
+
+  operation.value = {
+    title: 'ผูกเลขหนังสือ',
+    description: `ผูกเลข ${chosen?.formatted} กับหนังสือฉบับนี้ — เลขจะออกเป็นทางการเมื่อลงนามแล้ว`,
+    action: () => api.post(`/saraban/numbers/${numberId.value}/allocate`, { document_id: props.document.id }),
+  }
+}
+
+function finalize() { operation.value ={ title: 'ออกฉบับสมบูรณ์', description: 'ยืนยันออกหนังสือฉบับสมบูรณ์พร้อมรหัสตรวจสอบ หลังจากนี้แก้ไขฉบับนี้ไม่ได้', action: () => api.post(`/saraban/documents/${props.document.id}/finalize`) } }
+function redact() {
+  if (!canRedact.value) return
+  const documentId = props.document.id
+  const payload = {
+    source_version_id: Number(previewSourceId.value),
+    reason: redactionReason.value,
+    areas: areas.value.map(({ page, x, y, width, height }) => ({ page, x, y, width, height })),
+  }
+  operation.value = {
+    title: 'สร้างสำเนาปกปิด',
+    description: `ตรวจพื้นที่ปกปิด ${payload.areas.length} แห่งแล้ว เหตุผล: ${payload.reason}`,
+    action: () => api.post(`/saraban/documents/${documentId}/redactions`, payload),
+  }
+}
 async function done() { operation.value = null; emit('changed'); if (redactions.value) await loadRedactions() }
-onBeforeUnmount(() => { if (fileUrl.value) URL.revokeObjectURL(fileUrl.value) })
+onBeforeUnmount(() => { previewRequest++; if (fileUrl.value) URL.revokeObjectURL(fileUrl.value) })
 </script>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Saraban;
 
 use App\Http\Controllers\Controller;
+use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentNumber;
 use App\Models\Saraban\NumberSeries;
 use App\Services\OrgScopeResolver;
@@ -88,6 +89,75 @@ class NumberReservationController extends Controller
                 'reserved_at' => $number->reserved_at?->toIso8601String(),
             ],
         ], 201);
+    }
+
+    /**
+     * ผูกเลขที่จองไว้เข้ากับหนังสือฉบับหนึ่ง (SoT §9)
+     *
+     * **ที่มา:** ก่อนหน้านี้เลขที่จองไว้ไม่มีทางไปอยู่บนหนังสือได้เลย —
+     * `DocumentWorkflowService` จองเลขใหม่ทุกครั้งตอนลงนาม ส่วนเลขที่เจ้าหน้าที่
+     * จองล่วงหน้าทำได้แค่คืนหรือยกเลิก · สิทธิ์ `saraban.number.allocate` และ
+     * `NumberingService::allocate()` มีอยู่แล้วแต่ไม่มี route ใดเรียก
+     *
+     * **ผูกแล้วยังไม่ใช่การออกเลข** — เลขจะกลายเป็นของถาวรตอนลงนามเท่านั้น
+     * ถ้าหนังสือถูกตีกลับหรือไม่ได้ลงนาม เจ้าหน้าที่คืนเลขได้ตามปกติ
+     */
+    public function allocate(Request $request, DocumentNumber $number)
+    {
+        $data = $request->validate([
+            'document_id' => ['required', 'integer', 'exists:saraban_documents,id'],
+        ]);
+
+        $document = Document::query()->findOrFail($data['document_id']);
+
+        /*
+         * ตรวจสิทธิ์รายฉบับด้วย `view` **ไม่ใช่ `update`**
+         *
+         * `update` ปฏิเสธหนังสือที่เข้าสู่กระบวนการแล้ว ซึ่งเป็นช่วงที่เจ้าหน้าที่
+         * ผูกเลขจริง ๆ (จองไว้ตอนร่าง แล้วผูกตอนเสนอ) · การผูกเลขไม่ได้แก้เนื้อหา
+         * หนังสือ จึงไม่ควรใช้กติกาเดียวกับการแก้ไข
+         *
+         * `view` บังคับทั้งขอบเขตหน่วยงานและชั้นความลับอยู่แล้ว และ route ยังต้อง
+         * ผ่าน `saraban.number.allocate` ซึ่งเป็นสิทธิ์ของเจ้าหน้าที่ธุรการ
+         */
+        $this->authorize('view', $document);
+
+        if ($document->document_number_id !== null) {
+            return response()->json(['message' => 'หนังสือฉบับนี้มีเลขหนังสือแล้ว'], 422);
+        }
+
+        // ลงนามหรือยกเลิกไปแล้ว ผูกเลขไม่ได้ — เลขของฉบับที่ลงนามแล้วออกไปแล้ว
+        if (in_array($document->status, [Document::STATUS_SIGNED, Document::STATUS_CANCELLED], true)) {
+            return response()->json([
+                'message' => 'หนังสือที่ลงนามหรือยกเลิกแล้ว ผูกเลขเพิ่มไม่ได้',
+            ], 422);
+        }
+
+        /*
+         * ชุดเลขต้องตรงประเภทของหนังสือ — เลขของทะเบียนหนังสือรับไปอยู่บน
+         * หนังสือส่งไม่ได้ ทะเบียนจะอ่านไม่ได้และตรวจย้อนหลังไม่ได้
+         */
+        $category = $document->documentType?->category;
+
+        if ($category !== null && $number->series?->category !== $category) {
+            return response()->json([
+                'message' => 'ชุดเลขไม่ตรงกับประเภทของหนังสือฉบับนี้',
+            ], 422);
+        }
+
+        try {
+            $allocated = $this->numbering->allocate($number, $document, $request->user());
+        } catch (NumberingException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json([
+            'number' => [
+                ...$allocated->only(['id', 'formatted', 'status']),
+                'document_id' => $document->id,
+                'document_subject' => $document->subject,
+            ],
+        ]);
     }
 
     /** คืนเลขที่จองไว้ — เลขกลับมาใช้ได้อีก ไม่เกิดช่องว่างในทะเบียน */

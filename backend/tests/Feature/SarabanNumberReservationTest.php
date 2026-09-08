@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\OrgUnit;
+use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentNumber;
 use App\Models\Saraban\DocumentType;
 use App\Models\Saraban\NumberSeries;
@@ -34,13 +35,15 @@ class SarabanNumberReservationTest extends TestCase
 
     private NumberSeries $series;
 
+    private OrgUnit $unit;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         config(['auth.step_up.enabled' => true, 'auth.step_up.window_minutes' => 10]);
 
-        OrgUnit::create([
+        $this->unit = OrgUnit::create([
             'uuid' => (string) Str::uuid(),
             'code' => 'UNIT-NUM',
             'name' => 'ฝ่ายอำนวยการ',
@@ -61,7 +64,10 @@ class SarabanNumberReservationTest extends TestCase
     /** @param array<int,string> $permissions */
     private function officer(array $permissions): User
     {
-        $user = User::factory()->create(['password' => Hash::make('correct-horse-battery-staple')]);
+        $user = User::factory()->create([
+            'password' => Hash::make('correct-horse-battery-staple'),
+            'org_unit_id' => $this->unit->id,
+        ]);
 
         foreach ($permissions as $permission) {
             $user->givePermissionTo(Permission::findOrCreate($permission, 'web'));
@@ -218,5 +224,148 @@ class SarabanNumberReservationTest extends TestCase
         ])->assertForbidden();
 
         $this->postJson("/api/saraban/numbers/{$number['id']}/release")->assertForbidden();
+        $this->postJson("/api/saraban/numbers/{$number['id']}/allocate", ['document_id' => 1])->assertForbidden();
+    }
+
+    // ── ผูกเลขที่จองไว้เข้ากับหนังสือ (SoT §9) ──────────────────────────────
+
+    /**
+     * ข้อที่สำคัญที่สุดของการจอง — **เลขที่จองต้องไปอยู่บนหนังสือได้จริง**
+     *
+     * ก่อนหน้านี้เลขที่จองไว้ไม่มีทางถูกใช้เลย เพราะสายงานจองเลขใหม่ทุกครั้ง
+     * ตอนลงนาม · เจ้าหน้าที่ที่จองเลขไว้เพื่อพิมพ์ลงหัวหนังสือจะได้เลขคนละตัว
+     * กับที่พิมพ์ไปแล้ว
+     */
+    public function test_a_reserved_number_can_be_bound_to_a_document(): void
+    {
+        $officer = $this->officer([
+            'saraban.number.reserve', 'saraban.number.allocate',
+            'saraban.document.view', 'saraban.document.create', 'saraban.document.update',
+        ]);
+
+        $this->actAs($officer);
+        $document = $this->documentFor($officer);
+
+        $number = $this->postJson('/api/saraban/numbers/reserve', [
+            'number_series_id' => $this->series->id,
+        ])->assertCreated()->json('number');
+
+        $bound = $this->postJson("/api/saraban/numbers/{$number['id']}/allocate", [
+            'document_id' => $document->id,
+        ])->assertOk()->json('number');
+
+        $this->assertSame(DocumentNumber::STATUS_ALLOCATED, $bound['status']);
+        $this->assertDatabaseHas('saraban_document_numbers', [
+            'id' => $number['id'],
+            'document_id' => $document->id,
+            'status' => DocumentNumber::STATUS_ALLOCATED,
+        ]);
+
+        /*
+         * **ผูกแล้วยังไม่ใช่การออกเลข** — หนังสือยังไม่มีเลขจนกว่าจะลงนาม
+         * ถ้าผูกแล้วนับว่าออกเลยจะได้ทะเบียนที่มีเลขของหนังสือที่อาจไม่ได้ลงนาม
+         */
+        $this->assertNull($document->fresh()->document_number_id);
+    }
+
+    /** ชุดเลขต้องตรงประเภทของหนังสือ ไม่งั้นทะเบียนจะอ่านไม่ได้ */
+    public function test_a_number_from_the_wrong_series_cannot_be_bound(): void
+    {
+        $officer = $this->officer([
+            'saraban.number.reserve', 'saraban.number.allocate',
+            'saraban.document.view', 'saraban.document.create', 'saraban.document.update',
+        ]);
+
+        $incomingSeries = NumberSeries::create([
+            'code' => 'RCV',
+            'name' => 'ทะเบียนรับ',
+            'category' => DocumentType::CATEGORY_INCOMING,
+            'prefix' => 'รับ',
+            'is_active' => true,
+        ]);
+
+        $this->actAs($officer);
+        $document = $this->documentFor($officer);
+
+        $number = $this->postJson('/api/saraban/numbers/reserve', [
+            'number_series_id' => $incomingSeries->id,
+        ])->assertCreated()->json('number');
+
+        $this->postJson("/api/saraban/numbers/{$number['id']}/allocate", [
+            'document_id' => $document->id,
+        ])->assertStatus(422);
+    }
+
+    /** หนังสือที่มีเลขแล้วต้องผูกเลขใบที่สองไม่ได้ */
+    public function test_a_document_that_already_has_a_number_cannot_take_another(): void
+    {
+        $officer = $this->officer([
+            'saraban.number.reserve', 'saraban.number.allocate',
+            'saraban.document.view', 'saraban.document.create', 'saraban.document.update',
+        ]);
+
+        $this->actAs($officer);
+        $document = $this->documentFor($officer);
+
+        $first = $this->postJson('/api/saraban/numbers/reserve', [
+            'number_series_id' => $this->series->id,
+        ])->assertCreated()->json('number');
+
+        $this->postJson("/api/saraban/numbers/{$first['id']}/allocate", [
+            'document_id' => $document->id,
+        ])->assertOk();
+
+        $document->update(['document_number_id' => $first['id']]);
+
+        $second = $this->postJson('/api/saraban/numbers/reserve', [
+            'number_series_id' => $this->series->id,
+        ])->assertCreated()->json('number');
+
+        $this->postJson("/api/saraban/numbers/{$second['id']}/allocate", [
+            'document_id' => $document->id,
+        ])->assertStatus(422);
+    }
+
+    /** ผูกเลขกับหนังสือที่ตนแก้ไขไม่ได้ ต้องทำไม่ได้ — ตรวจสิทธิ์รายฉบับ */
+    public function test_binding_a_number_checks_permission_on_that_document(): void
+    {
+        $owner = $this->officer([
+            'saraban.document.view', 'saraban.document.create', 'saraban.document.update',
+        ]);
+
+        $this->actAs($owner);
+        $document = $this->documentFor($owner);
+
+        $outsider = $this->officer(['saraban.number.reserve', 'saraban.number.allocate']);
+        $this->actAs($outsider);
+
+        $number = $this->postJson('/api/saraban/numbers/reserve', [
+            'number_series_id' => $this->series->id,
+        ])->assertCreated()->json('number');
+
+        $this->postJson("/api/saraban/numbers/{$number['id']}/allocate", [
+            'document_id' => $document->id,
+        ])->assertForbidden();
+    }
+
+    /** หนังสือฉบับร่างของผู้เรียก พร้อมผูกเลข */
+    private function documentFor(User $officer): Document
+    {
+        $type = DocumentType::query()->firstOrCreate(
+            ['code' => 'internal'],
+            ['name' => 'หนังสือภายใน', 'category' => DocumentType::CATEGORY_INTERNAL],
+        );
+
+        return Document::create([
+            'uuid' => (string) Str::uuid(),
+            'document_type_id' => $type->id,
+            'direction' => Document::DIRECTION_INTERNAL,
+            'subject' => 'ขอเชิญประชุม',
+            'confidentiality' => 'normal',
+            'urgency' => 'normal',
+            'status' => Document::STATUS_DRAFT,
+            'owner_org_unit_id' => $officer->org_unit_id,
+            'created_by' => $officer->id,
+        ]);
     }
 }

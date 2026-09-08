@@ -54,6 +54,7 @@ use App\Http\Controllers\Saraban\RetentionController;
 use App\Http\Controllers\Saraban\SavedViewController;
 use App\Http\Controllers\Saraban\SignatureController;
 use App\Http\Controllers\Saraban\SignatureVerificationController;
+use App\Http\Controllers\Saraban\WorkflowDesignController;
 use App\Http\Controllers\Saraban\WorkflowSimulationController;
 use App\Http\Controllers\SecureFileController;
 use App\Http\Controllers\SecureSettingController;
@@ -375,8 +376,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/admin/document-engine/fields', [DocumentEngineController::class, 'fieldDictionary']);
         Route::get('/admin/document-engine/data-sources', [DocumentEngineController::class, 'dataSources']);
         Route::get('/admin/document-engine/bindings', [DocumentEngineController::class, 'bindings']);
+        Route::get('/admin/document-engine/leave-type-forms', [DocumentEngineController::class, 'leaveTypeForms']);
         Route::get('/admin/document-engine/calibrations', [DocumentEngineController::class, 'calibrations']);
         Route::get('/admin/document-engine/versions/{version}/mappings', [DocumentEngineController::class, 'mappings']);
+        Route::get('/admin/document-engine/versions/{version}/geometry', [DocumentEngineController::class, 'versionGeometry']);
         Route::get('/admin/document-engine/versions/{version}/pdf', [DocumentEngineController::class, 'pdfFile'])->middleware('throttle:documents');
         Route::get('/admin/document-engine/versions/{version}/preview', [DocumentEngineController::class, 'previewVersion'])->middleware('throttle:documents');
         Route::get('/admin/document-engine/generated', [DocumentEngineController::class, 'generatedFiles']);
@@ -395,6 +398,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/admin/document-engine/versions/{version}/retire', [DocumentEngineController::class, 'retireVersion']);
         Route::delete('/admin/document-engine/versions/{version}', [DocumentEngineController::class, 'deleteVersion']);
         Route::put('/admin/document-engine/versions/{version}/mappings', [DocumentEngineController::class, 'saveMappings']);
+        Route::put('/admin/document-engine/fields/{field}', [DocumentEngineController::class, 'updateField']);
+        Route::delete('/admin/document-engine/fields/{field}', [DocumentEngineController::class, 'deactivateField']);
+        Route::post('/admin/document-engine/enabled-entities', [DocumentEngineController::class, 'updateEnabledEntities']);
         Route::post('/admin/document-engine/bindings', [DocumentEngineController::class, 'saveBinding']);
         Route::delete('/admin/document-engine/bindings/{rule}', [DocumentEngineController::class, 'deleteBinding']);
         Route::post('/admin/document-engine/calibrations', [DocumentEngineController::class, 'saveCalibration']);
@@ -564,6 +570,22 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
          */
         Route::get('/workflow/versions', [WorkflowSimulationController::class, 'versions'])->middleware('ability:saraban.workflow.simulate');
         Route::post('/workflow/simulate', [WorkflowSimulationController::class, 'simulate'])->middleware('ability:saraban.workflow.simulate');
+
+        /*
+         * จัดการสายการเดินหนังสือ (RISK-26 · NAV §5.2)
+         *
+         * แยกจากสายอนุมัติใบลาที่ `/admin/workflow` — controller ตรวจซ้ำว่าเวอร์ชัน
+         * ที่ส่งมาเป็นของ definition ของสารบรรณจริง ก่อนทำอะไรทั้งสิ้น
+         */
+        Route::prefix('workflow/design')->middleware('ability:saraban.workflow.manage')->group(function () {
+            Route::get('/', [WorkflowDesignController::class, 'index']);
+            Route::post('/drafts', [WorkflowDesignController::class, 'storeDraft']);
+            Route::get('/{version}', [WorkflowDesignController::class, 'show']);
+            Route::put('/{version}', [WorkflowDesignController::class, 'updateDraft']);
+            Route::delete('/{version}', [WorkflowDesignController::class, 'destroyDraft']);
+            // เผยแพร่มีผลกับทุกเรื่องที่เสนอหลังจากนี้ จึงต้องยืนยันตัวตนซ้ำ
+            Route::post('/{version}/publish', [WorkflowDesignController::class, 'publish'])->middleware('step_up');
+        });
 
         // ทะเบียนรับหนังสือ (INT-07)
         Route::get('/incoming', [IncomingRegistrationController::class, 'index'])->middleware('ability:saraban.document.view');
@@ -744,6 +766,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
             ->middleware('ability:saraban.number.reserve');
         Route::post('/numbers/reserve', [NumberReservationController::class, 'store'])
             ->middleware('ability:saraban.number.reserve');
+        // ผูกเลขที่จองไว้เข้ากับหนังสือ — ยังไม่ใช่การออกเลข (ออกตอนลงนาม)
+        Route::post('/numbers/{number}/allocate', [NumberReservationController::class, 'allocate'])
+            ->middleware('ability:saraban.number.allocate');
         Route::post('/numbers/{number}/release', [NumberReservationController::class, 'release'])
             ->middleware('ability:saraban.number.release');
         Route::post('/numbers/{number}/cancel', [NumberReservationController::class, 'cancel'])

@@ -134,15 +134,17 @@ class SarabanWorkflowSimulationTest extends TestCase
     public function test_the_simulation_reports_the_same_people_who_may_really_act(): void
     {
         $reviewer = $this->userIn($this->unit, ['saraban.workflow.review']);
+        $this->userIn($this->unit, ['saraban.workflow.approve']);
         $signer = $this->userIn($this->unit, ['saraban.signature.sign']);
 
         $result = $this->simulator()->simulate(['org_unit_id' => $this->unit->id]);
 
         $this->assertSame(WorkflowSimulationService::STATUS_VALID, $result['status']);
-        $this->assertCount(2, $result['route']);
+        // สายที่ใช้อยู่คือ v2 ซึ่งมีขั้นรองผู้อำนวยการคั่นกลาง
+        $this->assertCount(3, $result['route']);
 
         $reviewStep = $result['route'][0];
-        $signStep = $result['route'][1];
+        $signStep = $result['route'][2];
 
         $this->assertSame('saraban_review', $reviewStep['step_code']);
         $this->assertContains($reviewer->id, array_column($reviewStep['candidates'], 'id'));
@@ -231,14 +233,14 @@ class SarabanWorkflowSimulationTest extends TestCase
         $instance = WorkflowInstance::query()->where('subject_id', $created['id'])->firstOrFail();
         $pinnedVersionId = $instance->workflow_version_id;
 
-        // เผยแพร่เวอร์ชัน 2 ที่มีขั้นเดียว
+        // เผยแพร่เวอร์ชันใหม่ที่มีขั้นเดียว
         $definition = WorkflowDefinition::query()->where('code', DocumentWorkflowService::DEFINITION_CODE)->firstOrFail();
         $definition->versions()->where('status', WorkflowVersion::STATUS_ACTIVE)
             ->update(['status' => WorkflowVersion::STATUS_RETIRED]);
 
         $v2 = WorkflowVersion::create([
             'workflow_definition_id' => $definition->id,
-            'version' => 2,
+            'version' => 3,
             'status' => WorkflowVersion::STATUS_ACTIVE,
             'effective_from' => now()->toDateString(),
             'published_at' => now(),
@@ -303,7 +305,7 @@ class SarabanWorkflowSimulationTest extends TestCase
         $this->assertSame('draft_sign', $result['route'][0]['step_code']);
 
         // ร่างยังไม่ถูกเผยแพร่ — เรื่องใหม่ต้องยังเดินบนเวอร์ชันที่มีผลบังคับใช้
-        $this->assertSame(1, $definition->activeVersion()->version);
+        $this->assertSame(2, $definition->activeVersion()->version);
     }
 
     // ── สิทธิ์ ──────────────────────────────────────────────────────────────

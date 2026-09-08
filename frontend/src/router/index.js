@@ -216,6 +216,18 @@ const router = createRouter({
       component: () => import('../views/saraban/DocumentWorkspaceView.vue'),
       meta: { requiresAuth: true, title: 'ประทับตราหนังสือ', parent: 'งานสารบรรณ' }
     },
+    /*
+     * จัดการสายการเดินหนังสือ (RISK-26 · NAV §5.2)
+     *
+     * แยกจาก `/admin/workflow` ของโมดูลการลาโดยเจตนา — คนละสายงาน คนละผู้ดูแล
+     * และ endpoint ฝั่ง server ตรวจซ้ำว่าเวอร์ชันเป็นของสารบรรณจริง
+     */
+    {
+      path: '/saraban/workflow',
+      name: 'saraban-workflow-design',
+      component: () => import('../views/saraban/WorkflowDesignView.vue'),
+      meta: { requiresAuth: true, title: 'สายการเดินหนังสือ', parent: 'งานสารบรรณ' }
+    },
     {
       path: '/saraban/workflow/simulate',
       name: 'saraban-workflow-simulate',

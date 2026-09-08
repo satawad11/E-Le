@@ -452,6 +452,7 @@ class MenuSeeder extends Seeder
              */
             'permissions' => [
                 'saraban.authority.view',
+                'saraban.workflow.manage',
                 'saraban.workflow.simulate',
                 'saraban.policy.manage',
                 'saraban.config.manage',
@@ -467,6 +468,19 @@ class MenuSeeder extends Seeder
                     'route_name' => 'saraban-authority',
                     'route_path' => '/saraban/authority',
                     'permissions' => ['saraban.authority.view'],
+                ],
+                /*
+                 * NAV §5.2 — Workflow · ปิด RISK-26
+                 *
+                 * วางไว้ก่อนหน้าจำลองเส้นทาง เพราะการตั้งสายมาก่อนการทดลองเดินสาย
+                 */
+                [
+                    'code' => 'saraban.workflow.design',
+                    'title_th' => 'สายการเดินหนังสือ',
+                    'title_en' => 'Workflow',
+                    'route_name' => 'saraban-workflow-design',
+                    'route_path' => '/saraban/workflow',
+                    'permissions' => ['saraban.workflow.manage'],
                 ],
                 [
                     'code' => 'saraban.workflow.simulate',

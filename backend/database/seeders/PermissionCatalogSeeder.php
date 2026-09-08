@@ -90,6 +90,7 @@ class PermissionCatalogSeeder extends Seeder
         'saraban.number.release' => 'คืนเลขหนังสือที่จองไว้',
         'saraban.number.cancel' => 'ยกเลิกเลขหนังสือ',
         'saraban.workflow.review' => 'ตรวจและดำเนินการหนังสือตามสายงาน',
+        'saraban.workflow.approve' => 'พิจารณาและเห็นชอบหนังสือก่อนเสนอลงนาม',
         'saraban.workflow.forward' => 'ส่งหนังสือต่อไปยังขั้นถัดไป',
         'saraban.workflow.return' => 'ส่งหนังสือกลับไปแก้ไข',
         'saraban.workflow.simulate' => 'จำลองเส้นทางเดินหนังสือ',

@@ -188,7 +188,8 @@ class SarabanWorkflowAndAuthorityTest extends TestCase
             ->assertOk()
             ->json();
 
-        $this->assertSame('signature', $state['current_step']['code'], 'ต้องเดินไปขั้นลงนาม');
+        // v2 คั่นด้วยขั้นรองผู้อำนวยการก่อนถึงผู้ลงนาม
+        $this->assertSame('deputy_review', $state['current_step']['code'], 'ต้องเดินไปขั้นรอง ผอ.');
     }
 
     public function test_authority_is_a_projection_of_core_data_not_a_table_of_its_own(): void
@@ -294,6 +295,13 @@ class SarabanWorkflowAndAuthorityTest extends TestCase
 
         $this->assertNull($document->fresh()->document_number_id, 'ผ่านการตรวจแล้วแต่ยังไม่ลงนาม ต้องยังไม่มีเลข');
 
+        $deputy = $this->userIn($this->unitA, ['saraban.document.view', 'saraban.workflow.approve']);
+        $this->actingAs($deputy)
+            ->postJson("/api/saraban/documents/{$document->id}/workflow", ['action' => 'approve'])
+            ->assertOk();
+
+        $this->assertNull($document->fresh()->document_number_id, 'รอง ผอ. เห็นชอบแล้วแต่ยังไม่ลงนาม ต้องยังไม่มีเลข');
+
         $signer = $this->userIn($this->unitA, ['saraban.document.view', 'saraban.signature.sign']);
         $this->actingAs($signer)
             ->postJson("/api/saraban/documents/{$document->id}/workflow", ['action' => 'approve'])
@@ -326,6 +334,9 @@ class SarabanWorkflowAndAuthorityTest extends TestCase
         $officer = $this->userIn($this->unitA, ['saraban.document.view', 'saraban.workflow.review']);
         $this->actingAs($officer)->postJson("/api/saraban/documents/{$document->id}/workflow", ['action' => 'approve'])->assertOk();
 
+        $deputy = $this->userIn($this->unitA, ['saraban.document.view', 'saraban.workflow.approve']);
+        $this->actingAs($deputy)->postJson("/api/saraban/documents/{$document->id}/workflow", ['action' => 'approve'])->assertOk();
+
         $signer = $this->userIn($this->unitA, ['saraban.document.view', 'saraban.signature.sign']);
 
         $this->actingAs($signer)
@@ -334,6 +345,66 @@ class SarabanWorkflowAndAuthorityTest extends TestCase
             ->assertJsonPath('message', fn (string $message) => str_contains($message, 'ชุดเลขหนังสือ'));
 
         $this->assertNotSame(Document::STATUS_SIGNED, $document->fresh()->status, 'ต้องไม่ถือว่าลงนามสำเร็จ');
+    }
+
+    /**
+     * **เลขที่จองไว้ล่วงหน้าต้องเป็นเลขที่ออกจริง** (SoT §9)
+     *
+     * เดิมที่นี่จองเลขใหม่ทุกครั้งตอนลงนาม เลขที่เจ้าหน้าที่จองไว้เพื่อพิมพ์ลงหัว
+     * หนังสือจึงไม่เคยถูกใช้ — เลขบนกระดาษกับเลขในทะเบียนเป็นคนละตัว
+     */
+    public function test_a_number_reserved_in_advance_is_the_one_issued_at_signing(): void
+    {
+        $series = NumberSeries::create([
+            'code' => 'internal-main',
+            'name' => 'หนังสือภายใน',
+            'category' => DocumentType::CATEGORY_INTERNAL,
+            'prefix' => 'ศธ 04001',
+        ]);
+
+        $author = $this->userIn($this->unitA, [
+            'saraban.document.view', 'saraban.document.create', 'saraban.document.submit',
+        ]);
+        $document = $this->submittedDocument($author);
+
+        $clerk = $this->userIn($this->unitA, [
+            'saraban.document.view', 'saraban.document.update',
+            'saraban.number.reserve', 'saraban.number.allocate',
+        ]);
+
+        $reserved = $this->actingAs($clerk)
+            ->postJson('/api/saraban/numbers/reserve', ['number_series_id' => $series->id])
+            ->assertCreated()
+            ->json('number');
+
+        $this->actingAs($clerk)
+            ->postJson("/api/saraban/numbers/{$reserved['id']}/allocate", ['document_id' => $document->id])
+            ->assertOk();
+
+        foreach ([
+            ['saraban.workflow.review'],
+            ['saraban.workflow.approve'],
+            ['saraban.signature.sign'],
+        ] as $permissions) {
+            $actor = $this->userIn($this->unitA, array_merge(['saraban.document.view'], $permissions));
+            $this->actingAs($actor)
+                ->postJson("/api/saraban/documents/{$document->id}/workflow", ['action' => 'approve'])
+                ->assertOk();
+        }
+
+        $signed = $document->fresh();
+
+        $this->assertSame(
+            (int) $reserved['id'],
+            (int) $signed->document_number_id,
+            'ต้องออกเลขที่จองไว้ ไม่ใช่จองเลขใหม่',
+        );
+        $this->assertSame(DocumentNumber::STATUS_ISSUED, DocumentNumber::findOrFail($reserved['id'])->status);
+        $this->assertSame(
+            1,
+            DocumentNumber::query()->where('number_series_id', $series->id)->count(),
+            'ต้องไม่มีเลขส่วนเกินถูกจองขึ้นมาอีกใบ',
+        );
     }
 
     // ── ส่งกลับแก้ไข ────────────────────────────────────────────────────────

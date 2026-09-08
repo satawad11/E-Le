@@ -150,6 +150,7 @@ return [
 
             // การเดินเรื่อง (SoT §11, §12)
             'saraban.workflow.review' => 'ตรวจและดำเนินการหนังสือตามสายงาน',
+            'saraban.workflow.approve' => 'พิจารณาและเห็นชอบหนังสือก่อนเสนอลงนาม',
             'saraban.workflow.forward' => 'ส่งหนังสือต่อไปยังขั้นถัดไป',
             'saraban.workflow.return' => 'ส่งหนังสือกลับไปแก้ไข',
             'saraban.workflow.simulate' => 'จำลองเส้นทางเดินหนังสือ',

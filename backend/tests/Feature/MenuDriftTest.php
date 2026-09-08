@@ -38,10 +38,10 @@ class MenuDriftTest extends TestCase
      *
      * การอัปเดตค่านี้เฉย ๆ โดยไม่ทำข้อ 1 = ปิดปากเทสต์ ไม่ใช่แก้ปัญหา
      */
-    private const TREE_FINGERPRINT = '3722b2d53e42092b2b5acc6f4d5ec62ad45dc263916c3d86d804d10888dad50d';
+    private const TREE_FINGERPRINT = '084f1dbda20ecc918425a70beef4e8fc94a402ad3f2bc26d6e4f0398f2cb3f37';
 
     /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว */
-    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_16_100000_rename_saraban_menus_to_matrix_wording';
+    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_17_110000_add_saraban_workflow_design_menu';
 
     public function test_changing_the_menu_tree_requires_a_migration_for_installed_systems(): void
     {
@@ -81,7 +81,7 @@ class MenuDriftTest extends TestCase
         $this->assertCount(2, $groups, 'เมนูสารบรรณต้องมีสองกลุ่ม: งานประจำวัน และการจัดการ');
 
         $this->assertCount(
-            20,
+            21,
             $groups->flatMap(fn (array $item) => $item['children'] ?? [])->all(),
             'จำนวนหน้าของงานสารบรรณเปลี่ยนไป — ถ้าตั้งใจ ให้แก้ตัวเลขนี้พร้อม migration sync เมนู',
         );

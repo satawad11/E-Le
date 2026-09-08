@@ -3,6 +3,7 @@
 namespace App\Services\Saraban;
 
 use App\Models\Saraban\Document;
+use App\Models\Saraban\DocumentNumber;
 use App\Models\Saraban\DocumentType;
 use App\Models\Saraban\NumberSeries;
 use App\Models\User;
@@ -154,6 +155,30 @@ class DocumentWorkflowService
      */
     private function issueDocumentNumber(Document $document, User $actor): void
     {
+        /*
+         * **เลขที่เจ้าหน้าที่จองไว้ให้หนังสือฉบับนี้มาก่อนเสมอ** (SoT §9)
+         *
+         * ก่อนหน้านี้ที่นี่จองเลขใหม่ทุกครั้ง เลขที่จองล่วงหน้าจึงไม่มีทางไปอยู่บน
+         * หนังสือได้เลย — หน้าจองเลขกลายเป็นหน้าที่ทำได้แค่จองแล้วคืน · งานสารบรรณ
+         * จริงจองเลขไว้ก่อนร่างเสร็จเพื่อพิมพ์ลงหัวหนังสือ ถ้าระบบออกเลขอื่นให้ตอน
+         * ลงนาม เลขบนกระดาษกับเลขในทะเบียนจะไม่ตรงกัน
+         */
+        $allocated = DocumentNumber::query()
+            ->where('document_id', $document->id)
+            ->where('status', DocumentNumber::STATUS_ALLOCATED)
+            ->first();
+
+        if ($allocated !== null) {
+            $issued = $this->numbering->issue($allocated, $actor);
+
+            $document->update([
+                'document_number_id' => $issued->id,
+                'issued_at' => $this->clock->now(),
+            ]);
+
+            return;
+        }
+
         $category = $document->documentType?->category ?? DocumentType::CATEGORY_OUTGOING;
 
         $series = NumberSeries::query()
