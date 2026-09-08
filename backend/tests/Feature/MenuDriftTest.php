@@ -38,10 +38,10 @@ class MenuDriftTest extends TestCase
      *
      * การอัปเดตค่านี้เฉย ๆ โดยไม่ทำข้อ 1 = ปิดปากเทสต์ ไม่ใช่แก้ปัญหา
      */
-    private const TREE_FINGERPRINT = '724c5c4588f8e5efbb23538e285fc24920a086e9ec5318f140d8a6b546d06833';
+    private const TREE_FINGERPRINT = '3722b2d53e42092b2b5acc6f4d5ec62ad45dc263916c3d86d804d10888dad50d';
 
     /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว */
-    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_15_100000_align_saraban_menus_with_navigation_matrix';
+    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_16_100000_rename_saraban_menus_to_matrix_wording';
 
     public function test_changing_the_menu_tree_requires_a_migration_for_installed_systems(): void
     {

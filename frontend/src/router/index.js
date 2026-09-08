@@ -105,10 +105,10 @@ const router = createRouter({
       component: () => import('../views/saraban/DocumentsView.vue'),
       meta: {
         requiresAuth: true,
-        title: 'ค้นหาและคลังเอกสาร',
+        title: 'ค้นหา / คลังเอกสาร',
         parent: 'งานสารบรรณ',
         saraban: {
-          title: 'ค้นหาและคลังเอกสาร',
+          title: 'ค้นหา / คลังเอกสาร',
           description: 'หนังสือรับ หนังสือส่ง และหนังสือภายในที่อยู่ในขอบเขตของท่าน',
         },
       }
@@ -160,19 +160,19 @@ const router = createRouter({
       path: '/saraban/documents/queue',
       name: 'saraban-work-queue',
       component: () => import('../views/saraban/WorkQueueView.vue'),
-      meta: { requiresAuth: true, title: 'รอฉันดำเนินการ', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'รอพิจารณา / รอลงนาม', parent: 'งานสารบรรณ' }
     },
     {
       path: '/saraban',
       name: 'saraban-dashboard',
       component: () => import('../views/saraban/SarabanDashboardView.vue'),
-      meta: { requiresAuth: true, title: 'หน้าแรกงานสารบรรณ', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'แดชบอร์ด', parent: 'งานสารบรรณ' }
     },
     {
       path: '/saraban/numbers',
       name: 'saraban-numbers',
       component: () => import('../views/saraban/NumberReservationView.vue'),
-      meta: { requiresAuth: true, title: 'จองและออกเลขหนังสือ', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'จอง/ออกเลข', parent: 'งานสารบรรณ' }
     },
     {
       path: '/saraban/documents/new',
@@ -234,7 +234,7 @@ const router = createRouter({
       path: '/saraban/reports',
       name: 'saraban-reports',
       component: () => import('../views/saraban/RegisterReportsView.vue'),
-      meta: { requiresAuth: true, title: 'รายงานทะเบียนงานสารบรรณ', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'รายงาน', parent: 'งานสารบรรณ' }
     },
     {
       // INT-18 — สารบบเรื่อง (SoT §22)
@@ -313,7 +313,7 @@ const router = createRouter({
       path: '/saraban/distributions',
       name: 'saraban-distributions',
       component: () => import('../views/saraban/DistributionTrackingView.vue'),
-      meta: { requiresAuth: true, title: 'ติดตามการกระจายเอกสาร', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'กระจายเอกสาร', parent: 'งานสารบรรณ' }
     },
     {
       path: '/leave-card',

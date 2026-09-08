@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
     <div>
-      <h1 class="text-2xl font-bold text-gray-800">รายงานทะเบียนงานสารบรรณ</h1>
+      <h1 class="text-2xl font-bold text-gray-800">รายงาน</h1>
       <p class="text-sm text-gray-500 mt-1">
         รายงานแสดงเฉพาะหนังสือในขอบเขตหน่วยงานที่ท่านมีสิทธิ์เข้าถึง
       </p>

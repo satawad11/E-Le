@@ -2,7 +2,7 @@
   <div class="max-w-6xl mx-auto space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-gray-800">หนังสือเวียนถึงฉัน</h1>
+        <h1 class="text-2xl font-bold text-gray-800">กล่องหนังสือของฉัน</h1>
         <p class="text-sm text-gray-500 mt-1">
           การเปิดอ่านไม่นับเป็นการรับทราบ ต้องกดรับทราบทุกฉบับ
         </p>

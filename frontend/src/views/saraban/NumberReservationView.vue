@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-5xl mx-auto space-y-6">
     <div>
-      <h1 class="text-2xl font-bold text-gray-800">จองเลขหนังสือ</h1>
+      <h1 class="text-2xl font-bold text-gray-800">จอง/ออกเลข</h1>
       <p class="text-sm text-gray-500 mt-1">จองเลขหนังสือไว้ล่วงหน้าสำหรับหนังสือที่กำลังจัดทำ</p>
     </div>
 

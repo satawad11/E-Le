@@ -55,7 +55,7 @@ class DashboardService
             'tiles' => [
                 [
                     'key' => 'waiting_for_me',
-                    'label' => 'รอฉันดำเนินการ',
+                    'label' => 'รอพิจารณา / รอลงนาม',
                     'value' => $waitingForMe,
                     'route' => '/saraban/documents/queue',
                     'alert' => $waitingForMe > 0,

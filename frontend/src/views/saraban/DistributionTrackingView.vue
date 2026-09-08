@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
     <div>
-      <h1 class="text-2xl font-bold text-gray-800">ติดตามการกระจายเอกสาร</h1>
+      <h1 class="text-2xl font-bold text-gray-800">กระจายเอกสาร</h1>
       <p class="text-sm text-gray-500 mt-1">
         หนังสือที่เวียนออกไปแล้ว และจำนวนผู้รับที่ยังไม่แสดงการรับทราบ
       </p>

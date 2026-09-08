@@ -2,7 +2,7 @@
   <div class="max-w-7xl mx-auto space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-gray-800">ทะเบียนรับหนังสือ</h1>
+        <h1 class="text-2xl font-bold text-gray-800">ทะเบียนหนังสือรับ</h1>
         <p class="text-sm text-gray-500 mt-1">
           เลขทะเบียนรับและวันเวลาที่รับเป็นของหน่วยงานเรา แยกจากเลขที่และวันที่ของหนังสือต้นทาง
         </p>

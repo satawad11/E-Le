@@ -263,8 +263,8 @@ class MenuSeeder extends Seeder
                 [
                     // หน้าแรกของโมดูล (NAV §4.1) — ตัวเลขสรุปและงานของฉัน
                     'code' => 'saraban.dashboard',
-                    'title_th' => 'หน้าแรกงานสารบรรณ',
-                    'title_en' => 'Saraban Home',
+                    'title_th' => 'แดชบอร์ด',
+                    'title_en' => 'Dashboard',
                     'route_name' => 'saraban-dashboard',
                     'route_path' => '/saraban',
                     'permissions' => ['saraban.document.view'],
@@ -318,8 +318,8 @@ class MenuSeeder extends Seeder
                  */
                 [
                     'code' => 'saraban.numbers',
-                    'title_th' => 'จองและออกเลขหนังสือ',
-                    'title_en' => 'Reserve Number',
+                    'title_th' => 'จอง/ออกเลข',
+                    'title_en' => 'Reserve / Issue Number',
                     'route_name' => 'saraban-numbers',
                     'route_path' => '/saraban/numbers',
                     'permissions' => ['saraban.number.reserve'],
@@ -358,8 +358,8 @@ class MenuSeeder extends Seeder
                  */
                 [
                     'code' => 'saraban.queue',
-                    'title_th' => 'รอฉันดำเนินการ',
-                    'title_en' => 'Waiting for Me',
+                    'title_th' => 'รอพิจารณา / รอลงนาม',
+                    'title_en' => 'Pending Review / Signature',
                     'route_name' => 'saraban-work-queue',
                     'route_path' => '/saraban/documents/queue',
                     'permissions' => ['saraban.document.view'],
@@ -372,8 +372,8 @@ class MenuSeeder extends Seeder
                  */
                 [
                     'code' => 'saraban.distribution',
-                    'title_th' => 'ติดตามการกระจายเอกสาร',
-                    'title_en' => 'Distribution Tracking',
+                    'title_th' => 'กระจายเอกสาร',
+                    'title_en' => 'Distribution',
                     'route_name' => 'saraban-distributions',
                     'route_path' => '/saraban/distributions',
                     'permissions' => ['saraban.distribution.track'],
@@ -390,8 +390,8 @@ class MenuSeeder extends Seeder
                 [
                     // NAV §2 · §4.10 — ค้นหา / คลังเอกสาร
                     'code' => 'saraban.documents',
-                    'title_th' => 'ค้นหาและคลังเอกสาร',
-                    'title_en' => 'Documents',
+                    'title_th' => 'ค้นหา / คลังเอกสาร',
+                    'title_en' => 'Search / Archive',
                     'route_name' => 'saraban-documents',
                     'route_path' => '/saraban/documents',
                     'permissions' => ['saraban.document.view'],
@@ -408,8 +408,8 @@ class MenuSeeder extends Seeder
                 [
                     // INT-19 — รายงานทะเบียน (SoT §28)
                     'code' => 'saraban.reports',
-                    'title_th' => 'รายงานทะเบียนงานสารบรรณ',
-                    'title_en' => 'Register Reports',
+                    'title_th' => 'รายงาน',
+                    'title_en' => 'Reports',
                     'route_name' => 'saraban-reports',
                     'route_path' => '/saraban/reports',
                     'permissions' => ['saraban.report.view'],
@@ -498,7 +498,7 @@ class MenuSeeder extends Seeder
                     // INT-17 — SoT §19, §20, §21
                     'code' => 'saraban.operations',
                     'title_th' => 'ศูนย์เฝ้าระวังการปฏิบัติการ',
-                    'title_en' => 'Command Center',
+                    'title_en' => 'Operational Command Center',
                     'route_name' => 'saraban-command-center',
                     'route_path' => '/saraban/operations',
                     'permissions' => ['saraban.operations.view'],
