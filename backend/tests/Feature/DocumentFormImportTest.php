@@ -122,6 +122,25 @@ class DocumentFormImportTest extends TestCase
         $this->assertSame(1, $draft->fresh()->fieldMappings()->count(), 'ตำแหน่งฟิลด์ที่วางไว้ต้องไม่หาย');
     }
 
+    public function test_it_does_not_stack_a_new_draft_after_the_form_is_published(): void
+    {
+        $template = $this->template('leave_vacation');
+
+        $this->artisan('document:import-forms')->assertSuccessful();
+
+        $draft = $template->versions()->where('status', DocumentTemplateVersion::STATUS_DRAFT)->latest('version')->firstOrFail();
+        $draft->update(['status' => DocumentTemplateVersion::STATUS_ACTIVE, 'is_active' => true]);
+
+        // รันซ้ำเพื่อผูกกติกาอย่างเดียว ต้องไม่สร้างฉบับร่างใหม่ให้แบบฟอร์มที่ใช้งานอยู่แล้ว
+        $this->artisan('document:import-forms', ['--bind' => true])->assertSuccessful();
+
+        $this->assertSame(
+            0,
+            $template->versions()->where('status', DocumentTemplateVersion::STATUS_DRAFT)->count(),
+            'แบบฟอร์มที่เผยแพร่แล้วต้องไม่ถูกสร้างฉบับร่างซ้อนจากการรันคำสั่งซ้ำ',
+        );
+    }
+
     public function test_the_dry_run_writes_nothing(): void
     {
         $template = $this->template('leave_vacation');

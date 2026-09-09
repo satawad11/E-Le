@@ -77,16 +77,35 @@ class ImportDocumentFormTemplates extends Command
 
             $template ??= $this->createTemplate($code, $name);
 
+            /*
+             * นำเข้าซ้ำไม่ได้ถ้าแม่แบบนี้มีไฟล์ต้นฉบับอยู่แล้ว — ไม่ว่าจะอยู่ในฉบับร่างหรือเวอร์ชัน
+             * ที่เผยแพร่ไปแล้ว มิฉะนั้นการรันคำสั่งซ้ำ (เช่นเพื่อผูกกติกาด้วย `--bind`)
+             * จะสร้างฉบับร่างซ้อนขึ้นมาใหม่ทุกครั้งหลังเผยแพร่
+             */
+            $imported = $template->versions()
+                ->whereNotNull('pdf_file_path')
+                ->orderByDesc('version')
+                ->first();
+
+            if ($imported !== null && $disk->exists($imported->pdf_file_path)) {
+                $this->line(sprintf(
+                    'ข้าม %s: เวอร์ชัน %d (%s) มีไฟล์ต้นฉบับอยู่แล้ว',
+                    $code,
+                    $imported->version,
+                    $imported->status === DocumentTemplateVersion::STATUS_DRAFT ? 'ฉบับร่าง' : 'เผยแพร่แล้ว',
+                ));
+
+                if ($this->option('bind')) {
+                    $this->bind($template, $keywords, $code === 'leave_cancel', $priority);
+                }
+
+                continue;
+            }
+
             $draft = $template->versions()
                 ->where('status', DocumentTemplateVersion::STATUS_DRAFT)
                 ->latest('version')
                 ->first();
-
-            if ($draft !== null && filled($draft->pdf_file_path) && $disk->exists($draft->pdf_file_path)) {
-                $this->line("ข้าม {$code}: ฉบับร่างเวอร์ชัน {$draft->version} มีไฟล์ต้นฉบับอยู่แล้ว");
-
-                continue;
-            }
 
             if ($dryRun) {
                 $this->line($draft !== null

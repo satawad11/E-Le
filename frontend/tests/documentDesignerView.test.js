@@ -26,18 +26,36 @@ vi.mock('vue-router', () => ({
  * สิ่งที่เทสต์นี้ตรวจคือ "หน้าออกแบบใช้ขนาดหน้าจากไฟล์เป็นระบบพิกัด" ไม่ใช่ตัวเรนเดอร์ PDF
  * จึงคืน viewport ของหน้าขนาดที่ไม่ใช่ A4 มาให้ แล้วดูว่าหน้าจอใช้ค่านั้นจริง
  */
+const getDocumentArgs = []
+const renderCalls = []
+
 vi.mock('pdfjs-dist', () => ({
   GlobalWorkerOptions: {},
-  getDocument: () => ({
-    promise: Promise.resolve({
-      numPages: 1,
-      getPage: () => Promise.resolve({
-        getViewport: ({ scale }) => ({ width: 935.43 * scale, height: 595.28 * scale }),
-        render: () => ({ promise: Promise.resolve(), cancel: () => {} }),
+  /*
+   * pdf.js 6 รับเฉพาะรูปแบบพารามิเตอร์ — ส่ง URL เป็นสตริงเปล่าจะโยน error ทันที
+   * mock จึงเลียนแบบข้อบังคับนั้นไว้ ไม่ให้การเรียกผิดรูปแบบผ่านเทสต์ไปได้อีก
+   */
+  getDocument: (parameters) => {
+    getDocumentArgs.push(parameters)
+
+    if (typeof parameters === 'string' || !parameters?.url) {
+      throw new Error('getDocument - expected either `data`, `range`, or `url` parameter.')
+    }
+
+    return {
+      promise: Promise.resolve({
+        numPages: 1,
+        getPage: () => Promise.resolve({
+          getViewport: ({ scale }) => ({ width: 935.43 * scale, height: 595.28 * scale }),
+          render: (options) => {
+            renderCalls.push(options)
+            return { promise: Promise.resolve(), cancel: () => {} }
+          },
+        }),
+        destroy: () => {},
       }),
-      destroy: () => {},
-    }),
-  }),
+    }
+  },
 }))
 
 vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({ default: 'worker.js' }))
@@ -127,6 +145,16 @@ describe('DocumentDesignerView — หน้าออกแบบแบบฟอ
 
     expect(wrapper.text()).toContain('935×595 pt')
     expect(wrapper.text()).not.toContain('595×842 pt')
+  })
+
+  it('วาดแบบฟอร์มต้นฉบับเป็นพื้นหลังได้จริงหลังโหลดเสร็จ', async () => {
+    const wrapper = await mountDesigner()
+    await flushPromises()
+
+    expect(getDocumentArgs.at(-1)).toMatchObject({ url: expect.any(String) })
+    expect(renderCalls.length).toBeGreaterThan(0)
+    expect(wrapper.find('canvas').exists()).toBe(true)
+    expect(wrapper.find('input[type="checkbox"]').element.checked).toBe(true)
   })
 
   it('แสดงเฉพาะชนิดฟิลด์ที่ตัวเรนเดอร์วาดได้ (ไม่มี BARCODE)', async () => {

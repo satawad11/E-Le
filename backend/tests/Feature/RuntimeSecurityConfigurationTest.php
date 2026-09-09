@@ -154,4 +154,36 @@ class RuntimeSecurityConfigurationTest extends TestCase
         $this->assertStringContainsString('npm run lint', $workflow);
         $this->assertStringContainsString('npm run typecheck', $workflow);
     }
+
+    /**
+     * ES module (.mjs) ต้องถูกเสิร์ฟเป็น JavaScript
+     *
+     * `mime.types` ของ nginx ไม่รู้จัก `.mjs` จึงส่งเป็น `application/octet-stream`
+     * และเบราว์เซอร์ปฏิเสธ module script นั้นทั้งไฟล์ตามข้อกำหนด HTML
+     *
+     * พบตอนซ้อมเปิดใช้งานจริง: worker ของ pdf.js ในหน้าออกแบบแบบฟอร์มโหลดไม่ได้
+     * แบบฟอร์มต้นฉบับจึงไม่ขึ้นเป็นพื้นหลัง — อาการนี้ไม่เกิดกับ `npm run dev`
+     * จึงหลุดไปถึงเครื่องจริงได้ง่ายถ้าไม่มีด่านตรวจ
+     */
+    public function test_es_modules_are_served_as_javascript(): void
+    {
+        $config = $this->repoFile('docker/nginx/default.conf');
+
+        $this->assertStringContainsString('\.mjs$', $config, 'ต้องมี location เฉพาะไฟล์ .mjs');
+        $this->assertStringContainsString(
+            'default_type application/javascript;',
+            $config,
+            'nginx ต้องประกาศชนิดไฟล์ของ .mjs เป็น application/javascript',
+        );
+
+        /*
+         * ต้องไม่ประกาศ `types { }` ระดับ server เพราะบล็อกนี้ **แทนที่** ตารางชนิดไฟล์
+         * ที่สืบทอดมาทั้งชุด ทำให้ CSS/รูปภาพกลายเป็น octet-stream ตามไปด้วย
+         */
+        $this->assertStringNotContainsString(
+            "\n    types {",
+            $config,
+            'ห้ามใช้บล็อก types ระดับ server — ใช้ location เฉพาะนามสกุลแทน',
+        );
+    }
 }

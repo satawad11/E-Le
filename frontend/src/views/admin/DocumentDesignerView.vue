@@ -792,7 +792,8 @@ const loadPdf = async () => {
       await import('pdfjs-dist/build/pdf.worker.min.mjs?url')
     ).default
 
-    pdfDocument = await pdfjs.getDocument(pdfObjectUrl).promise
+    // pdf.js 6 รับเฉพาะรูปแบบพารามิเตอร์ (`{url}` / `{data}`) การส่ง URL เปล่าจะโยน error ทันที
+    pdfDocument = await pdfjs.getDocument({ url: pdfObjectUrl }).promise
 
     // ขนาดจริงรายหน้าจากไฟล์ — เป็นระบบพิกัดของพื้นที่วางฟิลด์
     const sizes = []
@@ -833,7 +834,14 @@ const renderPage = async () => {
   }
 }
 
-watch([currentPage, zoom], async () => {
+/*
+ * วาดหน้า PDF ใหม่เมื่อเปลี่ยนหน้า/ซูม และ **เมื่อพื้นที่วาดเพิ่งปรากฏบนหน้าจอ**
+ *
+ * `loading` ยังเป็น true ตลอดช่วงโหลดครั้งแรก แคนวาสจึงยังไม่อยู่ใน DOM ตอนที่
+ * `loadPdf()` ทำงานเสร็จ ถ้าเฝ้าเฉพาะหน้า/ซูม ภาพแบบฟอร์มจะไม่ขึ้นเลยจนกว่าผู้ใช้จะกดซูม
+ * (เจอตอนซ้อมเปิดใช้งานจริง — ผู้ดูแลเห็นแต่กล่องฟิลด์ลอยบนพื้นขาว)
+ */
+watch([currentPage, zoom, loading, hasPdf], async () => {
   await nextTick()
   await renderPage()
 })

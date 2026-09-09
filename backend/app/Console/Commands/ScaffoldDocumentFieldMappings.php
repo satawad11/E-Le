@@ -48,9 +48,14 @@ class ScaffoldDocumentFieldMappings extends Command
         ['approval.authorizer.position', 'TEXT', 340, 708, 180, 18],
     ];
 
-    /** ฟิลด์เฉพาะของแต่ละแบบฟอร์ม */
+    /**
+     * ฟิลด์เฉพาะของแต่ละแบบฟอร์ม
+     *
+     * ใช้ code ของแม่แบบเดิม (ไม่ใช่ชุด `form_*` ของคำสั่งนำเข้ารุ่นเก่า)
+     * ให้ตรงกับ `document:import-forms` ที่แนบไฟล์เข้ากับแม่แบบเดิม
+     */
     private const EXTRA = [
-        'form_leave_sick_personal' => [
+        'leave_sick_personal' => [
             ['leave.is_sick', 'CHECKBOX', 148, 176, 12, 12],
             ['leave.is_personal', 'CHECKBOX', 248, 176, 12, 12],
             ['leave.is_maternity', 'CHECKBOX', 348, 176, 12, 12],
@@ -59,7 +64,15 @@ class ScaffoldDocumentFieldMappings extends Command
 
     public function handle(): int
     {
-        $query = DocumentTemplate::where('render_mode', DocumentTemplate::RENDER_PDF_OVERLAY);
+        /*
+         * หาแม่แบบจาก "ฉบับร่างที่มีไฟล์ต้นฉบับ" ไม่ใช่จาก `render_mode` ของแม่แบบ
+         *
+         * `document:import-forms` แนบไฟล์เข้ากับฉบับร่างโดยไม่เปลี่ยน `render_mode` ของแม่แบบ
+         * (การเผยแพร่เป็นผู้ทำสิ่งนั้น) การกรองด้วย render_mode จึงหาแบบฟอร์มที่เพิ่งนำเข้าไม่เจอเลย
+         */
+        $query = DocumentTemplate::whereHas('versions', fn ($version) => $version
+            ->where('status', DocumentTemplateVersion::STATUS_DRAFT)
+            ->whereNotNull('pdf_file_path'));
 
         if ($this->option('template')) {
             $query->where('code', $this->option('template'));

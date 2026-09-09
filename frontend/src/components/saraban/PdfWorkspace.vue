@@ -312,7 +312,14 @@ const load = async () => {
     await import('pdfjs-dist/build/pdf.worker.min.mjs?url')
   ).default
 
-  pdfDocument = await pdfjs.getDocument(props.source).promise
+  /*
+   * pdf.js 6 รับเฉพาะรูปแบบพารามิเตอร์ (`{url}` / `{data}`)
+   *
+   * การส่ง URL เป็นสตริงเปล่าแบบเดิมทำให้โยน
+   * "getDocument - expected either `data`, `range`, or `url` parameter" ทันที
+   * เอกสารจึงไม่ขึ้นเลยบนเบราว์เซอร์ (พบตอนซ้อมเปิดใช้งานจริงบนเครื่องพัฒนา)
+   */
+  pdfDocument = await pdfjs.getDocument({ url: props.source }).promise
   pageCount.value = pdfDocument.numPages
   page.value = 1
 
