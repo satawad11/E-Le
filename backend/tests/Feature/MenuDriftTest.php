@@ -38,10 +38,10 @@ class MenuDriftTest extends TestCase
      *
      * การอัปเดตค่านี้เฉย ๆ โดยไม่ทำข้อ 1 = ปิดปากเทสต์ ไม่ใช่แก้ปัญหา
      */
-    private const TREE_FINGERPRINT = '084f1dbda20ecc918425a70beef4e8fc94a402ad3f2bc26d6e4f0398f2cb3f37';
+    private const TREE_FINGERPRINT = '7ea3240519eaa2d16e9281ea9c600617571993a031402b72aa19850adef7564d';
 
     /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว */
-    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_17_110000_add_saraban_workflow_design_menu';
+    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_18_100000_move_custom_reports_menu_out_of_document_center';
 
     public function test_changing_the_menu_tree_requires_a_migration_for_installed_systems(): void
     {

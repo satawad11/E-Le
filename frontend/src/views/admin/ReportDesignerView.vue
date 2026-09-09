@@ -2,7 +2,7 @@
   <div>
     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
       <div>
-        <button @click="$router.back()" class="text-sm text-gray-500 hover:text-gray-800 mb-1">← กลับไปศูนย์จัดการเอกสาร</button>
+        <router-link :to="{ name: 'custom-reports' }" class="text-sm text-gray-500 hover:text-gray-800 mb-1 inline-block">← กลับไปรายงานที่ออกแบบเอง</router-link>
         <h1 class="text-2xl font-bold text-gray-900">ออกแบบรายงาน</h1>
         <p class="text-gray-500 text-sm mt-1">
           เลือกแหล่งข้อมูลที่ระบบมีให้ แล้วจัดคอลัมน์ การจัดกลุ่ม และยอดรวม — ไม่ต้องเขียนคำสั่งฐานข้อมูลเอง

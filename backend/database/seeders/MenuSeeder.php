@@ -216,6 +216,20 @@ class MenuSeeder extends Seeder
                         'attendance.view_all', 'overtime.management.review',
                     ],
                 ],
+                [
+                    /*
+                     * รายงานที่ผู้ดูแลออกแบบเอง — ย้ายออกจากแท็บในศูนย์จัดการเอกสาร
+                     *
+                     * การเรียกดูรายงานเป็นงานประจำวัน คนละเรื่องกับการตั้งค่าเอกสาร
+                     * จึงย้ายมาอยู่หมวด "รายงาน" คู่กับศูนย์รายงานกลาง
+                     */
+                    'code' => 'reporting.custom',
+                    'title_th' => 'รายงานที่ออกแบบเอง',
+                    'title_en' => 'Custom Reports',
+                    'route_name' => 'custom-reports',
+                    'route_path' => '/reports/custom',
+                    'permissions' => ['document.report.view', 'document.report.manage', 'system.setting.manage'],
+                ],
             ],
         ],
         /*
@@ -669,9 +683,10 @@ class MenuSeeder extends Seeder
                     'permissions' => ['system.setting.manage'],
                 ],
                 [
+                    // รายงานย้ายไปหมวด "รายงาน" แล้ว หน้านี้เหลือเฉพาะแบบฟอร์มและเอกสาร
                     'code' => 'settings.document_center',
-                    'title_th' => 'ศูนย์จัดการเอกสารและรายงาน',
-                    'title_en' => 'Document & Report Center',
+                    'title_th' => 'ศูนย์จัดการเอกสาร',
+                    'title_en' => 'Document Center',
                     'route_name' => 'document-center',
                     'route_path' => '/admin/document-center',
                     'permissions' => [

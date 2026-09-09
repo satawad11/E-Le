@@ -93,6 +93,39 @@ const router = createRouter({
       meta: { requiresAuth: true, title: 'ศูนย์รายงานกลาง', parent: 'รายงาน' }
     },
     /*
+     * รายงานที่ผู้ดูแลออกแบบเอง — ย้ายออกจาก "ศูนย์จัดการเอกสาร" (2026-09-09)
+     *
+     * เดิมรายการรายงานและหน้าออกแบบรายงานอยู่ใต้เมนูตั้งค่าระบบ ทั้งที่การเรียกดูรายงาน
+     * เป็นงานประจำวันคนละเรื่องกับการตั้งค่า — ย้ายมาอยู่หมวด "รายงาน" ให้ตรงกับสิ่งที่ทำ
+     */
+    {
+      path: '/reports/custom',
+      name: 'custom-reports',
+      component: () => import('../views/CustomReportsView.vue'),
+      meta: {
+        requiresAuth: true,
+        permissions: ['document.report.view', 'document.report.manage', 'system.setting.manage'],
+        title: 'รายงานที่ออกแบบเอง',
+        parent: 'รายงาน',
+      }
+    },
+    {
+      path: '/reports/custom/designer',
+      name: 'report-designer',
+      component: () => import('../views/admin/ReportDesignerView.vue'),
+      meta: {
+        requiresAuth: true,
+        permissions: ['document.report.manage', 'system.setting.manage'],
+        title: 'ออกแบบรายงาน',
+        parent: 'รายงาน',
+      }
+    },
+    // เส้นทางเดิมของหน้าออกแบบรายงาน — คงไว้เป็น redirect ไม่ให้ลิงก์/บุ๊กมาร์กเดิมเสีย
+    {
+      path: '/admin/document-center/reports',
+      redirect: { name: 'report-designer' }
+    },
+    /*
      * งานสารบรรณ (INT-05)
      *
      * ไม่ผูก permission ที่ router ตามแนวทางเดิมของโครงการ — สารบัญเมนูคัดตามสิทธิ์
@@ -540,7 +573,7 @@ const router = createRouter({
       path: '/admin/document-templates',
       redirect: { name: 'document-center' }
     },
-    // === ศูนย์จัดการเอกสารและรายงาน (Document & Report Engine) ===
+    // === ศูนย์จัดการเอกสาร (แบบฟอร์มและเอกสารที่ระบบออก) ===
     {
       path: '/admin/document-center',
       name: 'document-center',
@@ -548,18 +581,7 @@ const router = createRouter({
       meta: {
         requiresAuth: true,
         permissions: ['document.template.view', 'document.template.manage', 'system.setting.manage'],
-        title: 'ศูนย์จัดการเอกสารและรายงาน',
-        parent: 'ตั้งค่าระบบ',
-      }
-    },
-    {
-      path: '/admin/document-center/reports',
-      name: 'report-designer',
-      component: () => import('../views/admin/ReportDesignerView.vue'),
-      meta: {
-        requiresAuth: true,
-        permissions: ['document.report.manage', 'system.setting.manage'],
-        title: 'ออกแบบรายงาน',
+        title: 'ศูนย์จัดการเอกสาร',
         parent: 'ตั้งค่าระบบ',
       }
     },
