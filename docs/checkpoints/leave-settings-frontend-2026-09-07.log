@@ -1,0 +1,241 @@
+
+> app@0.0.0 lint
+> eslint .
+
+
+> app@0.0.0 typecheck
+> vue-tsc --noEmit -p tsconfig.json
+
+
+> app@0.0.0 test
+> vitest run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/app[39m
+
+ [32m✓[39m tests/thaiUiAndAccessibility.test.js [2m([22m[2m24 tests[22m[2m)[22m[33m 439[2mms[22m[39m
+ [32m✓[39m tests/httpClient.test.js [2m([22m[2m11 tests[22m[2m)[22m[33m 870[2mms[22m[39m
+     [33m[2m✓[22m[39m 401 เท่านั้นที่นับว่าการยืนยันตัวตนหมดอายุ [33m 767[2mms[22m[39m
+stderr | tests/sarabanSignatureVerification.test.js > DocumentTools — ตรวจสอบความน่าเชื่อถือของลายเซ็น > แสดงผลรวมและเหตุผลรายข้อที่ server ส่งมา
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <DocumentTools document= {
+  id: 7,
+  subject: 'หนังสือทดสอบ',
+  status: 'signed',
+  finalized_at: '2026-09-05T10:00:00+07:00',
+  versions: [ { id: 1, version_no: 1 } ]
+} ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/sarabanSignatureVerification.test.js > DocumentTools — ตรวจสอบความน่าเชื่อถือของลายเซ็น > ไม่แสดงหัวข้อใบรับรองเมื่อลายเซ็นไม่มีใบรับรอง
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <DocumentTools document= {
+  id: 7,
+  subject: 'หนังสือทดสอบ',
+  status: 'signed',
+  finalized_at: '2026-09-05T10:00:00+07:00',
+  versions: [ { id: 1, version_no: 1 } ]
+} ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/sarabanSignatureVerification.test.js > DocumentTools — ตรวจสอบความน่าเชื่อถือของลายเซ็น > บอกชนิดลายเซ็นตรงไปตรงมา ไม่เรียกลายเซ็นอิเล็กทรอนิกส์ว่าลายเซ็นดิจิทัล
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <DocumentTools document= {
+  id: 7,
+  subject: 'หนังสือทดสอบ',
+  status: 'signed',
+  finalized_at: '2026-09-05T10:00:00+07:00',
+  versions: [ { id: 1, version_no: 1 } ]
+} ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/sarabanSignatureVerification.test.js > DocumentTools — ตรวจสอบความน่าเชื่อถือของลายเซ็น > แสดงว่าไฟล์ถูกแก้หลังลงนามเมื่อ server รายงานเช่นนั้น
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <DocumentTools document= {
+  id: 7,
+  subject: 'หนังสือทดสอบ',
+  status: 'signed',
+  finalized_at: '2026-09-05T10:00:00+07:00',
+  versions: [ { id: 1, version_no: 1 } ]
+} ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/sarabanSignatureVerification.test.js > DocumentTools — ตรวจสอบความน่าเชื่อถือของลายเซ็น > แสดงสถานะคำขอเพิกถอนที่รอการตัดสิน
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <DocumentTools document= {
+  id: 7,
+  subject: 'หนังสือทดสอบ',
+  status: 'signed',
+  finalized_at: '2026-09-05T10:00:00+07:00',
+  versions: [ { id: 1, version_no: 1 } ]
+} ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/sarabanSignatureVerification.test.js > DocumentTools — ตรวจสอบความน่าเชื่อถือของลายเซ็น > ต้องกรอกเหตุผลอย่างน้อยสิบตัวอักษรก่อนขอเพิกถอนได้
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <DocumentTools document= {
+  id: 7,
+  subject: 'หนังสือทดสอบ',
+  status: 'signed',
+  finalized_at: '2026-09-05T10:00:00+07:00',
+  versions: [ { id: 1, version_no: 1 } ]
+} ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+stderr | tests/sarabanSignatureVerification.test.js > DocumentTools — ตรวจสอบความน่าเชื่อถือของลายเซ็น > โหลดชุดหลักฐานฉบับเต็มจาก endpoint รายงาน
+ [32m✓[39m tests/sarabanSignatureVerification.test.js [2m([22m[2m7 tests[22m[2m)[22m[33m 513[2mms[22m[39m
+[Vue warn]: injection "Symbol(router)" not found. 
+  at <DocumentTools document= {
+  id: 7,
+  subject: 'หนังสือทดสอบ',
+  status: 'signed',
+  finalized_at: '2026-09-05T10:00:00+07:00',
+  versions: [ { id: 1, version_no: 1 } ]
+} ref="VTU_COMPONENT" > 
+  at <VTUROOT>
+
+ [32m✓[39m tests/sarabanDocumentsView.test.js [2m([22m[2m6 tests[22m[2m)[22m[33m 524[2mms[22m[39m
+ [32m✓[39m tests/sarabanRegisterNavigation.test.js [2m([22m[2m6 tests[22m[2m)[22m[33m 524[2mms[22m[39m
+ [32m✓[39m tests/apiSurfaceFlows.test.js [2m([22m[2m17 tests[22m[2m)[22m[33m 1377[2mms[22m[39m
+ [32m✓[39m tests/sarabanDocumentMarking.test.js [2m([22m[2m9 tests[22m[2m)[22m[33m 710[2mms[22m[39m
+ [32m✓[39m tests/authStore.test.js [2m([22m[2m10 tests[22m[2m)[22m[32m 201[2mms[22m[39m
+ [32m✓[39m tests/sarabanInboxView.test.js [2m([22m[2m6 tests[22m[2m)[22m[33m 547[2mms[22m[39m
+ [32m✓[39m tests/secureFile.test.js [2m([22m[2m5 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/errorHandler.test.js [2m([22m[2m9 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m tests/adminModulesView.test.js [2m([22m[2m5 tests[22m[2m)[22m[32m 159[2mms[22m[39m
+ [32m✓[39m tests/sarabanPolicyCenterView.test.js [2m([22m[2m5 tests[22m[2m)[22m[32m 262[2mms[22m[39m
+ [32m✓[39m tests/publicVerificationAccess.test.js [2m([22m[2m7 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m14 passed[39m[22m[90m (14)[39m
+[2m      Tests [22m [1m[32m127 passed[39m[22m[90m (127)[39m
+[2m   Start at [22m 15:47:15
+[2m   Duration [22m 9.18s[2m (transform 7.11s, setup 0ms, import 12.04s, tests 6.19s, environment 35.51s)[22m
+
+
+> app@0.0.0 build
+> vite build --outDir /tmp/leave-settings-audit-20260907
+
+vite v8.0.16 building client environment for production...
+[2K
+transforming...✓ 212 modules transformed.
+
+(!) outDir /tmp/leave-settings-audit-20260907 is not inside project root and will not be emptied.
+Use --emptyOutDir to override.
+
+rendering chunks...
+computing gzip size...
+../tmp/leave-settings-audit-20260907/index.html                                        4.18 kB │ gzip:   1.51 kB
+../tmp/leave-settings-audit-20260907/assets/pdf.worker.min-Dswkl-cV.mjs            1,265.41 kB
+../tmp/leave-settings-audit-20260907/assets/LeavePoliciesView-D91ANw6W.css             0.12 kB │ gzip:   0.13 kB
+../tmp/leave-settings-audit-20260907/assets/FiscalYearManagementView-Dx7c8wja.css      0.17 kB │ gzip:   0.11 kB
+../tmp/leave-settings-audit-20260907/assets/LeaveTypesManagementView-Ar1qtt_O.css      0.17 kB │ gzip:   0.11 kB
+../tmp/leave-settings-audit-20260907/assets/RolesManagementView-Cb9_dEj1.css           0.17 kB │ gzip:   0.11 kB
+../tmp/leave-settings-audit-20260907/assets/TeamCalendarView-DQK84Z-b.css              0.17 kB │ gzip:   0.11 kB
+../tmp/leave-settings-audit-20260907/assets/AppModal-DoJnhZUb.css                      0.19 kB │ gzip:   0.11 kB
+../tmp/leave-settings-audit-20260907/assets/MyLeavesView-DUDe3Kct.css                  0.28 kB │ gzip:   0.16 kB
+../tmp/leave-settings-audit-20260907/assets/UsersManagementView-DPQXK34x.css           0.36 kB │ gzip:   0.21 kB
+../tmp/leave-settings-audit-20260907/assets/WorkflowTimeline-JguCVNL3.css              0.43 kB │ gzip:   0.22 kB
+../tmp/leave-settings-audit-20260907/assets/ThaiDatePicker-B_a1knwR.css                4.16 kB │ gzip:   1.17 kB
+../tmp/leave-settings-audit-20260907/assets/index-BjtbUUu3.css                        89.60 kB │ gzip:  15.60 kB
+../tmp/leave-settings-audit-20260907/assets/pdf.worker.min-zC6nfbxG.js                 0.06 kB │ gzip:   0.08 kB
+../tmp/leave-settings-audit-20260907/assets/menuStore-Djrn6YmR.js                      0.07 kB │ gzip:   0.07 kB
+../tmp/leave-settings-audit-20260907/assets/_plugin-vue_export-helper-BDNMzG2s.js      0.08 kB │ gzip:   0.09 kB
+../tmp/leave-settings-audit-20260907/assets/menuStore-CUhuKgX-.js                      0.53 kB │ gzip:   0.36 kB
+../tmp/leave-settings-audit-20260907/assets/alert-DAp5OVZX.js                          0.54 kB │ gzip:   0.30 kB
+../tmp/leave-settings-audit-20260907/assets/ForbiddenView-BROQdZFt.js                  0.72 kB │ gzip:   0.45 kB
+../tmp/leave-settings-audit-20260907/assets/AppBadge-CyB-174e.js                       1.04 kB │ gzip:   0.57 kB
+../tmp/leave-settings-audit-20260907/assets/preload-helper-zJ_50EbN.js                 1.19 kB │ gzip:   0.68 kB
+../tmp/leave-settings-audit-20260907/assets/secureFile-Cat4ciYr.js                     1.23 kB │ gzip:   0.73 kB
+../tmp/leave-settings-audit-20260907/assets/AppSelect-DNgupVLN.js                      1.69 kB │ gzip:   0.89 kB
+../tmp/leave-settings-audit-20260907/assets/ConfirmOperation-mTq7g2YH.js               1.69 kB │ gzip:   0.96 kB
+../tmp/leave-settings-audit-20260907/assets/useAttendanceSummary-CfdmNX8H.js           1.88 kB │ gzip:   0.95 kB
+../tmp/leave-settings-audit-20260907/assets/AppTextarea-qFDfa951.js                    1.89 kB │ gzip:   0.96 kB
+../tmp/leave-settings-audit-20260907/assets/AppInput-Cp3HKiXC.js                       2.05 kB │ gzip:   1.00 kB
+../tmp/leave-settings-audit-20260907/assets/EmptyState-nqSOoDLv.js                     2.06 kB │ gzip:   1.03 kB
+../tmp/leave-settings-audit-20260907/assets/ErrorState-DY8h_sPg.js                     2.11 kB │ gzip:   1.09 kB
+../tmp/leave-settings-audit-20260907/assets/ThaiDateFormatter-gxZYhNYw.js              2.31 kB │ gzip:   0.67 kB
+../tmp/leave-settings-audit-20260907/assets/LoadingState-D8vczjth.js                   2.43 kB │ gzip:   1.01 kB
+../tmp/leave-settings-audit-20260907/assets/AppButton-CXsDg49W.js                      2.52 kB │ gzip:   1.19 kB
+../tmp/leave-settings-audit-20260907/assets/NotFoundView-DzZY76b6.js                   2.61 kB │ gzip:   1.19 kB
+../tmp/leave-settings-audit-20260907/assets/AppModal-C6RXegpP.js                       2.62 kB │ gzip:   1.37 kB
+../tmp/leave-settings-audit-20260907/assets/PermissionDenied-44HUIr4V.js               2.89 kB │ gzip:   1.33 kB
+../tmp/leave-settings-audit-20260907/assets/AppPagination-W_Yzwh6I.js                  3.06 kB │ gzip:   1.32 kB
+../tmp/leave-settings-audit-20260907/assets/DistributionTrackingView-D3q0VVdt.js       3.91 kB │ gzip:   1.75 kB
+../tmp/leave-settings-audit-20260907/assets/ComplianceEvidenceView-Q7tgAaPv.js         4.33 kB │ gzip:   2.01 kB
+../tmp/leave-settings-audit-20260907/assets/MyAccessHistoryView-Ex7JlHfG.js            4.45 kB │ gzip:   1.97 kB
+../tmp/leave-settings-audit-20260907/assets/VerifyLeaveView-DUuI8EsL.js                4.53 kB │ gzip:   1.89 kB
+../tmp/leave-settings-audit-20260907/assets/AdminModulesView-BLmButkc.js               4.55 kB │ gzip:   2.05 kB
+../tmp/leave-settings-audit-20260907/assets/WorkQueueView-aW04_Ulv.js                  4.56 kB │ gzip:   2.03 kB
+../tmp/leave-settings-audit-20260907/assets/AuthorityMatrixView-PNHKNz9e.js            4.62 kB │ gzip:   2.00 kB
+../tmp/leave-settings-audit-20260907/assets/SarabanDashboardView-BmtNL_Fc.js           5.09 kB │ gzip:   2.19 kB
+../tmp/leave-settings-audit-20260907/assets/DocumentWorkspaceView-CynoLpdn.js          5.77 kB │ gzip:   2.38 kB
+../tmp/leave-settings-audit-20260907/assets/NumberSeriesView-D9Xk2aGp.js               5.92 kB │ gzip:   2.34 kB
+../tmp/leave-settings-audit-20260907/assets/pinia-BHI9cQWQ.js                          5.99 kB │ gzip:   2.83 kB
+../tmp/leave-settings-audit-20260907/assets/VerifyDocumentView-BoeFC8Z3.js             6.47 kB │ gzip:   2.30 kB
+../tmp/leave-settings-audit-20260907/assets/auth-meVOEbbO.js                           6.49 kB │ gzip:   2.03 kB
+../tmp/leave-settings-audit-20260907/assets/IncomingView-CbUqBGnO.js                   6.57 kB │ gzip:   2.55 kB
+../tmp/leave-settings-audit-20260907/assets/RetentionPanel-CIJJJHmg.js                 6.59 kB │ gzip:   2.37 kB
+../tmp/leave-settings-audit-20260907/assets/WorkflowSimulationView-R25KtDft.js         6.67 kB │ gzip:   2.57 kB
+../tmp/leave-settings-audit-20260907/assets/WorkCalendarView-CI2JoR7d.js               6.73 kB │ gzip:   2.55 kB
+../tmp/leave-settings-audit-20260907/assets/AttendanceSettingsView-CHVGyN5L.js         6.74 kB │ gzip:   2.39 kB
+../tmp/leave-settings-audit-20260907/assets/icons-CGcC8wlt.js                          6.83 kB │ gzip:   2.51 kB
+../tmp/leave-settings-audit-20260907/assets/OperationsTools-BSsuczP4.js                7.13 kB │ gzip:   2.64 kB
+../tmp/leave-settings-audit-20260907/assets/TeamCalendarView-CDZ9wFcQ.js               7.23 kB │ gzip:   2.72 kB
+../tmp/leave-settings-audit-20260907/assets/PdfWorkspace-DQvy5_kE.js                   7.29 kB │ gzip:   3.07 kB
+../tmp/leave-settings-audit-20260907/assets/AttendanceOTSummaryView-DlVeZa7p.js        7.41 kB │ gzip:   2.36 kB
+../tmp/leave-settings-audit-20260907/assets/EndorseDocumentView-CBjuanN_.js            7.65 kB │ gzip:   3.10 kB
+../tmp/leave-settings-audit-20260907/assets/LeaveGovernanceView-BxnUhEXY.js            7.71 kB │ gzip:   2.90 kB
+../tmp/leave-settings-audit-20260907/assets/NumberReservationView-BPcU1QB8.js          7.88 kB │ gzip:   2.84 kB
+../tmp/leave-settings-audit-20260907/assets/PolicyCenterView-DoXuOzFf.js               7.93 kB │ gzip:   2.88 kB
+../tmp/leave-settings-audit-20260907/assets/PromotionScreeningView-B3Ow0LUx.js         7.98 kB │ gzip:   2.94 kB
+../tmp/leave-settings-audit-20260907/assets/LeaveCardView-CAGJsesx.js                  8.02 kB │ gzip:   2.88 kB
+../tmp/leave-settings-audit-20260907/assets/CommandCenterView-CGd0k8uj.js              8.07 kB │ gzip:   2.94 kB
+../tmp/leave-settings-audit-20260907/assets/SignDocumentView-BMm9Gyv5.js               8.16 kB │ gzip:   3.20 kB
+../tmp/leave-settings-audit-20260907/assets/ReportsView-CNMR4mF3.js                    8.30 kB │ gzip:   3.03 kB
+../tmp/leave-settings-audit-20260907/assets/InboxView-DKWdu1BS.js                      8.61 kB │ gzip:   3.13 kB
+../tmp/leave-settings-audit-20260907/assets/IncomingRegisterView-COmV0VvA.js           8.71 kB │ gzip:   3.17 kB
+../tmp/leave-settings-audit-20260907/assets/ThaiDatePicker-CmJmA73e.js                 8.89 kB │ gzip:   3.19 kB
+../tmp/leave-settings-audit-20260907/assets/IntegrationsView-Dl7v6KHQ.js               9.42 kB │ gzip:   3.36 kB
+../tmp/leave-settings-audit-20260907/assets/PersonnelAssignmentsView-D2pF1FTW.js       9.42 kB │ gzip:   3.05 kB
+../tmp/leave-settings-audit-20260907/assets/DepartmentsManagementView-D-fb0tU3.js      9.65 kB │ gzip:   3.24 kB
+../tmp/leave-settings-audit-20260907/assets/ReportCenterView-BgbO2Dgf.js               9.76 kB │ gzip:   3.74 kB
+../tmp/leave-settings-audit-20260907/assets/LeaveManagementView-Bq8QwnIw.js            9.93 kB │ gzip:   3.08 kB
+../tmp/leave-settings-audit-20260907/assets/MenusManagementView-k4e1FJQ9.js           10.14 kB │ gzip:   3.61 kB
+../tmp/leave-settings-audit-20260907/assets/FiscalYearManagementView-J5QXVp0i.js      10.14 kB │ gzip:   3.27 kB
+../tmp/leave-settings-audit-20260907/assets/RegisterReportsView-Bnt_eVTP.js           10.22 kB │ gzip:   3.48 kB
+../tmp/leave-settings-audit-20260907/assets/CasesView-DcpORkTN.js                     10.29 kB │ gzip:   3.40 kB
+../tmp/leave-settings-audit-20260907/assets/AttendanceSummaryView-CbvFi3nO.js         11.11 kB │ gzip:   2.99 kB
+../tmp/leave-settings-audit-20260907/assets/DocumentsView-B8wWq2Yn.js                 11.50 kB │ gzip:   4.01 kB
+../tmp/leave-settings-audit-20260907/assets/MyHistoryView-HXyBpk6M.js                 11.73 kB │ gzip:   4.01 kB
+../tmp/leave-settings-audit-20260907/assets/ReportDesignerView-Unhf7iMO.js            13.12 kB │ gzip:   4.12 kB
+../tmp/leave-settings-audit-20260907/assets/CheckInView-D8JaC7hU.js                   14.24 kB │ gzip:   4.20 kB
+../tmp/leave-settings-audit-20260907/assets/LeavePoliciesView-CdXPJw5u.js             15.00 kB │ gzip:   4.43 kB
+../tmp/leave-settings-audit-20260907/assets/AttendanceReportView-C-XplcA0.js          15.55 kB │ gzip:   5.06 kB
+../tmp/leave-settings-audit-20260907/assets/runtime-dom.esm-bundler-BWy7_5cn.js       15.60 kB │ gzip:   6.58 kB
+../tmp/leave-settings-audit-20260907/assets/TelegramSettingsView-CuWVY4QN.js          15.71 kB │ gzip:   3.98 kB
+../tmp/leave-settings-audit-20260907/assets/WorkflowTimeline-CXgY5dpw.js              15.77 kB │ gzip:   4.70 kB
+../tmp/leave-settings-audit-20260907/assets/RolesManagementView-Df4d9SE9.js           17.28 kB │ gzip:   4.97 kB
+../tmp/leave-settings-audit-20260907/assets/LeaveTypesManagementView-Bl5Dx4hM.js      19.51 kB │ gzip:   5.57 kB
+../tmp/leave-settings-audit-20260907/assets/DocumentDesignerView-BfAaMbqD.js          19.95 kB │ gzip:   5.86 kB
+../tmp/leave-settings-audit-20260907/assets/AdminSettingsView-DCNk8F2N.js             21.09 kB │ gzip:   5.19 kB
+../tmp/leave-settings-audit-20260907/assets/SigningContextPanel-BR4MAGQO.js           22.94 kB │ gzip:   7.66 kB
+../tmp/leave-settings-audit-20260907/assets/vue-router-DF2QuP3N.js                    23.02 kB │ gzip:   9.13 kB
+../tmp/leave-settings-audit-20260907/assets/WorkflowManagementView-Crh1koKj.js        30.41 kB │ gzip:   7.75 kB
+../tmp/leave-settings-audit-20260907/assets/OvertimeOrdersView-Bo0rO0sR.js            30.78 kB │ gzip:   7.11 kB
+../tmp/leave-settings-audit-20260907/assets/UserProfileView-BuyhPzZf.js               31.23 kB │ gzip:   8.53 kB
+../tmp/leave-settings-audit-20260907/assets/MyLeavesView-BEggweY7.js                  33.20 kB │ gzip:   9.16 kB
+../tmp/leave-settings-audit-20260907/assets/DocumentFormView-1CZGV6e6.js              37.95 kB │ gzip:  10.33 kB
+../tmp/leave-settings-audit-20260907/assets/DocumentCenterView-D2gHtv3C.js            41.50 kB │ gzip:  10.05 kB
+../tmp/leave-settings-audit-20260907/assets/axios-D272FLYE.js                         52.15 kB │ gzip:  19.65 kB
+../tmp/leave-settings-audit-20260907/assets/UsersManagementView-Om0DDhGE.js           56.42 kB │ gzip:  13.09 kB
+../tmp/leave-settings-audit-20260907/assets/runtime-core.esm-bundler-BD54qNTK.js      63.07 kB │ gzip:  24.80 kB
+../tmp/leave-settings-audit-20260907/assets/index-DwoZ4oZ1.js                        144.92 kB │ gzip:  34.55 kB
+../tmp/leave-settings-audit-20260907/assets/dist-CxCKs-5i.js                         172.05 kB │ gzip:  59.51 kB
+../tmp/leave-settings-audit-20260907/assets/pdf-CnYgHYaE.js                          431.18 kB │ gzip: 129.08 kB
+
+[PLUGIN_TIMINGS] Your build spent significant time in plugins. Here is a breakdown:
+  - vite:vue (80%)
+  - vite:css-post (5%)
+See https://rolldown.rs/options/checks#plugintimings for more details.
+
+✓ built in 3.17s

@@ -1,0 +1,30 @@
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ApiSurfaceContractTest[39m
+  [32;1m✓[39;22m[90m [39m[90mevery api endpoint is reachable from the web application[39m[90m            [39m [90m1.66s[39m  
+{"message":"ทดสอบ rollback","context":{"request_id":"2934a502-b752-4cd5-984a-e37ca02a05ba","userId":2,"exception":{"class":"RuntimeException","message":"ทดสอบ rollback","code":0,"file":"/var/www/html/tests/Feature/LeaveModuleAuditTest.php:124"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-09-07T22:30:27.452158+07:00","extra":{}}
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveModuleAuditTest[39m
+  [32;1m✓[39;22m[90m [39m[90manother users draft cannot be opened directly by a manager[39m[90m          [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapproved leave cannot be overwritten through generic update[39m[90m         [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin recording an approved leave consumes the balance[39m[90m              [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfiscal year leave must be split at the period boundary[39m[90m              [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdraft privacy also applies to super admin documents and evidence[39m[90m    [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin recording seals content syncs attendance and has no pending w[39m[90m…[39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin recording rolls back all changes when attendance fails[39m[90m        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgeneric update recalculates own draft but preserves submitted recor[39m[90m…[39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcross fiscal year is rejected on draft update submission and admin[39m[90m… [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin recording respects explicit self scope[39m[90m                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mexplicit deny blocks admin recording even with role permission[39m[90m      [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\RuntimeSecurityConfigurationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe local disk does not serve files over http[39m[90m                       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe authenticated file route is the only way in[39m[90m                     [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery php service verifies its environment before starting work[39m[90m     [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe production compose file exposes no vite dev server[39m[90m              [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdependencies with advisories are pinned to fixed releases[39m[90m           [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdependency versions are pinned exactly[39m[90m                              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mci audits dependencies on both sides[39m[90m                                [39m [90m0.05s[39m  
+
+  [90mTests:[39m    [32;1m19 passed[39;22m[90m (404 assertions)[39m
+  [90mDuration:[39m [39m3.74s[39m
+

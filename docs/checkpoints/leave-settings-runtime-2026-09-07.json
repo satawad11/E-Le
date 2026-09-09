@@ -1,0 +1,378 @@
+{
+  "engine": {
+    "enabled": false,
+    "leave_types": []
+  },
+  "leave_types": [
+    {
+      "id": 1,
+      "name": "ลาป่วย",
+      "document_template_code": "leave_sick_personal",
+      "requires_doc": 1,
+      "extra_fields": null
+    },
+    {
+      "id": 2,
+      "name": "ลาคลอดบุตร",
+      "document_template_code": "leave_sick_personal",
+      "requires_doc": 0,
+      "extra_fields": null
+    },
+    {
+      "id": 3,
+      "name": "ลาไปช่วยเหลือภริยาที่คลอดบุตร",
+      "document_template_code": "leave_paternity",
+      "requires_doc": 1,
+      "extra_fields": [
+        {
+          "key": "wife_name",
+          "type": "text",
+          "label": "ชื่อภริยาโดยชอบด้วยกฎหมาย",
+          "required": true
+        },
+        {
+          "key": "childbirth_date",
+          "type": "date",
+          "label": "วันที่ภริยาคลอดบุตร",
+          "required": true
+        },
+        {
+          "key": "level",
+          "type": "text",
+          "label": "ระดับ/วิทยฐานะ",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "ลากิจส่วนตัว",
+      "document_template_code": "leave_sick_personal",
+      "requires_doc": 0,
+      "extra_fields": null
+    },
+    {
+      "id": 5,
+      "name": "ลาพักผ่อน",
+      "document_template_code": "leave_vacation",
+      "requires_doc": 0,
+      "extra_fields": null
+    },
+    {
+      "id": 6,
+      "name": "ลาอุปสมบท",
+      "document_template_code": "leave_ordination",
+      "requires_doc": 1,
+      "extra_fields": [
+        {
+          "key": "ordination_temple",
+          "type": "text",
+          "label": "วัดที่อุปสมบท",
+          "required": true
+        },
+        {
+          "key": "ordination_temple_address",
+          "type": "text",
+          "label": "ที่ตั้งวัดที่อุปสมบท",
+          "required": false
+        },
+        {
+          "key": "ordination_date",
+          "type": "date",
+          "label": "วันกำหนดอุปสมบท",
+          "required": true
+        },
+        {
+          "key": "retreat_temple",
+          "type": "text",
+          "label": "วัดที่จำพรรษา",
+          "required": false
+        },
+        {
+          "key": "retreat_temple_address",
+          "type": "text",
+          "label": "ที่ตั้งวัดที่จำพรรษา",
+          "required": false
+        },
+        {
+          "key": "ordained_before",
+          "type": "select",
+          "label": "เคยอุปสมบทแล้วหรือไม่",
+          "options": [
+            "ยังไม่เคย",
+            "เคย"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "ลาไปประกอบพิธีฮัจญ์",
+      "document_template_code": "leave_hajj",
+      "requires_doc": 1,
+      "extra_fields": null
+    },
+    {
+      "id": 8,
+      "name": "ลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล",
+      "document_template_code": null,
+      "requires_doc": 1,
+      "extra_fields": null
+    },
+    {
+      "id": 9,
+      "name": "ลาไปศึกษาต่อ ดูงาน ฝึกอบรม",
+      "document_template_code": "leave_study",
+      "requires_doc": 1,
+      "extra_fields": null
+    },
+    {
+      "id": 10,
+      "name": "ลาไปปฏิบัติงานในองค์การระหว่างประเทศ",
+      "document_template_code": null,
+      "requires_doc": 1,
+      "extra_fields": null
+    },
+    {
+      "id": 11,
+      "name": "ลาติดตามคู่สมรส",
+      "document_template_code": "leave_spouse",
+      "requires_doc": 1,
+      "extra_fields": null
+    },
+    {
+      "id": 12,
+      "name": "ลาไปฟื้นฟูสมรรถภาพด้านอาชีพ",
+      "document_template_code": null,
+      "requires_doc": 1,
+      "extra_fields": null
+    }
+  ],
+  "policies": {
+    "count": 48,
+    "active": 48
+  },
+  "personnel_types": [
+    {
+      "id": 1,
+      "name": "ข้าราชการ",
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "name": "ลูกจ้างประจำ",
+      "is_active": true
+    },
+    {
+      "id": 3,
+      "name": "พนักงานราชการ",
+      "is_active": true
+    },
+    {
+      "id": 4,
+      "name": "ลูกจ้างชั่วคราว",
+      "is_active": true
+    }
+  ],
+  "fiscal_years": [
+    {
+      "id": 1,
+      "year": 2567,
+      "start_date": "2023-09-30T17:00:00Z",
+      "end_date": "2024-09-29T17:00:00Z",
+      "is_current": false
+    },
+    {
+      "id": 2,
+      "year": 2568,
+      "start_date": "2024-09-30T17:00:00Z",
+      "end_date": "2025-09-29T17:00:00Z",
+      "is_current": false
+    },
+    {
+      "id": 3,
+      "year": 2569,
+      "start_date": "2025-09-30T17:00:00Z",
+      "end_date": "2026-09-29T17:00:00Z",
+      "is_current": true
+    },
+    {
+      "id": 4,
+      "year": 2570,
+      "start_date": "2026-09-30T17:00:00Z",
+      "end_date": "2027-09-29T17:00:00Z",
+      "is_current": false
+    },
+    {
+      "id": 5,
+      "year": 2571,
+      "start_date": "2027-09-30T17:00:00Z",
+      "end_date": "2028-09-29T17:00:00Z",
+      "is_current": false
+    }
+  ],
+  "balance_years": [
+    {
+      "year": 2026,
+      "count": 72
+    }
+  ],
+  "templates": [
+    {
+      "id": 1,
+      "code": "leave_sick_personal",
+      "name": "แบบใบลาป่วย ลาคลอดบุตร ลากิจส่วนตัว",
+      "render_mode": "html",
+      "is_active": true,
+      "versions_count": 0
+    },
+    {
+      "id": 2,
+      "code": "leave_vacation",
+      "name": "แบบใบขอลาพักผ่อน",
+      "render_mode": "html",
+      "is_active": true,
+      "versions_count": 0
+    },
+    {
+      "id": 3,
+      "code": "leave_paternity",
+      "name": "แบบใบลาไปช่วยเหลือภริยาที่คลอดบุตร",
+      "render_mode": "html",
+      "is_active": true,
+      "versions_count": 0
+    },
+    {
+      "id": 4,
+      "code": "leave_ordination",
+      "name": "แบบใบลาอุปสมบท",
+      "render_mode": "html",
+      "is_active": true,
+      "versions_count": 0
+    },
+    {
+      "id": 5,
+      "code": "leave_cancel",
+      "name": "แบบใบขอยกเลิกวันลา",
+      "render_mode": "html",
+      "is_active": true,
+      "versions_count": 1
+    },
+    {
+      "id": 6,
+      "code": "leave_hajj",
+      "name": "แบบใบลาไปประกอบพิธีฮัจญ์",
+      "render_mode": "html",
+      "is_active": true,
+      "versions_count": 0
+    },
+    {
+      "id": 7,
+      "code": "leave_spouse",
+      "name": "แบบใบลาติดตามคู่สมรส",
+      "render_mode": "html",
+      "is_active": true,
+      "versions_count": 0
+    },
+    {
+      "id": 8,
+      "code": "leave_study",
+      "name": "แบบใบลาไปศึกษาต่อ ฝึกอบรม ดูงาน",
+      "render_mode": "html",
+      "is_active": true,
+      "versions_count": 0
+    },
+    {
+      "id": 9,
+      "code": "official_travel",
+      "name": "บันทึกข้อความ ขออนุญาตเดินทางไปราชการ",
+      "render_mode": "html",
+      "is_active": true,
+      "versions_count": 0
+    }
+  ],
+  "bindings": [
+    {
+      "id": 1,
+      "entity_type": "LEAVE_TYPE",
+      "entity_id": 1,
+      "document_template_id": 1,
+      "is_active": true,
+      "effective_from": null,
+      "effective_to": null
+    },
+    {
+      "id": 2,
+      "entity_type": "LEAVE_TYPE",
+      "entity_id": 2,
+      "document_template_id": 1,
+      "is_active": true,
+      "effective_from": null,
+      "effective_to": null
+    },
+    {
+      "id": 3,
+      "entity_type": "LEAVE_TYPE",
+      "entity_id": 3,
+      "document_template_id": 3,
+      "is_active": true,
+      "effective_from": null,
+      "effective_to": null
+    },
+    {
+      "id": 4,
+      "entity_type": "LEAVE_TYPE",
+      "entity_id": 4,
+      "document_template_id": 1,
+      "is_active": true,
+      "effective_from": null,
+      "effective_to": null
+    },
+    {
+      "id": 5,
+      "entity_type": "LEAVE_TYPE",
+      "entity_id": 5,
+      "document_template_id": 2,
+      "is_active": true,
+      "effective_from": null,
+      "effective_to": null
+    },
+    {
+      "id": 6,
+      "entity_type": "LEAVE_TYPE",
+      "entity_id": 6,
+      "document_template_id": 4,
+      "is_active": true,
+      "effective_from": null,
+      "effective_to": null
+    },
+    {
+      "id": 7,
+      "entity_type": "LEAVE_TYPE",
+      "entity_id": 7,
+      "document_template_id": 6,
+      "is_active": true,
+      "effective_from": null,
+      "effective_to": null
+    },
+    {
+      "id": 8,
+      "entity_type": "LEAVE_TYPE",
+      "entity_id": 9,
+      "document_template_id": 8,
+      "is_active": true,
+      "effective_from": null,
+      "effective_to": null
+    },
+    {
+      "id": 9,
+      "entity_type": "LEAVE_TYPE",
+      "entity_id": 11,
+      "document_template_id": 7,
+      "is_active": true,
+      "effective_from": null,
+      "effective_to": null
+    }
+  ]
+}
