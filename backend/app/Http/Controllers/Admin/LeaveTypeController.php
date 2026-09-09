@@ -4,10 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\LeaveType;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 
 class LeaveTypeController extends Controller
 {
+    /**
+     * การตั้งค่าประเภทการลาเป็นสิ่งที่กำหนดว่าใครลาอะไรได้และพิมพ์ด้วยแบบฟอร์มใด
+     * จึงต้องตรวจย้อนได้ว่าใครเปลี่ยนอะไรเมื่อใด เช่นเดียวกับการตั้งค่าอื่นของระบบ
+     */
+    public function __construct(private readonly AuditLogger $audit) {}
+
     /**
      * List all leave types.
      */
@@ -45,6 +52,8 @@ class LeaveTypeController extends Controller
 
         $leaveType = LeaveType::create($data);
 
+        $this->audit->log('leave_type_created', 'LeaveType', $leaveType->id, after: $leaveType->toArray());
+
         return response()->json([
             'message' => 'เพิ่มประเภทการลาเรียบร้อยแล้ว',
             'leave_type' => $leaveType,
@@ -78,7 +87,10 @@ class LeaveTypeController extends Controller
             'extra_fields.*.options.*' => 'string|max:100',
         ]);
 
+        $before = $type->toArray();
         $type->update($data);
+
+        $this->audit->log('leave_type_updated', 'LeaveType', $type->id, before: $before, after: $type->fresh()->toArray());
 
         return response()->json([
             'message' => 'แก้ไขประเภทการลาเรียบร้อยแล้ว',
@@ -99,7 +111,10 @@ class LeaveTypeController extends Controller
             ], 422);
         }
 
+        $before = $type->toArray();
         $type->delete();
+
+        $this->audit->log('leave_type_deleted', 'LeaveType', $before['id'], before: $before);
 
         return response()->json(['message' => 'ลบประเภทการลาเรียบร้อยแล้ว']);
     }

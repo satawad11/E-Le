@@ -5,7 +5,12 @@
       <p class="text-sm text-gray-500 mt-1">ทะเบียนการลา สรุปตามประเภท และส่งออก CSV</p>
     </header>
 
-    <!-- Summary Cards -->
+    <!-- Summary Cards — ใช้ตัวกรองชุดเดียวกับตารางด้านล่างเสมอ -->
+    <p class="text-xs text-gray-500">
+      สรุปตามตัวกรองปัจจุบัน: {{ date(filters.from) }} – {{ date(filters.to) }}
+      <template v-if="filters.department_id"> · เฉพาะหน่วยงานที่เลือก</template>
+      <template v-if="filters.personnel_type_id"> · เฉพาะประเภทบุคลากรที่เลือก</template>
+    </p>
     <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <article v-for="row in summary" :key="row.leave_type" class="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
         <p class="text-sm text-gray-500 font-medium">{{ row.leave_type }}</p>
@@ -148,11 +153,29 @@ const status = {
 
 const params = () => Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== ''))
 
+/*
+ * การ์ดสรุปต้องใช้ตัวกรองชุดเดียวกับตารางทะเบียน
+ *
+ * เดิมสรุปโหลดครั้งเดียวตอนเปิดหน้าด้วยช่วง "ย้อนหลัง 12 เดือน" เสมอ เมื่อผู้ใช้เปลี่ยนช่วงวันที่
+ * หรือกรองหน่วยงาน ตัวเลขบนการ์ดกับตารางจึงเป็นคนละชุดข้อมูลโดยไม่มีอะไรบอก
+ */
+const loadSummary = async () => {
+  try {
+    const { data } = await api.get('/reports/government-leave-summary', { params: params() })
+    summary.value = data
+  } catch (e) {
+    console.warn('Failed to load summary', e)
+  }
+}
+
 const loadRegister = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const { data } = await api.get('/reports/government-leave-register', { params: params() })
+    const [{ data }] = await Promise.all([
+      api.get('/reports/government-leave-register', { params: params() }),
+      loadSummary(),
+    ])
     rows.value = data.data || data
     total.value = data.total ?? rows.value.length
   } catch (e) {
@@ -183,12 +206,10 @@ const date = (v) => new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium' }).fo
 
 onMounted(async () => {
   try {
-    const [s, d, p] = await Promise.all([
-      api.get('/reports/government-leave-summary', { params: { months: 12 } }),
+    const [d, p] = await Promise.all([
       api.get('/departments'),
       api.get('/personnel-types')
     ])
-    summary.value = s.data
     departments.value = d.data.data || d.data
     personnelTypes.value = p.data
   } catch (e) {

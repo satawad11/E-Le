@@ -164,7 +164,8 @@ class ReportingDataService
             ->join('leave_types', 'leave_types.id', '=', 'leave_balances.leave_type_id')
             ->leftJoin('org_units', 'org_units.id', '=', 'users.org_unit_id')
             ->whereIn('leave_balances.user_id', $this->scope->users($viewer, $ability, $filter))
-            ->where('leave_balances.year', $filter->fiscalYear)
+            // ยอดวันลาเก็บด้วยเลข ค.ศ. ส่วนตัวกรองเป็น พ.ศ. — แปลงที่เดียวใน ReportFilter
+            ->where('leave_balances.year', $filter->balanceYear())
             ->select(['users.id as user_id', 'users.name', 'org_units.name as organization', 'leave_types.name as leave_type', 'leave_balances.quota', 'leave_balances.carried_forward', 'leave_balances.used', 'leave_balances.reserved'])
             ->orderBy('users.name')->orderBy('leave_types.name')->get()
             ->map(fn ($row): array => [

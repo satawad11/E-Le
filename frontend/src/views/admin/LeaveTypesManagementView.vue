@@ -153,6 +153,7 @@
                 <option value="">— ยังไม่กำหนด (ใช้แบบฟอร์มลาป่วย/กิจ/คลอด) —</option>
                 <option v-for="template in leaveTemplates" :key="template.code" :value="template.code">{{ template.name }}</option>
               </select>
+              <p v-if="templatesError" class="text-xs text-amber-700 mt-1.5">{{ templatesError }}</p>
               <p class="text-xs text-gray-500 mt-1.5">
                 แก้ไขเนื้อหาแบบฟอร์มได้ที่
                 <router-link to="/admin/document-center" class="text-[#800000] font-semibold hover:underline">ศูนย์จัดการเอกสารและรายงาน →</router-link>
@@ -328,6 +329,7 @@ const attendanceBuckets = [
 ]
 
 const leaveTemplates = ref([])
+const templatesError = ref('')
 const formStatus = ref({})
 const formStatusError = ref('')
 
@@ -364,12 +366,22 @@ const fetchFormStatus = async () => {
   }
 }
 
+/*
+ * รายการแบบฟอร์มเป็นข้อมูลของศูนย์จัดการเอกสาร ซึ่งใช้สิทธิ์คนละชุดกับหน้านี้
+ *
+ * เดิมเมื่อโหลดไม่ได้ ช่องเลือกแบบฟอร์มจะว่างเปล่าเงียบ ๆ ผู้ดูแลจึงเข้าใจว่า "ระบบไม่มีแบบฟอร์ม"
+ * ทั้งที่จริงคือไม่มีสิทธิ์ดู — ตอนนี้บอกสาเหตุไว้ใต้ช่อง
+ */
 const fetchTemplates = async () => {
   try {
     const res = await api.get('/admin/document-engine/templates', { params: { module: 'leave' } })
     leaveTemplates.value = res.data
-  } catch {
+    templatesError.value = ''
+  } catch (error) {
     leaveTemplates.value = []
+    templatesError.value = error.response?.status === 403
+      ? 'ไม่มีสิทธิ์ดูรายการแบบฟอร์ม — ต้องมีสิทธิ์ดูแม่แบบเอกสารจึงจะเลือกแบบฟอร์มได้'
+      : 'โหลดรายการแบบฟอร์มไม่สำเร็จ'
   }
 }
 

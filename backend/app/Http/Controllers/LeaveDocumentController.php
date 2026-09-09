@@ -8,7 +8,6 @@ use App\Models\LeaveActionLog;
 use App\Models\LeaveBalance;
 use App\Models\Setting;
 use App\Services\DocumentEngine\LeaveDocumentGateway;
-use App\Services\Export\LeaveWordService;
 use App\Services\LeaveDocumentTemplateResolver;
 use App\Services\LeaveVerificationService;
 use App\Services\ThaiDateService;
@@ -16,7 +15,6 @@ use App\Support\StoredFile;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use PhpOffice\PhpWord\PhpWord;
 
 class LeaveDocumentController extends Controller
 {
@@ -328,21 +326,6 @@ class LeaveDocumentController extends Controller
             ];
         }
 
-        $leaveTypeName = $leave->type->name ?? 'การลา';
-        $userName = str_replace(' ', '_', trim($leave->user->name));
-        $docNumber = $leave->document_number ?? $leave->id;
-
-        $baseFilename = "{$leaveTypeName}_{$userName}_{$docNumber}";
-        $baseFilename = str_replace(['/', '\\'], '_', $baseFilename);
-
-        if (class_exists(PhpWord::class)) {
-            $wordService = app(LeaveWordService::class);
-            $tempFile = $wordService->generateLeaveDocx($leave, $settings->toArray(), $approverBlocks);
-            $filename = $isCancel ? "cancel_{$baseFilename}.docx" : "{$baseFilename}.docx";
-
-            return response()->download($tempFile, $filename)->deleteFileAfterSend(true);
-        }
-
         $statSem1 = ['ป่วย' => ['used_times' => '', 'used_days' => ''], 'กิจ' => ['used_times' => '', 'used_days' => ''], 'คลอด' => ['used_times' => '', 'used_days' => '']];
         $statSem2 = ['ป่วย' => ['used_times' => '', 'used_days' => ''], 'กิจ' => ['used_times' => '', 'used_days' => ''], 'คลอด' => ['used_times' => '', 'used_days' => '']];
 
@@ -353,10 +336,21 @@ class LeaveDocumentController extends Controller
             compact('leave', 'thaiDateService', 'lastLeave', 'leaveBalance', 'settings', 'approverBlocks', 'statSem1', 'statSem2'),
         );
         $content = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>'.$html.'</body></html>';
-        $filename = $isCancel ? "cancel_{$baseFilename}.doc" : "{$baseFilename}.doc";
+
+        /*
+         * LS-07 — นามสกุลไฟล์กับชนิดไฟล์ต้องตรงกันเสมอ
+         *
+         * เอกสารที่ส่งออกทางนี้เป็น Word แบบ HTML (`.doc`) ซึ่งใช้เนื้อหาจากเวอร์ชันแบบฟอร์ม
+         * ที่ใบลา pin ไว้ชุดเดียวกับ PDF จึงตรงกับเอกสารจริงเสมอ เดิมหน้าจอตั้งชื่อไฟล์เป็น
+         * `.docx` และประกาศ MIME ของ DOCX ผู้ใช้จึงได้ไฟล์ที่นามสกุลไม่ตรงกับเนื้อใน
+         *
+         * ตอนนี้เซิร์ฟเวอร์เป็นผู้ประกาศทั้งชื่อไฟล์และชนิด และหน้าจอใช้ค่าจาก header นี้
+         * (ดู `MyLeavesView.vue`) สัญญาสองฝั่งจึงไม่มีทางหลุดจากกันอีก
+         */
+        $filename = $this->filenameFor($leave, $isCancel, 'doc');
 
         return response($content)
-            ->header('Content-Type', 'application/vnd.ms-word')
+            ->header('Content-Type', 'application/vnd.ms-word; charset=UTF-8')
             ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
     }
 }

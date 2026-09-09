@@ -60,16 +60,73 @@ class StoreLeaveRequest extends FormRequest
 
                 foreach ((array) ($type?->extra_fields ?? []) as $definition) {
                     $key = $definition['key'] ?? null;
+
+                    if ($key === null) {
+                        continue;
+                    }
+
+                    $label = $definition['label'] ?? $key;
+                    $value = $submitted[$key] ?? null;
                     $required = filter_var($definition['required'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-                    if ($key !== null && $required && blank($submitted[$key] ?? null)) {
-                        $validator->errors()->add(
-                            "extra_fields.{$key}",
-                            'กรุณากรอก'.($definition['label'] ?? $key)
-                        );
+                    if ($required && blank($value)) {
+                        $validator->errors()->add("extra_fields.{$key}", 'กรุณากรอก'.$label);
+
+                        continue;
                     }
+
+                    if (blank($value)) {
+                        continue;
+                    }
+
+                    /*
+                     * ตรวจตามชนิดที่ผู้ดูแลนิยามไว้จริง
+                     *
+                     * เดิมทุกช่องถูกตรวจเป็นข้อความล้วน ช่องวันที่จึงรับ "เมื่อวาน" ได้
+                     * ช่องตัวเลขรับตัวอักษรได้ และช่องตัวเลือกรับค่านอกรายการได้
+                     * ค่าที่ผิดชนิดจะไปโผล่บนแบบฟอร์มราชการที่พิมพ์ออกไปโดยไม่มีใครทัน
+                     */
+                    $this->validateExtraFieldType($validator, $definition, (string) $key, $label, $value);
                 }
             },
         ];
+    }
+
+    /**
+     * ตรวจค่าของช่องเฉพาะแบบฟอร์มตามชนิดที่นิยามไว้ใน `leave_types.extra_fields`
+     *
+     * ชนิดที่รองรับตรงกับที่ `Admin\LeaveTypeController` ยอมให้ตั้งได้เท่านั้น
+     * (`text`, `textarea`, `date`, `number`, `select`) ชนิดอื่นถือเป็นข้อความล้วนตามเดิม
+     *
+     * @param  array<string, mixed>  $definition
+     */
+    private function validateExtraFieldType(Validator $validator, array $definition, string $key, string $label, mixed $value): void
+    {
+        $field = "extra_fields.{$key}";
+
+        switch ($definition['type'] ?? 'text') {
+            case 'date':
+                if (! is_string($value) || strtotime($value) === false) {
+                    $validator->errors()->add($field, $label.' ต้องเป็นวันที่ที่ถูกต้อง');
+                }
+                break;
+
+            case 'number':
+                if (! is_numeric($value)) {
+                    $validator->errors()->add($field, $label.' ต้องเป็นตัวเลข');
+                }
+                break;
+
+            case 'select':
+                $options = array_map(
+                    fn ($option) => trim((string) $option),
+                    (array) ($definition['options'] ?? []),
+                );
+
+                if ($options !== [] && ! in_array(trim((string) $value), $options, true)) {
+                    $validator->errors()->add($field, $label.' ต้องเลือกจากตัวเลือกที่กำหนดไว้');
+                }
+                break;
+        }
     }
 }

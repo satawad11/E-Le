@@ -32,7 +32,16 @@
     <div v-if="show" class="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4"><form @submit.prevent="save" class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"><h2 class="text-xl font-bold mb-4">{{form.id?'แก้ไข':'เพิ่ม'}}นโยบาย</h2><div class="grid sm:grid-cols-2 gap-4">
       <label>ประเภทบุคลากร<select v-model="form.personnel_type_id" required class="input"><option v-for="p in personnel" :key="p.id" :value="p.id">{{p.name}}</option></select></label><label>ประเภทลา<select v-model="form.leave_type_id" required class="input"><option v-for="t in leaveTypes" :key="t.id" :value="t.id">{{t.name}}</option></select></label>
       <label>มีผลตั้งแต่<input v-model="form.effective_from" type="date" required class="input"></label><label>ถึงวันที่<input v-model="form.effective_to" type="date" class="input"></label><label>โควตาต่อปี (รวม)<input v-model.number="form.annual_quota" type="number" step="0.5" class="input"></label><label>ในจำนวนนี้ ได้รับเงินเดือน (วัน)<input v-model.number="form.max_days_with_pay" type="number" step="0.5" placeholder="เว้นว่าง = ได้รับทุกวัน" class="input"></label><label>ต้องแนบหลักฐานตั้งแต่<input v-model.number="form.attachment_required_after_days" type="number" step="0.5" class="input"></label>
-      <label>ฐานรอบสิทธิ์<select v-model="form.period_basis" class="input"><option value="fiscal_year">ปีงบประมาณ</option><option value="calendar_year">ปีปฏิทิน</option></select></label><label>ยื่นล่วงหน้า (วัน)<input v-model.number="form.notice_period_days" type="number" class="input"></label>
+      <label>ฐานรอบสิทธิ์<select v-model="form.period_basis" class="input"><option value="fiscal_year">ปีงบประมาณ</option><option value="calendar_year">ปีปฏิทิน</option></select></label><label>ยื่นล่วงหน้า (วัน)<input v-model.number="form.notice_period_days" type="number" min="0" class="input"></label>
+      <!--
+        ช่องที่ API รองรับมาตั้งแต่ต้นแต่ไม่เคยมีในหน้าจอ ผู้ดูแลจึงตั้งเพดานต่อครั้ง
+        อายุงานขั้นต่ำ เพดานสะสม และชนิดหลักฐานที่ต้องแนบไม่ได้เลย
+      -->
+      <label>สูงสุดต่อการลาหนึ่งครั้ง (วัน)<input v-model.number="form.max_days_per_request" type="number" step="0.5" min="0" placeholder="เว้นว่าง = ไม่จำกัด" class="input"></label>
+      <label>อายุงานขั้นต่ำ (วัน)<input v-model.number="form.minimum_service_days" type="number" min="0" class="input"></label>
+      <label v-if="form.is_carry_forward">สะสมข้ามปีได้สูงสุด (วัน)<input v-model.number="form.max_carry_forward" type="number" step="0.5" min="0" class="input"></label>
+      <label v-if="form.is_carry_forward">ยอดสะสมรวมสูงสุด (วัน)<input v-model.number="form.max_accumulated" type="number" step="0.5" min="0" placeholder="เว้นว่าง = ไม่จำกัด" class="input"></label>
+      <label class="sm:col-span-2">ชนิดหลักฐานที่ต้องแนบ<input v-model="form.required_evidence_type" type="text" maxlength="80" placeholder="เช่น ใบรับรองแพทย์ (เว้นว่าง = ไม่ระบุ)" class="input"></label>
     </div><div class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3"><p class="text-sm font-semibold mb-2">เงื่อนไขเฉพาะตามระเบียบ</p><div class="grid sm:grid-cols-2 gap-3"><label class="text-sm flex items-center gap-2"><input v-model="rules.once_in_career" type="checkbox" class="rounded text-[#800000] focus:ring-[#800000] h-4 w-4"> ใช้สิทธิ์ได้ครั้งเดียวตลอดอายุราชการ</label><label class="text-sm">จำกัดเพศผู้มีสิทธิ์<select v-model="rules.gender" class="input"><option value="">ไม่จำกัด</option><option value="female">เฉพาะเพศหญิง</option><option value="male">เฉพาะเพศชาย</option></select></label><label class="text-sm">จำนวนครั้งสูงสุดต่อปี<input v-model.number="rules.max_times_per_year" type="number" min="1" placeholder="ไม่จำกัด" class="input"></label><label class="text-sm">ต้องเว้นระยะจากครั้งก่อน (วัน)<input v-model.number="rules.min_days_between" type="number" min="1" placeholder="ไม่กำหนด" class="input"></label></div></div><div class="grid sm:grid-cols-2 gap-2 mt-4"><label><input v-model="form.allow_past_dates" type="checkbox" class="rounded text-[#800000] focus:ring-[#800000] h-4 w-4"> อนุญาตย้อนหลัง</label><label><input v-model="form.exclude_holidays" type="checkbox" class="rounded text-[#800000] focus:ring-[#800000] h-4 w-4"> ไม่นับวันหยุด</label><label><input v-model="form.allow_half_day" type="checkbox" class="rounded text-[#800000] focus:ring-[#800000] h-4 w-4"> ลาครึ่งวัน</label><label><input v-model="form.requires_substitute" type="checkbox" class="rounded text-[#800000] focus:ring-[#800000] h-4 w-4"> ต้องมีผู้ปฏิบัติงานแทน</label><label><input v-model="form.is_carry_forward" type="checkbox" class="rounded text-[#800000] focus:ring-[#800000] h-4 w-4"> สะสมวันลา</label><label><input v-model="form.is_active" type="checkbox" class="rounded text-[#800000] focus:ring-[#800000] h-4 w-4"> เปิดใช้งาน</label></div><div class="flex justify-end gap-2 mt-6"><button type="button" @click="show=false" :disabled="isSaving" class="px-4 py-2">ยกเลิก</button><button :disabled="isSaving" class="px-5 py-2 rounded-xl bg-[#800000] text-white disabled:opacity-50 flex items-center gap-2"><span v-if="isSaving" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>{{ isSaving ? 'กำลังบันทึก...' : 'บันทึก' }}</button></div></form></div>
   </div>
 </template>
@@ -45,25 +54,36 @@ const alertStore=useAlertStore();
 const blankRules=()=>({once_in_career:false,gender:'',max_times_per_year:null,min_days_between:null});const rules=ref(blankRules());
 const rulesFrom=v=>({...blankRules(),...(v||{}),gender:v?.gender||'',once_in_career:!!v?.once_in_career});
 const rulesToPayload=()=>{const r={};if(rules.value.once_in_career)r.once_in_career=true;if(rules.value.gender)r.gender=rules.value.gender;if(rules.value.max_times_per_year)r.max_times_per_year=rules.value.max_times_per_year;if(rules.value.min_days_between)r.min_days_between=rules.value.min_days_between;return Object.keys(r).length?r:null};
-const blank=()=>({personnel_type_id:'',leave_type_id:'',effective_from:new Date().toISOString().slice(0,10),effective_to:'',annual_quota:null,max_days_with_pay:null,attachment_required_after_days:null,minimum_service_days:0,notice_period_days:0,allow_past_dates:false,exclude_holidays:true,allow_half_day:true,requires_substitute:false,is_carry_forward:false,max_carry_forward:0,period_basis:'fiscal_year',is_active:true});const form=ref(blank());
+/*
+ * วันที่เริ่มต้นต้องเป็น "วันนี้ตามเวลาไทย" ไม่ใช่วันที่ของ UTC
+ * `toISOString()` ให้เวลา UTC ซึ่งช่วงหัวค่ำของไทยจะกลายเป็นวันก่อนหน้า
+ */
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const blank=()=>({personnel_type_id:'',leave_type_id:'',effective_from:today(),effective_to:'',annual_quota:null,max_days_with_pay:null,max_days_per_request:null,attachment_required_after_days:null,required_evidence_type:'',minimum_service_days:0,notice_period_days:0,allow_past_dates:false,exclude_holidays:true,allow_half_day:true,requires_substitute:false,is_carry_forward:false,max_carry_forward:0,max_accumulated:null,period_basis:'fiscal_year',is_active:true});const form=ref(blank());
 const load=async()=>{const [a,b,c]=await Promise.all([api.get('/personnel-types'),api.get('/admin/leave-policies',{params:{personnel_type_id:filterType.value||undefined}}),api.get('/leaves/types')]);personnel.value=a.data;policies.value=b.data;leaveTypes.value=c.data};const openCreate=()=>{form.value=blank();rules.value=blankRules();show.value=true};const edit=p=>{form.value={...blank(),...p,effective_from:p.effective_from?.slice(0,10),effective_to:p.effective_to?.slice(0,10)||''};rules.value=rulesFrom(p.eligibility_rules);show.value=true};
 const save=async()=>{
   isSaving.value = true;
   try {
-    const payload={...form.value,effective_to:form.value.effective_to||null,eligibility_rules:rulesToPayload()};
+    const payload={...form.value,effective_to:form.value.effective_to||null,required_evidence_type:form.value.required_evidence_type||null,eligibility_rules:rulesToPayload()};
     const res=form.value.id?await api.put(`/admin/leave-policies/${form.value.id}`,payload):await api.post('/admin/leave-policies',payload);
     const sync=res.data?.sync;
-    notice.value=sync?`บันทึกแล้ว — อัปเดตสิทธิ์ผู้ใช้ ${sync.synced} คน (ปี ${sync.year+543})${sync.over_quota?` • เตือน: มี ${sync.over_quota} คนใช้วันลาเกินโควตาใหม่แล้ว`:''}`:'บันทึกแล้ว';
-    alertStore.success('บันทึกนโยบายสิทธิการลาเรียบร้อยแล้ว');
+    /*
+     * ยอดวันลาจะถูกปรับก็ต่อเมื่อนโยบายฉบับนี้มีผลบังคับอยู่จริง ณ วันนี้ (LS-02)
+     * ฉบับที่ยังไม่ถึงวันมีผล หมดอายุ หรือปิดใช้งาน ต้องบอกให้ชัดว่า "ยังไม่กระทบยอดปัจจุบัน"
+     */
+    notice.value=sync?(sync.applied===false
+      ?`บันทึกแล้ว — ยังไม่มีผลกับยอดวันลาปัจจุบัน เพราะนโยบายฉบับนี้ยังไม่ถึงวันมีผล หมดอายุ หรือปิดใช้งานอยู่`
+      :`บันทึกแล้ว — อัปเดตสิทธิ์ผู้ใช้ ${sync.synced} คน (ปี ${sync.year+543})${sync.over_quota?` • เตือน: มี ${sync.over_quota} คนใช้วันลาเกินโควตาใหม่แล้ว`:''}`):'บันทึกแล้ว';
+    alertStore.success(res.data?.message || 'บันทึกนโยบายสิทธิการลาเรียบร้อยแล้ว');
     show.value=false;
     await load();
   } catch (error) {
-    const errors = error.response?.data?.errors;
-    if (errors) {
-      alertStore.error(Object.values(errors).flat().join(' | '));
-    } else {
-      alertStore.error(error.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกนโยบาย');
-    }
+    /*
+     * ข้อความอธิบายจากเซิร์ฟเวอร์มาก่อนรายการ error รายช่องเสมอ
+     * เช่นกรณีนโยบายที่ถูกใช้แล้ว ซึ่งต้องบอกวิธีแก้ (ตั้งวันมีผลใหม่) ไม่ใช่แค่ชื่อช่องที่ผิด
+     */
+    const data = error.response?.data;
+    alertStore.error(data?.message || (data?.errors ? Object.values(data.errors).flat().join(' | ') : 'เกิดข้อผิดพลาดในการบันทึกนโยบาย'));
   } finally {
     isSaving.value = false;
   }

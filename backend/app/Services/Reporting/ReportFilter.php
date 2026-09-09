@@ -50,6 +50,20 @@ final readonly class ReportFilter
         );
     }
 
+    /**
+     * ปีที่ใช้เป็นคีย์ของ `leave_balances.year` — เป็น ค.ศ. ของปีที่ปีงบประมาณสิ้นสุดเสมอ
+     *
+     * `$fiscalYear` เป็นเลขที่ "แสดงให้ผู้ใช้เห็น" ซึ่งมาจาก `fiscal_years.year` (พ.ศ.)
+     * ขณะที่ยอดวันลาเก็บด้วยเลข ค.ศ. (ปีงบ 2569 = 1 ต.ค. 2025 – 30 ก.ย. 2026 → คีย์คือ 2026)
+     * การเอาเลข พ.ศ. ไปค้นตรง ๆ ทำให้รายงานยอดคงเหลือว่างเปล่าทั้งที่มีข้อมูลอยู่
+     *
+     * กติกาการแปลงเป็นชุดเดียวกับ `LeavePolicyService::fiscalYearNumber()`
+     */
+    public function balanceYear(): int
+    {
+        return $this->fiscalYear > 2400 ? $this->fiscalYear - 543 : $this->fiscalYear;
+    }
+
     public function meta(): array
     {
         return [

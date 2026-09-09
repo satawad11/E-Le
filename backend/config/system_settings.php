@@ -86,7 +86,12 @@ return [
         'school_address' => ['nullable', 'string', 'max:500'],
         'school_phone' => ['nullable', 'string', 'max:50'],
         'school_email' => ['nullable', 'email', 'max:255'],
-        'default_font' => ['nullable', 'in:TH Sarabun New,TH Sarabun PSK,Sarabun'],
+        /*
+         * เลือกได้เฉพาะฟอนต์ที่มีไฟล์อยู่จริงใน `public/fonts/THSarabunNew`
+         * (ดู `LeaveDocumentTemplateResolver::FONT_FILES`) — เดิมมีตัวเลือกที่ระบบไม่มีไฟล์
+         * ซึ่งถ้าเลือกแล้วเอกสารจะเรนเดอร์ด้วยฟอนต์ละตินและภาษาไทยกลายเป็นกล่องสี่เหลี่ยม
+         */
+        'default_font' => ['nullable', 'in:TH Sarabun New,TH Sarabun,TH SarabunIT๙'],
         'margin_top' => ['nullable', 'numeric', 'between:0,10'],
         'margin_bottom' => ['nullable', 'numeric', 'between:0,10'],
         'margin_left' => ['nullable', 'numeric', 'between:0,10'],

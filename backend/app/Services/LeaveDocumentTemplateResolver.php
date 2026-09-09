@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\DocumentTemplateVersion;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\Setting;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Blade;
 
@@ -41,6 +42,24 @@ class LeaveDocumentTemplateResolver
      *
      * @var array<string,string>
      */
+    /**
+     * แบบอักษรที่ระบบมีไฟล์อยู่จริงใน `public/fonts/THSarabunNew`
+     *
+     * ตัวเลือกในหน้าตั้งค่าต้องมีเฉพาะฟอนต์ที่ติดตั้งไว้ มิฉะนั้น dompdf จะถอยไปใช้ฟอนต์ละติน
+     * แล้วภาษาไทยกลายเป็นกล่องสี่เหลี่ยมทั้งฉบับ
+     *
+     * `family` คือชื่อที่ประกาศใน CSS — ตั้งให้ตรงกับชื่อที่แม่แบบเดิมใช้อยู่ (`THSarabunNew`)
+     * เมื่อเลือกฟอนต์ค่าเริ่มต้น เอกสารจึงไม่เกิดฟอนต์ซ้ำในแคชของ dompdf และแม่แบบที่อ้าง
+     * ชื่อฟอนต์ไว้เองยังใช้ได้เหมือนเดิม
+     *
+     * @var array<string, array{family: string, regular: string, bold: string}>
+     */
+    public const FONT_FILES = [
+        'TH Sarabun New' => ['family' => 'THSarabunNew', 'regular' => 'THSarabunNew.ttf', 'bold' => 'THSarabunNew Bold.ttf'],
+        'TH Sarabun' => ['family' => 'THSarabun', 'regular' => 'THSarabun.ttf', 'bold' => 'THSarabun Bold.ttf'],
+        'TH SarabunIT๙' => ['family' => 'THSarabunIT9', 'regular' => 'THSarabunIT๙.ttf', 'bold' => 'THSarabunIT๙ Bold.ttf'],
+    ];
+
     public const VIEW_TO_TEMPLATE = [
         'pdf.leave' => 'leave_sick_personal',
         'pdf.leave_vacation' => 'leave_vacation',
@@ -110,11 +129,63 @@ class LeaveDocumentTemplateResolver
 
         $version = $this->versionFor($leave, $viewName);
 
-        if ($version === null || blank($version->content_html)) {
-            return view($viewName, $data)->render();
+        $html = ($version === null || blank($version->content_html))
+            ? view($viewName, $data)->render()
+            : Blade::render($version->content_html, $data);
+
+        return $html.$this->pageStyle($version);
+    }
+
+    /**
+     * สไตล์หน้ากระดาษและแบบอักษรที่ผู้ดูแลตั้งไว้ ต่อท้ายเอกสารเพื่อให้มีผลจริง
+     *
+     * เดิมค่าที่ตั้งในหน้าตั้งค่าระบบ (ระยะขอบ/แบบอักษร) ไม่เคยถูกใช้เลย เพราะแม่แบบทุกฉบับ
+     * เขียน `@page { margin: 8mm 12mm }` กับชื่อฟอนต์ไว้ตายตัวในตัวเอง — ผู้ดูแลจึงแก้ค่าแล้ว
+     * เอกสารออกมาเหมือนเดิมทุกครั้ง
+     *
+     * ลำดับความสำคัญ: ค่าของ "เวอร์ชันแม่แบบ" (เจาะจงรายแบบฟอร์ม) มาก่อนค่ากลางของระบบ
+     * ส่วนแบบอักษรเป็นค่ากลางของทั้งระบบเพราะแม่แบบไม่ได้เก็บฟอนต์ของตัวเอง
+     *
+     * ประกาศไว้ท้ายเอกสารโดยตั้งใจ CSS ที่มาทีหลังจึงชนะกฎเดิมในตัวแม่แบบ
+     */
+    private function pageStyle(?DocumentTemplateVersion $version): string
+    {
+        $settings = Setting::pluck('value', 'key');
+
+        $margins = $version !== null
+            ? [(float) $version->margin_top, (float) $version->margin_right, (float) $version->margin_bottom, (float) $version->margin_left]
+            : [
+                $this->centimetresToMillimetres($settings['margin_top'] ?? null, 8.0),
+                $this->centimetresToMillimetres($settings['margin_right'] ?? null, 12.0),
+                $this->centimetresToMillimetres($settings['margin_bottom'] ?? null, 8.0),
+                $this->centimetresToMillimetres($settings['margin_left'] ?? null, 12.0),
+            ];
+
+        $font = self::FONT_FILES[$settings['default_font'] ?? ''] ?? self::FONT_FILES['TH Sarabun New'];
+        $family = $font['family'];
+
+        $faces = '';
+        foreach (['normal' => $font['regular'], 'bold' => $font['bold']] as $weight => $file) {
+            $path = public_path('fonts/THSarabunNew/'.$file);
+
+            if (! is_file($path)) {
+                continue;
+            }
+
+            $faces .= "@font-face{font-family:'{$family}';font-style:normal;font-weight:{$weight};src:url('{$path}') format('truetype');}";
         }
 
-        return Blade::render($version->content_html, $data);
+        $margin = implode(' ', array_map(fn (float $value) => rtrim(rtrim(number_format($value, 1, '.', ''), '0'), '.').'mm', $margins));
+
+        return '<style>'.$faces
+            ."@page{margin:{$margin};}"
+            ."body{font-family:'{$family}','THSarabunNew',sans-serif;}"
+            .'</style>';
+    }
+
+    private function centimetresToMillimetres(mixed $value, float $default): float
+    {
+        return is_numeric($value) ? (float) $value * 10 : $default;
     }
 
     /**

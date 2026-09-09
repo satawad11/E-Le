@@ -209,9 +209,10 @@
             <div>
               <label class="block text-sm text-gray-700 mb-1">แบบอักษรมาตรฐานของเอกสาร</label>
               <select v-model="settings.default_font" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 sm:text-sm">
+                <!-- มีเฉพาะฟอนต์ที่ติดตั้งไฟล์ไว้จริง มิฉะนั้นภาษาไทยในเอกสารจะกลายเป็นกล่องสี่เหลี่ยม -->
                 <option value="TH Sarabun New">TH Sarabun New</option>
-                <option value="TH Sarabun PSK">TH Sarabun PSK</option>
-                <option value="Sarabun">Sarabun</option>
+                <option value="TH Sarabun">TH Sarabun</option>
+                <option value="TH SarabunIT๙">TH SarabunIT๙ (ฟอนต์ราชการ)</option>
               </select>
             </div>
             <div>

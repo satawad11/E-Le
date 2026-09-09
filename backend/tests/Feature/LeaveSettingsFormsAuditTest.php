@@ -126,11 +126,51 @@ class LeaveSettingsFormsAuditTest extends TestCase
         $this->assertStringContainsString('ORIGINAL_FORM', $resolver->render($leave->fresh(), $view, []));
     }
 
-    public function test_word_download_matches_the_docx_contract_used_by_the_frontend(): void
+    /**
+     * LS-07 — ชนิดไฟล์ที่ประกาศ นามสกุลในชื่อไฟล์ และเนื้อไฟล์จริง ต้องเป็นเรื่องเดียวกัน
+     *
+     * ข้อบกพร่องเดิมคือ "หน้าจอตั้งชื่อ .docx แต่เซิร์ฟเวอร์ส่ง Word แบบ HTML" ซึ่งเป็นการ
+     * ไม่ตรงกันของสัญญาสองฝั่ง ไม่ใช่การขาดรูปแบบใดรูปแบบหนึ่ง — การแก้จึงยึดให้เซิร์ฟเวอร์
+     * เป็นผู้ประกาศทั้งชนิดและชื่อไฟล์ และหน้าจอใช้ค่าจาก header นั้น (ดู ADR-WORD-20260909)
+     *
+     * เทสต์นี้ตรึง "ความสอดคล้อง" ไว้ ไม่ได้ตรึงว่าต้องเป็น .doc ตลอดไป — ถ้าวันหนึ่ง
+     * เปลี่ยนไปออกเป็น DOCX จริง เทสต์นี้ยังต้องผ่านโดยไม่ต้องแก้ฝั่งหน้าจอ
+     */
+    public function test_word_download_declares_a_type_that_matches_the_file_it_sends(): void
     {
         $leave = $this->leave(['cancellation_status' => 'Pending', 'cancellation_reason' => 'เหตุยกเลิกเฉพาะทดสอบ']);
-        $response = $this->actingAs($this->owner)->getJson('/api/leaves/'.$leave->id.'/word?form=cancel')->assertOk();
-        $response->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+
+        $response = $this->actingAs($this->owner)->get('/api/leaves/'.$leave->id.'/word?form=cancel')->assertOk();
+
+        $contentType = $response->headers->get('Content-Type');
+        $disposition = $response->headers->get('Content-Disposition');
+
+        $formats = [
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+            'application/vnd.ms-word' => 'doc',
+            'application/msword' => 'doc',
+        ];
+
+        $mime = strtok((string) $contentType, ';');
+
+        $this->assertArrayHasKey($mime, $formats, 'ต้องประกาศชนิดไฟล์ Word ที่ระบบรองรับจริง');
+        $this->assertStringContainsString('.'.$formats[$mime], (string) $disposition, 'นามสกุลในชื่อไฟล์ต้องตรงกับชนิดที่ประกาศ');
+        $this->assertStringStartsWith('cancel_', $this->filenameOf($disposition), 'ใบยกเลิกต้องแยกชื่อไฟล์จากใบลาปกติ');
+
+        $body = $response->getContent();
+
+        if ($formats[$mime] === 'docx') {
+            $this->assertStringStartsWith('PK', $body, 'DOCX ต้องเป็นไฟล์บีบอัด ไม่ใช่ HTML');
+        } else {
+            $this->assertStringContainsString('<html', $body, 'Word แบบ HTML ต้องมีเนื้อ HTML จริง');
+        }
+    }
+
+    private function filenameOf(?string $disposition): string
+    {
+        preg_match('/filename="?([^";]+)"?/i', (string) $disposition, $matches);
+
+        return $matches[1] ?? '';
     }
 
     public function test_fiscal_year_referenced_by_a_leave_cannot_be_deleted(): void

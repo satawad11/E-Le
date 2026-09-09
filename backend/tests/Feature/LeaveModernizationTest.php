@@ -435,7 +435,15 @@ class LeaveModernizationTest extends TestCase
 
         $html = app(LeaveDocumentTemplateResolver::class)->render($leave->fresh(), 'pdf.leave', ['leave' => $leave]);
 
-        $this->assertSame('ฉบับเดิม', $html, 'ใบลาเดิมต้องพิมพ์จากเวอร์ชันที่ pin ไว้');
+        /*
+         * เนื้อหาต้องมาจากเวอร์ชันที่ pin ไว้เท่านั้น
+         *
+         * ไม่เทียบทั้งสตริงแล้ว เพราะตัวเรนเดอร์ต่อท้ายสไตล์หน้ากระดาษ/แบบอักษรที่ผู้ดูแล
+         * ตั้งไว้ในหน้าตั้งค่าระบบ (เดิมค่าที่ตั้งไม่เคยถูกใช้เลย) — สิ่งที่ต้องคงที่คือ "เนื้อเอกสาร"
+         */
+        $this->assertStringContainsString('ฉบับเดิม', $html, 'ใบลาเดิมต้องพิมพ์จากเวอร์ชันที่ pin ไว้');
+        $this->assertStringNotContainsString('ฉบับใหม่', $html, 'ต้องไม่หยิบเนื้อหาของเวอร์ชันที่ออกภายหลัง');
+        $this->assertStringContainsString('@page{margin:', $html, 'ต้องแนบสไตล์หน้ากระดาษที่ตั้งค่าไว้');
     }
 
     // ------------------------------------------ 07-3 จำนวนครั้ง vs จำนวนวัน

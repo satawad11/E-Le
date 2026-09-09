@@ -107,7 +107,12 @@ class ReportingController extends Controller
     {
         $data = $request->validate([
             'fiscal_year_id' => 'nullable|integer|exists:fiscal_years,id',
-            'fiscal_year' => 'nullable|integer|min:2000|max:2200',
+            /*
+             * รับได้ทั้ง พ.ศ. และ ค.ศ. เพราะหน้าจอส่งเลขปีงบประมาณตามที่ผู้ใช้เห็น (พ.ศ.)
+             * ส่วน ReportFilter เป็นผู้แปลงเป็นคีย์ ค.ศ. ของยอดวันลาให้เอง
+             * ช่วงเดิม 2000–2200 ปฏิเสธเลข พ.ศ. ทุกค่า จึงใช้พารามิเตอร์นี้กับหน้าจอไม่ได้เลย
+             */
+            'fiscal_year' => 'nullable|integer|min:2000|max:2700',
             'from' => 'nullable|date|required_with:to',
             'to' => 'nullable|date|required_with:from|after_or_equal:from',
             'org_unit_id' => 'nullable|integer|exists:org_units,id',

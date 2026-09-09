@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Leave;
 use App\Services\OrgScopeResolver;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -52,11 +53,28 @@ class GovernmentLeaveReportController extends Controller
     public function summary(Request $r)
     {
         abort_unless($r->user()->can('leave.report.view') || $r->user()->can('leave.management.manage'), 403);
-        $months = (int) $r->input('months', 6);
-        abort_unless(in_array($months, [6, 12]), 422);
-        $from = now()->subMonths($months)->startOfDay();
+        /*
+         * สรุปต้องเป็นข้อมูลชุดเดียวกับตารางทะเบียนที่ผู้ใช้กรองอยู่
+         *
+         * เดิมสรุปยึดช่วง "ย้อนหลัง N เดือน" เสมอ ไม่ว่าจะกรองตารางเป็นช่วงใด ตัวเลขบนการ์ด
+         * กับตารางด้านล่างจึงเป็นคนละชุดข้อมูลโดยไม่มีอะไรบอก — ตอนนี้รับ from/to แบบเดียวกับ
+         * ทะเบียน และคงพารามิเตอร์ months ไว้เป็นทางถอยสำหรับผู้เรียกเดิม
+         */
+        $r->validate([
+            'from' => 'nullable|date',
+            'to' => 'nullable|date|after_or_equal:from',
+            'months' => 'nullable|integer|in:6,12',
+        ]);
 
-        $query = Leave::query()->join('leave_types', 'leaves.leave_type_id', '=', 'leave_types.id')->where('leaves.start_date', '>=', $from);
+        $months = (int) $r->input('months', 6);
+        $from = $r->filled('from')
+            ? Carbon::parse($r->input('from'))->startOfDay()
+            : now()->subMonths($months)->startOfDay();
+        $to = $r->filled('to') ? Carbon::parse($r->input('to'))->endOfDay() : null;
+
+        $query = Leave::query()->join('leave_types', 'leaves.leave_type_id', '=', 'leave_types.id')
+            ->where('leaves.start_date', '>=', $from)
+            ->when($to !== null, fn ($q) => $q->where('leaves.start_date', '<=', $to));
         $this->applyReportScope($query, $r);
 
         return $query->selectRaw('leave_types.name as leave_type, COUNT(*) requests, SUM(leaves.total_days) days, SUM(leaves.status="Approved") approved, SUM(leaves.status="Rejected") rejected, SUM(CASE WHEN leaves.status="Approved" THEN leaves.total_days ELSE 0 END) approved_days')->groupBy('leave_types.id', 'leave_types.name')->get();

@@ -502,7 +502,14 @@ const router = createRouter({
       path: '/admin/leave-policies',
       name: 'admin-leave-policies',
       component: () => import('../views/admin/LeavePoliciesView.vue'),
-      meta: { requiresAuth: true, permissions: ['leave.policy.manage', 'system.setting.manage'], title: 'นโยบายสิทธิการลา', parent: 'ตั้งค่าระบบ' }
+      /*
+       * สิทธิ์ของหน้าต้องตรงกับสิทธิ์ที่ API ต้องการจริง
+       *
+       * เดิมเปิดหน้าได้ด้วย `system.setting.manage` ด้วย แต่ทุก endpoint ของนโยบายสิทธิ
+       * ต้องการ `leave.policy.manage` เท่านั้น ผู้ที่มีเพียงสิทธิ์ตั้งค่าระบบจึงเข้าหน้าได้
+       * แล้วเจอ 403 ทุกครั้งที่โหลดข้อมูล
+       */
+      meta: { requiresAuth: true, permission: 'leave.policy.manage', title: 'นโยบายสิทธิการลา', parent: 'ตั้งค่าระบบ' }
     },
     {
       path: '/admin/leave-types',

@@ -121,20 +121,64 @@ class LeavePolicyService
      * (แถวเดิมถูกสร้างด้วย firstOrCreate จึงไม่อัปเดตตามนโยบายเอง)
      * แตะเฉพาะ quota/leave_policy_id — ไม่ยุ่งกับ used, reserved, carried_forward
      */
+    /**
+     * นโยบายนี้เป็นฉบับที่ "ใช้บังคับอยู่จริง ณ วันนี้" หรือไม่
+     *
+     * LS-02 — เดิม `syncBalances()` เขียนทับยอดปัจจุบันทุกครั้งที่บันทึกนโยบายใด ๆ ก็ตาม
+     * นโยบายที่ปิดใช้งาน หมดอายุไปแล้ว หรือยังไม่ถึงวันมีผล จึงลดสิทธิของคนทั้งองค์กรได้ทันที
+     * ทั้งที่ยังไม่มีผลบังคับ และการบันทึกนโยบายรุ่นเก่าไว้เป็นประวัติก็ไม่ควรกระทบยอดปัจจุบัน
+     *
+     * ยึดกติกาเดียวกับ `resolve()` คือ ต้อง active, อยู่ในช่วงมีผล ณ วันนี้ และเป็นฉบับที่
+     * `effective_from` ใหม่ที่สุดในบรรดาฉบับที่มีผลอยู่ (ถ้ามีฉบับที่ใหม่กว่า ฉบับนั้นคือผู้ครอง)
+     */
+    public function isCurrentlyGoverning(LeavePolicy $policy): bool
+    {
+        if (! $policy->is_active) {
+            return false;
+        }
+
+        $today = today();
+
+        if (Carbon::parse($policy->effective_from)->gt($today)) {
+            return false;
+        }
+
+        if ($policy->effective_to !== null && Carbon::parse($policy->effective_to)->lt($today)) {
+            return false;
+        }
+
+        return ! LeavePolicy::where('personnel_type_id', $policy->personnel_type_id)
+            ->where('leave_type_id', $policy->leave_type_id)
+            ->where('id', '!=', $policy->id)
+            ->where('is_active', true)
+            ->whereDate('effective_from', '<=', $today)
+            ->where(fn ($query) => $query->whereNull('effective_to')->orWhereDate('effective_to', '>=', $today))
+            ->where(function ($query) use ($policy) {
+                $query->whereDate('effective_from', '>', $policy->effective_from)
+                    ->orWhere(fn ($tie) => $tie->whereDate('effective_from', '=', $policy->effective_from)->where('id', '>', $policy->id));
+            })
+            ->exists();
+    }
+
     public function syncBalances(LeavePolicy $policy): array
     {
+        if (! $this->isCurrentlyGoverning($policy)) {
+            // บันทึกนโยบายไว้ได้ แต่ยอดคงเหลือปัจจุบันไม่ถูกแตะจนกว่านโยบายนี้จะมีผลบังคับจริง
+            return ['synced' => 0, 'over_quota' => 0, 'year' => $this->periodYear($policy, Carbon::parse($policy->effective_from)), 'applied' => false];
+        }
+
         return DB::transaction(function () use ($policy) {
             $effective = Carbon::parse($policy->effective_from);
             $year = $this->periodYear($policy, $effective->isFuture() ? $effective : today());
             $userIds = User::where('personnel_type_id', $policy->personnel_type_id)->pluck('id');
             if ($userIds->isEmpty()) {
-                return ['synced' => 0, 'over_quota' => 0, 'year' => $year];
+                return ['synced' => 0, 'over_quota' => 0, 'year' => $year, 'applied' => true];
             }
             $scope = fn () => LeaveBalance::whereIn('user_id', $userIds)->where('leave_type_id', $policy->leave_type_id)->where('year', $year);
             $synced = $scope()->update(['quota' => (float) ($policy->annual_quota ?? 0), 'leave_policy_id' => $policy->id, 'updated_at' => now()]);
             $overQuota = $scope()->whereRaw('used + reserved > quota + carried_forward')->count();
 
-            return ['synced' => $synced, 'over_quota' => $overQuota, 'year' => $year];
+            return ['synced' => $synced, 'over_quota' => $overQuota, 'year' => $year, 'applied' => true];
         });
     }
 }

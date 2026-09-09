@@ -3,14 +3,21 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Leave;
 use App\Models\LeavePolicy;
 use App\Models\PersonnelType;
+use App\Services\AuditLogger;
 use App\Services\LeavePolicyService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LeavePolicyController extends Controller
 {
-    public function __construct(private LeavePolicyService $policies) {}
+    public function __construct(
+        private LeavePolicyService $policies,
+        private AuditLogger $audit,
+    ) {}
 
     public function index(Request $r)
     {
@@ -26,14 +33,82 @@ class LeavePolicyController extends Controller
     {
         $policy = LeavePolicy::create($this->validated($r));
 
+        $this->audit->log('leave_policy_created', 'LeavePolicy', $policy->id, after: $policy->toArray());
+
         return response()->json(['policy' => $policy->load(['personnelType', 'leaveType']), 'sync' => $this->policies->syncBalances($policy)], 201);
     }
 
+    /**
+     * แก้นโยบายสิทธิการลา
+     *
+     * LS-01 — นโยบายที่ใบลาหรือยอดวันลาอ้างถึงแล้วห้ามแก้ทับในแถวเดิม
+     *
+     * เดิมใช้ `$policy->update()` เสมอ การแก้เพดานวันลาหรือรอบการนับเพียงครั้งเดียวจึงย้อน
+     * ไปเปลี่ยน "หลักเกณฑ์ที่ใบลาเก่าถูกอนุมัติภายใต้" ซึ่งตรวจสอบย้อนหลังไม่ได้อีกเลย
+     * ทั้งที่ `PROJECT_RULES` กำหนดว่า Policy ต้อง versioned + effective dated
+     *
+     * พฤติกรรมใหม่:
+     *   - ยังไม่มีใครอ้างถึง → แก้ในแถวเดิมได้ตามปกติ
+     *   - มีผู้อ้างถึงแล้ว และระบุวันมีผลใหม่ที่หลังกว่าเดิม → ปิดฉบับเดิมด้วย `effective_to`
+     *     แล้วออกฉบับใหม่ต่อจากนั้น (ฉบับเดิมยังอยู่ครบ ใบลาเก่าจึงอ่านหลักเกณฑ์เดิมได้เหมือนเดิม)
+     *   - มีผู้อ้างถึงแล้ว แต่วันมีผลใหม่ไม่หลังกว่าเดิม → ปฏิเสธพร้อมบอกวิธีแก้
+     */
     public function update(Request $r, LeavePolicy $policy)
     {
-        $policy->update($this->validated($r));
+        $data = $this->validated($r);
+        $references = $this->referenceCount($policy);
 
-        return response()->json(['policy' => $policy->fresh(['personnelType', 'leaveType']), 'sync' => $this->policies->syncBalances($policy)]);
+        if ($references === 0) {
+            $before = $policy->toArray();
+            $policy->update($data);
+
+            $this->audit->log('leave_policy_updated', 'LeavePolicy', $policy->id, before: $before, after: $policy->fresh()->toArray());
+
+            return response()->json(['policy' => $policy->fresh(['personnelType', 'leaveType']), 'sync' => $this->policies->syncBalances($policy)]);
+        }
+
+        $newFrom = Carbon::parse($data['effective_from']);
+
+        if ($newFrom->lte(Carbon::parse($policy->effective_from))) {
+            return response()->json([
+                'message' => "นโยบายนี้ถูกใช้กับใบลา/ยอดวันลา {$references} รายการแล้ว จึงแก้ทับของเดิมไม่ได้ — "
+                    .'กรุณาระบุ "มีผลตั้งแต่" เป็นวันที่หลังจาก '.Carbon::parse($policy->effective_from)->toDateString()
+                    .' ระบบจะออกนโยบายฉบับใหม่ให้และเก็บฉบับเดิมไว้เป็นประวัติ',
+                'errors' => ['effective_from' => ['ต้องเป็นวันที่หลังวันมีผลของฉบับเดิม']],
+            ], 422);
+        }
+
+        $created = DB::transaction(function () use ($policy, $data, $newFrom) {
+            $before = $policy->toArray();
+
+            // ปิดฉบับเดิมไว้หนึ่งวันก่อนฉบับใหม่มีผล — ไม่แตะค่าหลักเกณฑ์ใด ๆ ของฉบับเดิม
+            $policy->update(['effective_to' => $newFrom->copy()->subDay()->toDateString()]);
+
+            $new = LeavePolicy::create($data);
+
+            $this->audit->log('leave_policy_versioned', 'LeavePolicy', $new->id, before: $before, after: $new->toArray());
+
+            return $new;
+        }, 5);
+
+        return response()->json([
+            'message' => 'ออกนโยบายฉบับใหม่เรียบร้อยแล้ว — ฉบับเดิมถูกเก็บไว้เป็นประวัติและยังใช้กับใบลาที่อ้างถึงอยู่',
+            'policy' => $created->load(['personnelType', 'leaveType']),
+            'previous_policy_id' => $policy->id,
+            'sync' => $this->policies->syncBalances($created),
+        ], 201);
+    }
+
+    /**
+     * จำนวน "เอกสาร" ที่อ้างถึงนโยบายฉบับนี้
+     *
+     * นับเฉพาะใบลา เพราะใบลาคือหลักฐานว่า "อนุมัติภายใต้หลักเกณฑ์ฉบับใด" ซึ่งต้องคงที่ตลอดไป
+     * ส่วน `leave_balances` เป็นยอดปัจจุบันที่ระบบซิงก์ตามนโยบายอยู่แล้วโดยการออกแบบ
+     * การแก้เพดานวันลาแล้วให้ยอดปัจจุบันตามไปด้วยจึงเป็นพฤติกรรมที่ถูกต้อง ไม่ใช่การเขียนทับประวัติ
+     */
+    private function referenceCount(LeavePolicy $policy): int
+    {
+        return Leave::where('leave_policy_id', $policy->id)->count();
     }
 
     private function validated(Request $r): array

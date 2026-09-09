@@ -560,9 +560,22 @@ const generateFilename = (leave, extension, isCancel = false) => {
   return isCancel ? `cancel_${baseFilename}.${extension}` : `${baseFilename}.${extension}`
 }
 
-const MIME = {
-  pdf: 'application/pdf',
-  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+/*
+ * LS-07 — ชื่อไฟล์และชนิดไฟล์ต้องมาจากคำตอบของเซิร์ฟเวอร์
+ *
+ * เดิมหน้าจอตั้งชื่อเป็น `.docx` และประกาศ MIME ของ DOCX เอง ขณะที่เซิร์ฟเวอร์ส่ง Word
+ * แบบ HTML (`.doc`) ผู้ใช้จึงได้ไฟล์ที่นามสกุลไม่ตรงกับเนื้อใน และเปิดแล้วโปรแกรมเตือน
+ *
+ * ตอนนี้อ่านจาก `Content-Disposition` กับ `Content-Type` ที่เซิร์ฟเวอร์ประกาศ
+ * ถ้าวันหนึ่งเปลี่ยนไปออกเป็น DOCX จริง หน้าจอก็ตามได้เองโดยไม่ต้องแก้
+ */
+const filenameFromHeaders = (headers) => {
+  const disposition = headers?.['content-disposition'] || ''
+  const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(disposition)
+  if (utf8) return decodeURIComponent(utf8[1].trim().replace(/^"|"$/g, ''))
+
+  const plain = /filename="?([^";]+)"?/i.exec(disposition)
+  return plain ? plain[1].trim() : ''
 }
 
 /*
@@ -581,7 +594,6 @@ const readBlobError = async (error) => {
 }
 
 const downloadLeaveDocument = async (leave, { format, isCancel = false }) => {
-  const extension = format === 'pdf' ? 'pdf' : 'docx'
   const loadingRef = format === 'pdf' ? pdfLoading : wordLoading
   const loadingKey = isCancel ? 'cancel_' + leave.id : leave.id
   if (loadingRef.value === loadingKey) return
@@ -589,10 +601,16 @@ const downloadLeaveDocument = async (leave, { format, isCancel = false }) => {
   try {
     const path = format === 'pdf' ? 'pdf' : 'word'
     const response = await api.get(`/leaves/${leave.id}/${path}${isCancel ? '?form=cancel' : ''}`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data], { type: MIME[extension] }))
+
+    // ชนิดและชื่อไฟล์ยึดตามที่เซิร์ฟเวอร์ประกาศ ถอยไปใช้ค่าที่ตั้งเองเฉพาะเมื่อไม่มี header
+    const contentType = response.headers?.['content-type'] || (format === 'pdf' ? 'application/pdf' : 'application/vnd.ms-word')
+    const serverFilename = filenameFromHeaders(response.headers)
+    const fallbackExtension = format === 'pdf' ? 'pdf' : 'doc'
+
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: contentType }))
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', generateFilename(leave, extension, isCancel))
+    link.setAttribute('download', serverFilename || generateFilename(leave, fallbackExtension, isCancel))
     document.body.appendChild(link)
     link.click()
     link.remove()
