@@ -30,18 +30,44 @@
               <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">รหัสเริ่มต้น</th>
               <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">ค่าตั้งต้น (วัน)</th>
               <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">คำอธิบาย</th>
+              <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">แบบฟอร์มที่ใช้พิมพ์</th>
               <th class="px-6 py-3"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-50">
             <tr v-if="leaveTypes.length === 0">
-              <td colspan="5" class="text-center text-gray-400 py-8">ไม่มีข้อมูลประเภทการลา</td>
+              <td colspan="6" class="text-center text-gray-400 py-8">ไม่มีข้อมูลประเภทการลา</td>
             </tr>
             <tr v-for="lt in leaveTypes" :key="lt.id" class="hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4 font-semibold text-gray-900">{{ lt.name }}</td>
               <td class="px-6 py-4 text-gray-700">{{ lt.code_prefix || '—' }}</td>
               <td class="px-6 py-4 text-gray-700">{{ lt.max_days === null ? 'ตามหลักเกณฑ์' : `${lt.max_days} วัน` }}</td>
               <td class="px-6 py-4 text-gray-500 max-w-xs truncate">{{ lt.description || '—' }}</td>
+
+              <!--
+                สถานะแบบฟอร์มของประเภทนี้ (DESIGNER-03)
+                ผู้ดูแลเคยต้องเดาว่าประเภทใดยังไม่มีแบบฟอร์ม PDF ที่เผยแพร่แล้ว
+                หรือไล่เปิดศูนย์จัดการเอกสารทีละแม่แบบ
+              -->
+              <td class="px-6 py-4">
+                <template v-if="formStatus[lt.id]">
+                  <div class="text-gray-700">{{ formStatus[lt.id].template_name || 'ยังไม่ได้ผูกแบบฟอร์ม' }}</div>
+                  <div class="text-xs mt-0.5 flex flex-wrap items-center gap-1.5">
+                    <span v-if="formStatus[lt.id].version" class="text-gray-400">
+                      เวอร์ชัน {{ formStatus[lt.id].version }} · {{ formStatus[lt.id].field_count }} ฟิลด์
+                    </span>
+                    <span v-if="formStatus[lt.id].render_mode === 'pdf_overlay' && !formStatus[lt.id].has_source_file"
+                      class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-semibold">ยังไม่มีไฟล์ต้นฉบับ</span>
+                    <span v-if="formStatus[lt.id].engine_enabled"
+                      class="px-1.5 py-0.5 rounded bg-green-50 text-green-700 font-semibold">เปิดใช้แบบฟอร์ม PDF</span>
+                    <router-link v-if="formStatus[lt.id].template_id"
+                      :to="`/admin/document-center/templates/${formStatus[lt.id].template_id}`"
+                      class="text-[#800000] font-semibold hover:underline">เปิดหน้าออกแบบ</router-link>
+                  </div>
+                </template>
+                <span v-else class="text-gray-400 text-xs">{{ formStatusError || '—' }}</span>
+              </td>
+
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2 justify-end">
                   <button @click="openEdit(lt)"
@@ -302,6 +328,8 @@ const attendanceBuckets = [
 ]
 
 const leaveTemplates = ref([])
+const formStatus = ref({})
+const formStatusError = ref('')
 
 const resetForm = () => {
   form.value = { name: '', code_prefix: '', max_days: 30, description: '', requires_doc: false, is_carry_forward: false, max_carry_forward: null, is_prorated: false, counts_toward_promotion: true, attendance_bucket: 'other', document_template_code: '', extra_fields: [] }
@@ -315,6 +343,25 @@ const addExtraField = () => {
 const fetchTypes = async () => {
   const res = await api.get('/admin/leave-types')
   leaveTypes.value = res.data
+}
+
+/*
+ * สถานะแบบฟอร์มรายประเภท (DESIGNER-03)
+ *
+ * เป็นข้อมูลของศูนย์จัดการเอกสารซึ่งใช้สิทธิ์คนละชุดกับหน้านี้ ผู้ที่มีเพียงสิทธิ์จัดการ
+ * ประเภทการลาจึงอาจถูกปฏิเสธ — แสดงข้อความบอกแทนการปล่อยให้คอลัมน์ว่างโดยไม่มีคำอธิบาย
+ */
+const fetchFormStatus = async () => {
+  try {
+    const res = await api.get('/admin/document-engine/leave-type-forms')
+    formStatus.value = Object.fromEntries(res.data.rows.map(row => [row.leave_type_id, row]))
+    formStatusError.value = ''
+  } catch (error) {
+    formStatus.value = {}
+    formStatusError.value = error.response?.status === 403
+      ? 'ไม่มีสิทธิ์ดูสถานะแบบฟอร์ม'
+      : 'ดูสถานะแบบฟอร์มไม่ได้ในขณะนี้'
+  }
 }
 
 const fetchTemplates = async () => {
@@ -418,7 +465,7 @@ const doDelete = async () => {
 
 onMounted(async () => {
   try {
-    await Promise.all([fetchTypes(), fetchTemplates()])
+    await Promise.all([fetchTypes(), fetchTemplates(), fetchFormStatus()])
   } finally {
     loading.value = false
   }

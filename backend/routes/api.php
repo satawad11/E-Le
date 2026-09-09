@@ -382,6 +382,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/admin/document-engine/versions/{version}/geometry', [DocumentEngineController::class, 'versionGeometry']);
         Route::get('/admin/document-engine/versions/{version}/pdf', [DocumentEngineController::class, 'pdfFile'])->middleware('throttle:documents');
         Route::get('/admin/document-engine/versions/{version}/preview', [DocumentEngineController::class, 'previewVersion'])->middleware('throttle:documents');
+        Route::get('/admin/document-engine/versions/{version}/preflight', [DocumentEngineController::class, 'preflight']);
+        Route::get('/admin/document-engine/versions/{version}/diff', [DocumentEngineController::class, 'diffVersion']);
+        Route::get('/admin/document-engine/versions/{version}/calibration-sheet', [DocumentEngineController::class, 'calibrationSheet'])->middleware('throttle:documents');
+        Route::get('/admin/document-engine/versions/{version}/package', [DocumentEngineController::class, 'exportPackage'])->middleware('throttle:documents');
         Route::get('/admin/document-engine/generated', [DocumentEngineController::class, 'generatedFiles']);
     });
 
@@ -401,6 +405,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::put('/admin/document-engine/fields/{field}', [DocumentEngineController::class, 'updateField']);
         Route::delete('/admin/document-engine/fields/{field}', [DocumentEngineController::class, 'deactivateField']);
         Route::post('/admin/document-engine/enabled-entities', [DocumentEngineController::class, 'updateEnabledEntities']);
+        Route::post('/admin/document-engine/templates/import', [DocumentEngineController::class, 'importPackage']);
+        Route::post('/admin/document-engine/calibrations/solve', [DocumentEngineController::class, 'solveCalibration']);
         Route::post('/admin/document-engine/bindings', [DocumentEngineController::class, 'saveBinding']);
         Route::delete('/admin/document-engine/bindings/{rule}', [DocumentEngineController::class, 'deleteBinding']);
         Route::post('/admin/document-engine/calibrations', [DocumentEngineController::class, 'saveCalibration']);

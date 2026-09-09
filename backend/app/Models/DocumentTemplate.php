@@ -76,7 +76,14 @@ class DocumentTemplate extends Model
         return $this->render_mode === self::RENDER_PDF_OVERLAY;
     }
 
-    private function createVersion(): void
+    /**
+     * ออกเวอร์ชันใหม่จากค่าปัจจุบันของแม่แบบ มีผลตั้งแต่วันนี้เสมอ
+     *
+     * เปิดให้เรียกจากภายนอกได้เพราะคำสั่ง `document:backfill-versions` ใช้เติมเวอร์ชันแรก
+     * ให้แม่แบบที่สร้างไว้ก่อนมีระบบเวอร์ชัน (LS-08) — ตรรกะการสร้างต้องเป็นชุดเดียวกับ hook
+     * มิฉะนั้นเวอร์ชันที่เติมย้อนหลังจะต่างจากเวอร์ชันที่ระบบออกให้ตามปกติ
+     */
+    public function createVersion(): void
     {
         $this->versions()->create([
             'version' => ($this->versions()->max('version') ?? 0) + 1,

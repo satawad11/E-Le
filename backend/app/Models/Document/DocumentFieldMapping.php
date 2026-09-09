@@ -12,6 +12,22 @@ use Illuminate\Database\Eloquent\Model;
  */
 class DocumentFieldMapping extends Model
 {
+    /**
+     * ชนิดฟิลด์ที่ตัวเรนเดอร์วาดได้จริง
+     *
+     * `DocumentFieldDefinition::TYPES` เป็นรายการชนิดของ "ตัวแปร" ซึ่งรวม BARCODE ไว้ตั้งแต่ต้น
+     * แต่ `PdfOverlayRenderer` ไม่มีวิธีวาดบาร์โค้ด ฟิลด์ชนิดนี้จึงเคยถูกพิมพ์ออกมาเป็นข้อความ
+     * ธรรมดาโดยไม่มีอะไรเตือน — หน้าออกแบบและ validation จึงยึดรายการนี้แทน
+     * จนกว่าจะมีตัววาดบาร์โค้ดจริง (ดู docs/KNOWN-LIMITATIONS.md)
+     */
+    public const RENDERABLE_TYPES = ['TEXT', 'MULTILINE_TEXT', 'DATE', 'NUMBER', 'CHECKBOX', 'SIGNATURE', 'IMAGE', 'QR_CODE'];
+
+    /** คีย์ที่อนุญาตใน `options` — กันค่าที่ไม่มีใครอ่านหลุดเข้ามาสะสมในฐานข้อมูล */
+    public const OPTION_KEYS = ['mark', 'checked_values', 'underline', 'letter_spacing', 'rotate', 'visible_when'];
+
+    /** ตัวดำเนินการของเงื่อนไขแสดง/ซ่อนฟิลด์ (whitelist — ไม่มีการรับนิพจน์อิสระจากหน้าจอ) */
+    public const CONDITION_OPERATORS = ['equals', 'not_equals', 'filled', 'empty'];
+
     protected $guarded = [];
 
     protected $casts = [

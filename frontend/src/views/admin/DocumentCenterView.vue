@@ -88,6 +88,18 @@
           >
             คืนค่าแบบฟอร์มตั้งต้น
           </button>
+          <!-- นำเข้าชุดแบบฟอร์มที่ส่งออกจากเครื่องอื่น (DESIGNER-04) -->
+          <button
+            type="button"
+            :disabled="importing"
+            class="px-4 py-2.5 border border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold rounded-xl text-sm min-h-[44px] disabled:opacity-50"
+            title="ไฟล์ .zip ที่ส่งออกจากหน้าออกแบบแบบฟอร์ม — ระบบจะสร้างเป็นแม่แบบใหม่พร้อมฉบับร่าง ไม่ทับของเดิม"
+            @click="packageInput?.click()"
+          >
+            {{ importing ? 'กำลังนำเข้า…' : 'นำเข้าชุดแบบฟอร์ม' }}
+          </button>
+          <input ref="packageInput" type="file" accept=".zip,application/zip" class="hidden" @change="importPackage" />
+
           <button
             @click="showCreate = true"
             class="px-5 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm shadow-md min-h-[44px]"
@@ -169,7 +181,41 @@
       <section v-else-if="activeTab === 'fields'" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <p class="text-sm text-gray-500 mb-4">
           ตัวแปรทั้งหมดที่แบบฟอร์มและรายงานอ้างถึงได้ ค่าเหล่านี้มาจากแหล่งข้อมูลที่ระบบลงทะเบียนไว้ ไม่ได้มาจากการเขียน SQL เอง
+          — รายการอัปเดตอัตโนมัติตามช่องเฉพาะของประเภทการลา ขั้นอนุมัติ และประเภทการลาที่มีอยู่จริง
+          แก้ได้เฉพาะป้ายชื่อ กลุ่ม และรูปแบบค่า ส่วนรหัสและชนิดข้อมูลเป็นของระบบ
         </p>
+
+        <!-- แก้ป้ายชื่อ/กลุ่ม/รูปแบบของตัวแปร (DESIGNER-03) -->
+        <div v-if="fieldForm" class="mb-5 rounded-2xl border border-[#800000]/30 bg-[#800000]/5 p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-gray-900 text-sm">แก้ไขตัวแปร</h3>
+            <span class="font-mono text-[11px] text-gray-500">{{ fieldForm.code }}</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label class="block">
+              <span class="block text-[11px] font-bold text-gray-500 uppercase mb-1">ป้ายชื่อ</span>
+              <input v-model="fieldForm.label_th" type="text" class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </label>
+            <label class="block">
+              <span class="block text-[11px] font-bold text-gray-500 uppercase mb-1">กลุ่ม</span>
+              <input v-model="fieldForm.group_th" type="text" class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </label>
+            <label class="block md:col-span-2">
+              <span class="block text-[11px] font-bold text-gray-500 uppercase mb-1">คำอธิบาย</span>
+              <input v-model="fieldForm.description" type="text" class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm" />
+            </label>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button @click="saveField" :disabled="savingField"
+              class="px-4 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm min-h-[44px] disabled:opacity-50">บันทึก</button>
+            <button @click="deactivateField" :disabled="savingField"
+              class="px-4 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-semibold min-h-[44px]"
+              title="ซ่อนจากรายการตัวแปร — แบบฟอร์มเดิมที่ใช้อยู่ยังพิมพ์ได้เหมือนเดิม">ปิดการใช้งาน</button>
+            <button @click="fieldForm = null" class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm min-h-[44px]">ยกเลิก</button>
+          </div>
+        </div>
         <div v-for="(fields, group) in groupedFields" :key="group" class="mb-5">
           <h3 class="font-bold text-gray-800 text-sm mb-2">{{ group }}</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -177,8 +223,12 @@
               <div>
                 <p class="font-semibold text-gray-800">{{ field.label_th }}</p>
                 <p class="font-mono text-[11px] text-gray-400">{{ field.code }}</p>
+                <p v-if="field.description" class="text-[11px] text-gray-400">{{ field.description }}</p>
               </div>
-              <span class="text-[10px] font-semibold text-gray-500 bg-gray-100 rounded px-1.5 py-0.5 flex-shrink-0">{{ field.data_type }}</span>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <span class="text-[10px] font-semibold text-gray-500 bg-gray-100 rounded px-1.5 py-0.5">{{ field.data_type }}</span>
+                <button @click="editField(field)" class="text-[11px] font-semibold text-[#800000] hover:underline">แก้ไข</button>
+              </div>
             </div>
           </div>
         </div>
@@ -298,6 +348,46 @@
             </tr>
           </tbody>
           </table>
+        </div>
+
+        <!--
+          เปิดใช้แบบฟอร์ม PDF รายประเภทการลา (DESIGNER-03)
+          เดิมตั้งได้จาก `.env` เท่านั้น ผู้ดูแลจึงทยอยเปิดใช้เองไม่ได้และไม่มีบันทึกว่าใครเปิดเมื่อใด
+        -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3 class="font-bold text-gray-900">เปิดใช้แบบฟอร์ม PDF รายประเภทการลา</h3>
+            <span v-if="!overview.engine_enabled" class="text-xs px-2 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+              ระบบจัดทำเอกสารอัตโนมัติ (Document Engine) ปิดอยู่ระดับระบบ — ค่าที่บันทึกจะยังไม่มีผล
+            </span>
+          </div>
+
+          <p class="text-xs text-gray-500">
+            ประเภทที่ไม่ได้เปิดจะพิมพ์ด้วยเส้นทางเดิมเหมือนก่อน — เปิดทีละประเภทหลังตรวจแบบฟอร์มแล้ว
+            ใบลาที่ออกไปแล้วไม่เปลี่ยนแบบฟอร์มตามการตั้งค่านี้ เพราะยึดเวอร์ชันที่ pin ไว้ตอนยื่น
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            <label v-for="type in leaveTypeForms" :key="type.leave_type_id"
+              class="flex items-start gap-2 p-3 rounded-xl border border-gray-100 hover:border-gray-200">
+              <input type="checkbox" :value="type.leave_type_id" v-model="enabledLeaveTypes" class="mt-1 rounded" />
+              <span>
+                <span class="block text-sm font-semibold text-gray-800">{{ type.leave_type_name }}</span>
+                <span class="block text-[11px] text-gray-400">
+                  {{ type.template_name || 'ยังไม่ได้ผูกแบบฟอร์ม' }}
+                  <template v-if="type.version"> · เวอร์ชัน {{ type.version }} · {{ type.field_count }} ฟิลด์</template>
+                </span>
+                <span v-if="type.render_mode === 'pdf_overlay' && !type.has_source_file" class="block text-[11px] text-amber-700 font-semibold">
+                  ยังไม่มีไฟล์ต้นฉบับ
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <button @click="saveEnabledLeaveTypes" :disabled="savingEntities"
+            class="px-5 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm min-h-[44px] disabled:opacity-50">
+            {{ savingEntities ? 'กำลังบันทึก...' : 'บันทึกประเภทที่เปิดใช้' }}
+          </button>
         </div>
       </section>
 
@@ -627,6 +717,13 @@ const bindings = ref([])
 const bindingEntities = ref({})
 const generated = ref([])
 const calibrations = ref([])
+const leaveTypeForms = ref([])
+const fieldForm = ref(null)
+const savingField = ref(false)
+const packageInput = ref(null)
+const importing = ref(false)
+const enabledLeaveTypes = ref([])
+const savingEntities = ref(false)
 const reports = ref([])
 const reportResult = ref(null)
 const unboundLeaveTypes = ref([])
@@ -723,7 +820,7 @@ const exportReport = async (report, format) => {
 const loadAll = async () => {
   loading.value = true
   try {
-    const [ov, tpl, fld, src, bnd, gen, cal, rep] = await Promise.all([
+    const [ov, tpl, fld, src, bnd, gen, cal, rep, forms] = await Promise.all([
       api.get('/admin/document-engine/overview'),
       api.get('/admin/document-engine/templates'),
       api.get('/admin/document-engine/fields'),
@@ -732,6 +829,7 @@ const loadAll = async () => {
       api.get('/admin/document-engine/generated'),
       api.get('/admin/document-engine/calibrations'),
       api.get('/admin/document-reports'),
+      api.get('/admin/document-engine/leave-type-forms'),
     ])
     overview.value = ov.data
     templates.value = tpl.data
@@ -743,10 +841,95 @@ const loadAll = async () => {
     generated.value = gen.data.data || gen.data
     calibrations.value = cal.data
     reports.value = rep.data
+    leaveTypeForms.value = forms.data.rows
+    // `['*']` = เปิดทุกประเภท — แสดงเป็นการติ๊กครบทุกช่องเพื่อไม่ให้ผู้ดูแลเห็นสถานะที่ขัดกับความจริง
+    enabledLeaveTypes.value = ov.data.enabled_leave_types.includes('*')
+      ? forms.data.rows.map(row => row.leave_type_id)
+      : forms.data.rows.filter(row => row.engine_enabled).map(row => row.leave_type_id)
   } catch (error) {
     alertStore.error(error.response?.data?.message || 'โหลดข้อมูลศูนย์จัดการเอกสารไม่สำเร็จ')
   } finally {
     loading.value = false
+  }
+}
+
+const importPackage = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  importing.value = true
+  try {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await api.post('/admin/document-engine/templates/import', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    alertStore.success(res.data.message)
+    await loadAll()
+    router.push({ name: 'document-designer', params: { templateId: res.data.template_id } })
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'นำเข้าชุดแบบฟอร์มไม่สำเร็จ')
+  } finally {
+    importing.value = false
+    event.target.value = ''
+  }
+}
+
+const editField = (field) => {
+  fieldForm.value = {
+    id: field.id,
+    code: field.code,
+    label_th: field.label_th,
+    group_th: field.group_th || '',
+    description: field.description || '',
+  }
+}
+
+const saveField = async () => {
+  savingField.value = true
+  try {
+    const res = await api.put(`/admin/document-engine/fields/${fieldForm.value.id}`, {
+      label_th: fieldForm.value.label_th,
+      group_th: fieldForm.value.group_th || null,
+      description: fieldForm.value.description || null,
+    })
+    alertStore.success(res.data.message)
+    fieldForm.value = null
+    await loadAll()
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'บันทึกตัวแปรไม่สำเร็จ')
+  } finally {
+    savingField.value = false
+  }
+}
+
+const deactivateField = async () => {
+  if (!window.confirm('ปิดการใช้งานตัวแปรนี้? จะไม่แสดงให้เลือกในหน้าออกแบบอีก (แบบฟอร์มเดิมที่ใช้อยู่ยังพิมพ์ได้เหมือนเดิม)')) return
+  savingField.value = true
+  try {
+    const res = await api.delete(`/admin/document-engine/fields/${fieldForm.value.id}`)
+    alertStore.success(res.data.message)
+    fieldForm.value = null
+    await loadAll()
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'ปิดการใช้งานตัวแปรไม่สำเร็จ')
+  } finally {
+    savingField.value = false
+  }
+}
+
+const saveEnabledLeaveTypes = async () => {
+  savingEntities.value = true
+  try {
+    const res = await api.post('/admin/document-engine/enabled-entities', {
+      leave_type_ids: enabledLeaveTypes.value,
+    })
+    alertStore.success(res.data.message)
+    await loadAll()
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'บันทึกประเภทที่เปิดใช้ไม่สำเร็จ')
+  } finally {
+    savingEntities.value = false
   }
 }
 

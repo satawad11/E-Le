@@ -146,6 +146,22 @@ class LeaveDocumentTemplateResolver
      */
     public function templateCodeForLeave(Leave $leave): ?string
     {
+        /*
+         * LS-04 — เอกสารที่ออกไปแล้วยึดแบบฟอร์มที่ตัวเองถูก pin ไว้ ไม่ใช่การผูกแบบฟอร์มปัจจุบัน
+         *
+         * เดิมเลือกแบบฟอร์มจาก `leave_types.document_template_code` ณ ตอนพิมพ์เสมอ
+         * ผู้ดูแลเปลี่ยนการผูกแบบฟอร์มของประเภทการลาเพียงครั้งเดียว ใบลาเก่าทุกใบจึงเปลี่ยน
+         * ไปพิมพ์บนแบบฟอร์มคนละฉบับกับที่เคยออกไป ซึ่งขัดกับกฎเอกสารย้อนหลังของระบบ
+         *
+         * การเปลี่ยนการผูกจึงมีผลกับ "ใบที่ยื่นใหม่" เท่านั้น เพราะใบใหม่จะ pin เวอร์ชันของ
+         * แบบฟอร์มปัจจุบันไว้เองตั้งแต่ตอนยื่น
+         */
+        $pinnedCode = $this->pinnedTemplateCode($leave);
+
+        if ($pinnedCode !== null) {
+            return $pinnedCode;
+        }
+
         $type = $leave->type ?? ($leave->leave_type_id ? LeaveType::find($leave->leave_type_id) : null);
 
         if ($type?->document_template_code) {
@@ -153,6 +169,24 @@ class LeaveDocumentTemplateResolver
         }
 
         return $this->templateCodeForLeaveType($type?->name);
+    }
+
+    /**
+     * code ของแบบฟอร์มตามเวอร์ชันที่ใบลานี้ pin ไว้
+     *
+     * คืน null เมื่อยังไม่ได้ pin, เวอร์ชันที่ pin หายไป หรือเป็นแบบฟอร์มที่ไม่มี view รองรับ
+     * (เช่นแม่แบบที่ผู้ดูแลสร้างเอง) ซึ่งกรณีเหล่านั้นต้องเดินตามเส้นทางเดิมเหมือนก่อน
+     */
+    private function pinnedTemplateCode(Leave $leave): ?string
+    {
+        if (! $leave->document_template_version_id) {
+            return null;
+        }
+
+        $code = DocumentTemplateVersion::with('template')
+            ->find($leave->document_template_version_id)?->template?->code;
+
+        return $code !== null && isset(array_flip(self::VIEW_TO_TEMPLATE)[$code]) ? $code : null;
     }
 
     /**

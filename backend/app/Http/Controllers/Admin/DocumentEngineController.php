@@ -6,15 +6,27 @@ use App\Http\Controllers\Controller;
 use App\Models\Document\DocumentBindingRule;
 use App\Models\Document\DocumentDataSource;
 use App\Models\Document\DocumentFieldDefinition;
+use App\Models\Document\DocumentFieldMapping;
 use App\Models\Document\DocumentGeneratedFile;
 use App\Models\Document\DocumentPrintCalibration;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentTemplateVersion;
+use App\Models\Leave;
+use App\Models\LeaveApproval;
 use App\Models\LeaveType;
 use App\Services\AuditLogger;
 use App\Services\DefaultDocumentTemplateService;
 use App\Services\DocumentEngine\DataProviderRegistry;
 use App\Services\DocumentEngine\DocumentEngine;
+use App\Services\DocumentEngine\EngineActivation;
+use App\Services\DocumentEngine\FieldDictionarySynchronizer;
+use App\Services\DocumentEngine\PrintCalibrationSheet;
+use App\Services\DocumentEngine\Providers\LeaveRequestDataProvider;
+use App\Services\DocumentEngine\TemplateGeometry;
+use App\Services\DocumentEngine\TemplatePackage;
+use App\Services\DocumentEngine\TemplatePreflight;
+use App\Services\DocumentEngine\TemplateResolver;
+use App\Services\DocumentEngine\ValueFormatter;
 use App\Services\LeaveDocumentFields;
 use App\Support\UploadRules;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -36,6 +48,9 @@ class DocumentEngineController extends Controller
         private readonly DocumentEngine $engine,
         private readonly DataProviderRegistry $providers,
         private readonly AuditLogger $audit,
+        private readonly TemplateGeometry $geometry,
+        private readonly FieldDictionarySynchronizer $fields,
+        private readonly EngineActivation $activation,
     ) {}
 
     // ───────────────────────────────── ภาพรวม ─────────────────────────────────
@@ -52,8 +67,32 @@ class DocumentEngineController extends Controller
             'data_sources' => DocumentDataSource::where('is_active', true)->count(),
             'generated_files' => DocumentGeneratedFile::count(),
             'finalized_files' => DocumentGeneratedFile::where('status', DocumentGeneratedFile::STATUS_FINALIZED)->count(),
-            'engine_enabled' => (bool) config('document_engine.enabled'),
-            'enabled_leave_types' => array_values((array) config('document_engine.entities.leave_types', [])),
+            'engine_enabled' => $this->activation->systemEnabled(),
+            'enabled_leave_types' => $this->activation->enabledLeaveTypes(),
+        ]);
+    }
+
+    /**
+     * เปิด/ปิดการใช้ Document Engine รายประเภทการลา
+     *
+     * ไม่ได้เปิดสวิตช์ระดับระบบให้ — ถ้า `.env` ปิดอยู่ รายการนี้จะถูกบันทึกไว้เฉย ๆ
+     * และคำตอบจะบอกว่ายังไม่มีผลจนกว่าจะเปิดสวิตช์ระดับระบบ
+     */
+    public function updateEnabledEntities(Request $request)
+    {
+        $data = $request->validate([
+            'leave_type_ids' => 'present|array',
+            'leave_type_ids.*' => 'integer|exists:leave_types,id',
+        ]);
+
+        $enabled = $this->activation->setEnabledLeaveTypes($data['leave_type_ids'], $request->user());
+
+        return response()->json([
+            'message' => $this->activation->systemEnabled()
+                ? 'บันทึกประเภทการลาที่ใช้แบบฟอร์ม PDF เรียบร้อยแล้ว'
+                : 'บันทึกไว้แล้ว แต่ยังไม่มีผลจนกว่าจะเปิดระบบจัดทำเอกสารอัตโนมัติ (Document Engine) ระดับระบบ',
+            'engine_enabled' => $this->activation->systemEnabled(),
+            'enabled_leave_types' => $enabled,
         ]);
     }
 
@@ -337,6 +376,22 @@ class DocumentEngineController extends Controller
     {
         abort_if($version->status === DocumentTemplateVersion::STATUS_ACTIVE, 422, 'เวอร์ชันนี้เผยแพร่อยู่แล้ว');
 
+        /*
+         * ตรวจเต็มชุดก่อนเผยแพร่ (DESIGNER-04)
+         *
+         * ตำแหน่งฟิลด์อาจมาจากการนำเข้าหรือคัดลอกเวอร์ชัน ไม่ได้ผ่านหน้าออกแบบทุกครั้ง
+         * และความผิดพลาดที่เหลืออยู่จะไปโผล่ตอนผู้ใช้พิมพ์เอกสารจริง
+         */
+        $result = app(TemplatePreflight::class)->check($version);
+
+        if ($result['errors'] !== []) {
+            return response()->json([
+                'message' => 'เผยแพร่ไม่ได้เพราะแบบฟอร์มยังมีข้อผิดพลาด',
+                'errors' => ['mappings' => $result['errors']],
+                'warnings' => $result['warnings'],
+            ], 422);
+        }
+
         DB::transaction(function () use ($version, $request) {
             // เวอร์ชันที่ใช้อยู่เดิมถูกปลดเป็น RETIRED (ไม่ลบ) เอกสารเก่าที่อ้างอยู่จึงยังพิมพ์ได้
             DocumentTemplateVersion::where('document_template_id', $version->document_template_id)
@@ -419,6 +474,9 @@ class DocumentEngineController extends Controller
             'version' => $version,
             'mappings' => $version->fieldMappings()->orderBy('page')->orderBy('id')->get(),
             'fields' => DocumentFieldDefinition::where('is_active', true)->orderBy('group_th')->orderBy('code')->get(),
+            // หน้าออกแบบต้องเลือกได้เฉพาะรูปแบบ/ชนิดที่ตัวเรนเดอร์ทำได้จริง จึงส่งรายการจากฝั่งเซิร์ฟเวอร์
+            'formats' => ValueFormatter::FORMATS,
+            'field_types' => DocumentFieldMapping::RENDERABLE_TYPES,
         ]);
     }
 
@@ -428,7 +486,7 @@ class DocumentEngineController extends Controller
         $data = $request->validate([
             'mappings' => 'present|array',
             'mappings.*.field_code' => 'required|string|max:120',
-            'mappings.*.field_type' => 'required|string|in:'.implode(',', DocumentFieldDefinition::TYPES),
+            'mappings.*.field_type' => 'required|string|in:'.implode(',', DocumentFieldMapping::RENDERABLE_TYPES),
             'mappings.*.page' => 'required|integer|min:1|max:50',
             'mappings.*.x' => 'required|numeric|min:0|max:5000',
             'mappings.*.y' => 'required|numeric|min:0|max:5000',
@@ -438,9 +496,25 @@ class DocumentEngineController extends Controller
             'mappings.*.font_size' => 'nullable|numeric|min:4|max:72',
             'mappings.*.align' => 'nullable|string|in:left,center,right',
             'mappings.*.overflow' => 'nullable|string|in:shrink,wrap,clip',
-            'mappings.*.format' => 'nullable|string|max:60',
+            'mappings.*.format' => 'nullable|string|in:'.implode(',', array_keys(ValueFormatter::FORMATS)),
             'mappings.*.static_text' => 'nullable|string|max:500',
-            'mappings.*.options' => 'nullable|array',
+            /*
+             * `options` รับเฉพาะคีย์ที่ตัวเรนเดอร์อ่านจริง
+             *
+             * เดิมเป็น array อิสระ ผู้เรียกจึงส่งคีย์อะไรมาก็ได้และไม่มีผลใด ๆ กับเอกสาร
+             * ทำให้แยกไม่ออกว่าค่าที่ตั้งไว้ "ไม่ทำงาน" หรือ "ยังไม่รองรับ"
+             */
+            'mappings.*.options' => 'nullable|array:'.implode(',', DocumentFieldMapping::OPTION_KEYS),
+            'mappings.*.options.mark' => 'nullable|string|max:4',
+            'mappings.*.options.checked_values' => 'nullable|array|max:20',
+            'mappings.*.options.checked_values.*' => 'string|max:120',
+            'mappings.*.options.underline' => 'nullable|boolean',
+            'mappings.*.options.letter_spacing' => 'nullable|numeric|min:0|max:20',
+            'mappings.*.options.rotate' => 'nullable|integer|in:0,90,180,270',
+            'mappings.*.options.visible_when' => 'nullable|array:field,operator,value',
+            'mappings.*.options.visible_when.field' => 'required_with:mappings.*.options.visible_when|string|max:120',
+            'mappings.*.options.visible_when.operator' => 'required_with:mappings.*.options.visible_when|string|in:'.implode(',', DocumentFieldMapping::CONDITION_OPERATORS),
+            'mappings.*.options.visible_when.value' => 'nullable|string|max:255',
         ]);
 
         abort_unless(
@@ -448,6 +522,21 @@ class DocumentEngineController extends Controller
             422,
             'แก้ตำแหน่งฟิลด์ได้เฉพาะฉบับร่าง — เวอร์ชันที่เผยแพร่แล้วต้องสร้างเวอร์ชันใหม่ก่อน',
         );
+
+        /*
+         * ฟิลด์ต้องอยู่ในหน้ากระดาษจริงของไฟล์ต้นฉบับ
+         *
+         * ตรวจที่ฝั่งเซิร์ฟเวอร์เสมอ เพราะหน้าจอเป็นเพียงตัวช่วยวาง ไม่ใช่ผู้รับรอง
+         * ฟิลด์ที่เลยขอบกระดาษจะถูกวาดหายไปเงียบ ๆ ตอนพิมพ์ ซึ่งเห็นไม่ได้จนกว่าจะพิมพ์จริง
+         */
+        $problems = $this->geometry->problems($version, $data['mappings']);
+
+        if ($problems !== []) {
+            return response()->json([
+                'message' => 'บันทึกไม่ได้เพราะมีฟิลด์อยู่นอกหน้ากระดาษ',
+                'errors' => ['mappings' => $problems],
+            ], 422);
+        }
 
         DB::transaction(function () use ($version, $data) {
             $version->fieldMappings()->delete();
@@ -481,21 +570,232 @@ class DocumentEngineController extends Controller
         ]);
     }
 
-    /** พรีวิวเอกสารด้วยข้อมูลตัวอย่าง — ไม่แตะข้อมูลจริงของผู้ใด */
-    public function previewVersion(DocumentTemplateVersion $version)
+    /**
+     * ขนาดจริงของแต่ละหน้าในแบบฟอร์มต้นฉบับ
+     *
+     * หน้าออกแบบใช้ค่านี้เป็นระบบพิกัดแทนการเดาว่าเป็น A4 เสมอ จึงวางฟิลด์บนแบบฟอร์ม
+     * ขนาดอื่น (F4/Legal/แนวนอน/ไฟล์สแกน) แล้วพิมพ์ออกมาตรงตำแหน่งเดียวกับที่เห็นบนจอ
+     */
+    public function versionGeometry(DocumentTemplateVersion $version)
+    {
+        $sizes = $this->geometry->pageSizes($version);
+
+        return response()->json([
+            'page_count' => count($sizes),
+            'pages' => array_map(
+                fn (array $size, int $index) => ['page' => $index + 1] + $size,
+                $sizes,
+                array_keys($sizes),
+            ),
+        ]);
+    }
+
+    /**
+     * พรีวิวเอกสารสามโหมด
+     *
+     *   `sample` (ค่าเริ่มต้น) — ข้อความไทยยาวตามกรณีจริง ใช้ตรวจว่าช่องพอหรือไม่
+     *   `blank`  — วาดเฉพาะกรอบของช่อง ใช้เทียบกับเส้นบนแบบฟอร์มต้นฉบับ
+     *   `leave`  — ใบลาจริงหนึ่งฉบับ (อ่านอย่างเดียว) ต้องมีสิทธิ์เปิดใบนั้นด้วย และถูกบันทึก audit
+     */
+    public function previewVersion(Request $request, DocumentTemplateVersion $version)
     {
         abort_unless($version->isPdfOverlay(), 422, 'พรีวิวแบบวางฟิลด์ใช้ได้กับแม่แบบชนิด PDF เท่านั้น');
 
-        return response($this->engine->preview($version), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="preview.pdf"',
+        $data = $request->validate([
+            'mode' => 'nullable|string|in:sample,blank,leave',
+            'leave_id' => 'nullable|integer|exists:leaves,id',
         ]);
+
+        $mode = $data['mode'] ?? 'sample';
+
+        if ($mode !== 'leave') {
+            return response($this->engine->preview($version, $mode), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="preview.pdf"',
+            ]);
+        }
+
+        abort_if(blank($data['leave_id'] ?? null), 422, 'เลือกใบลาที่จะใช้เป็นตัวอย่างก่อน');
+
+        $leave = Leave::findOrFail($data['leave_id']);
+
+        /*
+         * สิทธิ์จัดการแม่แบบไม่ใช่สิทธิ์เปิดใบลาของผู้อื่น
+         *
+         * การพรีวิวด้วยข้อมูลจริงคือการอ่านเอกสารของบุคคล จึงต้องผ่าน policy เดียวกับ
+         * การเปิดใบลานั้นตามปกติ และถูกบันทึกว่าใครเปิดของใครเมื่อใด
+         */
+        $this->authorize('view', $leave);
+
+        $content = $this->engine->previewWithData($version, LeaveRequestDataProvider::CODE, [
+            'leave' => $leave,
+            'stage' => LeaveApproval::STAGE_REQUEST,
+        ]);
+
+        $this->audit->log('document_preview_with_real_data', 'Leave', $leave->id, after: [
+            'version_id' => $version->id,
+        ]);
+
+        return response($content, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="preview-leave-'.$leave->id.'.pdf"',
+        ]);
+    }
+
+    /** ผลตรวจก่อนเผยแพร่ — ให้หน้าออกแบบแสดงก่อนกดปุ่ม ไม่ใช่ให้รู้ตอนถูกปฏิเสธ */
+    public function preflight(DocumentTemplateVersion $version, TemplatePreflight $preflight)
+    {
+        return response()->json($preflight->check($version));
+    }
+
+    /** ใบสอบเทียบการพิมพ์ — พิมพ์ออกกระดาษจริงแล้ววัดด้วยไม้บรรทัด */
+    public function calibrationSheet(DocumentTemplateVersion $version, PrintCalibrationSheet $sheet)
+    {
+        return response($sheet->render($version), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="calibration-sheet.pdf"',
+        ]);
+    }
+
+    /** คำนวณค่าชดเชยจากระยะที่วัดได้ (ยังไม่บันทึก — ผู้ดูแลตรวจก่อนกดบันทึกที่หน้าค่าชดเชย) */
+    public function solveCalibration(Request $request, PrintCalibrationSheet $sheet)
+    {
+        $data = $request->validate([
+            'measured_a_x_mm' => 'required|numeric|min:0|max:1000',
+            'measured_a_y_mm' => 'required|numeric|min:0|max:1000',
+            'measured_ab_mm' => 'required|numeric|min:1|max:1000',
+            'measured_ac_mm' => 'required|numeric|min:1|max:1000',
+        ]);
+
+        return response()->json([
+            'calibration' => $sheet->solve(
+                (float) $data['measured_a_x_mm'],
+                (float) $data['measured_a_y_mm'],
+                (float) $data['measured_ab_mm'],
+                (float) $data['measured_ac_mm'],
+            ),
+        ]);
+    }
+
+    /**
+     * เทียบตำแหน่งฟิลด์ระหว่างสองเวอร์ชัน
+     *
+     * ก่อนเผยแพร่ ผู้ดูแลต้องตอบได้ว่า "เวอร์ชันใหม่ต่างจากของเดิมตรงไหน"
+     * ซึ่งเดิมต้องเปิดสองหน้าจอเทียบด้วยตา
+     */
+    public function diffVersion(Request $request, DocumentTemplateVersion $version)
+    {
+        $data = $request->validate(['against' => 'required|integer|exists:document_template_versions,id']);
+
+        $other = DocumentTemplateVersion::findOrFail($data['against']);
+
+        abort_unless(
+            $other->document_template_id === $version->document_template_id,
+            422,
+            'เทียบได้เฉพาะเวอร์ชันของแม่แบบเดียวกัน',
+        );
+
+        $key = fn ($mapping) => $mapping->field_code.'#'.$mapping->page;
+        $current = $version->fieldMappings->keyBy($key);
+        $previous = $other->fieldMappings->keyBy($key);
+
+        $changed = [];
+
+        foreach ($current as $id => $mapping) {
+            $before = $previous->get($id);
+
+            if ($before === null) {
+                continue;
+            }
+
+            $differences = $this->differences($before, $mapping);
+
+            if ($differences !== []) {
+                $changed[] = ['field_code' => $mapping->field_code, 'page' => (int) $mapping->page, 'changes' => $differences];
+            }
+        }
+
+        return response()->json([
+            'from' => ['id' => $other->id, 'version' => $other->version, 'status' => $other->status],
+            'to' => ['id' => $version->id, 'version' => $version->version, 'status' => $version->status],
+            'added' => $current->keys()->diff($previous->keys())->values(),
+            'removed' => $previous->keys()->diff($current->keys())->values(),
+            'changed' => $changed,
+        ]);
+    }
+
+    /**
+     * @return array<string, array{from: mixed, to: mixed}>
+     */
+    private function differences(DocumentFieldMapping $before, DocumentFieldMapping $after): array
+    {
+        $fields = ['x', 'y', 'width', 'height', 'font', 'font_size', 'align', 'overflow', 'format', 'static_text', 'field_type'];
+        $differences = [];
+
+        foreach ($fields as $field) {
+            if ((string) $before->{$field} !== (string) $after->{$field}) {
+                $differences[$field] = ['from' => $before->{$field}, 'to' => $after->{$field}];
+            }
+        }
+
+        if (json_encode($before->options) !== json_encode($after->options)) {
+            $differences['options'] = ['from' => $before->options, 'to' => $after->options];
+        }
+
+        return $differences;
+    }
+
+    /** ส่งออกแบบฟอร์มหนึ่งเวอร์ชันเป็นไฟล์เดียว (ZIP: manifest.json + form.pdf) */
+    public function exportPackage(DocumentTemplateVersion $version, TemplatePackage $package)
+    {
+        $path = $package->export($version);
+
+        $this->audit->log('document_template_exported', 'DocumentTemplateVersion', $version->id, after: [
+            'template' => $version->template->code,
+            'version' => $version->version,
+        ]);
+
+        return response()->download($path, $version->template->code.'-v'.$version->version.'.zip', [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /** นำเข้าแพ็กเกจเป็นแม่แบบใหม่พร้อมฉบับร่าง — ไม่ทับแม่แบบที่มีอยู่ */
+    public function importPackage(Request $request, TemplatePackage $package)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:20480', 'mimetypes:application/zip,application/x-zip-compressed,multipart/x-zip'],
+        ]);
+
+        try {
+            $version = $package->import($request->file('file')->getRealPath(), $request->user());
+        } catch (\RuntimeException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        $this->audit->log('document_template_imported', 'DocumentTemplateVersion', $version->id, after: [
+            'template_id' => $version->document_template_id,
+        ]);
+
+        return response()->json([
+            'message' => 'นำเข้าแบบฟอร์มเป็นฉบับร่างเรียบร้อยแล้ว — ตรวจตำแหน่งฟิลด์แล้วจึงเผยแพร่',
+            'version' => $version,
+            'template_id' => $version->document_template_id,
+        ], 201);
     }
 
     // ─────────────────────────── Field Dictionary / แหล่งข้อมูล ───────────────────────────
 
     public function fieldDictionary(Request $request)
     {
+        /*
+         * ซิงก์ก่อนเสมอ เช่นเดียวกับรายการแหล่งข้อมูล
+         *
+         * ช่องเฉพาะของประเภทการลา ขั้นอนุมัติ และประเภทการลาที่เพิ่มภายหลัง ทำให้รายการ
+         * ตัวแปรเปลี่ยนได้ตลอดเวลา ผู้ดูแลจึงต้องเห็นสิ่งที่ระบบมีค่าให้จริง ณ ตอนที่เปิดหน้า
+         */
+        $this->fields->sync();
+
         return response()->json(
             DocumentFieldDefinition::query()
                 ->when($request->filled('module'), fn ($query) => $query->where('module', $request->string('module')))
@@ -503,6 +803,46 @@ class DocumentEngineController extends Controller
                 ->orderBy('group_th')->orderBy('code')
                 ->get(),
         );
+    }
+
+    /**
+     * แก้ป้ายชื่อ/กลุ่ม/รูปแบบ/การเปิดใช้ของตัวแปรในพจนานุกรม
+     *
+     * แก้ได้เฉพาะสิ่งที่เป็น "การนำเสนอ" — รหัสฟิลด์ ชนิดข้อมูล และแหล่งข้อมูลเป็นข้อเท็จจริง
+     * ของระบบที่ `FieldDictionarySynchronizer` กำหนด ถ้าให้แก้จากหน้าจอจะเกิดฟิลด์ที่ไม่มีค่าจริง
+     * มารองรับ และผู้ดูแลจะวางช่องที่พิมพ์ออกมาว่างเปล่าโดยไม่รู้ตัว
+     */
+    public function updateField(Request $request, DocumentFieldDefinition $field)
+    {
+        $data = $request->validate([
+            'label_th' => 'required|string|max:255',
+            'group_th' => 'nullable|string|max:120',
+            'description' => 'nullable|string|max:255',
+            'format' => 'nullable|string|in:'.implode(',', array_keys(ValueFormatter::FORMATS)),
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $before = $field->toArray();
+        $field->update($data);
+
+        $this->audit->log('document_field_updated', 'DocumentFieldDefinition', $field->id, before: $before, after: $field->fresh()->toArray());
+
+        return response()->json(['message' => 'บันทึกตัวแปรเรียบร้อยแล้ว', 'field' => $field->fresh()]);
+    }
+
+    /**
+     * ปิดการใช้งานตัวแปร (ไม่ลบทิ้ง)
+     *
+     * แบบฟอร์มเวอร์ชันเก่าที่วางฟิลด์นี้ไว้ยังต้องพิมพ์ได้เหมือนเดิม การลบแถวออกจะทำให้
+     * ตำแหน่งฟิลด์เดิมกลายเป็นรหัสลอย ๆ ที่ไม่มีใครอธิบายได้ว่าเคยหมายถึงอะไร
+     */
+    public function deactivateField(DocumentFieldDefinition $field)
+    {
+        $field->update(['is_active' => false]);
+
+        $this->audit->log('document_field_deactivated', 'DocumentFieldDefinition', $field->id, after: ['code' => $field->code]);
+
+        return response()->json(['message' => 'ปิดการใช้งานตัวแปรแล้ว (แบบฟอร์มเดิมที่ใช้อยู่ยังพิมพ์ได้เหมือนเดิม)']);
     }
 
     public function dataSources()
@@ -543,6 +883,43 @@ class DocumentEngineController extends Controller
             'unbound_leave_types' => $hasCatchAll
                 ? []
                 : $leaveTypes->whereNotIn('id', $boundTypeIds)->values(),
+        ]);
+    }
+
+    /**
+     * สถานะแบบฟอร์มของแต่ละประเภทการลา — ผูกแม่แบบใด เวอร์ชันใด พร้อมใช้หรือยัง
+     *
+     * หน้า "ประเภทการลา" ใช้ค่านี้บอกผู้ดูแลว่าประเภทไหนยังไม่มีแบบฟอร์ม PDF ที่เผยแพร่แล้ว
+     * ซึ่งเดิมต้องเดาเอง หรือไล่เปิดศูนย์จัดการเอกสารทีละแม่แบบ
+     */
+    public function leaveTypeForms()
+    {
+        $resolver = app(TemplateResolver::class);
+        $enabled = $this->activation->enabledLeaveTypes();
+        $all = in_array('*', $enabled, true);
+
+        $rows = LeaveType::orderBy('id')->get(['id', 'name'])->map(function (LeaveType $type) use ($resolver, $enabled, $all) {
+            $template = $resolver->resolveTemplate('LEAVE', 'LEAVE_TYPE', $type->id);
+            $version = $template === null ? null : $resolver->activeVersion($template);
+
+            return [
+                'leave_type_id' => $type->id,
+                'leave_type_name' => $type->name,
+                'template_id' => $template?->id,
+                'template_code' => $template?->code,
+                'template_name' => $template?->name,
+                'render_mode' => $version?->render_mode ?? $template?->render_mode,
+                'version' => $version?->version,
+                'version_id' => $version?->id,
+                'has_source_file' => filled($version?->pdf_file_path),
+                'field_count' => $version?->fieldMappings()->count() ?? 0,
+                'engine_enabled' => $all || in_array((string) $type->id, $enabled, true),
+            ];
+        });
+
+        return response()->json([
+            'engine_enabled' => $this->activation->systemEnabled(),
+            'rows' => $rows,
         ]);
     }
 

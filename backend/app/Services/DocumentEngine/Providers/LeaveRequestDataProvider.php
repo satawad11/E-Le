@@ -4,6 +4,7 @@ namespace App\Services\DocumentEngine\Providers;
 
 use App\Models\Leave;
 use App\Models\LeaveApproval;
+use App\Models\LeaveType;
 use App\Services\DocumentEngine\DocumentDataProvider;
 use App\Services\LeaveDocumentFields;
 
@@ -111,7 +112,65 @@ class LeaveRequestDataProvider implements DocumentDataProvider
         $canonical['approval.supervisor.position'] = (string) ($first->approver_position ?? '');
         $canonical['approval.supervisor.signature'] = (string) ($first->signature_path ?? '');
 
-        return $canonical;
+        return array_merge($canonical, $this->extraFields($legacy), $this->statistics($legacy));
+    }
+
+    /**
+     * ช่องเฉพาะของประเภทการลาแบบแบน (`extra.<คีย์>`)
+     *
+     * ค่าชุดเดิมเป็นก้อน `extra[คีย์]` ซึ่งวางลงแบบฟอร์ม PDF เป็นช่องเดียวไม่ได้
+     * จึงแตกเป็นฟิลด์รายช่องคู่กับที่ `FieldDictionarySynchronizer` ประกาศไว้ในพจนานุกรม
+     *
+     * @param  array<string,mixed>  $legacy
+     * @return array<string,mixed>
+     */
+    private function extraFields(array $legacy): array
+    {
+        $flat = [];
+
+        foreach ((array) ($legacy['extra'] ?? []) as $key => $value) {
+            $flat['extra.'.$key] = is_scalar($value) ? $value : '';
+        }
+
+        return $flat;
+    }
+
+    /**
+     * ตารางสถิติการลาแบบแบน (`stats.leave_type_<id>.<ช่อง>`)
+     *
+     * ค่าชุดเดิมคีย์ด้วย "ชื่อประเภทการลา" ซึ่งใช้เป็นรหัสฟิลด์ไม่ได้ (เปลี่ยนชื่อแล้วแบบฟอร์มพัง)
+     * จึงแปลงเป็นรหัสที่อ้างด้วย id ของประเภทการลาแทน ชื่อจะเปลี่ยนภายหลังก็ยังผูกถูกตัว
+     *
+     * @param  array<string,mixed>  $legacy
+     * @return array<string,mixed>
+     */
+    private function statistics(array $legacy): array
+    {
+        $stats = (array) ($legacy['stats'] ?? []);
+
+        if ($stats === []) {
+            return [];
+        }
+
+        $ids = LeaveType::query()->pluck('id', 'name');
+        $flat = [];
+
+        foreach ($stats as $name => $row) {
+            $id = $ids[$name] ?? null;
+
+            if ($id === null || ! is_array($row)) {
+                continue;
+            }
+
+            $flat["stats.leave_type_{$id}.days_before"] = $row['before'] ?? '';
+            $flat["stats.leave_type_{$id}.days_current"] = $row['current'] ?? '';
+            $flat["stats.leave_type_{$id}.days_total"] = $row['total'] ?? '';
+            $flat["stats.leave_type_{$id}.times_before"] = $row['times_before'] ?? '';
+            $flat["stats.leave_type_{$id}.times_current"] = $row['times_current'] ?? '';
+            $flat["stats.leave_type_{$id}.times_total"] = $row['times_total'] ?? '';
+        }
+
+        return $flat;
     }
 
     /**

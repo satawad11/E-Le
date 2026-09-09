@@ -9,7 +9,8 @@
 - [x] LEAVE-AUDIT-04 (P1): ปฏิเสธใบลาข้ามรอบปีที่ด่านนโยบายร่วมทุกทางเข้า
 - [x] ผลการแก้: LeaveModuleAuditTest 11 passed / 41 assertions ไม่ข้าม regression เดิม — `docs/checkpoints/LEAVE-MODULE-FIX-2026-09-05.md`
 - [x] รันชุดเต็มหลังแก้พร้อมไฟล์ repository ครบ: 1,067 passed / 2 failed / 0 skipped; Pint 662 files และ frontend lint/typecheck/81 tests/build ผ่าน
-- [ ] Quality gate รวมยังติด ApiSurfaceContractTest (API นอกโมดูลลายังไม่มี UI call) และ RuntimeSecurityConfigurationTest (minishlink/web-push ยังเป็น ^11.0) ไม่ผ่อน/ข้าม tests
+- [x] แก้ Quality gate ทั้ง 2 ตามคำสั่งผู้ใช้: เชื่อม UI กับ API ที่ขาด, ตรวจ alias/action/middleware และ URL จาก composable; pin minishlink/web-push เป็น 11.0.0 — ตรวจซ้ำ 2026-09-07: backend 1,141 passed / 0 failed / 0 skipped (4,623 assertions); frontend 127 tests, lint/typecheck/build และ Pint 679 files ผ่าน — `docs/checkpoints/API-SURFACE-FIX-2026-09-07.md`
+- [x] ป้องกันปกปิดผิดฉบับเมื่อสลับ preview หรือไฟล์เก่าโหลดช้า; เพิ่ม regression 3 กรณี รวม apiSurfaceFlows 17 passed
 - [x] รันครบ: backend 1,042 passed / 4 failed / 8 skipped (3,842 assertions); 4 failed เป็น regression ใหม่ตรงข้อค้นพบ; Pint 660 files และ frontend lint/typecheck/81 tests/build ผ่าน ยังไม่แก้ application code
 
 ## SARABAN VISIBILITY AUDIT — 2026-09-05
@@ -392,6 +393,16 @@
 - [x] DOC-ENGINE-08 Security / Audit / Test — **PASS 2026-08-20** · สิทธิ์ document.*, audit ครบทุกการกระทำ, 33 tests เฉพาะ engine + regression 583 tests
 - [x] DOC-ENGINE-REPORT รายงานปิดเฟส — **PASS 2026-08-20** · `docs/checkpoints/DOC-ENGINE-REPORT.md`
 - [ ] วางตำแหน่งฟิลด์บนแบบฟอร์มราชการ 5 ฉบับที่นำเข้าแล้ว แล้วกดเผยแพร่ (ต้องทำโดยผู้ดูแลระบบผ่านหน้า PDF Designer)
+
+## DESIGNER — ยกระดับเป็น Visual PDF Template Designer (แผน: `docs/VISUAL-PDF-TEMPLATE-DESIGNER-PLAN.md`)
+
+- [x] DESIGNER-01 ระยะ 1 · ความถูกต้องของพิกัด — **PASS 2026-09-08** · pdf.js + ขนาดหน้าจริงรายหน้า, geometry endpoint, ตรวจขอบกระดาษฝั่งเซิร์ฟเวอร์ทั้งตอนบันทึกและเผยแพร่, snap/ไม้บรรทัด/ลูกศร/เลือกหลายฟิลด์/จัดแนว/กระจายระยะ/คัดลอก–วาง/undo-redo/เตือนก่อนออก · `docs/checkpoints/DESIGNER-PHASE-1-2-2026-09-08.md`
+- [x] DESIGNER-02 ระยะ 2 · เปิดคุณสมบัติที่หลังบ้านรองรับแล้ว — **PASS 2026-09-08** · font/overflow/format/static_text/underline/letter_spacing/rotate/checkbox options, `ValueFormatter` ทำให้ `format` มีผลจริง, QR_CODE วาดได้, ถอด BARCODE ออกจากตัวเลือก, แก้บั๊กช่องติ๊กที่ทำให้พิมพ์ไม่ออก
+- [x] DESIGNER-03 ระยะ 3 · ครบวงจรกับการตั้งค่าประเภทการลา — **PASS 2026-09-08** · `extra.<คีย์>` / `approval.step{N}.*` / `stats.leave_type_<id>.*` เข้าพจนานุกรมอัตโนมัติ, แก้ป้ายชื่อ–ปิดการใช้งานตัวแปรจากหน้าจอ, เงื่อนไขแสดง/ซ่อนฟิลด์, เปิดใช้รายประเภทการลาจากหน้าจอพร้อม audit, หน้าประเภทการลาแสดงสถานะแบบฟอร์ม · `docs/checkpoints/DESIGNER-PHASE-3-2026-09-08.md`
+  - บล็อกตารางซ้ำแบบทั่วไปไม่ได้ทำในระยะนี้โดยตั้งใจ — ใช้ฟิลด์สถิติรายช่องแทน ดูเหตุผลใน ADR-DESIGNER-20260908
+- [x] DESIGNER-04 ระยะ 4 · **PASS 2026-09-09** · ตรวจก่อนเผยแพร่ (error/warning), พรีวิวสามโหมดรวมใบลาจริงที่ผ่าน policy + audit, ใบสอบเทียบการพิมพ์พร้อมคำนวณค่าชดเชย, เทียบเวอร์ชัน, นำเข้า/ส่งออกชุดแบบฟอร์ม (.zip) · `docs/checkpoints/DESIGNER-PHASE-4-2026-09-09.md`
+- [~] DESIGNER-05 ระยะ 5 · เปิดใช้จริงทีละประเภท — **หยุดรอคำสั่ง** · ปิด LS-04 แล้ว (2026-09-09) เหลือ LS-08 ซึ่งเป็นการกู้ประวัติเวอร์ชันของข้อมูลจริง และการวางฟิลด์บนแบบฟอร์มราชการจริงซึ่งเป็นงานของผู้ดูแล · ดู `docs/checkpoints/DESIGNER-PHASE-5-STATUS-2026-09-09.md`
+- [ ] DESIGNER-06 (5.1) · โครงรองรับแบบฟอร์มโมดูลอื่น — `document_entity_types`, gateway กลาง, provider contract, ธงรายโมดูล · **ต้องแก้ schema จึงต้องขออนุมัติเปิด phase ก่อน**
 - [x] กรอกข้อมูลสถานศึกษาในหน้าตั้งค่าระบบ — **เสร็จ 2026-08-20 (ผู้ดูแลกรอกแล้ว)**
 
 ## SEC-HOTFIX-01 — Security hotfix (Saraban / runtime / dependency) ✅ เสร็จ 2026-08-22

@@ -30,7 +30,10 @@ class LeaveDocumentGateway
 
     public const SOURCE_TYPE_CANCELLATION = 'LeaveCancellation';
 
-    public function __construct(private readonly DocumentEngine $engine) {}
+    public function __construct(
+        private readonly DocumentEngine $engine,
+        private readonly EngineActivation $activation,
+    ) {}
 
     /** เวอร์ชันที่ใบลา pin ไว้เป็นแบบฟอร์ม PDF ที่พร้อมใช้งานจริงหรือไม่ */
     private function pinnedVersionUsesPdfForm(int $versionId): bool
@@ -42,21 +45,15 @@ class LeaveDocumentGateway
             && filled($version->pdf_file_path);
     }
 
-    /** ใบลาใบนี้ออกเอกสารด้วย engine ใหม่ได้หรือไม่ */
+    /**
+     * ใบลาใบนี้ออกเอกสารด้วย engine ใหม่ได้หรือไม่
+     *
+     * รายการประเภทที่เปิดใช้อ่านผ่าน `EngineActivation` ซึ่งยึดค่าที่ผู้ดูแลตั้งไว้ในฐานข้อมูล
+     * ก่อน แล้วจึงถอยไปใช้ค่าใน `.env` — ส่วนธง `document_engine.enabled` ยังเป็นสวิตช์ตัดตอน
+     */
     public function handles(Leave $leave): bool
     {
-        if (! config('document_engine.enabled', false)) {
-            return false;
-        }
-
-        $allowed = (array) config('document_engine.entities.leave_types', []);
-
-        if ($allowed === []) {
-            return false;
-        }
-
-        return in_array('*', $allowed, true)
-            || in_array((string) $leave->leave_type_id, array_map('strval', $allowed), true);
+        return $this->activation->handles((int) $leave->leave_type_id);
     }
 
     /**

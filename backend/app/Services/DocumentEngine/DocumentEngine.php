@@ -2,7 +2,6 @@
 
 namespace App\Services\DocumentEngine;
 
-use App\Models\Document\DocumentFieldMapping;
 use App\Models\Document\DocumentGeneratedFile;
 use App\Models\Document\DocumentPrintCalibration;
 use App\Models\DocumentTemplate;
@@ -165,27 +164,32 @@ class DocumentEngine
         return $result;
     }
 
-    /** ตัวอย่างเอกสารสำหรับหน้าออกแบบ — ใช้ค่าตัวอย่างของแต่ละฟิลด์ ไม่แตะข้อมูลจริง */
-    public function preview(DocumentTemplateVersion $version): string
+    /**
+     * ตัวอย่างเอกสารสำหรับหน้าออกแบบ — ไม่แตะข้อมูลจริงของผู้ใด
+     *
+     * `sample` = ข้อความไทยยาวตามกรณีจริง เพื่อตรวจว่าช่องพอหรือไม่
+     * `blank`  = วาดเฉพาะกรอบของช่อง เพื่อเทียบกับเส้นบนแบบฟอร์มต้นฉบับ
+     */
+    public function preview(DocumentTemplateVersion $version, string $mode = 'sample'): string
     {
-        $values = [];
-
-        foreach ($version->fieldMappings as $mapping) {
-            $values[$mapping->field_code] = $this->sampleValue($mapping);
+        if ($mode === 'blank') {
+            return $this->renderer->render($version, [], [], outline: true);
         }
 
-        return $this->renderer->render($version, $values);
+        return $this->renderer->render($version, app(PreviewSampleValues::class)->forMappings($version->fieldMappings));
     }
 
-    private function sampleValue(DocumentFieldMapping $mapping): mixed
+    /**
+     * ตัวอย่างเอกสารจากข้อมูลจริงหนึ่งฉบับ (อ่านอย่างเดียว)
+     *
+     * ใช้ตรวจของจริง เช่น ชื่อยาวจริง เหตุผลจริง และจำนวนขั้นอนุมัติจริง โดยไม่บันทึกไฟล์
+     * ผู้เรียกต้องตรวจสิทธิ์การเปิดใบลาฉบับนั้นมาก่อนแล้ว
+     *
+     * @param  array<string,mixed>  $context
+     */
+    public function previewWithData(DocumentTemplateVersion $version, string $dataSource, array $context): string
     {
-        return match ($mapping->field_type) {
-            'CHECKBOX' => true,
-            'NUMBER' => '3',
-            'DATE' => '1 ตุลาคม 2569',
-            'SIGNATURE', 'IMAGE' => '',
-            default => $mapping->field_code,
-        };
+        return $this->renderer->render($version, $this->providers->get($dataSource)->fields($context));
     }
 
     private function audit(string $action, DocumentGeneratedFile $file, ?User $actor): void

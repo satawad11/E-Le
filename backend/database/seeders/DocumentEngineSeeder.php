@@ -2,12 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\Document\DocumentFieldDefinition;
 use App\Models\Document\DocumentReportDefinition;
 use App\Services\DocumentEngine\DataProviderRegistry;
-use App\Services\DocumentEngine\Providers\LeaveRequestDataProvider;
+use App\Services\DocumentEngine\FieldDictionarySynchronizer;
 use App\Services\DocumentEngine\Providers\LeaveStatisticsDataProvider;
-use App\Services\LeaveDocumentFields;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
@@ -52,7 +50,9 @@ class DocumentEngineSeeder extends Seeder
 
         app(DataProviderRegistry::class)->sync();
 
-        $this->syncFieldDictionary();
+        // พจนานุกรมฟิลด์มีแหล่งความจริงเดียวที่ `FieldDictionarySynchronizer` — เรียกซ้ำได้เสมอ
+        app(FieldDictionarySynchronizer::class)->sync();
+        $this->seedBindingRules();
         /*
          * CLEANUP-02 — เมนูมีแหล่งความจริงเดียวคือ `MenuSeeder::TREE`
          *
@@ -101,60 +101,9 @@ class DocumentEngineSeeder extends Seeder
         );
     }
 
-    /** Field Dictionary มาจาก catalog ของ provider โดยตรง — ที่เดียวที่นิยามว่ามีฟิลด์อะไรบ้าง */
-    private function syncFieldDictionary(): void
+    /** ประเภทการลาที่ผูกแบบฟอร์มไว้แล้วต้องมีกติกา binding เสมอ (กรณีติดตั้งใหม่) */
+    private function seedBindingRules(): void
     {
-        $registry = app(DataProviderRegistry::class);
-
-        foreach ($registry->all() as $code => $class) {
-            $provider = app($class);
-
-            foreach ($provider->catalog() as $field) {
-                DocumentFieldDefinition::updateOrCreate(
-                    ['code' => $field['code']],
-                    [
-                        'label_th' => $field['label_th'],
-                        'group_th' => $field['group_th'] ?? null,
-                        'data_type' => $field['data_type'] ?? 'TEXT',
-                        'source' => $code,
-                        'module' => $provider->module(),
-                        'format' => $field['format'] ?? null,
-                        'is_active' => true,
-                    ],
-                );
-            }
-        }
-
-        $this->syncLegacyLeaveFields();
-    }
-
-    /**
-     * ตัวแปรชุดเดิมของแบบฟอร์มใบลา (`{{ $school_name }}` ฯลฯ)
-     *
-     * ยังใช้งานอยู่จริงในแม่แบบ HTML ที่ผู้ดูแลเขียนไว้ จึงต้องอยู่ใน Field Dictionary ด้วย
-     * มิฉะนั้นหน้าจอจะแสดงรายการตัวแปรไม่ครบกับที่ระบบรองรับจริง
-     */
-    private function syncLegacyLeaveFields(): void
-    {
-        if (! class_exists(LeaveDocumentFields::class)) {
-            return;
-        }
-
-        foreach (LeaveDocumentFields::catalog() as $field) {
-            DocumentFieldDefinition::updateOrCreate(
-                ['code' => $field['name']],
-                [
-                    'label_th' => $field['label'],
-                    'group_th' => $field['group'],
-                    'data_type' => 'TEXT',
-                    'source' => LeaveRequestDataProvider::CODE,
-                    'module' => 'leave',
-                    'is_active' => true,
-                ],
-            );
-        }
-
-        // ประเภทการลาที่ผูกแบบฟอร์มไว้แล้วต้องมีกติกา binding เสมอ (กรณีติดตั้งใหม่)
         if (! DB::table('document_binding_rules')->exists()) {
             $templates = DB::table('document_templates')->pluck('id', 'code');
 
