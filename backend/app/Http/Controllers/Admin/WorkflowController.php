@@ -7,6 +7,7 @@ use App\Models\ApprovalStep;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Workflow\ApprovalChainReadiness;
 use App\Services\Workflow\ApproverResolverService;
 use App\Services\Workflow\LeaveWorkflowProvisioner;
 use Illuminate\Database\Eloquent\Collection;
@@ -66,6 +67,66 @@ class WorkflowController extends Controller
     }
 
     /**
+     * ขั้นตอนที่จะนำไปคำนวณ — จากที่ส่งมา (ยังไม่บันทึก) หรือจากสายที่บันทึกไว้จริง
+     *
+     * สายยกเลิกที่ยังไม่ได้ตั้งค่าจะได้สายของใบลา ตามค่าเริ่มต้นของระบบ
+     *
+     * @return \Illuminate\Support\Collection<int,array<string,mixed>>
+     */
+    private function normalizedSteps(Request $request, string $chain)
+    {
+        if ($request->filled('steps')) {
+            return collect($request->steps)->values()->map(fn ($step, $index) => [
+                'step_order' => $index + 1,
+                'name' => trim($step['name'] ?? '') ?: 'ขั้นตอนที่ '.($index + 1),
+                'approver_type' => $step['approver_type'] ?? ApprovalStep::RESOLVER_ROLE,
+                'role_id' => ! empty($step['role_id']) ? (int) $step['role_id'] : null,
+                'specific_user_id' => ! empty($step['specific_user_id']) ? (int) $step['specific_user_id'] : null,
+                'permission_name' => $step['permission_name'] ?? null,
+            ]);
+        }
+
+        return ApprovalStep::stepsFor($chain)->map(fn ($step) => [
+            'step_order' => $step->step_order,
+            'name' => $step->name,
+            'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
+            'role_id' => $step->role_id,
+            'specific_user_id' => $step->specific_user_id,
+            'permission_name' => $step->permission_name,
+        ])->values();
+    }
+
+    /**
+     * ตรวจความพร้อมของข้อมูลบุคลากรทั้งองค์กรเทียบกับสายอนุมัตินี้
+     *
+     * `preview` ตอบได้ทีละคน ผู้ดูแลจึงไม่มีทางรู้ว่าทั้งองค์กรมีใครบ้างที่จะติด
+     * จนกว่าจะมีคนยื่นจริงแล้วใบค้าง — หน้านี้ตอบคำถามนั้นก่อนเปลี่ยนสาย
+     *
+     * ส่ง `steps` มาด้วยได้เพื่อตรวจสายที่กำลังแก้อยู่แต่ยังไม่บันทึก
+     */
+    public function readiness(Request $request, ApprovalChainReadiness $readiness)
+    {
+        $request->validate([
+            'steps' => 'nullable|array',
+            'steps.*.name' => 'nullable|string|max:255',
+            'steps.*.approver_type' => 'nullable|string|in:HR_OFFICER,REQUESTER_SUPERVISOR,DEPARTMENT_HEAD,DIVISION_DIRECTOR,DIRECTOR,ROLE,SPECIFIC_USER',
+            'steps.*.role_id' => 'nullable|integer|exists:roles,id',
+            'steps.*.specific_user_id' => 'nullable|integer|exists:users,id',
+        ]);
+
+        $chain = $this->chainOf($request);
+        $steps = $this->normalizedSteps($request, $chain);
+
+        return response()->json([
+            'chain' => $chain,
+            'inherits_leave_chain' => $chain === ApprovalStep::CHAIN_CANCELLATION
+                && ! $request->filled('steps')
+                && ! ApprovalStep::cancellationChainIsConfigured(),
+            ...$readiness->inspect($steps),
+        ]);
+    }
+
+    /**
      * ดูตัวอย่างว่า "ใครคือผู้อนุมัติจริง" ของแต่ละขั้น เมื่อผู้ยื่นเป็นคนนี้
      *
      * ผู้ดูแลตั้งค่าสายอนุมัติแล้วไม่มีทางรู้ว่าระบบจะไปหยิบใครมาจริง ๆ จนกว่าจะมี
@@ -89,25 +150,7 @@ class WorkflowController extends Controller
         $chain = $this->chainOf($request);
         $requester = User::with('profile')->findOrFail($request->integer('requester_id'));
         $resolver = app(ApproverResolverService::class);
-
-        // ไม่ส่ง steps มา = ดูตัวอย่างจากสายอนุมัติที่บันทึกไว้จริง (สายยกเลิกที่ยังไม่ตั้งค่าจะได้สายของใบลา)
-        $steps = $request->filled('steps')
-            ? collect($request->steps)->values()->map(fn ($step, $index) => [
-                'step_order' => $index + 1,
-                'name' => trim($step['name'] ?? '') ?: 'ขั้นตอนที่ '.($index + 1),
-                'approver_type' => $step['approver_type'] ?? ApprovalStep::RESOLVER_ROLE,
-                'role_id' => ! empty($step['role_id']) ? (int) $step['role_id'] : null,
-                'specific_user_id' => ! empty($step['specific_user_id']) ? (int) $step['specific_user_id'] : null,
-                'permission_name' => $step['permission_name'] ?? null,
-            ])
-            : ApprovalStep::stepsFor($chain)->map(fn ($step) => [
-                'step_order' => $step->step_order,
-                'name' => $step->name,
-                'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
-                'role_id' => $step->role_id,
-                'specific_user_id' => $step->specific_user_id,
-                'permission_name' => $step->permission_name,
-            ]);
+        $steps = $this->normalizedSteps($request, $chain);
 
         $resolved = $steps->map(function (array $step) use ($resolver, $requester) {
             $eligibleIds = $resolver->resolveEligibleApproverIds($requester, $step);

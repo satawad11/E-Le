@@ -297,6 +297,13 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/admin/workflow-steps', [WorkflowController::class, 'store']);
         // ทดลองว่าใครคือผู้อนุมัติจริงของแต่ละขั้น ก่อนบันทึกการตั้งค่า
         Route::post('/admin/workflow-steps/preview', [WorkflowController::class, 'preview']);
+        /*
+         * ตรวจความพร้อมของข้อมูลบุคลากรทั้งองค์กรเทียบกับสายอนุมัติ
+         *
+         * POST เพราะรับสายที่ยังไม่บันทึกมาใน body ได้ แต่เป็นการอ่านอย่างเดียว
+         * ไม่แก้ข้อมูลใดและไม่สร้างใบลา
+         */
+        Route::post('/admin/workflow-steps/readiness', [WorkflowController::class, 'readiness']);
     });
 
     // Admin: Leave Types CRUD

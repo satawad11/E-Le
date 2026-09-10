@@ -77,6 +77,68 @@
     <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <!-- Info sidebar -->
       <div class="lg:col-span-1 space-y-4">
+        <!--
+          ตรวจความพร้อมของข้อมูลก่อนใบลาค้าง
+
+          ตัวหาผู้อนุมัติเป็น fail-closed — หาไม่เจอคือไม่มีใครมีสิทธิ์ ผู้ใช้จึงเห็นแค่
+          "ใบลาค้าง" โดยไม่มีข้อความบอกสาเหตุ กล่องนี้เดินตัวหาผู้อนุมัติตัวเดียวกัน
+          ให้ครบทุกคนในองค์กร แล้วบอกล่วงหน้าว่าใครจะติดและเพราะอะไร
+        -->
+        <div class="rounded-2xl border p-5 text-sm" :class="readinessTone.box">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <h3 class="font-bold flex items-center gap-2" :class="readinessTone.title">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              ความพร้อมของข้อมูล
+            </h3>
+            <button
+              @click="runReadiness"
+              :disabled="readiness.loading"
+              class="text-xs font-semibold underline underline-offset-2 disabled:opacity-50"
+              :class="readinessTone.title"
+            >
+              {{ readiness.loading ? 'กำลังตรวจ...' : 'ตรวจอีกครั้ง' }}
+            </button>
+          </div>
+
+          <p v-if="readiness.error" class="text-gray-600">{{ readiness.error }}</p>
+
+          <template v-else-if="readiness.data">
+            <p class="font-semibold mb-3">{{ readinessSummary }}</p>
+
+            <!-- ขั้นที่ตั้งค่าไว้แล้วใช้ไม่ได้จริง หรือมีคนติด -->
+            <ul v-if="readinessStepIssues.length" class="space-y-2 mb-3">
+              <li v-for="issue in readinessStepIssues" :key="issue.step_order" class="rounded-xl bg-white/70 px-3 py-2">
+                <p class="font-semibold text-gray-800">ขั้นที่ {{ issue.step_order }} · {{ issue.name }}</p>
+                <p v-if="issue.config_problem" class="text-xs text-gray-600 mt-0.5">{{ issue.config_problem }}</p>
+                <p v-if="issue.no_approver_count" class="text-xs text-gray-600 mt-0.5">
+                  ไม่มีผู้อนุมัติสำหรับผู้ยื่น {{ issue.no_approver_count }} คน
+                  <span v-if="issue.no_approver_sample.length" class="text-gray-500">
+                    ({{ issue.no_approver_sample.map(u => u.name).join(', ') }})
+                  </span>
+                </p>
+                <p v-if="issue.self_only_count" class="text-xs text-gray-600 mt-0.5">
+                  ผู้อนุมัติที่หาได้คือผู้ยื่นเอง {{ issue.self_only_count }} คน — อนุมัติใบของตนเองไม่ได้
+                  <span v-if="issue.self_only_sample.length" class="text-gray-500">
+                    ({{ issue.self_only_sample.map(u => u.name).join(', ') }})
+                  </span>
+                </p>
+              </li>
+            </ul>
+
+            <!-- ข้อมูลบุคลากรที่ยังไม่ครบ -->
+            <ul v-if="readinessDataGaps.length" class="space-y-1.5 text-xs">
+              <li v-for="gap in readinessDataGaps" :key="gap.key" class="flex gap-2">
+                <span class="text-gray-400">•</span>
+                <span class="text-gray-700">{{ gap.text }}</span>
+              </li>
+            </ul>
+          </template>
+
+          <p v-else-if="!readiness.loading" class="text-gray-600">ยังไม่ได้ตรวจ</p>
+        </div>
+
         <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-amber-900 text-sm">
           <h3 class="font-bold flex items-center gap-2 text-amber-800 mb-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -538,6 +600,87 @@ const runPreview = async () => {
   }
 }
 
+/*
+ * ตรวจความพร้อมของข้อมูลทั้งองค์กรเทียบกับสายที่กำลังแก้อยู่บนหน้าจอ
+ *
+ * ส่งขั้นตอนที่ยังไม่บันทึกไปด้วยเสมอ ผู้ดูแลจึงเห็นผลของสิ่งที่กำลังจะบันทึก
+ * ไม่ใช่ผลของสายเดิม · เป็นการอ่านอย่างเดียว เรียกซ้ำได้ไม่มีผลข้างเคียง
+ */
+const readiness = ref({ loading: false, data: null, error: '' })
+
+const runReadiness = async () => {
+  readiness.value.loading = true
+  readiness.value.error = ''
+  try {
+    const res = await api.post('/admin/workflow-steps/readiness', {
+      chain: activeChain.value,
+      steps: steps.value.map(s => ({
+        name: (s.name || '').trim(),
+        approver_type: s.approver_type || 'ROLE',
+        role_id: s.role_id ? Number(s.role_id) : null,
+        specific_user_id: s.specific_user_id ? Number(s.specific_user_id) : null,
+      })),
+    })
+    readiness.value.data = res.data
+  } catch (error) {
+    readiness.value.data = null
+    readiness.value.error = error.response?.data?.message || 'ตรวจความพร้อมของข้อมูลไม่สำเร็จ'
+  } finally {
+    readiness.value.loading = false
+  }
+}
+
+const readinessStepIssues = computed(() =>
+  (readiness.value.data?.steps || []).filter(
+    s => s.config_problem || s.no_approver_count > 0 || s.self_only_count > 0,
+  ),
+)
+
+const readinessSummary = computed(() => {
+  const data = readiness.value.data
+  if (!data) return ''
+  if (!data.steps.length) return 'ยังไม่มีขั้นตอนให้ตรวจ'
+
+  return data.blocked_users > 0
+    ? `ผู้ยื่น ${data.blocked_users} จาก ${data.checked_users} คนจะติดอยู่ที่สายนี้`
+    : `ตรวจผู้ใช้ ${data.checked_users} คน ไม่พบผู้ที่จะติดในสายนี้`
+})
+
+const readinessDataGaps = computed(() => {
+  const gaps = readiness.value.data?.data_gaps
+  if (!gaps) return []
+
+  const list = []
+  const names = (g) => (g.sample.length ? ` (${g.sample.map(u => u.name).join(', ')})` : '')
+
+  if (gaps.without_org_unit.count) {
+    list.push({ key: 'org', text: `ยังไม่มีสังกัด ${gaps.without_org_unit.count} คน${names(gaps.without_org_unit)}` })
+  }
+  if (gaps.without_personnel_type.count) {
+    list.push({
+      key: 'ptype',
+      text: `ยังไม่ระบุประเภทบุคลากร ${gaps.without_personnel_type.count} คน${names(gaps.without_personnel_type)}`,
+    })
+  }
+  if (gaps.units_without_manager.count) {
+    const units = gaps.units_without_manager.sample.map(u => `${u.name} (${u.users} คน)`).join(', ')
+    list.push({ key: 'unit', text: `หน่วยงานที่ยังไม่มีหัวหน้า ${gaps.units_without_manager.count} หน่วย: ${units}` })
+  }
+
+  return list
+})
+
+const readinessTone = computed(() => {
+  const data = readiness.value.data
+  if (!data || readiness.value.error) {
+    return { box: 'bg-gray-50 border-gray-200', title: 'text-gray-700' }
+  }
+
+  return data.blocked_users > 0 || readinessStepIssues.value.length
+    ? { box: 'bg-red-50 border-red-200 text-red-900', title: 'text-red-800' }
+    : { box: 'bg-emerald-50 border-emerald-200 text-emerald-900', title: 'text-emerald-800' }
+})
+
 const roleLabel = (name) => {
   const map = {
     'ผู้ดูแลระบบสูงสุด': 'ผู้ดูแลระบบสูงสุด',
@@ -614,6 +757,9 @@ const fetchWorkflow = async () => {
     reindexSteps()
     initialStepsSnapshot.value = serializeSteps(steps.value)
     conflictModal.value.show = false
+
+    // ตรวจความพร้อมทันทีที่เห็นสาย ผู้ดูแลจึงรู้ปัญหาก่อนลงมือแก้ ไม่ใช่หลังใบลาค้าง
+    runReadiness()
   } catch (e) {
     console.error(e)
     alertStore.error('เกิดข้อผิดพลาดในการดึงข้อมูลลำดับการอนุมัติ')
@@ -754,6 +900,9 @@ const saveWorkflow = async () => {
 
     reindexSteps()
     initialStepsSnapshot.value = serializeSteps(steps.value)
+
+    // สายที่เพิ่งบันทึกคือสายที่ใบลาใบต่อไปจะเดินจริง จึงต้องตรวจซ้ำด้วยของจริง
+    runReadiness()
   } catch (e) {
     console.error(e)
     if (e.response?.status === 409) {
