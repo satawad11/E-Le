@@ -35,6 +35,17 @@ class ValueFormatter
         'date_be' => 'วัน/เดือน/ปี พ.ศ. (01/10/2569)',
         'date_ce' => 'วัน/เดือน/ปี ค.ศ. (01/10/2026)',
         'iso_date' => 'ปี-เดือน-วัน (2026-10-01)',
+        /*
+         * แยกส่วนของวันที่ — แบบฟอร์มราชการส่วนใหญ่มีช่อง "วันที่ ___ เดือน ___ พ.ศ. ___"
+         * แยกกันคนละช่อง จึงต้องวางฟิลด์วันที่เดียวกันสามครั้งแล้วเลือกส่วนที่ต้องการ
+         */
+        'thai_day' => 'เฉพาะวันที่ (1)',
+        'thai_month' => 'เฉพาะเดือน ชื่อเต็ม (ตุลาคม)',
+        'thai_month_short' => 'เฉพาะเดือน ชื่อย่อ (ต.ค.)',
+        'thai_month_number' => 'เฉพาะเดือน เป็นตัวเลข (10)',
+        'thai_year' => 'เฉพาะปี พ.ศ. (2569)',
+        'thai_year_short' => 'เฉพาะปี พ.ศ. สองหลัก (69)',
+        'thai_year_ce' => 'เฉพาะปี ค.ศ. (2026)',
         'number' => 'ตัวเลขมีเครื่องหมายคั่นหลักพัน (1,234)',
         'number_1' => 'ตัวเลขทศนิยม 1 ตำแหน่ง (1,234.5)',
         'number_2' => 'ตัวเลขทศนิยม 2 ตำแหน่ง (1,234.50)',
@@ -54,7 +65,9 @@ class ValueFormatter
         }
 
         return match ($format) {
-            'thai_date', 'thai_date_short', 'date_be', 'date_ce', 'iso_date' => $this->date($text, $format),
+            'thai_date', 'thai_date_short', 'date_be', 'date_ce', 'iso_date',
+            'thai_day', 'thai_month', 'thai_month_short', 'thai_month_number',
+            'thai_year', 'thai_year_short', 'thai_year_ce' => $this->date($text, $format),
             'number' => $this->number($text, 0),
             'number_1' => $this->number($text, 1),
             'number_2' => $this->number($text, 2),
@@ -73,9 +86,9 @@ class ValueFormatter
      */
     private function date(string $text, string $format): string
     {
-        try {
-            $date = Carbon::parse($text);
-        } catch (\Throwable) {
+        $date = $this->parse($text);
+
+        if ($date === null) {
             return $text;
         }
 
@@ -86,8 +99,53 @@ class ValueFormatter
             'thai_date_short' => sprintf('%d %s %d', $date->day, self::MONTHS[$date->month][1], $buddhistYear),
             'date_be' => sprintf('%02d/%02d/%d', $date->day, $date->month, $buddhistYear),
             'date_ce' => $date->format('d/m/Y'),
+            'thai_day' => (string) $date->day,
+            'thai_month' => self::MONTHS[$date->month][0],
+            'thai_month_short' => self::MONTHS[$date->month][1],
+            'thai_month_number' => (string) $date->month,
+            'thai_year' => (string) $buddhistYear,
+            'thai_year_short' => substr((string) $buddhistYear, -2),
+            'thai_year_ce' => (string) $date->year,
             default => $date->format('Y-m-d'),
         };
+    }
+
+    /**
+     * อ่านค่าให้เป็นวันที่ — รับทั้งวันที่มาตรฐานและวันที่ไทยที่ระบบเดิมส่งมาเป็นข้อความ
+     *
+     * ฟิลด์วันที่หลายตัวของระบบเดิมถูกจัดรูปเป็นข้อความไทยมาก่อนถึงตรงนี้แล้ว
+     * (เช่น `leave.start_date` = "1 ตุลาคม 2569") ถ้าอ่านไม่ออก การแยก "เฉพาะวันที่"
+     * จะพิมพ์วันที่ทั้งบรรทัดลงในช่องเล็ก ๆ ที่เตรียมไว้สำหรับตัวเลขวันเดียว
+     *
+     * คืน null เมื่ออ่านไม่ออกจริง ๆ เพื่อให้ผู้เรียกคืนข้อความเดิมไป ไม่ใช่พิมพ์ค่าเพี้ยน
+     */
+    private function parse(string $text): ?Carbon
+    {
+        $text = trim($text);
+
+        // วันที่ไทย: "1 ตุลาคม 2569", "1 ต.ค. 2569" (ปีเป็น พ.ศ. เสมอในรูปแบบนี้)
+        foreach (self::MONTHS as $number => $names) {
+            foreach ($names as $name) {
+                if (preg_match('/^(\d{1,2})\s+'.preg_quote($name, '/').'\s*(\d{4})$/u', $text, $matches) !== 1) {
+                    continue;
+                }
+
+                return Carbon::create((int) $matches[2] - 543, $number, (int) $matches[1]);
+            }
+        }
+
+        // วัน/เดือน/ปี — ปีสี่หลักที่มากกว่า 2400 คือ พ.ศ.
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $text, $matches) === 1) {
+            $year = (int) $matches[3];
+
+            return Carbon::create($year > 2400 ? $year - 543 : $year, (int) $matches[2], (int) $matches[1]);
+        }
+
+        try {
+            return Carbon::parse($text);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function number(string $text, int $decimals): string

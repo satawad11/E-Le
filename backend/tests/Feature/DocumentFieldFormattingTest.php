@@ -88,6 +88,43 @@ class DocumentFieldFormattingTest extends TestCase
         $this->assertSame('01/10/2026', $formatter->format('2026-10-01', 'date_ce'));
     }
 
+    /**
+     * แบบฟอร์มราชการมีช่อง "วันที่ ___ เดือน ___ พ.ศ. ___" แยกกันคนละช่อง
+     *
+     * ผู้ดูแลจึงต้องวางฟิลด์วันที่เดียวกันสามครั้งแล้วเลือกว่าช่องนี้เอาส่วนไหน
+     */
+    public function test_a_date_can_be_split_into_day_month_and_buddhist_year(): void
+    {
+        $formatter = app(ValueFormatter::class);
+
+        $this->assertSame('1', $formatter->format('2026-10-01', 'thai_day'));
+        $this->assertSame('ตุลาคม', $formatter->format('2026-10-01', 'thai_month'));
+        $this->assertSame('ต.ค.', $formatter->format('2026-10-01', 'thai_month_short'));
+        $this->assertSame('10', $formatter->format('2026-10-01', 'thai_month_number'));
+        $this->assertSame('2569', $formatter->format('2026-10-01', 'thai_year'));
+        $this->assertSame('69', $formatter->format('2026-10-01', 'thai_year_short'));
+        $this->assertSame('2026', $formatter->format('2026-10-01', 'thai_year_ce'));
+    }
+
+    /**
+     * ฟิลด์วันที่ของระบบเดิมส่งมาเป็นข้อความไทยอยู่แล้ว การแยกส่วนต้องอ่านค่านั้นออกด้วย
+     *
+     * ถ้าอ่านไม่ออก ช่อง "วันที่" เล็ก ๆ จะได้ข้อความวันที่เต็มบรรทัดไปแทนตัวเลขวันเดียว
+     */
+    public function test_splitting_works_on_dates_that_already_arrive_as_thai_text(): void
+    {
+        $formatter = app(ValueFormatter::class);
+
+        foreach (['1 ตุลาคม 2569', '1 ต.ค. 2569', '01/10/2569'] as $value) {
+            $this->assertSame('1', $formatter->format($value, 'thai_day'), $value);
+            $this->assertSame('ตุลาคม', $formatter->format($value, 'thai_month'), $value);
+            $this->assertSame('2569', $formatter->format($value, 'thai_year'), $value);
+        }
+
+        // ค่าที่ไม่ใช่วันที่จริง ๆ ต้องคืนตามเดิม ไม่ใช่เดาเป็นวันที่
+        $this->assertSame('ไม่ระบุ', $formatter->format('ไม่ระบุ', 'thai_day'));
+    }
+
     public function test_numbers_and_thai_digits_follow_the_chosen_format(): void
     {
         $formatter = app(ValueFormatter::class);
