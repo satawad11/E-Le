@@ -402,7 +402,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useLeaveStore } from '../stores/leave'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -481,7 +481,7 @@ const policyRules = computed(() => {
   if (policy.attachment_required_after_days !== null && policy.attachment_required_after_days !== undefined) {
     const threshold = Number(policy.attachment_required_after_days)
     rules.push({
-      text: `ต้องแนบ${policy.required_evidence_type || 'หลักฐานประกอบการลา'}เมื่อลาตั้งแต่ ${threshold} วันขึ้นไป`,
+      text: `ต้องแนบ${evidenceLabel.value}เมื่อลาตั้งแต่ ${threshold} วันขึ้นไป`,
       active: days >= threshold && !selectedFile.value,
     })
   }
@@ -518,17 +518,25 @@ const evidenceRequired = computed(() => {
   return threshold !== null && threshold !== undefined && Number(form.total_days || 0) >= Number(threshold)
 })
 
-const evidenceLabel = computed(() => selectedBalance.value?.policy?.required_evidence_type || 'ต้องแนบตามหลักเกณฑ์')
-
 /*
- * เปลี่ยนไปประเภทที่ลาครึ่งวันไม่ได้ ต้องดึงกลับเป็นเต็มวันให้เอง
- * มิฉะนั้นค่าที่เลือกไว้ก่อนหน้าจะติดไปกับคำขอและถูกปฏิเสธตอนส่ง
+ * ชื่อหลักฐานที่ผู้ใช้อ่านรู้เรื่อง
+ *
+ * `required_evidence_type` เก็บเป็นรหัสภาษาอังกฤษ (เช่น `medical_certificate`)
+ * การพิมพ์ค่าดิบลงประโยคไทยตรง ๆ ทำให้ได้ข้อความอย่าง "ต้องแนบmedical_certificateเมื่อ..."
+ * รหัสที่ไม่รู้จักจะถูกแสดงโดยเว้นวรรครอบไว้ ยังอ่านออกและไม่ต้องแก้โค้ดเมื่อมีรหัสใหม่
  */
-watch(allowsHalfDay, (allowed) => {
-  if (! allowed && form.leave_period !== 'full_day') {
-    form.leave_period = 'full_day'
-    onPeriodChange()
-  }
+const EVIDENCE_LABELS = {
+  medical_certificate: 'ใบรับรองแพทย์',
+  supporting_document: 'หลักฐานประกอบการลา',
+  official_document: 'หนังสือราชการ',
+}
+
+const evidenceLabel = computed(() => {
+  const type = selectedBalance.value?.policy?.required_evidence_type
+
+  if (! type) return 'หลักฐานประกอบการลา'
+
+  return EVIDENCE_LABELS[type] || ` ${type} `
 })
 
 // จำนวนวันของคำขอนี้ที่จะตกเป็นวันไม่ได้รับเงินเดือน (เกินเพดาน max_days_with_pay)
@@ -653,7 +661,6 @@ const loadDraftIfRequested = async () => {
 }
 
 
-import { watch } from 'vue'
 watch(sigType, (val) => {
   if (val === 'draw') {
     setTimeout(setupCanvas, 50)
@@ -745,6 +752,21 @@ const onPeriodChange = () => {
   }
   calcDays()
 }
+
+/*
+ * เปลี่ยนไปประเภทที่ลาครึ่งวันไม่ได้ ต้องดึงค่ากลับเป็นเต็มวันให้เอง
+ * มิฉะนั้นค่าที่เลือกไว้ก่อนหน้าจะติดไปกับคำขอและถูกปฏิเสธตอนส่ง
+ *
+ * ต้องประกาศ watcher ตรงนี้ ไม่ใช่ตอนนิยาม `allowsHalfDay` — `watch` อ่านค่าทันทีที่ลงทะเบียน
+ * เพื่อเก็บ dependency ถ้าลงทะเบียนก่อนบรรทัดที่สร้าง `form` จะอ่าน `form` ก่อนถูกสร้าง
+ * (temporal dead zone) แล้วทั้งหน้าจะว่างเปล่าโดยไม่มีข้อความบอกสาเหตุบนหน้าจอ
+ */
+watch(allowsHalfDay, (allowed) => {
+  if (! allowed && form.leave_period !== 'full_day') {
+    form.leave_period = 'full_day'
+    onPeriodChange()
+  }
+})
 
 const calcDays = () => {
   if (!form.start_date || !form.end_date) { calculatedDays.value = null; return }
