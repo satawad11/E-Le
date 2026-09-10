@@ -3,23 +3,44 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\OrgUnit;
 use App\Models\WorkCalendarException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
+/**
+ * วันหยุด/วันทำงานชดเชยที่ผู้ดูแลประกาศเอง
+ *
+ * ผูกกับผังองค์กรจริง (`org_units`) ชุดเดียวกับที่ระบบใช้เดินสายอนุมัติและตัดสิน
+ * ขอบเขตการมองเห็น · ประกาศที่หน่วยงานแม่มีผลถึงหน่วยงานลูกด้วย และประกาศ
+ * ที่หน่วยงานเจาะจงกว่าชนะเสมอ (ดู `WorkingCalendar::calendarException`)
+ */
 class WorkCalendarController extends Controller
 {
     public function index(Request $request)
     {
         $validated = $request->validate([
             'year' => ['nullable', 'integer', 'between:2000,2200'],
-            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'org_unit_id' => ['nullable', 'integer', 'exists:org_units,id'],
         ]);
 
-        return WorkCalendarException::with('department:id,name')
+        return WorkCalendarException::with('orgUnit:id,name')
             ->when($validated['year'] ?? null, fn ($query, $year) => $query->whereYear('date', $year))
-            ->when(array_key_exists('department_id', $validated), fn ($query) => $query->where('department_id', $validated['department_id']))
+            ->when(
+                array_key_exists('org_unit_id', $validated),
+                fn ($query) => $query->where('org_unit_id', $validated['org_unit_id'])
+            )
             ->orderBy('date')->paginate(100);
+    }
+
+    /** หน่วยงานที่เลือกเป็นขอบเขตของประกาศได้ — เรียงตามลำดับชั้นให้ผู้ดูแลอ่านออก */
+    public function orgUnits()
+    {
+        return response()->json(
+            OrgUnit::query()->where('is_active', true)
+                ->orderBy('parent_id')->orderBy('name')
+                ->get(['id', 'name', 'parent_id', 'type'])
+        );
     }
 
     public function store(Request $request)
@@ -27,9 +48,9 @@ class WorkCalendarController extends Controller
         $data = $this->validated($request);
 
         return response()->json(WorkCalendarException::updateOrCreate(
-            ['date' => $data['date'], 'department_id' => $data['department_id'] ?? null],
+            ['date' => $data['date'], 'org_unit_id' => $data['org_unit_id'] ?? null],
             $data
-        )->load('department:id,name'), 201);
+        )->load('orgUnit:id,name'), 201);
     }
 
     public function update(Request $request, WorkCalendarException $calendarException)
@@ -37,7 +58,7 @@ class WorkCalendarController extends Controller
         $data = $this->validated($request, true);
         $calendarException->update($data);
 
-        return $calendarException->fresh()->load('department:id,name');
+        return $calendarException->fresh()->load('orgUnit:id,name');
     }
 
     public function destroy(WorkCalendarException $calendarException)
@@ -53,7 +74,7 @@ class WorkCalendarController extends Controller
 
         return $request->validate([
             'date' => [$sometimes, 'date'],
-            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'org_unit_id' => ['nullable', 'integer', 'exists:org_units,id'],
             'day_type' => [$sometimes, Rule::in(['holiday', 'working_day'])],
             'name' => [$sometimes, 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],

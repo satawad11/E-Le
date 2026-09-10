@@ -98,9 +98,36 @@ class SystemSettingService
             return $changes;
         });
 
+        $this->syncOrganisationRootName($values);
+
         Cache::forget('app_settings');
 
         return $changes;
+    }
+
+    /**
+     * ยอดผังองค์กรต้องชื่อเดียวกับสถานศึกษา
+     *
+     * `ORG-ROOT` ถูกสร้างตอน migration โดยตั้งชื่อจาก `config('app.name')` เพราะตอนนั้น
+     * ยังไม่มีใครกรอกชื่อสถานศึกษา ผลคือยอดผังชื่อ "Laravel"/"E-La" ตามชื่อระบบ
+     * ซึ่งไหลไปโผล่ในรายงานที่จัดกลุ่มตามผัง และในช่อง "สังกัด" ของเอกสารได้
+     *
+     * ผูกไว้กับการบันทึกการตั้งค่า ผู้ดูแลจึงไม่ต้องรู้ว่ามีผังซ่อนอยู่ข้างหลัง
+     *
+     * @param  array<string,mixed>  $values
+     */
+    private function syncOrganisationRootName(array $values): void
+    {
+        $name = trim((string) ($values['institution_name'] ?? $values['school_name'] ?? ''));
+
+        if ($name === '' || ! DB::getSchemaBuilder()->hasTable('org_units')) {
+            return;
+        }
+
+        DB::table('org_units')->where('code', 'ORG-ROOT')->update([
+            'name' => $name,
+            'updated_at' => now(),
+        ]);
     }
 
     public function clearSecret(string $key, ?User $actor, ?string $ipAddress, ?string $userAgent): void

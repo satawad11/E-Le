@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-#[Fillable(['name', 'description', 'head_of_department_id', 'is_active'])]
+#[Fillable(['name', 'description', 'is_active'])]
 class Department extends Model
 {
     protected $casts = [
@@ -44,10 +44,12 @@ class Department extends Model
         return $this->hasMany(User::class);
     }
 
-    public function headOfDepartment()
-    {
-        return $this->belongsTo(User::class, 'head_of_department_id');
-    }
+    /*
+     * ไม่มี `headOfDepartment` แล้ว — "ใครเป็นหัวหน้าหน่วยงานไหน" เป็นการมอบหมาย
+     * ที่มีวันมีผลใน `org_unit_managers` ซึ่งเป็นสิ่งที่ตัวหาผู้อนุมัติอ่านจริง
+     * ฟิลด์เดิม `head_of_department_id` ตั้งค่าได้แต่ไม่มีตรรกะใดอ่าน จึงถูกถอดออก
+     * (ดู migration `2026_09_20_120000_move_department_heads_into_org_unit_managers`)
+     */
 
     public function orgUnits()
     {

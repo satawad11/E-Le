@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\LeaveDocumentFields;
 use App\Services\LeaveVisibility;
 use App\Services\OrgScopeResolver;
+use App\Services\SystemSettingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -161,6 +162,22 @@ class OrgUnitSingleSourceTest extends TestCase
 
         $this->assertContains($insider->id, $ownerIds);
         $this->assertNotContains($outsider->id, $ownerIds, 'ผู้ที่มีหน่วยงานแล้วต้องไม่รั่วผ่านแผนกเดิม');
+    }
+
+    public function test_บันทึกชื่อสถานศึกษาแล้วยอดผังเปลี่ยนตาม(): void
+    {
+        /*
+         * ORG-ROOT ถูกสร้างพร้อมชื่อจาก `app.name` ("Laravel" ในชุดทดสอบ) ซึ่งไหลไป
+         * โผล่ในรายงานที่จัดกลุ่มตามผังได้ · ผู้ดูแลไม่ควรต้องรู้ว่ามีผังซ่อนอยู่ข้างหลัง
+         */
+        $this->assertSame(config('app.name'), DB::table('org_units')->where('code', 'ORG-ROOT')->value('name'));
+
+        app(SystemSettingService::class)->updateMany(['institution_name' => 'วิทยาลัยเทคนิคทดสอบ']);
+
+        $this->assertSame(
+            'วิทยาลัยเทคนิคทดสอบ',
+            DB::table('org_units')->where('code', 'ORG-ROOT')->value('name'),
+        );
     }
 
     public function test_ผู้ใช้เก่าที่ยังไม่มีหน่วยงานยังมองเห็นได้ผ่านแผนกเดิม(): void

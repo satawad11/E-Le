@@ -10,7 +10,7 @@ class DepartmentController extends Controller
 {
     public function index()
     {
-        $departments = Department::with('headOfDepartment.profile')->get();
+        $departments = Department::query()->get();
 
         return response()->json($departments);
     }
@@ -36,12 +36,10 @@ class DepartmentController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'head_of_department_id' => 'nullable|exists:users,id',
             'is_active' => 'boolean',
         ]);
 
         $department = Department::create($validated);
-        $department->load('headOfDepartment');
 
         return response()->json([
             'message' => 'สร้างหน่วยงานเรียบร้อยแล้ว',
@@ -53,12 +51,10 @@ class DepartmentController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'head_of_department_id' => 'nullable|exists:users,id',
             'is_active' => 'boolean',
         ]);
 
         $department->update($validated);
-        $department->load('headOfDepartment');
 
         return response()->json([
             'message' => 'แก้ไขหน่วยงานเรียบร้อยแล้ว',

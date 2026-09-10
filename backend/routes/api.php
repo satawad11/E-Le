@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DocumentEngineController;
 use App\Http\Controllers\Admin\DocumentReportController;
 use App\Http\Controllers\Admin\LeaveTypeController;
 use App\Http\Controllers\Admin\ModuleController;
+use App\Http\Controllers\Admin\OrgUnitManagerController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WorkflowController;
@@ -289,6 +290,18 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::put('/admin/departments/{department}', [DepartmentController::class, 'update']);
         Route::delete('/admin/departments/{department}', [DepartmentController::class, 'destroy']);
         Route::put('/admin/departments/{department}/toggle-status', [DepartmentController::class, 'toggleStatus']);
+
+        /*
+         * หัวหน้าหน่วยงาน — ข้อมูลที่ตัวหาผู้อนุมัติใช้จริง
+         *
+         * `org_unit_managers` มีมาตั้งแต่ LEGACY-04 แต่ไม่เคยมีทางกรอกจากหน้าจอ
+         * ตารางจึงว่างเปล่าทุกการติดตั้ง และขั้น "หัวหน้าหน่วยงานของผู้ยื่น"
+         * ตกไปใช้ทางถอยตามชื่อบทบาทเสมอ
+         */
+        Route::get('/admin/org-unit-managers', [OrgUnitManagerController::class, 'index']);
+        Route::get('/admin/org-unit-managers/units', [OrgUnitManagerController::class, 'units']);
+        Route::post('/admin/org-unit-managers', [OrgUnitManagerController::class, 'store']);
+        Route::put('/admin/org-unit-managers/{id}/end', [OrgUnitManagerController::class, 'end']);
     });
 
     // Admin: Workflow Steps

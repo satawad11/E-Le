@@ -639,6 +639,14 @@ class MenuSeeder extends Seeder
                     'permissions' => ['manage_departments'],
                 ],
                 [
+                    'code' => 'settings.org_unit_managers',
+                    'title_th' => 'ผู้รับผิดชอบหน่วยงาน',
+                    'title_en' => 'Org Unit Managers',
+                    'route_name' => 'admin-org-unit-managers',
+                    'route_path' => '/admin/org-unit-managers',
+                    'permissions' => ['manage_departments'],
+                ],
+                [
                     'code' => 'settings.leave_policies',
                     'title_th' => 'นโยบายสิทธิการลา',
                     'title_en' => 'Leave Policies',

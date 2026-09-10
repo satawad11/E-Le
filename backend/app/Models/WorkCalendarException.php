@@ -13,9 +13,10 @@ class WorkCalendarException extends Model
         'is_active' => 'boolean',
     ];
 
-    public function department()
+    /** ประกาศนี้มีผลกับหน่วยงานใด — ว่างไว้ = ทั้งองค์กร */
+    public function orgUnit()
     {
-        return $this->belongsTo(Department::class);
+        return $this->belongsTo(OrgUnit::class);
     }
 
     public function getIsWorkingDayAttribute(): bool

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Time;
 
-use App\Models\Department;
 use App\Models\FiscalYear;
 use App\Models\Holiday;
 use App\Models\Time\WorkSchedule;
@@ -185,14 +184,14 @@ class TimeServiceTest extends TestCase
     public function test_a_department_exception_overrides_a_public_holiday(): void
     {
         $schedule = $this->makeSchedule('office', isDefault: true);
-        $department = Department::create(['name' => 'ฝ่ายเวร']);
-        $user = User::factory()->create(['department_id' => $department->id]);
+        $unit = $this->orgUnit('ฝ่ายเวร');
+        $user = User::factory()->create(['org_unit_id' => $unit]);
         $this->assign($schedule);
 
         Holiday::create(['date' => '2026-08-12', 'name' => 'วันหยุด', 'is_active' => true]);
         WorkCalendarException::create([
             'date' => '2026-08-12',
-            'department_id' => $department->id,
+            'org_unit_id' => $unit,
             'day_type' => 'working_day',
             'name' => 'อยู่เวรวันหยุด',
             'is_active' => true,
@@ -204,8 +203,54 @@ class TimeServiceTest extends TestCase
         );
 
         // ฝ่ายอื่นยังหยุดตามปกติ
-        $other = User::factory()->create(['department_id' => Department::create(['name' => 'ฝ่ายอื่น'])->id]);
+        $other = User::factory()->create(['org_unit_id' => $this->orgUnit('ฝ่ายอื่น')]);
         $this->assertFalse($this->time()->isWorkingDay(CarbonImmutable::parse('2026-08-12'), $other));
+    }
+
+    public function test_an_exception_declared_on_a_parent_unit_reaches_its_children(): void
+    {
+        /*
+         * เหตุผลหลักที่ย้ายปฏิทินมาผูกกับผังจริง — โครงแผนกเดิมไม่มีลำดับชั้น
+         * ผู้ดูแลจึงต้องประกาศวันหยุดซ้ำทีละงาน ทั้งที่ตั้งใจประกาศทั้งฝ่าย
+         */
+        $schedule = $this->makeSchedule('office', isDefault: true);
+        $division = $this->orgUnit('ฝ่ายวิชาการ');
+        $group = $this->orgUnit('งานหลักสูตร', $division);
+        $user = User::factory()->create(['org_unit_id' => $group]);
+        $this->assign($schedule);
+
+        WorkCalendarException::create([
+            'date' => '2026-08-12',
+            'org_unit_id' => $division,
+            'day_type' => 'holiday',
+            'name' => 'หยุดทั้งฝ่าย',
+            'is_active' => true,
+        ]);
+
+        $this->assertFalse($this->time()->isWorkingDay(CarbonImmutable::parse('2026-08-12'), $user));
+    }
+
+    public function test_the_most_specific_unit_wins_over_a_parent_declaration(): void
+    {
+        $schedule = $this->makeSchedule('office', isDefault: true);
+        $division = $this->orgUnit('ฝ่ายวิชาการ');
+        $group = $this->orgUnit('งานหลักสูตร', $division);
+        $user = User::factory()->create(['org_unit_id' => $group]);
+        $this->assign($schedule);
+
+        WorkCalendarException::create([
+            'date' => '2026-08-12', 'org_unit_id' => $division,
+            'day_type' => 'holiday', 'name' => 'หยุดทั้งฝ่าย', 'is_active' => true,
+        ]);
+        WorkCalendarException::create([
+            'date' => '2026-08-12', 'org_unit_id' => $group,
+            'day_type' => 'working_day', 'name' => 'งานนี้ต้องอยู่เวร', 'is_active' => true,
+        ]);
+
+        $this->assertTrue(
+            $this->time()->isWorkingDay(CarbonImmutable::parse('2026-08-12'), $user),
+            'ประกาศของหน่วยงานที่เจาะจงกว่าต้องชนะประกาศของหน่วยงานแม่',
+        );
     }
 
     public function test_an_exception_can_turn_a_normal_weekday_into_a_holiday(): void
@@ -216,7 +261,7 @@ class TimeServiceTest extends TestCase
 
         WorkCalendarException::create([
             'date' => '2026-08-12',
-            'department_id' => null,
+            'org_unit_id' => null,
             'day_type' => 'holiday',
             'name' => 'หยุดพิเศษ',
             'is_active' => true,

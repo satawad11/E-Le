@@ -525,6 +525,16 @@ const router = createRouter({
       component: () => import('../views/admin/DepartmentsManagementView.vue'),
       meta: { requiresAuth: true, permission: 'manage_departments', title: 'จัดการแผนกวิชา', parent: 'ตั้งค่าระบบ' }
     },
+    /*
+     * ผู้รับผิดชอบหน่วยงาน — ข้อมูลที่ตัวหาผู้อนุมัติใช้จริง
+     * แทนช่อง "หัวหน้าแผนก" เดิมในหน้าจัดการแผนกวิชา ซึ่งตั้งค่าได้แต่ไม่มีใครอ่าน
+     */
+    {
+      path: '/admin/org-unit-managers',
+      name: 'admin-org-unit-managers',
+      component: () => import('../views/admin/OrgUnitManagersView.vue'),
+      meta: { requiresAuth: true, permission: 'manage_departments', title: 'ผู้รับผิดชอบหน่วยงาน', parent: 'ตั้งค่าระบบ' }
+    },
     {
       path: '/admin/workflow',
       name: 'admin-workflow',

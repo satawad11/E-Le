@@ -6,9 +6,9 @@ use App\Models\FiscalYear;
 use App\Models\Time\WorkSchedule;
 use App\Models\Time\WorkScheduleDay;
 use App\Models\User;
+use App\Services\OrgScopeResolver;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Illuminate\Support\Facades\DB;
 
 /**
  * LEGACY-06 — บริการเวลากลางของระบบ
@@ -32,6 +32,7 @@ class TimeService
     public function __construct(
         private readonly WorkScheduleResolver $schedules,
         private readonly WorkingCalendar $calendar,
+        private readonly OrgScopeResolver $orgScope,
     ) {}
 
     // ------------------------------------------------------------------ เขตเวลา
@@ -91,19 +92,18 @@ class TimeService
      *
      * ลำดับ: exception รายหน่วยงาน > exception ระดับองค์กร > วันหยุดราชการ > ตารางเวลา
      */
-    public function isWorkingDay(CarbonInterface $date, ?User $user = null, ?int $departmentId = null): bool
+    public function isWorkingDay(CarbonInterface $date, ?User $user = null, ?int $orgUnitId = null): bool
     {
-        if ($departmentId === null && $user !== null) {
-            $orgUnitId = $user->currentAssignment?->org_unit_id ?? $user->org_unit_id;
-            if ($orgUnitId) {
-                $departmentId = DB::table('department_org_unit_map')
-                    ->where('org_unit_id', $orgUnitId)
-                    ->value('department_id');
-            }
-            $departmentId ??= $user->department_id;
+        /*
+         * ปฏิทินผูกกับผังจริงแล้ว จึงไม่ต้องแปลง org_unit กลับเป็น department
+         * ผ่าน `department_org_unit_map` อีก — การแปลงนั้นให้ผลเพี้ยนทันทีที่ผัง
+         * สองชุดไม่ตรงกัน และใช้ไม่ได้เลยกับหน่วยงานที่สร้างในผังใหม่โดยไม่มีคู่แผนกเดิม
+         */
+        if ($orgUnitId === null && $user !== null) {
+            $orgUnitId = $this->orgScope->homeOrgUnitId($user);
         }
 
-        $exception = $this->calendar->calendarException($date, $departmentId);
+        $exception = $this->calendar->calendarException($date, $orgUnitId);
 
         if ($exception !== null) {
             // วันหยุดชดเชย/วันทำงานพิเศษที่ผู้ดูแลกำหนดเอง ชนะทุกอย่าง

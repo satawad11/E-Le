@@ -47,6 +47,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/users/{user}/personnel-type', [PersonnelTypeController::class, 'assign']);
     });
     Route::middleware('can:leave.calendar.manage')->prefix('admin')->group(function () {
+        // ตัวเลือกหน่วยงานของหน้าปฏิทิน — สิทธิ์เดียวกับหน้าจอที่ใช้มัน
+        Route::get('/work-calendar/org-units', [WorkCalendarController::class, 'orgUnits']);
         Route::get('/work-calendar', [WorkCalendarController::class, 'index']);
         Route::post('/work-calendar', [WorkCalendarController::class, 'store']);
         Route::put('/work-calendar/{calendarException}', [WorkCalendarController::class, 'update']);

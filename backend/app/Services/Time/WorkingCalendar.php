@@ -4,6 +4,7 @@ namespace App\Services\Time;
 
 use App\Models\Holiday;
 use App\Models\WorkCalendarException;
+use App\Services\OrgScopeResolver;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
@@ -27,6 +28,8 @@ class WorkingCalendar
     /** @var array<string,array<string,bool>> cache ต่อ request */
     private array $holidayCache = [];
 
+    public function __construct(private readonly OrgScopeResolver $orgScope) {}
+
     /**
      * วันนี้เป็นวันหยุดราชการหรือไม่ (ยังไม่รวม exception รายหน่วยงาน)
      */
@@ -45,20 +48,39 @@ class WorkingCalendar
     /**
      * ข้อยกเว้นปฏิทินที่มีผลกับหน่วยงานนี้ในวันนี้
      *
+     * ประกาศที่หน่วยงานแม่มีผลถึงหน่วยงานลูกด้วย — ผู้ดูแลประกาศวันหยุดของ
+     * "ฝ่ายวิชาการ" ครั้งเดียวแล้วมีผลกับทุกงานใต้ฝ่ายนั้น · ประกาศที่หน่วยงาน
+     * เจาะจงกว่าชนะเสมอ และประกาศระดับองค์กร (`org_unit_id` เป็น null) เป็นชั้นล่างสุด
+     *
      * คืน true = บังคับเป็นวันทำงาน · false = บังคับเป็นวันหยุด · null = ไม่มีข้อยกเว้น
      */
-    public function calendarException(CarbonInterface $date, ?int $departmentId = null): ?bool
+    public function calendarException(CarbonInterface $date, ?int $orgUnitId = null): ?bool
     {
-        $exception = WorkCalendarException::query()
+        // ตัวเองอยู่หน้าสุด ไล่ขึ้นไปหายอดผัง — ลำดับนี้คือลำดับความเฉพาะเจาะจง
+        $chain = $orgUnitId === null ? [] : $this->orgScope->ancestorIds($orgUnitId);
+
+        $exceptions = WorkCalendarException::query()
             ->whereDate('date', $date->toDateString())
             ->where('is_active', true)
-            ->where(fn ($query) => $query->whereNull('department_id')
-                ->when($departmentId, fn ($inner) => $inner->orWhere('department_id', $departmentId)))
-            // ข้อยกเว้นของหน่วยงานตัวเองชนะข้อยกเว้นระดับองค์กร
-            ->orderByRaw('CASE WHEN department_id IS NULL THEN 1 ELSE 0 END')
+            ->where(fn ($query) => $query->whereNull('org_unit_id')
+                ->when($chain !== [], fn ($inner) => $inner->orWhereIn('org_unit_id', $chain)))
+            ->get();
+
+        if ($exceptions->isEmpty()) {
+            return null;
+        }
+
+        /*
+         * เรียงตามระยะห่างจากหน่วยงานของผู้ใช้ ยิ่งใกล้ยิ่งชนะ
+         * ประกาศระดับองค์กรไม่มีหน่วยงาน จึงถูกจัดไว้ท้ายสุดเสมอ
+         */
+        $winner = $exceptions
+            ->sortBy(fn (WorkCalendarException $exception) => $exception->org_unit_id === null
+                ? PHP_INT_MAX
+                : array_search((int) $exception->org_unit_id, $chain, true))
             ->first();
 
-        return $exception === null ? null : (bool) $exception->is_working_day;
+        return (bool) $winner->is_working_day;
     }
 
     /**

@@ -38,10 +38,10 @@ class MenuDriftTest extends TestCase
      *
      * การอัปเดตค่านี้เฉย ๆ โดยไม่ทำข้อ 1 = ปิดปากเทสต์ ไม่ใช่แก้ปัญหา
      */
-    private const TREE_FINGERPRINT = '7ea3240519eaa2d16e9281ea9c600617571993a031402b72aa19850adef7564d';
+    private const TREE_FINGERPRINT = '95f519f20abf8ca566088f06b432c7e753661bafffaddbe00c4659762856e015';
 
     /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว */
-    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_18_100000_move_custom_reports_menu_out_of_document_center';
+    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_20_130000_add_org_unit_managers_menu';
 
     public function test_changing_the_menu_tree_requires_a_migration_for_installed_systems(): void
     {

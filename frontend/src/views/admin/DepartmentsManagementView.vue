@@ -36,7 +36,6 @@
               <tr>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ลำดับ</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">แผนกวิชา</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">หัวหน้าแผนก</th>
                 <th scope="col" class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">เลือกดำเนินการ</th>
                 <th scope="col" class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">เปิด-ปิดการใช้งาน</th>
               </tr>
@@ -45,9 +44,6 @@
               <tr v-for="(dept, index) in departments" :key="dept.id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ index + 1 }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ dept.name }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ dept.head_of_department ? dept.head_of_department.full_name_with_title : '-' }}
-                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                   <div class="flex justify-center gap-2">
                     <button @click="openEditModal(dept)" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs flex items-center gap-1">
@@ -87,15 +83,18 @@
             <label class="block text-sm font-medium text-gray-700">ชื่อแผนกวิชา <span class="text-red-500">*</span></label>
             <input type="text" v-model="form.name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700">หัวหน้าแผนก</label>
-            <select id="head_id" v-model="form.head_of_department_id" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm p-2 border">
-              <option :value="null">-- ไม่ระบุ --</option>
-              <option v-for="user in users" :key="user.id" :value="user.id">
-                {{ user.full_name_with_title }}
-              </option>
-            </select>
-          </div>
+          <!--
+            ช่อง "หัวหน้าแผนก" เดิมอยู่ตรงนี้ ตั้งค่าได้แต่ไม่มีตรรกะใดอ่านค่าเลย
+            ผู้ดูแลที่ตั้งไว้แล้วรอให้ใบลาวิ่งไปหาเขา จะไม่มีวันเกิดขึ้นและไม่มีอะไรบอก
+            ของจริงคือการมอบหมายที่มีวันมีผลใน "ผู้รับผิดชอบหน่วยงาน"
+          -->
+          <p class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900">
+            กำหนด<strong>หัวหน้าหน่วยงาน</strong>ได้ที่หน้า
+            <router-link :to="{ name: 'admin-org-unit-managers' }" class="font-semibold underline underline-offset-2">
+              ผู้รับผิดชอบหน่วยงาน
+            </router-link>
+            — เป็นข้อมูลที่ระบบใช้หาผู้อนุมัติใบลาจริง และเก็บวันที่เริ่มมีผลไว้เป็นประวัติ
+          </p>
           <div class="flex items-center mt-4">
             <input type="checkbox" id="is_active" v-model="form.is_active" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
             <label for="is_active" class="ml-2 block text-sm text-gray-900">เปิดใช้งาน</label>
@@ -126,7 +125,6 @@ const alertStore = useAlertStore()
 const loading = ref(true)
 const loadError = ref('')
 const departments = ref([])
-const users = ref([])
 
 const isModalOpen = ref(false)
 const isEditing = ref(false)
@@ -135,7 +133,6 @@ const isSaving = ref(false)
 const form = ref({
   id: null,
   name: '',
-  head_of_department_id: null,
   is_active: true
 })
 
@@ -143,12 +140,8 @@ const loadData = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const [deptRes, userRes] = await Promise.all([
-      api.get('/admin/departments'),
-      api.get('/admin/users')
-    ])
+    const deptRes = await api.get('/admin/departments')
     departments.value = deptRes.data
-    users.value = userRes.data.data || userRes.data
   } catch (error) {
     console.error(error)
     loadError.value = getErrorMessage(error, 'ไม่สามารถโหลดข้อมูลแผนกวิชาได้')
@@ -174,7 +167,6 @@ const openAddModal = () => {
   form.value = {
     id: null,
     name: '',
-    head_of_department_id: null,
     is_active: true
   }
   isEditing.value = false
@@ -185,7 +177,6 @@ const openEditModal = (dept) => {
   form.value = {
     id: dept.id,
     name: dept.name,
-    head_of_department_id: dept.head_of_department_id,
     is_active: dept.is_active
   }
   isEditing.value = true

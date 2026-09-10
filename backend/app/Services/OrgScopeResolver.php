@@ -259,6 +259,35 @@ class OrgScopeResolver
     }
 
     /**
+     * id ของหน่วยงานนี้ไล่ขึ้นไปจนถึงยอดผัง — ตัวเองอยู่หน้าสุด
+     *
+     * ใช้กับกติกาที่ "ประกาศที่หน่วยงานแม่แล้วมีผลกับลูกทั้งหมด" เช่นวันหยุดเฉพาะฝ่าย
+     * ลำดับในอาร์เรย์คือลำดับความเฉพาะเจาะจง หน่วยที่อยู่ก่อนชนะหน่วยที่อยู่หลัง
+     *
+     * ไต่ทีละชั้นด้วยเหตุผลเดียวกับ `subtreeIds()` และกันวนซ้ำถ้าข้อมูลมี cycle
+     *
+     * @return array<int,int>
+     */
+    public function ancestorIds(int $unitId): array
+    {
+        $chain = [$unitId];
+        $current = $unitId;
+
+        while (true) {
+            $parentId = DB::table('org_units')->where('id', $current)->value('parent_id');
+
+            if ($parentId === null || in_array((int) $parentId, $chain, true)) {
+                break;
+            }
+
+            $chain[] = (int) $parentId;
+            $current = (int) $parentId;
+        }
+
+        return $chain;
+    }
+
+    /**
      * id ของหน่วยงานนี้และลูกหลานทั้งหมด
      *
      * ไต่ทีละชั้นแทน recursive CTE เพื่อให้ทำงานได้ทั้งบน MySQL 8 (production)
