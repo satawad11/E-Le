@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\OrgUnit;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -204,6 +205,57 @@ class OrgScopeResolver
         $mapped = DB::table('department_org_unit_map')->where('department_id', $departmentId)->value('org_unit_id');
 
         return $mapped === null ? null : (int) $mapped;
+    }
+
+    /**
+     * ชื่อหน่วยงานของผู้ใช้ตามผังจริง — หน่วยงานต้นสังกัดและหน่วยงานแม่เหนือขึ้นไป
+     *
+     * **ที่มา:** เอกสารและรายงานเคยอ่านชื่อหน่วยงานจาก `users.department_id` ซึ่งเป็น
+     * โครงเก่าที่มีได้ชั้นเดียว ขณะที่การอนุมัติ การมองเห็นข้อมูล และการหาหัวหน้า
+     * ใช้ `org_units` ที่เป็นผังหลายชั้น ผลคือ **ใบลาที่พิมพ์ออกมาบอกหน่วยงานหนึ่ง
+     * แต่ระบบเดินสายอนุมัติตามอีกหน่วยงานหนึ่ง** เมื่อสองชุดไม่ตรงกัน
+     *
+     * ตอนนี้ทุกที่อ่านจากที่เดียวกันคือผังจริง และตกไปใช้ชื่อแผนกเดิมก็ต่อเมื่อ
+     * ผู้ใช้รายนั้นยังไม่มีข้อมูลในผัง
+     *
+     * แบบฟอร์มราชการแยก "ฝ่าย/กลุ่ม" กับ "แผนก/งาน" เป็นคนละช่อง เดิมระบบเติมค่า
+     * เดียวกันลงทั้งสองช่องเพราะโครงเก่าไม่มีลำดับชั้นให้แยก
+     *
+     * @return array{unit: string, parent: string}
+     */
+    public function homeOrgUnitNames(User $user): array
+    {
+        $unitId = $this->homeOrgUnitId($user);
+
+        if ($unitId === null) {
+            $legacy = (string) ($user->department?->name ?? '');
+
+            return ['unit' => $legacy, 'parent' => $legacy];
+        }
+
+        $unit = OrgUnit::query()
+            ->with('parent:id,name,parent_id,type')
+            ->find($unitId, ['id', 'name', 'parent_id']);
+
+        if ($unit === null) {
+            return ['unit' => '', 'parent' => ''];
+        }
+
+        /*
+         * หน่วยงานแม่ใช้เป็นชื่อ "ฝ่าย/กลุ่ม" ได้ก็ต่อเมื่อเป็นหน่วยงานจริง
+         *
+         * ยอดสุดของผังคือ ORG-ROOT ซึ่งแทนตัวสถานศึกษาเอง (ชื่อมาจาก `app.name`)
+         * ไม่ใช่ฝ่ายใดฝ่ายหนึ่ง — ถ้าเอามาใส่ช่อง "ฝ่าย" ผู้ลาจะได้เอกสารที่เขียนว่า
+         * สังกัดฝ่ายชื่อเดียวกับชื่อระบบ · หน่วยงานที่แขวนอยู่ใต้ ORG-ROOT ตรง ๆ
+         * (ผังแบบชั้นเดียว ซึ่งเป็นค่าเริ่มต้นของระบบที่ยังไม่ได้จัดผัง) จึงใช้ชื่อตัวเอง
+         */
+        $parent = $unit->parent;
+        $parentIsOrganisation = $parent === null || $parent->parent_id === null && $parent->type === 'organization';
+
+        return [
+            'unit' => (string) $unit->name,
+            'parent' => (string) ($parentIsOrganisation ? $unit->name : $parent->name),
+        ];
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Services\Export;
 
 use App\Models\Leave;
+use App\Services\OrgScopeResolver;
 use App\Services\ThaiDateService;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
@@ -39,7 +40,10 @@ class LeaveWordService
 
         $leaveTypeName = $leave->type->name ?? 'การลา';
         $userName = $leave->user->name ?? '—';
-        $deptName = $leave->user->department->name ?? '—';
+        // หน่วยงานจากผังจริงชุดเดียวกับที่ใช้เดินสายอนุมัติ ไม่ใช่โครงแผนกเดิมชั้นเดียว
+        $deptName = $leave->user
+            ? (app(OrgScopeResolver::class)->homeOrgUnitNames($leave->user)['unit'] ?: '—')
+            : '—';
 
         // Title / Header
         $headerP = $section->addParagraphStyle('HeaderP', ['alignment' => Jc::CENTER, 'spaceAfter' => Converter::pointToTwip(12)]);

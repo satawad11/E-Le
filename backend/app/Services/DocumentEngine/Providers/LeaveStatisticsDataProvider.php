@@ -71,13 +71,18 @@ class LeaveStatisticsDataProvider implements DocumentDataProvider
 
         $query = Leave::query()
             ->join('users', 'users.id', '=', 'leaves.user_id')
-            ->leftJoin('departments', 'departments.id', '=', 'users.department_id')
+            /*
+             * ชื่อหน่วยงานมาจากผังจริง (`org_units`) ชุดเดียวกับที่ระบบใช้เดินสายอนุมัติ
+             * และตัดสินขอบเขตการมองเห็น เดิม join `departments` ซึ่งเป็นโครงเก่าชั้นเดียว
+             * รายงานจึงจัดกลุ่มคนละแบบกับที่ระบบใช้จริงเมื่อสองชุดไม่ตรงกัน
+             */
+            ->leftJoin('org_units', 'org_units.id', '=', 'users.org_unit_id')
             ->whereIn('leaves.user_id', $this->scope->users($viewer, $ability, $filter, true))
             ->where('leaves.status', 'Approved')
             ->whereDate('leaves.start_date', '>=', $from->toDateString())
             ->whereDate('leaves.start_date', '<=', $to->toDateString())
-            ->groupBy('users.id', 'users.name', 'departments.name')
-            ->selectRaw('users.id as user_id, users.name as employee, departments.name as department');
+            ->groupBy('users.id', 'users.name', 'org_units.name')
+            ->selectRaw('users.id as user_id, users.name as employee, org_units.name as department');
 
         foreach (array_keys($categories) as $category) {
             $typeIds = $this->categories->typeIds($category);
@@ -97,7 +102,7 @@ class LeaveStatisticsDataProvider implements DocumentDataProvider
 
         $rows = $query
             ->selectRaw('SUM(leaves.total_days) as total_days')
-            ->orderBy('departments.name')
+            ->orderBy('org_units.name')
             ->orderBy('users.name')
             ->get()
             ->map(function ($row) use ($categories) {

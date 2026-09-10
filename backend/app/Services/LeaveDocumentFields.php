@@ -207,6 +207,9 @@ class LeaveDocumentFields
 
         $extra = $this->extra($leave);
         $vacation = $this->vacation($leave);
+        $orgUnitNames = $user !== null
+            ? app(OrgScopeResolver::class)->homeOrgUnitNames($user)
+            : ['unit' => '', 'parent' => ''];
 
         return array_merge($this->organization($settings), [
             'doc_number' => $leave->document_number ?? '',
@@ -220,8 +223,14 @@ class LeaveDocumentFields
             'position' => $profile?->position ?: '',
             // ระบบยังไม่มีคอลัมน์ "ระดับ/วิทยฐานะ" — ให้ผู้ดูแลเพิ่มเป็นช่องเฉพาะแบบฟอร์มคีย์ level ได้
             'level' => (string) ($extra['level'] ?? ''),
-            'division' => $user?->department?->name ?? '',
-            'department' => $user?->department?->name ?? '',
+            /*
+             * ชื่อหน่วยงานต้องมาจากผังจริงชุดเดียวกับที่ระบบใช้เดินสายอนุมัติ
+             * เดิมอ่านจาก `users.department` ซึ่งเป็นโครงเก่าชั้นเดียว เอกสารจึงบอก
+             * หน่วยงานหนึ่งขณะที่ใบเดินไปตามอีกหน่วยงานหนึ่งได้ · และแบบฟอร์มราชการ
+             * แยก "ฝ่าย/กลุ่ม" กับ "แผนก/งาน" คนละช่อง แต่เดิมได้ค่าเดียวกันทั้งคู่
+             */
+            'division' => $orgUnitNames['parent'],
+            'department' => $orgUnitNames['unit'],
             'phone' => (string) ($user?->phone ?? ''),
             'birth_date_thai' => $profile?->date_of_birth ? $this->thaiDate($profile->date_of_birth) : '',
             'hired_date_thai' => $profile?->start_date ? $this->thaiDate($profile->start_date) : '',
