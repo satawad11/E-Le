@@ -57,6 +57,20 @@
               </div>
             </div>
           </transition>
+
+          <!--
+            หลักเกณฑ์ของนโยบายที่ใช้กับประเภทการลานี้
+            เดิมผู้ใช้กรอกจนเสร็จแล้วค่อยถูกปฏิเสธตอนกดส่ง (ต้องแนบหลักฐาน / ลาครึ่งวันไม่ได้ /
+            เกินเพดานต่อครั้ง / ยื่นล่วงหน้าไม่พอ) ทั้งที่กติกาเหล่านี้มากับข้อมูลสิทธิอยู่แล้ว
+          -->
+          <transition name="fade">
+            <ul v-if="policyRules.length" class="mt-2 flex flex-wrap gap-x-4 gap-y-1 px-4 text-xs text-gray-500">
+              <li v-for="rule in policyRules" :key="rule.text" class="flex items-center gap-1"
+                :class="rule.active ? 'text-amber-700 font-semibold' : ''">
+                <span aria-hidden="true">•</span>{{ rule.text }}
+              </li>
+            </ul>
+          </transition>
         </div>
 
 
@@ -110,16 +124,20 @@
         <!-- Leave Period -->
         <div class="pt-2">
           <label class="block text-sm font-semibold text-gray-700 mb-2">ระยะเวลาการลา <span class="text-red-500">*</span></label>
-          <div class="grid grid-cols-3 gap-2 sm:gap-4">
+          <!--
+            ซ่อนตัวเลือกครึ่งวันเมื่อนโยบายของประเภทนี้ไม่อนุญาต
+            เดิมเลือกได้เสมอ แล้วถูกปฏิเสธตอนกดส่งว่า "การลาประเภทนี้ไม่อนุญาตให้ลาครึ่งวัน"
+          -->
+          <div class="grid gap-2 sm:gap-4" :class="allowsHalfDay ? 'grid-cols-3' : 'grid-cols-1'">
             <label class="flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all cursor-pointer select-none text-center min-h-[44px]" :class="form.leave_period === 'full_day' ? 'border-[#800000] bg-[#800000]/5 text-[#800000] font-bold shadow-sm' : 'border-gray-200 text-gray-600 hover:border-gray-300'">
               <input type="radio" v-model="form.leave_period" value="full_day" @change="onPeriodChange" class="sr-only">
               <span class="text-xs sm:text-sm">เต็มวัน</span>
             </label>
-            <label class="flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all cursor-pointer select-none text-center min-h-[44px]" :class="form.leave_period === 'morning' ? 'border-[#800000] bg-[#800000]/5 text-[#800000] font-bold shadow-sm' : 'border-gray-200 text-gray-600 hover:border-gray-300'">
+            <label v-if="allowsHalfDay" class="flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all cursor-pointer select-none text-center min-h-[44px]" :class="form.leave_period === 'morning' ? 'border-[#800000] bg-[#800000]/5 text-[#800000] font-bold shadow-sm' : 'border-gray-200 text-gray-600 hover:border-gray-300'">
               <input type="radio" v-model="form.leave_period" value="morning" @change="onPeriodChange" class="sr-only">
               <span class="text-xs sm:text-sm">ครึ่งวันเช้า</span>
             </label>
-            <label class="flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all cursor-pointer select-none text-center min-h-[44px]" :class="form.leave_period === 'afternoon' ? 'border-[#800000] bg-[#800000]/5 text-[#800000] font-bold shadow-sm' : 'border-gray-200 text-gray-600 hover:border-gray-300'">
+            <label v-if="allowsHalfDay" class="flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all cursor-pointer select-none text-center min-h-[44px]" :class="form.leave_period === 'afternoon' ? 'border-[#800000] bg-[#800000]/5 text-[#800000] font-bold shadow-sm' : 'border-gray-200 text-gray-600 hover:border-gray-300'">
               <input type="radio" v-model="form.leave_period" value="afternoon" @change="onPeriodChange" class="sr-only">
               <span class="text-xs sm:text-sm">ครึ่งวันบ่าย</span>
             </label>
@@ -339,7 +357,12 @@
 
         <!-- Attachment -->
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1.5">เอกสารแนบ (ถ้ามี)</label>
+          <!-- ป้ายเปลี่ยนตามหลักเกณฑ์จริงของนโยบาย ไม่ใช่ "(ถ้ามี)" เสมอไป -->
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+            เอกสารแนบ
+            <template v-if="evidenceRequired"><span class="text-red-500">*</span> ({{ evidenceLabel }})</template>
+            <template v-else>(ถ้ามี)</template>
+          </label>
           <div
             class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-[#800000] transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#800000] focus:outline-none"
             role="button"
@@ -439,6 +462,73 @@ const remainingDays = computed(() => {
   if (!selectedBalance.value) return 0
 
   return approvedRemaining.value - Number(selectedBalance.value.pending || 0)
+})
+
+/*
+ * หลักเกณฑ์ของนโยบายที่ผู้ยื่นต้องรู้ "ก่อน" กรอก
+ *
+ * ทุกข้อมาจากนโยบายที่แนบมากับข้อมูลสิทธิอยู่แล้ว (`/leaves/balances`) ไม่ใช่ค่าที่ตั้งตายไว้
+ * `active` = ข้อที่คำขอปัจจุบันกำลังชนเกณฑ์ ใช้เน้นให้เห็นก่อนกดส่ง
+ */
+const policyRules = computed(() => {
+  const policy = selectedBalance.value?.policy
+
+  if (!policy) return []
+
+  const rules = []
+  const days = Number(form.total_days || 0)
+
+  if (policy.attachment_required_after_days !== null && policy.attachment_required_after_days !== undefined) {
+    const threshold = Number(policy.attachment_required_after_days)
+    rules.push({
+      text: `ต้องแนบ${policy.required_evidence_type || 'หลักฐานประกอบการลา'}เมื่อลาตั้งแต่ ${threshold} วันขึ้นไป`,
+      active: days >= threshold && !selectedFile.value,
+    })
+  }
+
+  if (policy.max_days_per_request) {
+    rules.push({
+      text: `ลาได้ครั้งละไม่เกิน ${Number(policy.max_days_per_request)} วัน`,
+      active: days > Number(policy.max_days_per_request),
+    })
+  }
+
+  if (Number(policy.notice_period_days) > 0) {
+    rules.push({ text: `ต้องยื่นล่วงหน้าอย่างน้อย ${Number(policy.notice_period_days)} วัน`, active: false })
+  }
+
+  if (policy.allow_half_day === false) {
+    rules.push({ text: 'ประเภทนี้ลาครึ่งวันไม่ได้', active: form.leave_period !== 'full_day' })
+  }
+
+  if (policy.allow_past_dates === false) {
+    rules.push({ text: 'ยื่นย้อนหลังไม่ได้', active: false })
+  }
+
+  return rules
+})
+
+/** ประเภทนี้ลาครึ่งวันได้หรือไม่ — ปิดตัวเลือกไปเลยดีกว่าให้เลือกแล้วถูกปฏิเสธตอนส่ง */
+const allowsHalfDay = computed(() => selectedBalance.value?.policy?.allow_half_day !== false)
+
+/** คำขอนี้เข้าเกณฑ์ต้องแนบหลักฐานแล้วหรือยัง */
+const evidenceRequired = computed(() => {
+  const threshold = selectedBalance.value?.policy?.attachment_required_after_days
+
+  return threshold !== null && threshold !== undefined && Number(form.total_days || 0) >= Number(threshold)
+})
+
+const evidenceLabel = computed(() => selectedBalance.value?.policy?.required_evidence_type || 'ต้องแนบตามหลักเกณฑ์')
+
+/*
+ * เปลี่ยนไปประเภทที่ลาครึ่งวันไม่ได้ ต้องดึงกลับเป็นเต็มวันให้เอง
+ * มิฉะนั้นค่าที่เลือกไว้ก่อนหน้าจะติดไปกับคำขอและถูกปฏิเสธตอนส่ง
+ */
+watch(allowsHalfDay, (allowed) => {
+  if (! allowed && form.leave_period !== 'full_day') {
+    form.leave_period = 'full_day'
+    onPeriodChange()
+  }
 })
 
 // จำนวนวันของคำขอนี้ที่จะตกเป็นวันไม่ได้รับเงินเดือน (เกินเพดาน max_days_with_pay)

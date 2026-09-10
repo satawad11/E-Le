@@ -43,12 +43,66 @@ class FieldDictionarySynchronizer
         DB::transaction(function (): void {
             $this->syncProviderCatalogs();
             $this->syncLegacyLeaveFields();
-            $this->syncLeaveTypeExtraFields();
-            $this->syncApprovalSteps();
+            $keptExtraKeys = $this->syncLeaveTypeExtraFields();
+            $steps = $this->syncApprovalSteps();
             $this->syncLeaveStatistics();
 
             DocumentFieldDefinition::whereIn('code', self::COMPOSITE_CODES)->update(['is_active' => false]);
+
+            $this->deactivateOrphans($keptExtraKeys, $steps);
         }, 5);
+    }
+
+    /**
+     * ปิดตัวแปรที่ "ต้นทางหายไปแล้ว"
+     *
+     * ตัวแปรกลุ่มที่ระบบสร้างให้ตามข้อมูลจริง (สถิติรายประเภทการลา ช่องเฉพาะของประเภทการลา
+     * และผู้อนุมัติรายขั้น) จะค้างอยู่ตลอดไปหลังจากลบประเภทการลาหรือลดขั้นอนุมัติ
+     * ผู้ดูแลยังเลือกวางบนแบบฟอร์มได้ทั้งที่ไม่มีค่ามาเติมอีกแล้ว และการตรวจก่อนเผยแพร่
+     * ก็ไม่ทัก เพราะรหัสฟิลด์ "มีอยู่จริง" ในพจนานุกรม
+     *
+     * ปิดการใช้งานเท่านั้น ไม่ลบทิ้ง — แบบฟอร์มเวอร์ชันเก่าที่วางไว้ยังพิมพ์ได้เหมือนเดิม
+     * และการตรวจก่อนเผยแพร่จะรายงานเป็นข้อผิดพลาดให้แก้ก่อนออกเวอร์ชันใหม่
+     *
+     * @param  array<int, string>  $keptExtraKeys
+     */
+    private function deactivateOrphans(array $keptExtraKeys, int $steps): void
+    {
+        $leaveTypeIds = LeaveType::query()->pluck('id')->map(fn ($id) => (string) $id)->all();
+
+        $orphans = DocumentFieldDefinition::query()
+            ->where('is_active', true)
+            /*
+             * ใช้คำนำหน้าที่ไม่มี `_` แล้วคัดละเอียดด้วย regex ในภาษา PHP
+             * เพราะการ escape `_` ของ LIKE ต่างกันระหว่าง MySQL กับ SQLite
+             */
+            ->where(function ($query) {
+                $query->where('code', 'like', 'stats.%')
+                    ->orWhere('code', 'like', 'extra.%')
+                    ->orWhere('code', 'like', 'approval.%');
+            })
+            ->get()
+            ->filter(function (DocumentFieldDefinition $field) use ($leaveTypeIds, $keptExtraKeys, $steps) {
+                if (preg_match('/^stats\.leave_type_(\d+)\./', $field->code, $matches) === 1) {
+                    return ! in_array($matches[1], $leaveTypeIds, true);
+                }
+
+                if (str_starts_with($field->code, 'extra.')) {
+                    return ! in_array(substr($field->code, 6), $keptExtraKeys, true);
+                }
+
+                if (preg_match('/^approval\.step(\d+)\./', $field->code, $matches) === 1) {
+                    return (int) $matches[1] > $steps;
+                }
+
+                return false;
+            });
+
+        if ($orphans->isEmpty()) {
+            return;
+        }
+
+        DocumentFieldDefinition::whereIn('id', $orphans->pluck('id'))->update(['is_active' => false]);
     }
 
     /** Field Dictionary หลักมาจาก catalog ของ provider โดยตรง */
@@ -97,8 +151,10 @@ class FieldDictionarySynchronizer
      *
      * คีย์เดียวกันอาจถูกใช้หลายประเภท (เช่น `level`) จึงรวมเป็นฟิลด์เดียว
      * แล้วบอกในคำอธิบายว่ามาจากประเภทใดบ้าง
+     *
+     * @return array<int, string> คีย์ที่ยังมีอยู่จริง — ใช้ปิดตัวแปรของช่องที่ถูกลบไปแล้ว
      */
-    private function syncLeaveTypeExtraFields(): void
+    private function syncLeaveTypeExtraFields(): array
     {
         $definitions = [];
 
@@ -129,10 +185,16 @@ class FieldDictionarySynchronizer
                 'description' => 'ใช้กับ: '.implode(', ', array_unique($definition['types'])),
             ]);
         }
+
+        return array_keys($definitions);
     }
 
-    /** ผู้อนุมัติรายขั้นตามจำนวนขั้นสูงสุดของสายอนุมัติที่ตั้งไว้จริง */
-    private function syncApprovalSteps(): void
+    /**
+     * ผู้อนุมัติรายขั้นตามจำนวนขั้นสูงสุดของสายอนุมัติที่ตั้งไว้จริง
+     *
+     * @return int จำนวนขั้นที่ประกาศไว้ — ใช้ปิดตัวแปรของขั้นที่ถูกลดออกภายหลัง
+     */
+    private function syncApprovalSteps(): int
     {
         $configured = (int) ApprovalStep::query()->max('step_order');
         $steps = max(self::MIN_APPROVAL_STEPS, min(self::MAX_APPROVAL_STEPS, $configured));
@@ -156,6 +218,8 @@ class FieldDictionarySynchronizer
                 ]);
             }
         }
+
+        return $steps;
     }
 
     /**

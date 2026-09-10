@@ -1,0 +1,1538 @@
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\ExampleTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthat true is true[39m
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\ProductionEnvironmentGuardTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit rejects debug mode in production[39m[90m                                 [39m [90m0.01s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit rejects a missing app key in production[39m
+  [32;1m✓[39;22m[90m [39m[90mit rejects a served local disk in production[39m
+  [32;1m✓[39;22m[90m [39m[90mit rejects a plain http app url in production[39m
+  [32;1m✓[39;22m[90m [39m[90mit rejects an unknown environment name[39m
+  [32;1m✓[39;22m[90m [39m[90mit reports every problem not just the first[39m
+  [32;1m✓[39;22m[90m [39m[90mit accepts safe environment combinations with data set "production without debug"[39m
+  [32;1m✓[39;22m[90m [39m[90mit accepts safe environment combinations with data set "local with debug"[39m
+  [32;1m✓[39;22m[90m [39m[90mit accepts safe environment combinations with data set "testing with debug"[39m
+  [32;1m✓[39;22m[90m [39m[90mit accepts safe environment combinations with data set "staging with debug"[39m
+  [32;1m✓[39;22m[90m [39m[90mnon production environments are not held to production rules[39m
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\UserTest[39m
+  [32;1m✓[39;22m[90m [39m[90mfull name with title attribute returns correctly[39m[90m                    [39m [90m1.29s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfull name with title when name already starts with title[39m[90m            [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser has department relation[39m[90m                                        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser has profile relation[39m[90m                                           [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser has attendances relation[39m[90m                                       [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser has leaves relation[39m[90m                                            [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser get role attribute returns first role[39m[90m                          [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AbilityMiddlewareTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma holder of the legacy name still passes a canonical route[39m[90m          [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma holder of the canonical name passes too[39m[90m                           [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90msomeone without either name is refused[39m[90m                              [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90man explicit deny now blocks the route[39m[90m                               [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe any ability gate accepts either of two different abilities[39m[90m      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mno route still uses the alias blind permission middleware[39m[90m           [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ApiIdempotencyAndWebhookTest[39m
+  [32;1m✓[39;22m[90m [39m[90mevery saraban route exists under both prefixes[39m[90m                      [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe machine readable descriptor reports abilities and step up[39m[90m       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreplaying the same key returns the stored response without working[39m[90m… [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe same key with a different body is rejected[39m[90m                      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mkeys are scoped per user[39m[90m                                            [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma failed request releases its key[39m[90m                                   [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrequests without a key are untouched[39m[90m                                [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma malformed key is rejected rather than ignored[39m[90m                     [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma narrow token cannot reach beyond its scope[39m[90m                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma token scope cannot grant authority the user lacks[39m[90m                 [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdispatching writes to the outbox before sending[39m[90m                     [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90man endpoint only receives the events it subscribed to[39m[90m               [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe request is signed with hmac over the timestamp and body[39m[90m         [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma rejecting endpoint is retried and then dead lettered[39m[90m              [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe signing secret is shown once and never again[39m[90m                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma plain http endpoint is refused[39m[90m                                    [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unknown event name is refused[39m[90m                                    [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90man ordinary user cannot manage webhooks[39m[90m                             [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ApiSurfaceContractTest[39m
+  [32;1m✓[39;22m[90m [39m[90mevery api endpoint is reachable from the web application[39m[90m            [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ApprovalResolverAndWorkflowHardeningTest[39m
+  [32;1m✓[39;22m[90m [39m[90mworkflow steps configuration with resolvers and fingerprint[39m[90m         [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdynamic department head resolver via org unit managers[39m[90m              [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave submission snapshot and workflow immutability[39m[90m                 [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ApprovalTest[39m
+  [32;1m✓[39;22m[90m [39m[90mmanager can approve leave[39m[90m                                           [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapprove deducts leave balance[39m[90m                                       [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmanager can reject leave[39m[90m                                            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90memployee cannot approve own leave[39m[90m                                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcannot approve already approved leave[39m[90m                               [39m [90m0.12s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AttendanceExportAuthorizationTest[39m
+  [32;1m✓[39;22m[90m [39m[90munauthenticated request is rejected with data set "summary preview"[39m[90m [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90munauthenticated request is rejected with data set "summary pdf"[39m[90m     [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90munauthenticated request is rejected with data set "summary word"[39m[90m    [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90munauthenticated request is rejected with data set "ot preview"[39m[90m      [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90munauthenticated request is rejected with data set "ot pdf"[39m[90m          [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90munauthenticated request is rejected with data set "ot word"[39m[90m         [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90munauthenticated request is rejected with data set "ot excel"[39m[90m        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthenticated user without permission is forbidden with data set "s[39m[90m…[39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthenticated user without permission is forbidden with data set "s[39m[90m…[39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthenticated user without permission is forbidden with data set "s[39m[90m…[39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthenticated user without permission is forbidden with data set "o[39m[90m…[39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthenticated user without permission is forbidden with data set "o[39m[90m…[39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthenticated user without permission is forbidden with data set "o[39m[90m…[39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthenticated user without permission is forbidden with data set "o[39m[90m…[39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser with permission is allowed with data set "summary preview"[39m[90m     [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser with permission is allowed with data set "summary pdf"[39m[90m         [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser with permission is allowed with data set "summary word"[39m[90m        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser with permission is allowed with data set "ot preview"[39m[90m          [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser with permission is allowed with data set "ot pdf"[39m[90m              [39m [90m0.31s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser with permission is allowed with data set "ot word"[39m[90m             [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser with permission is allowed with data set "ot excel"[39m[90m            [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtoken in query string is no longer accepted with data set "summary[39m[90m… [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtoken in query string is no longer accepted with data set "summary[39m[90m… [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtoken in query string is no longer accepted with data set "summary[39m[90m… [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtoken in query string is no longer accepted with data set "ot previ[39m[90m…[39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtoken in query string is no longer accepted with data set "ot pdf"[39m[90m  [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtoken in query string is no longer accepted with data set "ot word"[39m[90m [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtoken in query string is no longer accepted with data set "ot excel[39m[90m…[39m [90m0.12s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AttendanceImageSecurityTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcheck in rejects a non image payload disguised as png[39m[90m               [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcheck in rejects an image larger than five megabytes[39m[90m                [39m [90m0.29s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcheck in uses detected mime and a random file name[39m[90m                  [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcheck out applies the same mime validation[39m[90m                          [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AttendanceIntegrationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mduplicate event is stored and reconciled only once[39m[90m                  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevent uuid is idempotent and raw payload is immutable[39m[90m               [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mout of order checkout then checkin reconciles one result[39m[90m            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mweb checkin and checkout require permission and create raw events[39m[90m   [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90movernight checkout belongs to previous work date[39m[90m                    [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmissing checkout remains a valid partial result[39m[90m                     [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmanual correction uses workflow and writes audit[39m[90m                    [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma person sees only their own correction requests[39m[90m                    [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe reviewer worklist lists pending requests and respects scope[39m[90m     [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe reviewer worklist requires the view all permission[39m[90m              [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mview all scope filters other units[39m[90m                                  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave sync cannot mutate attendance outside scope[39m[90m                   [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AuditChainAndTrustedTimeTest[39m
+  [32;1m✓[39;22m[90m [39m[90mevery entry is linked to the one before it[39m[90m                          [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe chain verifies clean when nothing was tampered with[39m[90m             [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mediting history straight in the database is detected[39m[90m                [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdeleting a row from the middle breaks the chain and is detected[39m[90m     [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhistory written before the chain started is not reported as tamperi[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe model still refuses updates and deletes through the application[39m[90m [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe trusted clock can be frozen without touching the rest of the sy[39m[90m…[39m [90m0.02s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AuthTest[39m
+  [32;1m✓[39;22m[90m [39m[90muser can login with valid credentials[39m[90m                               [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlogin fails with wrong password[39m[90m                                     [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthenticated user can get profile[39m[90m                                  [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90munauthenticated request is rejected[39m[90m                                 [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser can logout[39m[90m                                                     [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AuthenticationHardeningTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdisabling an account revokes all tokens[39m[90m                             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchanging a password revokes all tokens[39m[90m                              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90maccount is temporarily locked after five failed logins[39m[90m              [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90missued token has an expiration time[39m[90m                                 [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrefresh rotates the current token[39m[90m                                   [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpassword can be reset and existing tokens are revoked[39m[90m               [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mforgot password does not reveal whether account exists[39m[90m              [39m [90m0.45s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AuthorizationCleanupAndVerificationTest[39m
+  [32;1m✓[39;22m[90m [39m[90msecurity identity and spatie authorization pipeline[39m[90m                 [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mexplicit scope and abac evaluation through org scope resolver[39m[90m       [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapproval controller authorization without legacy role id column[39m[90m     [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelegation approval authorization[39m[90m                                   [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AuthorizationMatrixTest[39m
+  [32;1m✓[39;22m[90m [39m[90mevery permission enforced on a route exists in the catalogue[39m[90m        [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe known gap list does not contain stale entries[39m[90m                   [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrole names still referenced in code actually exist[39m[90m                  [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrole name checks survive only at the declared bootstrap points[39m[90m      [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe install does not create a department head role[39m[90m                  [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpermission aliases point at real permissions[39m[90m                        [39m [90m0.18s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\BackupOutcomeVisibilityTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma failed backup becomes a critical item someone owns[39m[90m                [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma failed cleanup is a warning not a crisis[39m[90m                          [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma backup that fails every night stays one item[39m[90m                      [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma successful backup records a heartbeat[39m[90m                             [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma backup that stops running is detected as stale[39m[90m                    [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\BaselineReferenceDataSeederTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit seeds the 2569 government holiday baseline idempotently[39m[90m          [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit registers all five operational leave templates without overwriti[39m[90m…[39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\CentralAuditLogTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcentral audit schema contains required fields[39m[90m                       [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave audit dual writes to central log[39m[90m                       [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe leave history endpoint shows actions from every source[39m[90m          [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe leave history is not readable by an unrelated person[39m[90m            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser and attendance mutations are audited[39m[90m                           [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\CoreDataFoundationTest[39m
+  [32;1m✓[39;22m[90m [39m[90morganization and personnel foundation schema exists[39m[90m                 [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnew public resources receive uuids[39m[90m                                  [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdepartment and user writes dual write foundation records[39m[90m            [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DashboardReportScopeTest[39m
+  [32;1m✓[39;22m[90m [39m[90mleave approver still sees the global dashboard[39m[90m                      [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreport viewer alone does not gain the global dashboard[39m[90m              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mordinary user does not see the global dashboard[39m[90m                     [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreport viewer sees organisation wide report[39m[90m                         [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser without report permission is refused the organisation report[39m[90m   [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DeadCodeGuardTest[39m
+  [32;1m✓[39;22m[90m [39m[90mevery controller is reachable through a route[39m[90m                       [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery route points at a method that exists[39m[90m                          [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery model is referenced by application code[39m[90m                       [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentDesignerGeometryTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe designer is told the real size of every page[39m[90m                    [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma field placed outside the paper cannot be saved[39m[90m                    [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma field on a page that does not exist cannot be saved[39m[90m               [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma field inside the paper is saved as before[39m[90m                         [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma version with fields outside the paper cannot be published[39m[90m         [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma version without a source file is not blocked by the geometry chec[39m[90m…[39m [90m0.10s[39m  
+{"message":"Document Engine ออกเอกสารใบลาไม่สำเร็จ ใช้เส้นทางเดิมแทน","context":{"leave_id":1,"is_cancel":false,"error":"ยังไม่ได้ผูกแบบฟอร์มกับรายการนี้ กรุณาตั้งค่าที่ศูนย์จัดการเอกสาร"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-09-10T17:01:26.771917+07:00","extra":{}}
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentEngineTest[39m
+  [32;1m✓[39;22m[90m [39m[90mbinding rule picks the template for a leave type[39m[90m                    [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma rule for the specific entity wins over the catch all rule[39m[90m         [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mseveral leave types can share one template[39m[90m                          [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma retired version is not used for new documents[39m[90m                     [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document keeps the version it was pinned to[39m[90m                       [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma version with documents attached cannot be deleted[39m[90m                 [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit renders thai text onto the official form[39m[90m                         [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcheckbox and signature fields render without failing[39m[90m                [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mprint calibration applies without touching the mapping[39m[90m              [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma finalized document cannot be modified or deleted[39m[90m                  [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mregenerating creates a new revision and keeps the old one[39m[90m           [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma historical document is served from the stored file[39m[90m                [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave submitted before the pdf form was published keeps the old f[39m[90m…[39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave pinned to the pdf form is printed with that exact version[39m[90m   [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave without a pinned version uses the form in force today[39m[90m       [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe engine is off by default and leaves the old path untouched[39m[90m      [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90monly the leave types in the flag use the engine[39m[90m                     [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unbound leave type falls back to the existing renderer[39m[90m           [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe leave pdf endpoint still works with the engine enabled[39m[90m          [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhtml template content is edited through the document engine[39m[90m         [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe old document template endpoints are gone[39m[90m                        [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhtml template preview reports a broken template instead of failing[39m[90m  [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhtml template endpoints reject users without document permission[39m[90m    [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin endpoints reject users without document permission[39m[90m            [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90manother persons leave document cannot be downloaded[39m[90m                 [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90man admin can upload map publish and preview a form[39m[90m                  [39m [90m0.38s[39m  
+  [32;1m✓[39;22m[90m [39m[90muploading a form does not spawn an extra version[39m[90m                    [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublishing makes the template follow the published render mode[39m[90m      [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90man admin can delete an unused draft[39m[90m                                 [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma published version cannot be deleted[39m[90m                               [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma draft with documents attached cannot be deleted[39m[90m                   [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma published version cannot have its fields moved[39m[90m                    [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublishing retires the previous version without deleting it[39m[90m         [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90man admin can list templates with their active version[39m[90m               [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe overview and binding endpoints answer for admins[39m[90m                [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe field dictionary and data sources are available to admins[39m[90m       [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgenerating a document is recorded in the audit log[39m[90m                  [39m [90m0.15s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentFieldDictionaryTest[39m
+  [32;1m✓[39;22m[90m [39m[90mleave type extra fields become placeable variables[39m[90m                  [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe field dictionary endpoint syncs before answering[39m[90m                [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapproval steps follow the configured chain length[39m[90m                   [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave statistics are placeable per leave type[39m[90m                       [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe provider supplies values for the flattened codes[39m[90m                [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90man admin can enable the pdf form per leave type from the screen[39m[90m     [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe kill switch still wins over what is stored[39m[90m                      [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe leave type form status tells admins what is still missing[39m[90m       [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90man admin can rename a variable without changing what it reads[39m[90m       [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma variable is deactivated not deleted[39m[90m                               [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfield and activation endpoints require the document permission[39m[90m      [39m [90m0.14s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentFieldFormattingTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdates are rendered in the thai format the admin chose[39m[90m               [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma date can be split into day month and buddhist year[39m[90m                [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90msplitting works on dates that already arrive as thai text[39m[90m           [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnumbers and thai digits follow the chosen format[39m[90m                    [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma value that cannot be formatted is printed as it is[39m[90m                [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe designer can save every property the renderer understands[39m[90m       [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unknown format is rejected instead of being stored and ignored[39m[90m   [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unknown option key is rejected[39m[90m                                   [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma field type the renderer cannot draw is rejected[39m[90m                   [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe designer is given the formats and types it may offer[39m[90m            [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma form with qr rotation underline and spacing is printed without fa[39m[90m…[39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma field with a condition is printed only when the condition holds[39m[90m   [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma condition with an operator outside the whitelist is rejected[39m[90m      [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma checkbox is ticked only when the value matches what the admin lis[39m[90m…[39m [90m0.13s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentFormImportTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit attaches the pdf to the existing template instead of making a se[39m[90m…[39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit does not change the form people print today[39m[90m                      [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit fills an empty draft instead of stacking another one[39m[90m             [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrunning it twice does not overwrite work in progress[39m[90m                [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit does not stack a new draft after the form is published[39m[90m           [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe dry run writes nothing[39m[90m                                          [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit creates the template with the plain code when missing[39m[90m            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbinding points leave types at the existing template[39m[90m                 [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit warns when the old duplicate templates still exist[39m[90m               [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentPreflightAndPackageTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma field pointing at a variable that does not exist blocks publishin[39m[90m…[39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstatic text does not need a variable to exist[39m[90m                       [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90moverlapping and tiny fields are warnings not blockers[39m[90m               [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe designer can ask for the check before pressing publish[39m[90m          [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90man empty form is reported as a warning[39m[90m                              [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe sample preview uses realistic thai text[39m[90m                         [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe blank preview draws only the boxes[39m[90m                              [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreviewing with a real leave is allowed and recorded[39m[90m                [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmanaging templates does not grant the right to read someone elses l[39m[90m…[39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe calibration sheet is printable[39m[90m                                  [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma perfect printout needs no correction[39m[90m                              [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma shifted printout produces the offset that cancels it[39m[90m              [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe screen can ask the server to compute the correction[39m[90m             [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe diff shows what changed between two versions[39m[90m                    [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtwo versions of different templates cannot be compared[39m[90m              [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma form can be exported and imported on another installation[39m[90m         [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90man admin can download and upload the package from the screen[39m[90m        [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma package that is not from this system is refused[39m[90m                   [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpackage endpoints require the document permission[39m[90m                   [39m [90m0.16s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentReportEngineTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe example report is installed and uses a whitelisted source[39m[90m       [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit groups rows and computes subtotals and a grand total[39m[90m             [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90man admin can run and export a report[39m[90m                                [39m [90m0.31s[39m  
+  [32;1m✓[39;22m[90m [39m[90man admin can create a report from the screen[39m[90m                        [39m [90m0.33s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unknown data source is refused[39m[90m                                   [39m [90m0.28s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreports require permission[39m[90m                                          [39m [90m0.18s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentTemplateVersionBackfillTest[39m
+  [32;1m✓[39;22m[90m [39m[90mit creates the first version from the current content[39m[90m               [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit never claims the form applied in the past[39m[90m                        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit does not attach old leaves to the new version[39m[90m                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit leaves templates that already have versions alone[39m[90m                [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe dry run changes nothing[39m[90m                                         [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrunning it twice creates nothing extra[39m[90m                              [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\DocumentTemplateVersionTest[39m
+  [32;1m✓[39;22m[90m [39m[90mtemplate version foundation schema exists[39m[90m                           [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreating and updating template preserves versions[39m[90m                   [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnew leave pins an active leave template version[39m[90m                     [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ExampleTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe application returns a successful response[39m[90m                       [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\FiscalYearRolloverTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe command moves the current fiscal year forward[39m[90m                   [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mopening a year provisions a quota row for every leave type[39m[90m          [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrunning the command twice does not duplicate or reset anything[39m[90m      [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcalendar year policies are left to their own cycle[39m[90m                  [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\GovernmentLeaveGovernanceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mpending request reserves balance and number is unique[39m[90m               [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreject releases reserved balance[39m[90m                                    [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mupdating policy quota syncs existing balances[39m[90m                       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevidence storage is not public[39m[90m                                      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhr can void leave without losing history[39m[90m                            [39m [90m0.11s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveApprovalChainSnapshotTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdepartment head step lets the actual head approve[39m[90m                   [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mspecific user step does not open approval to everyone[39m[90m               [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpending list matches who can actually approve[39m[90m                       [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchanging the chain later does not change leaves already submitted[39m[90m   [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchanging the approval chain is written to the audit log[39m[90m             [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90msaving the chain keeps role empty for automatic steps[39m[90m               [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcancellation of approved leave uses the same approver rules[39m[90m         [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreview shows who would actually approve for a given requester[39m[90m      [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreview warns when a step would leave the request stuck[39m[90m             [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreview requires the workflow management permission[39m[90m                 [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90msnapshot without resolver information denies instead of allowing ev[39m[90m…[39m [90m0.11s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveAttendanceIntegrityTest[39m
+  [32;1m✓[39;22m[90m [39m[90man unlimited leave type can be approved[39m[90m                             [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma limited leave type is still refused when the quota runs out[39m[90m       [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcancelling an approved leave clears the attendance sheet[39m[90m            [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclearing keeps a day that has a real clock in[39m[90m                       [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mholidays inside the leave range are not marked as leave[39m[90m             [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe monthly sheet counts each leave type in its own column[39m[90m          [39m [90m0.31s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma half day leave counts as half a day on the sheet[39m[90m                  [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchecking out without checking in is refused[39m[90m                         [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveAuthorizationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mowner can download own leave pdf[39m[90m                                    [39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90munrelated user cannot download another persons leave pdf[39m[90m            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90munrelated user cannot download another persons leave word[39m[90m           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser in same department without permission is still denied[39m[90m          [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdepartment approver can view leave in own department[39m[90m                [39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdepartment approver cannot view leave from another department[39m[90m       [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhr with management permission can view any leave[39m[90m                    [39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90massigned approver can view the leave they must act on[39m[90m               [39m [90m0.29s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubstitute can view the leave assigned to them[39m[90m                      [39m [90m0.29s[39m  
+  [32;1m✓[39;22m[90m [39m[90munauthenticated request is rejected[39m[90m                                 [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mordinary user cannot hr verify a leave[39m[90m                              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mowner cannot hr verify their own leave[39m[90m                              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser with hr permission can hr verify[39m[90m                               [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser with leave management permission can hr verify[39m[90m                 [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhr verify requires authentication[39m[90m                                   [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mordinary user cannot create an approved leave for someone else[39m[90m      [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveBalanceLifecycleTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe screen shows the seeded quota before anything happens[39m[90m           [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubmitting reserves days and approving deducts them once[39m[90m            [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcancelling a pending leave returns the reserved days[39m[90m                [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejecting returns the reserved days[39m[90m                                 [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapproving a cancellation of an approved leave returns the used days[39m[90m [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejecting a cancellation keeps the days deducted[39m[90m                    [39m [90m0.25s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma calendar year leave type shows the row the system actually deduct[39m[90m…[39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unlimited leave type is not shown as zero days left[39m[90m              [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mvoiding an approved leave returns the days[39m[90m                          [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma pending leave can be printed for signatures[39m[90m                       [39m [90m0.32s[39m  
+  [32;1m✓[39;22m[90m [39m[90man approved leave can be downloaded[39m[90m                                 [39m [90m0.38s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma cancelled leave that was once approved can still be downloaded[39m[90m    [39m [90m0.52s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave withdrawn while pending has no cancellation form[39m[90m            [39m [90m0.39s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe cancellation form needs a cancellation request[39m[90m                  [39m [90m0.51s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveCancellationAuthorizationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mhr head can still cancel someone elses leave[39m[90m                        [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser directory permission alone cannot cancel someone elses leave[39m[90m   [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave manager can cancel someone elses leave[39m[90m                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdirector level permissions do not grant cancelling others leave[39m[90m     [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mordinary user cannot cancel someone elses leave[39m[90m                     [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveCancellationChainTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcancellation walks every step before the leave is cancelled[39m[90m         [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach cancellation step records who decided it[39m[90m                       [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe cancellation chain does not disturb the leave request chain[39m[90m     [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchanging the chain after a cancellation request does not move it[39m[90m    [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejecting a cancellation keeps the leave approved[39m[90m                   [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90monly the approver of the current cancellation step may act[39m[90m          [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe worklist shows a cancellation to the step it is waiting on[39m[90m      [39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma second cancellation request starts the chain over[39m[90m                 [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma separately configured cancellation chain is used instead of the l[39m[90m…[39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe cancellation chain falls back to the leave chain when not confi[39m[90m…[39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90msaving one chain does not touch the other[39m[90m                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclearing the cancellation chain returns it to the leave chain[39m[90m       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreview answers per chain[39m[90m                                           [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma pending cancellation request cannot be submitted twice[39m[90m            [39m [90m0.16s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveCancellationRequestTest[39m
+  [32;1m✓[39;22m[90m [39m[90mowner can request cancellation of approved leave[39m[90m                    [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mduplicate request does not overwrite a pending one[39m[90m                  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mowner can request again after a rejected cancellation[39m[90m               [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreason is required[39m[90m                                                  [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveCardPdfTest[39m
+  [32;1m✓[39;22m[90m [39m[90muser can download own leave card pdf[39m[90m                                [39m [90m0.19s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveControllerSplitTest[39m
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave endpoints are wired to responsibility specific control[39m[90m…[39m [90m0.02s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveDocumentPageStyleTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe margins from system settings reach the printed form[39m[90m             [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe font from system settings is embedded with a file that exists[39m[90m   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery selectable font has files installed[39m[90m                           [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe form specific margins of a template version win over the global[39m[90m…[39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveDraftAndDeletionTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma draft takes no document number no quota and no approval chain[39m[90m     [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubmitting a draft issues the number reserves the quota and seals t[39m[90m…[39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdeleting a draft leaves no gap in the document numbering[39m[90m            [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma draft is private until it is submitted[39m[90m                            [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma draft does not block submitting a leave over the same dates[39m[90m       [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma draft can be edited and the days are recalculated[39m[90m                 [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mediting a draft is written to the audit trail[39m[90m                       [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mediting a draft is checked with the same rules as submitting[39m[90m        [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma submitted leave can no longer be edited as a draft[39m[90m                [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90msomeone else cannot edit your draft[39m[90m                                 [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe owner can open their draft to edit it[39m[90m                           [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90monly the owner can submit their draft[39m[90m                               [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma submitted leave cannot be deleted even by an administrator[39m[90m        [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90man approved leave cannot be deleted[39m[90m                                 [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdeleting a draft is written to the audit trail[39m[90m                      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90msomeone else cannot delete your draft[39m[90m                               [39m [90m0.09s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveEligibilityRulesTest[39m
+  [32;1m✓[39;22m[90m [39m[90monce in career leave can only be used one time[39m[90m                      [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgender restricted leave rejects users outside the condition[39m[90m         [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgender restricted leave accepts thai and english values[39m[90m             [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmissing gender in profile is reported clearly[39m[90m                       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmax times per year is enforced[39m[90m                                      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmin days between blocks leave taken too soon[39m[90m                        [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpolicy without rules is unaffected[39m[90m                                  [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejected leave does not consume a once in career right[39m[90m              [39m [90m0.11s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveEntitlementRulesTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdays beyond paid cap are recorded as unpaid[39m[90m                         [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpolicy without paid cap marks every day as paid[39m[90m                     [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcarry forward respects accumulation ceiling[39m[90m                         [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcarry forward excludes days still awaiting approval[39m[90m                 [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcarry forward can run twice without stacking[39m[90m                        [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave card reports paid and unpaid totals[39m[90m                           [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave card of another user requires report permission[39m[90m               [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfiscal year number converts buddhist year from fiscal years table[39m[90m   [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveEvidenceAccessTest[39m
+  [32;1m✓[39;22m[90m [39m[90man unrelated user cannot list someone elses evidence[39m[90m                [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unrelated user cannot download someone elses evidence[39m[90m            [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe owner can see their own evidence[39m[90m                                [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90man approver can now see the evidence[39m[90m                                [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90man approver from another department is still refused[39m[90m                [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhr keeps its existing access[39m[90m                                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90man approver cannot reach evidence outside their scope[39m[90m               [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90man approver can reach evidence inside their scope[39m[90m                   [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevidence is never served from public storage[39m[90m                        [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveExportTest[39m
+  [32;1m✓[39;22m[90m [39m[90muser can download leave pdf[39m[90m                                         [39m [90m0.29s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser can download leave word docx[39m[90m                                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser can download leave cancel pdf[39m[90m                                  [39m [90m0.24s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveFormBindingTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe form follows the configured template not the thai type name[39m[90m     [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unconfigured type still falls back to the old name matching[39m[90m      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90morganisation names come from settings[39m[90m                               [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mextra fields defined by an admin reach the printed form[39m[90m             [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe statistics table counts days and occurrences[39m[90m                    [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveModernizationTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma leave within quota is accepted and reserves balance[39m[90m               [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave beyond the quota is refused[39m[90m                                 [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpending leaves count against the quota[39m[90m                              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90man overlapping leave is refused[39m[90m                                     [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma cancelled leave does not block a new one[39m[90m                          [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma half day leave counts as half a day[39m[90m                               [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma half day leave must be a single day[39m[90m                               [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mholidays and weekends are excluded from the day count[39m[90m               [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma personal work schedule changes the day count[39m[90m                      [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe balance is keyed by fiscal year[39m[90m                                 [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevidence is required when the policy says so[39m[90m                        [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave with evidence is accepted and stored privately[39m[90m              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe approval chain is snapshotted on creation[39m[90m                       [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma new leave opens a shadow workflow instance[39m[90m                        [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma failing workflow never blocks a leave request[39m[90m                     [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave pins the template of its own form[39m[90m                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mediting a template does not change an existing leave[39m[90m                [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreports count occurrences separately from days[39m[90m                      [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe document number year follows the policy period basis[39m[90m            [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma calendar year policy numbers by calendar year[39m[90m                     [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma form without a managed template still renders[39m[90m                     [39m [90m0.13s[39m  
+{"message":"ทดสอบ rollback","context":{"request_id":"cea8c2bf-0b77-49e5-b286-3352fe2653a0","userId":2,"exception":{"class":"RuntimeException","message":"ทดสอบ rollback","code":0,"file":"/var/www/html/tests/Feature/LeaveModuleAuditTest.php:124"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-09-10T17:01:59.129983+07:00","extra":{}}
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveModuleAuditTest[39m
+  [32;1m✓[39;22m[90m [39m[90manother users draft cannot be opened directly by a manager[39m[90m          [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapproved leave cannot be overwritten through generic update[39m[90m         [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin recording an approved leave consumes the balance[39m[90m              [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfiscal year leave must be split at the period boundary[39m[90m              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdraft privacy also applies to super admin documents and evidence[39m[90m    [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin recording seals content syncs attendance and has no pending w[39m[90m…[39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin recording rolls back all changes when attendance fails[39m[90m        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgeneric update recalculates own draft but preserves submitted recor[39m[90m…[39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcross fiscal year is rejected on draft update submission and admin[39m[90m… [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin recording respects explicit self scope[39m[90m                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mexplicit deny blocks admin recording even with role permission[39m[90m      [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeavePartialCancellationTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma second request over the same days is refused[39m[90m                      [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtwo separate ranges are allowed but cannot add up to the whole leav[39m[90m…[39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe day count skips the same holidays the leave did[39m[90m                 [39m [90m0.33s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapproving returns the days and keeps the paid split consistent[39m[90m      [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapproving clears only the cancelled days from the attendance sheet[39m[90m  [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma rejected request returns nothing and frees the days for a new req[39m[90m…[39m [90m0.16s[39m  
+{"message":"ล้างตารางลงเวลาไม่สำเร็จ","context":{"request_id":"3894b145-6959-49d6-8d6a-7e2222bfbcd4","userId":1,"exception":{"class":"RuntimeException","message":"ล้างตารางลงเวลาไม่สำเร็จ","code":0,"file":"/var/www/html/tests/Feature/LeavePendingCancellationConcurrencyTest.php:111"}},"level":400,"level_name":"ERROR","channel":"testing","datetime":"2026-09-10T17:02:01.047475+07:00","extra":{}}
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeavePendingCancellationConcurrencyTest[39m
+  [32;1m✓[39;22m[90m [39m[90mpressing cancel twice restores the quota only once[39m[90m                  [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhistory and audit are written exactly once[39m[90m                          [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma failure midway rolls the whole cancellation back[39m[90m                  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave that moved on is not cancelled silently[39m[90m                     [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveRegisterReportTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdeleted leave stays in the register but is marked as deleted[39m[90m        [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdeleted pending leave is not counted as awaiting approval[39m[90m           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcsv export shows deleted status and deletion time[39m[90m                   [39m [90m0.13s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveReportCategoryTest[39m
+  [32;1m✓[39;22m[90m [39m[90mrenaming a leave type does not change the report[39m[90m                    [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach category counts only its own leave type[39m[90m                        [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave type outside every category only hits the grand total[39m[90m       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe mapping is configurable without touching code[39m[90m                   [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy leave types without a code still fall back to the name[39m[90m       [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveSettingsAuditTrailTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcreating and editing a leave type is recorded[39m[90m                       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdeleting a leave type keeps what it was before[39m[90m                      [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfiscal year changes are recorded[39m[90m                                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpolicy changes are recorded including versioning[39m[90m                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma fiscal year in use cannot be deleted and the current one is prote[39m[90m…[39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveSettingsFormsAuditTest[39m
+  [32;1m✓[39;22m[90m [39m[90mediting a policy must preserve the policy referenced by approved le[39m[90m…[39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnon current policy must not replace current balance with data set "[39m[90m…[39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnon current policy must not replace current balance with data set "[39m[90m…[39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnon current policy must not replace current balance with data set "[39m[90m…[39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbalance report finds ce balance rows for selected buddhist fiscal y[39m[90m…[39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mswitching type template must not change an already pinned form[39m[90m      [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mword download declares a type that matches the file it sends[39m[90m        [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfiscal year referenced by a leave cannot be deleted[39m[90m                 [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "si[39m[90m…[39m [90m0.28s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "ma[39m[90m…[39m [90m0.28s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "pa[39m[90m…[39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "pe[39m[90m…[39m [90m0.28s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "va[39m[90m…[39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "or[39m[90m…[39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "ha[39m[90m…[39m [90m0.33s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "mi[39m[90m…[39m [90m0.30s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "st[39m[90m…[39m [90m0.29s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "in[39m[90m…[39m [90m0.30s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "sp[39m[90m…[39m [90m0.29s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "re[39m[90m…[39m [90m0.30s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach leave type and cancellation can render a pdf with data set "ca[39m[90m…[39m [90m0.37s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveTest[39m
+  [32;1m✓[39;22m[90m [39m[90memployee can submit leave request[39m[90m                                   [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave request requires valid dates[39m[90m                                  [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90memployee can view own leaves[39m[90m                                        [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90memployee can view balances[39m[90m                                          [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90memployee can cancel pending leave[39m[90m                                   [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90memployee cannot cancel approved leave[39m[90m                               [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser without role gets forbidden instead of server error when delet[39m[90m…[39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser without role gets forbidden instead of server error when updat[39m[90m…[39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveTypeLifecycleTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma leave type with entitlement policies cannot be deleted[39m[90m            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave type with balances cannot be deleted[39m[90m                        [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave type nobody uses can still be deleted[39m[90m                       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstatistics variables of a removed leave type are switched off[39m[90m       [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mextra field variables are switched off when the field is removed[39m[90m    [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapproval step variables beyond the configured chain are switched of[39m[90m…[39m [90m0.22s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveVerificationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mevery submitted leave gets a verification hash[39m[90m                      [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mverification endpoint is public and reports pending status[39m[90m          [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mverification does not expose the leave reason[39m[90m                       [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapproved leave is valid and detects later tampering[39m[90m                 [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90munknown hash returns not found[39m[90m                                      [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mqrcode endpoint returns svg[39m[90m                                         [39m [90m0.09s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LeaveVisibilityTest[39m
+  [32;1m✓[39;22m[90m [39m[90mordinary user sees only their own leaves[39m[90m                            [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreport viewer sees every department[39m[90m                                 [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdepartment approver still sees every department by default[39m[90m          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhr permission alone does not grant the leave list[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin can narrow a viewer to their own unit[39m[90m                         [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnarrowing does not hide the users own leave[39m[90m                         [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\LegacyModernizationMigrationRollbackTest[39m
+  [32;1m✓[39;22m[90m [39m[90mlegacy 08 to 12 migrations roll back and reapply cleanly[39m[90m            [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\MalwareScanningTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma clean file is accepted[39m[90m                                            [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90man infected file is rejected without leaking the signature name[39m[90m     [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unavailable scanner blocks the upload instead of letting it thro[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery upload allowlist carries the scan rule[39m[90m                        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mturning the scanner off skips it so local development still works[39m[90m   [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mproduction refuses to start with the scanner switched off[39m[90m           [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe saraban attachment profile checks both content and extension[39m[90m    [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\MenuDriftTest[39m
+  [32;1m✓[39;22m[90m [39m[90mchanging the menu tree requires a migration for installed systems[39m[90m   [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe referenced menu sync migration exists[39m[90m                           [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe saraban branch declares every page the module has[39m[90m               [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery group covers the permissions of its children[39m[90m                  [39m [90m0.02s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\MenuIntegrityTest[39m
+  [32;1m✓[39;22m[90m [39m[90mseeded menus match the declared tree[39m[90m                                [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma full install produces exactly the declared menu tree[39m[90m              [39m [90m0.55s[39m  
+  [32;1m✓[39;22m[90m [39m[90mseeding removes menus that point at pages which no longer exist[39m[90m     [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery menu permission name exists[39m[90m                                   [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmenu tree hides items the user has no permission for[39m[90m                [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90madministrator sees the management menus[39m[90m                             [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma group disappears when its module is disabled[39m[90m                      [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery menu path exists in the frontend router[39m[90m                       [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery page that needs sign in is reachable from the menu[39m[90m            [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ModuleRegistryTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcurrent modules declare the complete extension contract[39m[90m             [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnew module permissions must follow module resource action[39m[90m           [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy permission exception must be declared by exact name[39m[90m          [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90munknown and circular dependencies are rejected[39m[90m                      [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdisabling a module hides its menu and returns not found for its rou[39m[90m…[39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdisabling a dependency disables dependants transitively[39m[90m             [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcore is not a runtime feature switch[39m[90m                                [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdisabling notification closes all routes and stops new emission[39m[90m     [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmenu visibility comes from permission but never authorizes backend[39m[90m  [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcore registry and engine do not import business modules[39m[90m             [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin module endpoint exposes registry metadata[39m[90m                     [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ModuleToggleTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe module list reports the state the rest of the system uses[39m[90m       [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mturning a module off is stored as a setting and takes effect[39m[90m        [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mturning a module off also disables the modules that depend on it[39m[90m    [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe core module cannot be switched off[39m[90m                              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unknown module is refused[39m[90m                                        [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma stored setting overrides the environment default at boot[39m[90m          [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mswitching modules requires the settings permission[39m[90m                  [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\NotificationCenterTest[39m
+  [32;1m✓[39;22m[90m [39m[90mrequired domain event types and channel templates are seeded[39m[90m        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90memit is atomic deduplicates recipients and removes sensitive payloa[39m[90m…[39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90min app response contract and read scope are limited to owner[39m[90m        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy database notifications remain visible and readable[39m[90m           [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreferences can disable email and enable optional channel[39m[90m           [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90memail adapter sends and unconfigured optional adapter skips safely[39m[90m  [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdisabled module never delivers an already queued message[39m[90m            [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfailed provider uses bounded exponential retry then fails[39m[90m           [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\NotificationProvidersTest[39m
+  [32;1m✓[39;22m[90m [39m[90mweb push is registered as a channel of the core notification center[39m[90m [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery notification type has a web push template[39m[90m                     [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubscribing stores the browser endpoint for the calling user[39m[90m        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubscribing twice from the same browser keeps one row[39m[90m               [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mresubscribing as another user moves ownership of the endpoint[39m[90m       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma user cannot unsubscribe someone elses browser[39m[90m                     [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe public key endpoint never exposes the private key[39m[90m               [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlisting subscriptions hides the browser keys[39m[90m                        [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe adapter reports unconfigured when the user has no browser[39m[90m       [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdelivery succeeds when at least one browser accepts[39m[90m                 [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe outbox sweeper requeues deliveries whose job was lost[39m[90m           [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe outbox sweeper leaves freshly created deliveries alone[39m[90m          [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma delivery that exhausts its attempts enters the dead letter[39m[90m        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma delivery that still has attempts left is not dead lettered[39m[90m        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdead letters are visible and can be requeued by an administrator[39m[90m    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90man ordinary user cannot see or requeue dead letters[39m[90m                 [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchannel health reports every registered channel[39m[90m                     [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\OperationalPermissionMatrixTest[39m
+  [32;1m✓[39;22m[90m [39m[90mall seven approved permissions now exist[39m[90m                            [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery role that reports for duty can clock in[39m[90m                       [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mordinary staff gain nothing beyond their own attendance[39m[90m             [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90movertime permissions follow actual duty[39m[90m                             [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90msystem wide powers belong to super admin only[39m[90m                       [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrestricted permissions can still be granted to one person[39m[90m           [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhr head can verify leave statistics[39m[90m                                 [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave statistics verification is not handed to every approver[39m[90m       [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mseeding twice changes nothing[39m[90m                                       [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mconfidentiality clearance follows the chain of command[39m[90m              [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90man ordinary officer holds no blanket clearance[39m[90m                      [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90msignature revocation separates request from decision[39m[90m                [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma role in both default tables keeps both grants[39m[90m                     [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma higher clearance is not granted together with the lower ones[39m[90m      [39m [90m0.15s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\OperationsCommandCenterTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe same problem raised twice stays one row and counts up[39m[90m           [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma resolved problem that happens again is reopened[39m[90m                   [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90macknowledge assign and resolve are all audited[39m[90m                      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mretrying requeues the work but does not close the item[39m[90m              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90man item without a retry target cannot be retried[39m[90m                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe sweeper turns existing dead letters into queue items[39m[90m            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe sweeper is safe to run repeatedly[39m[90m                               [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mviewing and acting are separate permissions[39m[90m                         [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90man ordinary user sees nothing of the command center[39m[90m                 [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe command center reports every section the master requires[39m[90m        [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma scheduled task that stops running is detected as stale[39m[90m            [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrunning the outbox command records its heartbeat[39m[90m                    [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mturning a flag on grants no permission to anyone[39m[90m                    [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mturning a flag off closes the capability for everyone[39m[90m               [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery flag change is audited[39m[90m                                        [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unknown flag defaults to off and cannot be set[39m[90m                   [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchanging a flag requires the manage permission[39m[90m                      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchanging a flag takes effect immediately[39m[90m                            [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe distribution flag actually blocks the target[39m[90m                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe flag overview marks which values were overridden[39m[90m                [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\OperationsHealthAndReadOnlyTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe public health endpoint needs no account[39m[90m                         [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe public health endpoint leaks nothing about the internals[39m[90m        [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe detailed health endpoint requires a permission[39m[90m                  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe detailed health report covers every area the master requires[39m[90m    [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma system that never ran its scheduler is not reported healthy[39m[90m       [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma dead scheduler makes the whole system report down[39m[90m                 [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90man open critical incident degrades the summary[39m[90m                      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mread only mode blocks writes but keeps reads working[39m[90m                [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mread only mode does not exempt the super admin[39m[90m                      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe flag that turns read only off still works while it is on[39m[90m        [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlogging out still works in read only mode[39m[90m                           [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mread only mode is off by default[39m[90m                                    [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrestore reports no evidence until the check actually runs[39m[90m           [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrestore reports pass only after a real verification[39m[90m                 [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma stale restore verification drops back to partial[39m[90m                  [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe restore check refuses to pretend on sqlite[39m[90m                      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe public health endpoint is read only[39m[90m                             [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\OrgScopeResolverTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdefault scope is unit and sees only its own unit[39m[90m                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdescendants scope sees child units[39m[90m                                  [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdescendants scope still excludes other branches[39m[90m                     [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90morganization scope is unrestricted[39m[90m                                  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mself scope sees no unit at all[39m[90m                                      [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mwithout any assignment nothing changes[39m[90m                              [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma manager sees the unit they are assigned to[39m[90m                        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma manager of a parent unit can be given the whole subtree[39m[90m           [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90man acting manager is treated the same while the assignment is effec[39m[90m…[39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90man expired assignment grants nothing[39m[90m                                [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma future assignment grants nothing yet[39m[90m                              [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90man explicit scope row still wins over the assignment[39m[90m                [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave policy uses the scope for department approvers[39m[90m                [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\OvertimeApprovalChainTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe workflow has two role bound steps in the prescribed order[39m[90m       [39m [90m0.55s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhr head issues deputy permits and only the director makes it usable[39m[90m [39m [90m0.71s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe director cannot act before the deputy has permitted[39m[90m             [39m [90m0.59s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe issuer cannot decide their own order[39m[90m                            [39m [90m0.53s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma refusal at the first step ends the chain[39m[90m                          [39m [90m0.63s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\OvertimeCriticalPathTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcritical path keeps approved actual and certified time distinct[39m[90m     [39m [90m0.31s[39m  
+  [32;1m✓[39;22m[90m [39m[90movertime punch requires an approved assignment[39m[90m                      [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpending order cannot be used until workflow approval[39m[90m                [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90morder rejection closes workflow and prevents assignment[39m[90m             [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreport and certification respect org scope[39m[90m                          [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mschema has no compensation calculation fields[39m[90m                       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlegacy attendance overtime fields are read only[39m[90m                     [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\OvertimeOrderProvisioningTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma fresh install gives every user a home org unit[39m[90m                    [39m [90m0.41s[39m  
+  [32;1m✓[39;22m[90m [39m[90missuing an order works on a freshly installed system[39m[90m                [39m [90m0.53s[39m  
+  [32;1m✓[39;22m[90m [39m[90mot check in is refused without an approved order[39m[90m                    [39m [90m0.53s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe org unit backfill is idempotent[39m[90m                                 [39m [90m0.41s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\PermissionCatalogTest[39m
+  [32;1m✓[39;22m[90m [39m[90mevery permission a route enforces exists in the catalogue[39m[90m           [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery permission the application code checks exists in the catalogu[39m[90m…[39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery permission a menu requires exists in the catalogue[39m[90m            [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery permission a module manifest declares exists in the catalogue[39m[90m [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mseeding the catalogue creates every name without granting anything[39m[90m  [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe names the code relies on are present after a normal install[39m[90m     [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\PermissionEvaluatorTest[39m
+  [32;1m✓[39;22m[90m [39m[90mlegacy permission satisfies the canonical name[39m[90m                      [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcanonical permission also satisfies the legacy name[39m[90m                 [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90munrelated permission is not granted[39m[90m                                 [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgate honours the alias mapping[39m[90m                                      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mot summary is not aliased from any legacy permission[39m[90m                [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mexplicit deny beats an allow[39m[90m                                        [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdeny cannot be bypassed by using the other name[39m[90m                     [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mexplicit deny beats super admin[39m[90m                                     [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90msuper admin keeps every other ability when denied one[39m[90m               [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdisabling the flag restores the previous behaviour[39m[90m                  [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\PersonalDataProtectionTest[39m
+  [32;1m✓[39;22m[90m [39m[90msensitive fields cannot be mass assigned anymore[39m[90m                    [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mprofile update endpoint ignores religion[39m[90m                            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpurge command reports before deleting and clears with force[39m[90m         [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser can export own personal data[39m[90m                                   [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpersonal data export never returns another users data[39m[90m               [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mviewing another persons leave card is logged[39m[90m                        [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mviewing own leave card is not logged[39m[90m                                [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90maccess history appears in the subjects own export[39m[90m                   [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90maccess history endpoint is paginated and scoped to self[39m[90m             [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mopening the user directory is logged as bulk access[39m[90m                 [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mediting another users record is logged against that person[39m[90m          [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbulk report access is logged without a single subject[39m[90m               [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mexpired leave evidence files are purged but metadata is kept[39m[90m        [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\PersonalIdentifierMaskingTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe list endpoint never returns a full id card number[39m[90m               [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe list endpoint does not leak the hash or passport number[39m[90m         [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90msearching by the full number still finds the person[39m[90m                 [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe detail endpoint returns the full number and records the access[39m[90m  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90man administrator outside the scope cannot open the detail record[39m[90m    [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma user without the directory permission is refused[39m[90m                  [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma masked number cannot be written back over the real one[39m[90m            [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\PersonnelApiAlignmentTest[39m
+  [32;1m✓[39;22m[90m [39m[90mlogin and user endpoints return personnel domain payload[39m[90m            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin users and list endpoints include domain data[39m[90m                  [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\PersonnelDomainCoreServicesTest[39m
+  [32;1m✓[39;22m[90m [39m[90morg scope resolver prioritizes personnel assignment[39m[90m                 [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave policy service resolves from current assignment[39m[90m               [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreporting data service reads personnel domain[39m[90m                       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfallback to legacy fields when no domain assignment exists[39m[90m          [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\PersonnelEntityFoundationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mpersonnel table schema exists[39m[90m                                       [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpersonnel model has public uuid and relation with user[39m[90m              [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpersonnel assignments relationship[39m[90m                                  [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbackfill creates personnel for existing users without duplication[39m[90m   [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser account and security identity remain authoritative[39m[90m             [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\PersonnelSyncTest[39m
+  [32;1m✓[39;22m[90m [39m[90muser creation creates and links personnel and assignment[39m[90m            [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mprofile update syncs personnel and user name[39m[90m                        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpersonnel update syncs profile and user name[39m[90m                        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90massignment change syncs user org unit and legacy department[39m[90m         [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90massign position preserves historical effective dates[39m[90m                [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90msync prevents recursive infinite loops[39m[90m                              [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90msync rollback on transaction failure[39m[90m                                [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\PrivilegeEscalationGuardTest[39m
+  [32;1m✓[39;22m[90m [39m[90mediting users does not let you hand out permissions[39m[90m                 [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mediting users does not let you create roles[39m[90m                         [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhr keeps the duties it actually has[39m[90m                                 [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe administrator keeps both capabilities[39m[90m                           [39m [90m0.17s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ProductionSeedSafetyTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma production install creates no demo accounts[39m[90m                       [39m [90m0.32s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe administrator password comes from the environment not the sourc[39m[90m…[39m [90m0.31s[39m  
+  [32;1m✓[39;22m[90m [39m[90mwithout an environment password the administrator gets a random one[39m[90m [39m [90m0.38s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlocal installs still get the full set of demo accounts[39m[90m              [39m [90m0.69s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ProfilePasswordChangeTest[39m
+  [32;1m✓[39;22m[90m [39m[90mpassword changes when the current password is correct[39m[90m               [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma wrong current password is refused in thai[39m[90m                         [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma mismatched confirmation is refused[39m[90m                                [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90momitting the current password is refused[39m[90m                            [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe new password cannot repeat the current one[39m[90m                      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma short new password is refused in thai[39m[90m                             [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtokens issued before the change stop working[39m[90m                        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe device that changed the password receives a fresh token[39m[90m         [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe change is audited without storing any password material[39m[90m         [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe general profile update neither requires nor accepts a password[39m[90m  [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\PromotionScreeningTest[39m
+  [32;1m✓[39;22m[90m [39m[90mflags staff whose countable leave exceeds the threshold[39m[90m             [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave types excluded from promotion count do not flag staff[39m[90m         [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mflags staff who were late too many times[39m[90m                            [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthresholds can be adjusted per request[39m[90m                              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstaff appointed mid round is flagged for insufficient service[39m[90m       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfull round service time is exactly six months[39m[90m                       [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mservice time of mid round appointment is counted from start date[39m[90m    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreport requires permission[39m[90m                                          [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcsv export contains every row[39m[90m                                       [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\RateLimitBucketIsolationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mnormal api traffic does not exhaust the document download limit[39m[90m     [39m [90m0.58s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreport export limit does not block printing a leave form[39m[90m            [39m [90m0.39s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdocument downloads are still rate limited[39m[90m                           [39m [90m6.58s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\RateLimiterRegistrationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mevery contract the code resolves is bound[39m[90m                           [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery named throttle used by a route is registered[39m[90m                  [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mno registered limiter is left unused[39m[90m                                [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ReportingLayerTest[39m
+  [32;1m✓[39;22m[90m [39m[90meach report requires its normal module permission[39m[90m                   [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpersonnel leave and attendance reports never cross explicit scope[39m[90m   [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevaluation returns raw statistics without an undefined formula[39m[90m      [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpdf excel word and csv exports keep response contract and audit[39m[90m     [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90movertime report keeps approved actual and certified time distinct[39m[90m   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpersonnel report uses a bounded number of queries[39m[90m                   [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreport index lists only reports the viewer may open[39m[90m                 [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreport index titles are thai[39m[90m                                        [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfiscal year fallback produces a sane date range[39m[90m                     [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\RequestContextTest[39m
+  [32;1m✓[39;22m[90m [39m[90mapi response contains generated request id[39m[90m                          [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapi accepts only a safe caller request id[39m[90m                           [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ReviewScopeTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcannot close a case owned by another unit[39m[90m                           [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcannot dispose a document that the actor cannot view[39m[90m                [39m [90m0.14s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\RouteAuthorizationAuditTest[39m
+  [32;1m✓[39;22m[90m [39m[90mevery non public api route requires authentication[39m[90m                  [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery saraban route declares the ability it requires[39m[90m                [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe ability exemption list has no stale entries[39m[90m                     [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90msensitive exports and downloads have specific throttles[39m[90m             [39m [90m0.02s[39m  
+
+  [30;43;1m WARN [39;49;22m[39m Tests\Feature\RuntimeSecurityConfigurationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe local disk does not serve files over http[39m[90m                       [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe authenticated file route is the only way in[39m[90m                     [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery php service verifies its environment before starting work[39m[90m     [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe production compose file exposes no vite dev server[39m[90m              [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdependencies with advisories are pinned to fixed releases[39m[90m           [39m [90m0.02s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdependency versions are pinned exactly[39m[90m                              [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mci audits dependencies on both sides[39m[90m                                [39m [90m0.02s[39m  
+  [33;1m-[39;22m[90m [39m[90mes modules are served as javascript[39m[90m [39m[33m→ ไฟล์ระดับ repo (docker/nginx/[39m[90m…[39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanCaseRedactionAndViewsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mgrouping a document into a case never changes the document[39m[90m          [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document can be detached without a trace on the document[39m[90m          [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma case hides documents the reader cannot see[39m[90m                        [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma closed case accepts no new documents[39m[90m                              [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mattaching a document you cannot see is refused[39m[90m                      [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma case owned by another unit cannot be closed[39m[90m                       [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma case owned by another unit cannot be changed[39m[90m                      [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe creator can still close their own case[39m[90m                          [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma redacted copy no longer contains the hidden text[39m[90m                  [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mredacting leaves the original untouched[39m[90m                             [39m [90m0.25s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma redaction records its reason and hash in the audit log[39m[90m            [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma redaction without a reason is refused[39m[90m                             [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma version from another document cannot be redacted[39m[90m                  [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma redaction record cannot be edited[39m[90m                                 [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcomparing two versions reports hash size and pages[39m[90m                  [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcomparing a version with itself is refused[39m[90m                          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcomparing a version from another document is refused[39m[90m                [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma saved view stores the query not the result[39m[90m                        [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma private view is invisible to everyone else[39m[90m                        [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma shared view is visible but only the owner can change it[39m[90m           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unknown resource is refused[39m[90m                                      [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanCoreContractTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcore tables that saraban binds to exist[39m[90m                             [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcore services expose the entry points saraban binds to[39m[90m              [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90msaraban does not create a second core master table[39m[90m                  [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90msaraban code does not reimplement core capabilities[39m[90m                 [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe contract scanner actually detects violations[39m[90m                    [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanDataModelTest[39m
+  [32;1m✓[39;22m[90m [39m[90mno saraban table references the single level department[39m[90m             [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdocuments reference core users and org units[39m[90m                        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcore records cannot be deleted while a document still points at the[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document keeps every version and never overwrites the original[39m[90m    [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document cannot have two versions with the same number[39m[90m            [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mversion files are stored as private paths not public urls[39m[90m           [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90massignments can point at a position record while keeping the old te[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe migration backfills positions from the names already in the dat[39m[90m…[39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe saraban foundation migration rolls back and reapplies cleanly[39m[90m   [39m [90m0.54s[39m  
+{"message":"ส่งการแจ้งเตือนการเวียนหนังสือไม่สำเร็จ","context":{"request_id":"fbc5fa7b-9100-4ea0-9ec7-6451ba82de42","distribution_id":1,"error":"Unknown or inactive notification type: saraban.document.distributed"},"level":300,"level_name":"WARNING","channel":"testing","datetime":"2026-09-10T17:02:44.985446+07:00","extra":{}}
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanDistributionAndInboxTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdistributing to a person records a recipient with a snapshot[39m[90m        [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrecipient snapshot does not follow the person when they move[39m[90m        [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdistributing to a subtree reaches child units[39m[90m                       [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90msender cannot distribute outside their own scope[39m[90m                    [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma draft document cannot be distributed[39m[90m                              [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdistribution requires the send permission[39m[90m                           [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrecipient sees the document in their inbox[39m[90m                          [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90minbox only ever shows your own items[39m[90m                                [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mopening someone elses inbox item returns not found[39m[90m                  [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mopening a document is not acknowledging it[39m[90m                          [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90macknowledging records intent and clears the pending count[39m[90m           [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90macknowledging twice is rejected[39m[90m                                     [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mprogress cannot be reported before acknowledgement[39m[90m                  [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mprogress moves forward through the documented states[39m[90m                [39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90mprogress cannot go backwards[39m[90m                                        [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma recipient outside the owning unit can still open the file[39m[90m         [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtracking shows every round and each recipients state[39m[90m                [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtracking requires the track permission[39m[90m                              [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdistribution emits through the core notification center[39m[90m             [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdistribution still succeeds when notifications fail[39m[90m                 [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery distribution step is written to the central audit log[39m[90m         [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe distribution overview lists what was sent with acknowledgement[39m[90m… [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe distribution overview hides documents outside the viewers scope[39m[90m [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe distribution overview requires the tracking permission[39m[90m          [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanDocumentCoreTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma user without saraban permissions is denied everywhere[39m[90m             [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreating requires the create permission not just the view permissio[39m[90m…[39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document from another unit cannot be opened by guessing its id[39m[90m    [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe list is limited to the units a user may see[39m[90m                     [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90madvanced search never widens the visible scope[39m[90m                      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90madvanced search filters by term and date range[39m[90m                      [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcreating with a file stores the original as version one[39m[90m             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mattaching a new file creates a new version and leaves the original[39m[90m… [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document cannot be submitted without a file[39m[90m                       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma submitted document can no longer be edited[39m[90m                        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubmitting is recorded in the central audit log[39m[90m                     [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdocument files are only served to people who may read the document[39m[90m  [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mturning the module off closes every saraban route[39m[90m                   [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanFinalizationAndVerificationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mfinalizing creates a new final version and keeps the signed one[39m[90m     [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe qr placement follows the published layout policy[39m[90m                [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe qr code is drawn as vectors not embedded as an image[39m[90m            [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document cannot be finalized twice[39m[90m                                [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unsigned document cannot be finalized[39m[90m                            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfinalizing requires recent re authentication[39m[90m                        [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90manyone holding the paper can verify it without signing in[39m[90m           [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe public result does not leak internal information[39m[90m                [39m [90m0.29s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unknown code is not found[39m[90m                                        [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90maltering the document after issue is reported on the verification p[39m[90m…[39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe qr image endpoint returns an svg[39m[90m                                [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe verification code is long and random[39m[90m                            [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe verification url points at the public page[39m[90m                      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfinalizing is written to the central audit log[39m[90m                      [39m [90m0.18s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanIncomingRegistrationTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe source number and the register number are kept apart[39m[90m            [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe received time comes from the trusted clock not from the request[39m[90m [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mregistering the same source document twice is flagged before it is[39m[90m… [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma confirmed duplicate can still be registered[39m[90m                       [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document without a source number is not guessed to be a duplicate[39m[90m [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe duplicate check can be called before submitting the form[39m[90m        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach registration gets its own issued register number[39m[90m               [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe incoming document and its original file are stored together[39m[90m     [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mregistering requires the incoming register permission[39m[90m               [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90man outsider cannot read the incoming register[39m[90m                       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe registration is written to the central audit log[39m[90m                [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe pending registration queue shows only incoming documents withou[39m[90m…[39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanModuleRegistrationTest[39m
+  [32;1m✓[39;22m[90m [39m[90msaraban is registered as a module of the existing system[39m[90m            [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mturning off notifications does not disable saraban[39m[90m                  [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90msaraban can be switched off without affecting other modules[39m[90m         [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90msaraban route patterns do not collide with existing modules[39m[90m         [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe permission namespace covers every capability group the master r[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery saraban permission follows the module resource action convent[39m[90m…[39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90man already installed system receives the namespace through a migrat[39m[90m…[39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90minstalling creates every saraban permission but grants them to nobo[39m[90m…[39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90man ordinary user holds no saraban permission[39m[90m                        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery saraban menu is gated by a saraban permission[39m[90m                 [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma user without saraban permissions does not see the menu[39m[90m            [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90msaraban appears in the existing module administration screen[39m[90m        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mno saraban menu reaches the sidebar while the module is off[39m[90m         [39m [90m0.12s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanNumberReservationTest[39m
+  [32;1m✓[39;22m[90m [39m[90man officer can reserve the next number[39m[90m                              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe reserved list shows numbers that are still in play[39m[90m              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma released number returns to the pool[39m[90m                               [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcancelling a number requires a real reason[39m[90m                          [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcancelling a number requires recent re authentication[39m[90m               [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreleasing a number does not require re authentication[39m[90m               [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery numbering endpoint sits behind its own permission[39m[90m             [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma reserved number can be bound to a document[39m[90m                        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma number from the wrong series cannot be bound[39m[90m                      [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document that already has a number cannot take another[39m[90m            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbinding a number checks permission on that document[39m[90m                 [39m [90m0.09s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanNumberingEngineTest[39m
+  [32;1m✓[39;22m[90m [39m[90mnumbers run in order without gaps or repeats[39m[90m                        [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe database refuses a duplicate number in the same series and year[39m[90m [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe counter is taken under a row lock and never with a bare max que[39m[90m…[39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnumbers are recorded in the buddhist year[39m[90m                           [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe counter restarts at one when the year changes[39m[90m                   [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtwo series keep independent counters[39m[90m                                [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma number walks the full lifecycle to issued[39m[90m                         [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma number cannot be issued before it is attached to a document[39m[90m       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90man issued number is never handed out again[39m[90m                          [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma released number comes back before the counter moves on[39m[90m            [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma cancelled number is burned and never reused[39m[90m                       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mvoiding keeps the number in the register as evidence[39m[90m                [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma number that was never issued cannot be voided[39m[90m                     [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery state change is written to the central audit log[39m[90m              [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanPdfWorkspaceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mcoordinates are stored as pdf points exactly as sent[39m[90m                [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90msaving replaces the whole set so removed objects really disappear[39m[90m   [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe workspace never accepts an image from the browser[39m[90m               [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrendering produces a real pdf as a new version without touching the[39m[90m…[39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe renderer can be called directly and returns pdf bytes[39m[90m           [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe receive stamp is filled from the incoming register not typed by[39m[90m…[39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mplacing stamps requires the stamp permission[39m[90m                        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma signed document cannot be stamped any further[39m[90m                     [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma registered incoming document can still be stamped[39m[90m                 [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90man outsider cannot read the workspace of another units document[39m[90m     [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstamping is recorded in the central audit log[39m[90m                       [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreview returns a rendered pdf of what will be produced[39m[90m             [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreview saves nothing at all[39m[90m                                        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpreview draws saved objects together with the draft ones[39m[90m            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma read only viewer cannot ask for a preview[39m[90m                         [39m [90m0.11s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanPolicyCenterTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdefaults apply before any policy is published[39m[90m                       [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma draft does not take effect until it is published[39m[90m                  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90msaving a draft twice updates the same draft[39m[90m                         [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma published version cannot be edited[39m[90m                                [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublishing archives the previous version instead of deleting it[39m[90m     [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrolling back publishes a new version with the old content[39m[90m           [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublishing and rolling back are written to the central audit log[39m[90m    [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublishing requires recent authentication[39m[90m                           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreading policies does not require the manage permission[39m[90m             [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unknown policy key is refused[39m[90m                                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90manyone can read their own authority[39m[90m                                 [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreading someone elses authority needs the authority permission[39m[90m      [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe matrix covers every ability in the module manifest[39m[90m              [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mholders can be listed for an ability[39m[90m                                [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90man ability outside the module is refused[39m[90m                            [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90man administrator can create a number series from the screen[39m[90m         [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma series that has issued numbers cannot be deleted[39m[90m                  [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmanaging number series requires the config permission[39m[90m               [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanRetentionAndReportsTest[39m
+  [32;1m✓[39;22m[90m [39m[90man issued document cannot be deleted even from code[39m[90m                 [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma draft can still be deleted[39m[90m                                        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mplacing and releasing a hold is recorded and audited[39m[90m                [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document cannot be held twice[39m[90m                                     [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma held document cannot be disposed even when due and approved[39m[90m       [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma hold that arrives mid disposal still saves the files[39m[90m              [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdisposal requires approval first[39m[90m                                    [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdisposal before the retention period ends is refused[39m[90m                [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdisposal removes files but keeps the register[39m[90m                       [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdisposing twice is refused[39m[90m                                          [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mapproval and disposal require recent authentication[39m[90m                 [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe disposal queue excludes held documents[39m[90m                          [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document outside the actors scope cannot be disposed[39m[90m              [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe disposal queue excludes documents outside the readers scope[39m[90m     [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe register report is limited to the readers scope[39m[90m                 [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe summary chart is limited to the readers scope[39m[90m                   [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe summary chart keeps empty months[39m[90m                                [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe summary chart requires the report permission[39m[90m                    [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe register report filters by direction and date[39m[90m                   [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe number report shows reserved issued and voided numbers[39m[90m          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe distribution report separates unopened from unacknowledged[39m[90m      [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreports require the report permission[39m[90m                               [39m [90m0.11s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanSecurityAuditTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma fully permissioned outsider cannot reach another units document[39m[90m   [39m [90m0.25s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma classified document needs clearance not just registry access[39m[90m      [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclearance for a higher level covers the levels below it[39m[90m             [39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclearance for a lower level does not unlock the levels above it[39m[90m     [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90msomeone working on the matter can open it whatever its level[39m[90m        [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90msomeone with no part in the matter still cannot open it[39m[90m             [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mopening a classified document is written into the access register[39m[90m   [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mopening an ordinary document is not written into the access registe[39m[90m…[39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma refused attempt does not appear in the access register[39m[90m            [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma level the policy does not describe is denied[39m[90m                      [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90man ordinary document is unaffected by the clearance gate[39m[90m            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe clearance rule comes from the policy centre[39m[90m                     [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe file of an unreachable document cannot be downloaded[39m[90m            [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdocument files are stored on the private disk only[39m[90m                  [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma file that only pretends to be a pdf is refused[39m[90m                    [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma genuine pdf is accepted[39m[90m                                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery saraban route is rate limited[39m[90m                                 [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery writing saraban route has an authorization gate[39m[90m               [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma stale scheduled task is raised into the exception queue[39m[90m           [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma healthy scheduled task raises nothing[39m[90m                             [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtopics that need a human can never report pass[39m[90m                      [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery topic states how it was checked[39m[90m                               [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma tampered audit chain reports fail[39m[90m                                 [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mopen incidents make the register report fail[39m[90m                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe compliance register requires a permission[39m[90m                       [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mno route can write a compliance status[39m[90m                              [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe indexes the hot queries need exist[39m[90m                              [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe document list does not run a query per row[39m[90m                      [39m [90m0.23s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanSignatureAndStepUpTest[39m
+  [32;1m✓[39;22m[90m [39m[90msigning is refused when the user has not recently re authenticated[39m[90m  [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mconfirming the password opens the window and signing then succeeds[39m[90m  [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma wrong password does not open the window[39m[90m                           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mproduction refuses to start with step up switched off[39m[90m               [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrefreshing the token carries the original confirmation time not a n[39m[90m…[39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe signature evidence records everything the master requires[39m[90m       [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe evidence cannot be edited or deleted[39m[90m                            [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtampering with the signed file is detected[39m[90m                          [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma signature is stored as stroke coordinates not as an image[39m[90m         [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mendorsing with handwriting does not create signature evidence[39m[90m       [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma date and note placed with the signature land on the same version[39m[90m  [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mendorsement object types cannot ride along with a signature[39m[90m         [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mendorsing requires its own permission not the signing one[39m[90m           [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma saraban officer without signing authority cannot sign[39m[90m             [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document cannot be signed twice[39m[90m                                   [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90msigning is written to the central audit log[39m[90m                         [39m [90m0.15s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanSignatureVerificationTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma properly signed document verifies as valid[39m[90m                        [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90man electronic signature makes no certificate claim[39m[90m                  [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document modified after signing is detected[39m[90m                       [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma missing signed file cannot be reported as valid[39m[90m                   [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma signature bound to the wrong document version is invalid[39m[90m          [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma hash that does not match its bound version is invalid[39m[90m             [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma signature credited to someone who did not produce it is flagged[39m[90m   [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma signature without recorded authority is invalid[39m[90m                   [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthority that has since ended is a warning not a failure[39m[90m           [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma delegate signature is accepted by verification[39m[90m                    [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma signature out of its declared order is flagged[39m[90m                    [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclaiming a digital signature without a certificate fails[39m[90m            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma certificate that expired before signing is reported[39m[90m               [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma certificate revoked before signing is reported[39m[90m                    [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma certificate from an untrusted issuer is reported[39m[90m                  [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma timestamp that predates the signature is invalid[39m[90m                  [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma revocation needs a reason and becomes pending[39m[90m                     [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90man approved revocation cancels the document without deleting anythi[39m[90m…[39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma rejected revocation leaves the document usable[39m[90m                    [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe requester cannot approve their own revocation[39m[90m                   [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrevocation requires recent re authentication[39m[90m                        [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrevoking without the permission is refused[39m[90m                          [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdeciding without the approval permission is refused[39m[90m                 [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mverification detail is refused to someone outside the scope[39m[90m         [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe verification api returns the server side decision[39m[90m               [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe evidence package contains the full record[39m[90m                       [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublic verification reports a tampered file as unusable[39m[90m             [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublic verification never exposes internal detail[39m[90m                   [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublic verification reports a revoked document[39m[90m                      [39m [90m0.28s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanWorkflowAndAuthorityTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe saraban resolver is registered with the core engine[39m[90m             [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90msubmitting starts an instance on the core workflow engine[39m[90m           [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe workflow endpoint reports the current step[39m[90m                      [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90man officer from another unit cannot act on this units document[39m[90m      [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90man officer in the owning unit can move the document forward[39m[90m         [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mauthority is a projection of core data not a table of its own[39m[90m       [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma unit manager has authority over the unit they manage[39m[90m              [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma user cannot file a document on behalf of a unit they have no auth[39m[90m…[39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe form only offers units the user may act for[39m[90m                     [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe document number is issued only when signing completes[39m[90m           [39m [90m0.43s[39m  
+  [32;1m✓[39;22m[90m [39m[90msigning fails loudly when no number series is configured[39m[90m            [39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma number reserved in advance is the one issued at signing[39m[90m           [39m [90m0.31s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreturning a document puts it back into draft so it can be fixed[39m[90m     [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe workflow history is visible on the document[39m[90m                     [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe work queue lists documents the caller can act on[39m[90m                [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe work queue hides work the caller cannot act on[39m[90m                  [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe work queue does not leak another units work[39m[90m                     [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma finished document leaves the queue[39m[90m                                [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe work queue requires the register permission[39m[90m                     [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe dashboard tile matches the queue it links to[39m[90m                    [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery dashboard tile links somewhere real[39m[90m                           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe dashboard does not count another units documents[39m[90m                [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe dashboard requires the register permission[39m[90m                      [39m [90m0.16s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanWorkflowDesignTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe published workflow routes through the deputy before the signer[39m[90m  [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe previous version is retired not deleted[39m[90m                         [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma draft is created by copying the active version[39m[90m                    [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90monly one draft may exist at a time[39m[90m                                  [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe system wires the routes from the step order[39m[90m                     [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe last step is always the final one[39m[90m                               [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90man active version cannot be edited[39m[90m                                  [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma published version cannot be discarded[39m[90m                             [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma step cannot reference a permission outside the saraban namespace[39m[90m  [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe saraban endpoints refuse versions of other modules[39m[90m              [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmanaging the workflow requires the manage permission[39m[90m                [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublishing does not move running cases to the new version[39m[90m           [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90man empty draft cannot be published[39m[90m                                  [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublishing is written to the central audit log[39m[90m                      [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpublishing requires a recent re authentication[39m[90m                      [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mremoving a step from a draft removes its routes too[39m[90m                 [39m [90m0.09s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SarabanWorkflowSimulationTest[39m
+  [32;1m✓[39;22m[90m [39m[90msimulating leaves no trace in the system[39m[90m                            [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe simulation reports the same people who may really act[39m[90m           [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma person from another unit is not offered as a candidate[39m[90m            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mit says which step has nobody with authority[39m[90m                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unknown org unit is reported as invalid not as an error[39m[90m          [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma document already in progress keeps its pinned version[39m[90m             [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma draft version can be simulated before it is published[39m[90m             [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90msimulation requires its own permission[39m[90m                              [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe version list is available to planners[39m[90m                           [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SecureFileAuthorizationTest[39m
+  [32;1m✓[39;22m[90m [39m[90muser can open own profile photo but another user cannot[39m[90m             [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90muser can open own attendance image but another user cannot[39m[90m          [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90munassociated private file is denied even to an authenticated user[39m[90m   [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma user administrator can open someone elses profile photo[39m[90m           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe legacy permission name still grants access through its alias[39m[90m    [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90man explicit deny beats the permission the user holds[39m[90m                [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90man administrator scoped to their own unit cannot open another units[39m[90m…[39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90man administrator scoped to their own unit can open a file inside it[39m[90m [39m [90m0.16s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SecurityHeadersTest[39m
+  [32;1m✓[39;22m[90m [39m[90mapi responses include security headers[39m[90m                              [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SignatureAndPhotoUploadSecurityTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma genuine png signature is stored privately with an unguessable nam[39m[90m…[39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma spoofed mime header over php content is refused[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma forbidden extension declared in the data uri is refused[39m[90m           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma corrupt base64 string is refused instead of being repaired[39m[90m        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90man oversized signature is refused in thai[39m[90m                           [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma detectable polyglot is refused[39m[90m                                    [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90man uploaded signature file of a forbidden type is refused[39m[90m           [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma profile photo of a forbidden type is refused[39m[90m                      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma genuine profile photo is still accepted[39m[90m                           [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe cancellation signature uses the same gate[39m[90m                       [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SystemRoleProtectionTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe canonical super admin role is found by key not by display name[39m[90m  [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe legacy display name alias maps to the same key[39m[90m                  [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma system role cannot be renamed[39m[90m                                     [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma system role cannot be deleted[39m[90m                                     [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90man ordinary role can still be renamed and deleted with an audit tra[39m[90m…[39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe last super admin cannot demote themselves[39m[90m                       [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdemoting oneself is allowed when another super admin remains[39m[90m        [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe last super admin account cannot be deleted or suspended[39m[90m         [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\SystemSettingsTest[39m
+  [32;1m✓[39;22m[90m [39m[90mregular user only receives allowlisted public settings[39m[90m              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90msecret values are encrypted at rest and decrypted for runtime use[39m[90m   [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin settings mask secrets and report configuration state[39m[90m          [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90munknown settings are rejected[39m[90m                                       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcanonical values sync legacy aliases and are audited[39m[90m                [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnotification test button refuses a channel the recipient has not li[39m[90m…[39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnotification test button rejects an unknown channel[39m[90m                 [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnotification test button sends through the email adapter[39m[90m            [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ThaiGovernmentLeaveTypesTest[39m
+  [32;1m✓[39;22m[90m [39m[90mall operational thai government leave types are seeded[39m[90m              [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Time\TimeServiceTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma weekday with a schedule is a working day[39m[90m                          [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90msaturday and sunday are not working days[39m[90m                            [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma schedule may declare saturday a working day[39m[90m                       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma public holiday is not a working day[39m[90m                               [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90man inactive holiday is ignored[39m[90m                                      [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma department exception overrides a public holiday[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90man exception can turn a normal weekday into a holiday[39m[90m               [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mworking days between skips weekends and holidays[39m[90m                    [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcalendar days ignore holidays entirely[39m[90m                              [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90man overnight shift ends on the next day[39m[90m                             [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma day shift does not cross midnight[39m[90m                                 [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchecking out after midnight on a night shift is not early leave[39m[90m     [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlate minutes are counted from the scheduled start[39m[90m                   [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe grace period is honoured[39m[90m                                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnobody is late on a holiday[39m[90m                                         [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnobody is late on a weekend[39m[90m                                         [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mearly leave is measured against the scheduled end[39m[90m                   [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mabsence needs a working day and no attendance[39m[90m                       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma personal schedule overrides the organisation default[39m[90m              [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90man org unit schedule applies to its members[39m[90m                         [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma child unit inherits the parent unit schedule[39m[90m                      [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma personal schedule beats the org unit schedule[39m[90m                     [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90man expired assignment stops applying[39m[90m                                [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchanging the schedule does not rewrite history[39m[90m                      [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma future assignment does not apply yet[39m[90m                              [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe default timezone is bangkok[39m[90m                                     [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma schedule may declare its own timezone[39m[90m                             [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma utc timestamp is interpreted in the local zone[39m[90m                    [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mconverting a moment into the user zone[39m[90m                              [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe fiscal year number is the gregorian year it ends in[39m[90m             [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma range that spans the fiscal year boundary is detected[39m[90m             [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe fiscal year range comes from the table[39m[90m                          [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe fiscal year falls back when no row covers the date[39m[90m              [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mwithout any schedule weekdays still count as working days[39m[90m           [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Time\WorkScheduleBackfillTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe migration creates a default schedule[39m[90m                            [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe default schedule works monday to friday[39m[90m                         [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe organisation wide assignment exists and covers everyone[39m[90m         [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe backfill never touches the legacy user columns[39m[90m                  [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma user with custom hours gets a personal schedule[39m[90m                   [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrunning the seeder twice changes nothing[39m[90m                            [39m [90m0.03s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\UploadAllowlistTest[39m
+  [32;1m✓[39;22m[90m [39m[90mno allowlist contains an executable type[39m[90m                            [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery upload rule checks both content and extension[39m[90m                 [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave evidence upload rejects dangerous files with data set "php"[39m[90m   [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave evidence upload rejects dangerous files with data set "html"[39m[90m  [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave evidence upload rejects dangerous files with data set "svg"[39m[90m   [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave evidence upload rejects dangerous files with data set "exe"[39m[90m   [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave evidence upload rejects dangerous files with data set "sh"[39m[90m    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave evidence upload rejects a script disguised as a pdf[39m[90m           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mleave evidence upload still accepts a real pdf[39m[90m                      [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\UserDirectPermissionTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe dead custom permissions column is really gone[39m[90m                   [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin can assign individual permissions when creating a user[39m[90m        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin can update individual permissions of an existing user[39m[90m         [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclearing individual permissions works[39m[90m                               [39m [90m0.08s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\UserImportTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdepartment filter list returns active departments to any signed in[39m[90m… [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcsv import creates users with role profile and leave balances[39m[90m       [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcsv import never accepts a password from the file[39m[90m                   [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcsv import skips bad rows and reports the line number[39m[90m               [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcsv import rejects a file without the required columns[39m[90m              [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcsv import requires the user management permission[39m[90m                  [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Workflow\ApprovalWorkflowManagementTest[39m
+  [32;1m✓[39;22m[90m [39m[90m01 load workflow steps[39m[90m                                              [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90m02 to 05 save and reorder workflow[39m[90m                                  [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90m06 refresh retains data[39m[90m                                             [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90m07 validation constraints[39m[90m                                           [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90m08 permission security[39m[90m                                              [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90m09 and 10 new leave generates approval steps[39m[90m                        [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90m11 and 12 step by step approval and rejection[39m[90m                       [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90m13 old request not affected by new workflow[39m[90m                         [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90m14 optimistic concurrency conflict[39m[90m                                  [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Workflow\EngineApproverFidelityTest[39m
+  [32;1m✓[39;22m[90m [39m[90mengine matches the live resolver for a role step[39m[90m                    [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mengine matches the live resolver for a specific user step[39m[90m           [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe director step no longer accepts the requesters department head[39m[90m  [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mengine falls back to permission holders like the live resolver[39m[90m      [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Workflow\LeaveApprovalCutoverTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma two step chain ends approved and deducts the balance with data se[39m[90m…[39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma two step chain ends approved and deducts the balance with data se[39m[90m…[39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejecting at the first step ends the leave with data set "ตรรกะเดิม[39m[90m…[39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejecting at the first step ends the leave with data set "workflow[39m[90m… [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90man approver from a later step cannot jump the queue with data set "[39m[90m…[39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90man approver from a later step cannot jump the queue with data set "[39m[90m…[39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe owner can never approve their own leave with data set "ตรรกะเดิ[39m[90m…[39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe owner can never approve their own leave with data set "workflow[39m[90m…[39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma finished leave cannot be approved again with data set "ตรรกะเดิมเ[39m[90m…[39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma finished leave cannot be approved again with data set "workflow e[39m[90m…[39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejecting without a reason is refused with data set "ตรรกะเดิมเป็นผ[39m[90m…[39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejecting without a reason is refused with data set "workflow engin[39m[90m…[39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe engine path leaves a real instance not a shadow one[39m[90m             [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe legacy path still records a shadow comparison[39m[90m                   [39m [90m0.14s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Workflow\LeaveCancellationCutoverTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma cancellation walks every step then returns the leave days with da[39m[90m…[39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma cancellation walks every step then returns the leave days with da[39m[90m…[39m [90m0.28s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejecting a cancellation keeps the leave approved with data set "ตร[39m[90m…[39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejecting a cancellation keeps the leave approved with data set "wo[39m[90m…[39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90monly the approver of the current step may act with data set "ตรรกะเ[39m[90m…[39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90monly the approver of the current step may act with data set "workfl[39m[90m…[39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe owner can never decide their own cancellation with data set "ตร[39m[90m…[39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe owner can never decide their own cancellation with data set "wo[39m[90m…[39m [90m0.34s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe two chains keep separate workflow instances[39m[90m                     [39m [90m0.50s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Workflow\LeaveWorkflowShadowParityTest[39m
+  [32;1m✓[39;22m[90m [39m[90mengine matches legacy for a leave waiting at the first step[39m[90m         [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mengine matches legacy for a leave waiting at the middle step[39m[90m        [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mengine matches legacy for a leave waiting at the final step[39m[90m         [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mengine matches legacy for an approved leave[39m[90m                         [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mengine matches legacy for a rejected leave[39m[90m                          [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mengine matches legacy for a cancelled leave[39m[90m                         [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma leave cancelled before any approval has no current step[39m[90m           [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mengine matches legacy when a delegation is in force[39m[90m                 [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mengine matches legacy when a delegation has expired[39m[90m                 [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mengine matches legacy when several people hold the step role[39m[90m        [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mengine matches legacy when nobody holds the step role[39m[90m               [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe whole matrix of states produces no mismatch[39m[90m                     [39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchanging the approval chain does not disturb an existing leave[39m[90m      [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mshadow mode never touches the legacy approval history[39m[90m               [39m [90m0.13s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Workflow\WorkflowAuthorizationTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma pending leave still walks its chain exactly as before[39m[90m             [39m [90m0.30s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhttp submission hr verification deputy and director complete the re[39m[90m…[39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejecting a pending leave behaves as before[39m[90m                         [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90man approver from a later step cannot approve first[39m[90m                  [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma user with no role cannot approve[39m[90m                                  [39m [90m0.17s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnobody may approve their own leave[39m[90m                                  [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrejecting without a reason is refused[39m[90m                               [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mone approver cannot act on another persons leave through a guessed[39m[90m… [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90macting on a leave that does not exist is a not found[39m[90m                [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90man already finished leave cannot be approved again[39m[90m                  [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mshadow mode records a comparison without changing the outcome[39m[90m       [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mturning shadow mode off leaves the approval path working[39m[90m            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma broken shadow never breaks the real approval[39m[90m                      [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\Workflow\WorkflowEngineTest[39m
+  [32;1m✓[39;22m[90m [39m[90ma leave walks every step in order before completing[39m[90m                 [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90man approver from a later step cannot jump the queue[39m[90m                 [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreject ends the instance immediately at any step[39m[90m                    [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreject requires a reason[39m[90m                                            [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreturn sends the request back to the previous step[39m[90m                  [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma returned request can walk the chain again from the start[39m[90m          [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreturn from the first step ends the instance as returned[39m[90m            [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma delegate may act for the person who delegated[39m[90m                     [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90man expired delegation grants nothing[39m[90m                                [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma delegation that is not yet effective grants nothing[39m[90m               [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma delegation from someone without the required role grants nothing[39m[90m  [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma running instance keeps its pinned version when the workflow chang[39m[90m…[39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90ma new instance uses the new version[39m[90m                                 [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrepublishing an unchanged workflow does not create a new version[39m[90m    [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe same step cannot be approved twice[39m[90m                              [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtwo approvers of the same step cannot both advance it[39m[90m               [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90man action on a finished instance is refused[39m[90m                         [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mevery action is recorded with the full context[39m[90m                      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe action log cannot be rewritten[39m[90m                                  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe action log cannot be deleted[39m[90m                                    [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mavailable transitions come from the pinned version[39m[90m                  [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mavailable transitions are empty for someone with no standing[39m[90m        [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90man unsupported action is refused[39m[90m                                    [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstarting twice returns the same instance[39m[90m                            [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mthe transition set supports the actions the phase requires[39m[90m          [39m [90m0.05s[39m  
+
+  [90mTests:[39m    [33;1m1 skipped[39;22m[90m,[39m[39m [39m[32;1m1263 passed[39;22m[90m (5080 assertions)[39m
+  [90mDuration:[39m [39m139.62s[39m
+

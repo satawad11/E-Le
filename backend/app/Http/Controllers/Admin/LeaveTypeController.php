@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\LeaveBalance;
 use App\Models\LeaveType;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
@@ -108,6 +109,28 @@ class LeaveTypeController extends Controller
         if ($type->leaves()->exists()) {
             return response()->json([
                 'message' => 'ไม่สามารถลบประเภทการลานี้ได้ เนื่องจากมีใบลาที่ใช้ประเภทนี้อยู่',
+            ], 422);
+        }
+
+        /*
+         * นโยบายสิทธิและยอดวันลาผูกกับประเภทการลาแบบ cascade
+         *
+         * การลบประเภทการลาหนึ่งครั้งจึงลบ `leave_policies` และ `leave_balances` ของทุกคน
+         * ที่ผูกกับประเภทนั้นไปด้วยเงียบ ๆ — รวมยอดยกมาและประวัติสิทธิที่ตรวจย้อนไม่ได้อีก
+         * เดิมด่านเดียวคือ "มีใบลาหรือยัง" ซึ่งไม่ครอบกรณีที่ตั้งค่าสิทธิไว้แล้วแต่ยังไม่มีใครลา
+         */
+        $policies = $type->policies()->count();
+        $balances = LeaveBalance::where('leave_type_id', $type->id)->count();
+
+        if ($policies > 0 || $balances > 0) {
+            return response()->json([
+                'message' => sprintf(
+                    'ลบไม่ได้เพราะมีนโยบายสิทธิ %d รายการและยอดวันลา %d รายการผูกกับประเภทนี้อยู่ — '
+                    .'การลบจะทำให้สิทธิและยอดยกมาของบุคลากรหายไปด้วย '
+                    .'ให้ปิดนโยบายที่หน้า "นโยบายสิทธิการลา" แทนการลบประเภทการลา',
+                    $policies,
+                    $balances,
+                ),
             ], 422);
         }
 
