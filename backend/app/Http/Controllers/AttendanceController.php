@@ -302,7 +302,7 @@ class AttendanceController extends Controller
      */
     public function allRecords(Request $request)
     {
-        $query = Attendance::with('user.department')->orderBy('date', 'desc');
+        $query = Attendance::with('user.orgUnit')->orderBy('date', 'desc');
         $this->scope->applyToAttendanceQuery($query, $request->user());
 
         if ($request->date) {
@@ -314,9 +314,9 @@ class AttendanceController extends Controller
         if ($request->year) {
             $query->whereYear('date', $request->year);
         }
-        if ($request->department_id) {
+        if ($request->org_unit_id) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('department_id', $request->department_id);
+                $q->where('org_unit_id', $request->org_unit_id);
             });
         }
         if ($request->user_id) {
@@ -405,7 +405,7 @@ class AttendanceController extends Controller
      */
     public function exportPdf(Request $request, ThaiDateService $thaiDateService)
     {
-        $query = Attendance::with('user.department')->orderBy('date', 'desc');
+        $query = Attendance::with('user.orgUnit')->orderBy('date', 'desc');
         $this->scope->applyToAttendanceQuery($query, $request->user());
 
         if ($request->date) {
@@ -417,9 +417,9 @@ class AttendanceController extends Controller
         if ($request->year) {
             $query->whereYear('date', $request->year);
         }
-        if ($request->department_id) {
+        if ($request->org_unit_id) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('department_id', $request->department_id);
+                $q->where('org_unit_id', $request->org_unit_id);
             });
         }
         if ($request->user_id) {
@@ -444,7 +444,7 @@ class AttendanceController extends Controller
      */
     public function exportWord(Request $request, ThaiDateService $thaiDateService)
     {
-        $query = Attendance::with('user.department')->orderBy('date', 'desc');
+        $query = Attendance::with('user.orgUnit')->orderBy('date', 'desc');
         $this->scope->applyToAttendanceQuery($query, $request->user());
 
         if ($request->date) {
@@ -456,9 +456,9 @@ class AttendanceController extends Controller
         if ($request->year) {
             $query->whereYear('date', $request->year);
         }
-        if ($request->department_id) {
+        if ($request->org_unit_id) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('department_id', $request->department_id);
+                $q->where('org_unit_id', $request->org_unit_id);
             });
         }
         if ($request->user_id) {
@@ -519,7 +519,7 @@ class AttendanceController extends Controller
     {
         $year = $request->year ?? date('Y');
         $month = $request->month ?? date('m');
-        $deptId = $request->department_id;
+        $orgUnitId = $request->org_unit_id;
 
         $daysInMonth = Carbon::createFromDate($year, $month)->daysInMonth;
 
@@ -542,8 +542,8 @@ class AttendanceController extends Controller
         }]);
         $this->scope->applyToUserQuery($usersQuery, $request->user());
 
-        if ($deptId) {
-            $usersQuery->where('department_id', $deptId);
+        if ($orgUnitId) {
+            $usersQuery->where('org_unit_id', $orgUnitId);
         }
         if ($request->user_id) {
             $usersQuery->where('id', $request->user_id);
@@ -876,7 +876,7 @@ class AttendanceController extends Controller
     {
         $year = $request->year ?? date('Y');
         $month = $request->month ?? date('m');
-        $deptId = $request->department_id;
+        $orgUnitId = $request->org_unit_id;
 
         $daysInMonth = Carbon::createFromDate($year, $month)->daysInMonth;
 
@@ -886,8 +886,8 @@ class AttendanceController extends Controller
         }]);
         $this->scope->applyToUserQuery($usersQuery, $request->user());
 
-        if ($deptId) {
-            $usersQuery->where('department_id', $deptId);
+        if ($orgUnitId) {
+            $usersQuery->where('org_unit_id', $orgUnitId);
         }
         if ($request->user_id) {
             $usersQuery->where('id', $request->user_id);
@@ -943,7 +943,7 @@ class AttendanceController extends Controller
         // SEC-009: ยืนยันตัวตนที่ route ผ่าน auth:sanctum แล้ว ไม่รับ token ทาง query string อีก
         $user = $request->user();
 
-        $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'department_id' => $request->query('department_id')]);
+        $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'org_unit_id' => $request->query('org_unit_id')]);
         $data = $this->getOTSummaryData($request);
         $thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
         $monthName = $thaiMonths[(int) $data['month']] ?? '';
@@ -966,7 +966,7 @@ class AttendanceController extends Controller
         // SEC-009: ยืนยันตัวตนที่ route ผ่าน auth:sanctum แล้ว ไม่รับ token ทาง query string อีก
         $user = $request->user();
 
-        $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'department_id' => $request->query('department_id')]);
+        $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'org_unit_id' => $request->query('org_unit_id')]);
         $data = $this->getOTSummaryData($request);
         $thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
         $monthName = $thaiMonths[(int) $data['month']] ?? '';
@@ -990,7 +990,7 @@ class AttendanceController extends Controller
         // SEC-009: ยืนยันตัวตนที่ route ผ่าน auth:sanctum แล้ว ไม่รับ token ทาง query string อีก
         $user = $request->user();
 
-        $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'department_id' => $request->query('department_id')]);
+        $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'org_unit_id' => $request->query('org_unit_id')]);
         $data = $this->getOTSummaryData($request);
         $thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
         $monthName = $thaiMonths[(int) $data['month']] ?? '';
@@ -1020,7 +1020,7 @@ class AttendanceController extends Controller
         // SEC-009: ยืนยันตัวตนที่ route ผ่าน auth:sanctum แล้ว ไม่รับ token ทาง query string อีก
         $user = $request->user();
 
-        $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'department_id' => $request->query('department_id')]);
+        $request->merge(['year' => $request->query('year'), 'month' => $request->query('month'), 'org_unit_id' => $request->query('org_unit_id')]);
         $data = $this->getOTSummaryData($request);
         $thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
         $monthName = $thaiMonths[(int) $data['month']] ?? '';

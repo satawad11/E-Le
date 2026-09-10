@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentTemplateVersion;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -69,8 +69,8 @@ class DocumentTemplateVersionBackfillTest extends TestCase
     {
         $this->legacyTemplate('untouched_leave_form');
 
-        $department = Department::create(['name' => 'แผนกทดสอบเวอร์ชัน']);
-        $user = User::factory()->create(['department_id' => $department->id, 'is_active' => true]);
+        $department = OrgUnit::factory()->create(['name' => 'แผนกทดสอบเวอร์ชัน']);
+        $user = User::factory()->create(['org_unit_id' => $department->id, 'is_active' => true]);
         $type = LeaveType::create(['name' => 'ลาป่วย', 'code_prefix' => 'S']);
 
         $leave = Leave::create([

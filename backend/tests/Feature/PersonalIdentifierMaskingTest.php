@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
@@ -168,7 +167,7 @@ class PersonalIdentifierMaskingTest extends TestCase
                 'name' => $subject->name,
                 'email' => $subject->email,
                 'role_id' => Role::create(['name' => 'บทบาททดสอบ', 'guard_name' => 'web'])->id,
-                'department_id' => Department::create(['name' => 'ฝ่ายทดสอบ'])->id,
+                'org_unit_id' => OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ'])->id,
                 'profile' => ['id_card_number' => 'x-xxxx-xxxx0-12-3'],
             ])
             ->assertStatus(422);

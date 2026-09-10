@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use App\Services\OrgScopeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -264,24 +264,12 @@ class OrgScopeResolverTest extends TestCase
 
     public function test_leave_policy_uses_the_scope_for_department_approvers(): void
     {
-        /*
-         * ใช้เส้นทางจริงของระบบ: สร้าง Department แล้วปล่อยให้ booted() สร้าง
-         * org_unit ให้เอง จากนั้นย้ายหน่วยงานนั้นไปอยู่ใต้ฝ่ายวิชาการ
-         *
-         * ห้ามกำหนด org_unit_id ให้ผู้ใช้เองพร้อมกับ department_id เพราะ
-         * User::booted() จะ sync org_unit_id ตาม department_id ทับให้เสมอ
-         * (พฤติกรรมที่ถูกต้องของ LEGACY-03 — เคยทำให้เทสต์ฉบับแรกของผมผิด)
-         */
-        $department = Department::create(['name' => 'แผนก ก']);
-        $departmentUnitId = (int) DB::table('department_org_unit_map')
-            ->where('department_id', $department->id)
-            ->value('org_unit_id');
-
-        DB::table('org_units')->where('id', $departmentUnitId)->update(['parent_id' => $this->faculty]);
+        // แผนกเป็นหน่วยงานในผังจริง แขวนไว้ใต้ฝ่ายวิชาการ
+        $department = OrgUnit::factory()->create(['name' => 'แผนก ก', 'parent_id' => $this->faculty]);
 
         $type = LeaveType::create(['name' => 'ลาป่วย', 'max_days' => 30]);
 
-        $owner = User::factory()->create(['department_id' => $department->id]);
+        $owner = User::factory()->create(['org_unit_id' => $department->id]);
         $leave = Leave::create([
             'user_id' => $owner->id,
             'leave_type_id' => $type->id,

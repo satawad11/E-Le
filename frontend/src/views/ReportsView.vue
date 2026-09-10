@@ -8,7 +8,7 @@
     <!-- Summary Cards — ใช้ตัวกรองชุดเดียวกับตารางด้านล่างเสมอ -->
     <p class="text-xs text-gray-500">
       สรุปตามตัวกรองปัจจุบัน: {{ date(filters.from) }} – {{ date(filters.to) }}
-      <template v-if="filters.department_id"> · เฉพาะหน่วยงานที่เลือก</template>
+      <template v-if="filters.org_unit_id"> · เฉพาะหน่วยงานที่เลือก</template>
       <template v-if="filters.personnel_type_id"> · เฉพาะประเภทบุคลากรที่เลือก</template>
     </p>
     <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -31,7 +31,7 @@
       </label>
       <label class="text-sm font-medium text-gray-700">
         หน่วยงาน
-        <select v-model="filters.department_id" class="mt-1 block min-w-48 rounded-xl border border-gray-200 p-2 text-sm focus:ring-2 focus:ring-[#800000]/20 focus:border-[#800000]">
+        <select v-model="filters.org_unit_id" class="mt-1 block min-w-48 rounded-xl border border-gray-200 p-2 text-sm focus:ring-2 focus:ring-[#800000]/20 focus:border-[#800000]">
           <option value="">ทั้งหมด</option>
           <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
         </select>
@@ -140,7 +140,7 @@ const iso = (d) => d.toISOString().slice(0, 10)
 const filters = reactive({
   from: iso(start),
   to: iso(today),
-  department_id: '',
+  org_unit_id: '',
   personnel_type_id: ''
 })
 
@@ -210,7 +210,7 @@ const date = (v) => new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium' }).fo
 onMounted(async () => {
   try {
     const [d, p] = await Promise.all([
-      api.get('/departments'),
+      api.get('/org-units'),
       api.get('/personnel-types')
     ])
     departments.value = d.data.data || d.data

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -27,7 +27,7 @@ class UserDirectPermissionTest extends TestCase
 
     private User $admin;
 
-    private Department $department;
+    private OrgUnit $department;
 
     private Role $employeeRole;
 
@@ -40,7 +40,7 @@ class UserDirectPermissionTest extends TestCase
         Permission::findOrCreate('leave.report.view', 'web');
         Permission::findOrCreate('attendance.view_all', 'web');
 
-        $this->department = Department::create(['name' => 'ฝ่ายทดสอบ']);
+        $this->department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ']);
 
         $this->admin = User::factory()->create();
         $this->admin->assignRole('Super Admin');
@@ -62,7 +62,7 @@ class UserDirectPermissionTest extends TestCase
             'email' => 'newuser@example.com',
             'password' => 'a-very-long-password',
             'role_id' => $this->employeeRole->id,
-            'department_id' => $this->department->id,
+            'org_unit_id' => $this->department->id,
             'custom_permissions' => json_encode(['leave.report.view']),
         ]);
 
@@ -78,14 +78,14 @@ class UserDirectPermissionTest extends TestCase
 
     public function test_admin_can_update_individual_permissions_of_an_existing_user(): void
     {
-        $target = User::factory()->create(['department_id' => $this->department->id]);
+        $target = User::factory()->create(['org_unit_id' => $this->department->id]);
         $target->assignRole('Employee');
 
         $response = $this->actingAs($this->admin)->putJson("/api/admin/users/{$target->id}", [
             'name' => $target->name,
             'email' => $target->email,
             'role_id' => $this->employeeRole->id,
-            'department_id' => $this->department->id,
+            'org_unit_id' => $this->department->id,
             'custom_permissions' => json_encode(['attendance.view_all']),
         ]);
 
@@ -96,7 +96,7 @@ class UserDirectPermissionTest extends TestCase
 
     public function test_clearing_individual_permissions_works(): void
     {
-        $target = User::factory()->create(['department_id' => $this->department->id]);
+        $target = User::factory()->create(['org_unit_id' => $this->department->id]);
         $target->assignRole('Employee');
         $target->givePermissionTo('attendance.view_all');
 
@@ -104,7 +104,7 @@ class UserDirectPermissionTest extends TestCase
             'name' => $target->name,
             'email' => $target->email,
             'role_id' => $this->employeeRole->id,
-            'department_id' => $this->department->id,
+            'org_unit_id' => $this->department->id,
             'custom_permissions' => json_encode([]),
         ]);
 

@@ -14,7 +14,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 // LEGACY-04 (04-6): ถอด `custom_permissions` ออกแล้ว — คอลัมน์ถูกลบไปใน LEGACY-03
 // และสิทธิ์รายบุคคลต้องมีแหล่งเดียวคือ pivot ของ Spatie (DB-RISK-009)
-#[Fillable(['name', 'email', 'phone', 'telegram_chat_id', 'line_user_id', 'notification_channel', 'password', 'is_active', 'department_id', 'personnel_type_id', 'work_start_time', 'work_end_time'])]
+#[Fillable(['name', 'email', 'phone', 'telegram_chat_id', 'line_user_id', 'notification_channel', 'password', 'is_active', 'org_unit_id', 'personnel_type_id', 'work_start_time', 'work_end_time'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -54,9 +54,15 @@ class User extends Authenticatable
         return $title && ! str_starts_with($this->name, $title) ? $title.$this->name : $this->name;
     }
 
+    /**
+     * หน่วยงานต้นสังกัด
+     *
+     * `department()` เดิมชี้ไปยังโครงหน่วยงานชั้นเดียวที่ถูกถอดออกแล้ว · คงชื่อเดิมไว้
+     * เป็นชื่อพ้องเพื่อไม่ให้ผู้เรียกที่ eager-load `user.department` พังทั้งหมดพร้อมกัน
+     */
     public function department()
     {
-        return $this->belongsTo(Department::class);
+        return $this->orgUnit();
     }
 
     public function orgUnit()

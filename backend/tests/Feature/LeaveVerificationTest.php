@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\User;
 use App\Services\LeaveService;
@@ -29,8 +29,8 @@ class LeaveVerificationTest extends TestCase
             'period_basis' => 'fiscal_year', 'exclude_holidays' => true,
             'allow_half_day' => true, 'is_active' => true,
         ]);
-        $dept = Department::create(['name' => 'ทดสอบ']);
-        $user = User::factory()->create(['department_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
+        $dept = OrgUnit::factory()->create(['name' => 'ทดสอบ']);
+        $user = User::factory()->create(['org_unit_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
         $user->profile()->create(['title' => 'นาย', 'first_name' => 'สมชาย', 'last_name' => 'ใจดี', 'position' => 'ครู']);
 
         $year = now()->month >= 10 ? now()->year + 1 : now()->year;

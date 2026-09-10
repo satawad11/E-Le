@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Document\DocumentReportDefinition;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use App\Services\DocumentEngine\Providers\LeaveStatisticsDataProvider;
 use App\Services\DocumentEngine\ReportEngine;
@@ -41,8 +41,8 @@ class DocumentReportEngineTest extends TestCase
         $vacation = LeaveType::create(['name' => 'ลาพักผ่อน']);
 
         foreach ([['ฝ่ายวิชาการ', 2.0], ['ฝ่ายบริหาร', 3.0]] as [$deptName, $days]) {
-            $dept = Department::create(['name' => $deptName]);
-            $user = User::factory()->create(['department_id' => $dept->id, 'is_active' => true]);
+            $dept = OrgUnit::factory()->create(['name' => $deptName]);
+            $user = User::factory()->create(['org_unit_id' => $dept->id, 'is_active' => true]);
 
             foreach ([$sick, $vacation] as $type) {
                 Leave::create([

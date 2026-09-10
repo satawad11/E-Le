@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,7 +29,7 @@ class ApprovalChainReadinessTest extends TestCase
     {
         parent::setUp();
 
-        Department::create(['name' => 'ทดสอบ']);
+        OrgUnit::factory()->create(['name' => 'ทดสอบ']);
 
         $adminRole = Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
         $adminRole->givePermissionTo(

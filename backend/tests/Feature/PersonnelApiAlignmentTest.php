@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\OrgUnit;
 use App\Models\Personnel;
 use App\Models\PersonnelAssignment;
@@ -103,8 +102,8 @@ class PersonnelApiAlignmentTest extends TestCase
         Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
         $admin->assignRole('Super Admin');
 
-        $dept = Department::create(['name' => 'แผนกสามัญ']);
-        $targetUser = User::factory()->create(['department_id' => $dept->id]);
+        $dept = OrgUnit::factory()->create(['name' => 'แผนกสามัญ']);
+        $targetUser = User::factory()->create(['org_unit_id' => $dept->id]);
 
         Personnel::updateOrCreate([
             'user_id' => $targetUser->id,
@@ -131,7 +130,7 @@ class PersonnelApiAlignmentTest extends TestCase
         $foundList = collect($listRes->json())->firstWhere('id', $targetUser->id);
         $this->assertNotNull($foundList);
         $this->assertArrayHasKey('uuid', $foundList);
-        $this->assertArrayHasKey('department_id', $foundList);
+        $this->assertArrayHasKey('org_unit_id', $foundList);
         $this->assertEquals('ADM-999', $foundList['personnel']['personnel_code']);
     }
 }

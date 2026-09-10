@@ -13,7 +13,7 @@ class LeaveGovernanceWorklistController extends Controller
         abort_unless($request->user()->can('leave.management.manage') || $request->user()->can('leave.approval.hr'), 403);
         $status = $request->validate(['status' => 'nullable|in:all,pending_evidence,pending_adjustment,overdue'])['status'] ?? 'all';
         $query = Leave::withTrashed()->with([
-            'user:id,name,department_id', 'user.department:id,name', 'type:id,name',
+            'user:id,name,org_unit_id', 'user.orgUnit:id,name', 'type:id,name',
             'evidences.uploader:id,name', 'evidences.verifier:id,name',
         ])->withCount([
             'evidences as pending_evidence_count' => fn ($q) => $q->where('verification_status', 'pending'),
@@ -35,7 +35,7 @@ class LeaveGovernanceWorklistController extends Controller
     {
         abort_unless($request->user()->can('leave.management.manage') || $request->user()->can('leave.approval.hr'), 403);
 
-        return LeaveAdjustment::with(['leave.user:id,name,department_id', 'leave.user.department:id,name', 'leave.type:id,name'])
+        return LeaveAdjustment::with(['leave.user:id,name,org_unit_id', 'leave.user.orgUnit:id,name', 'leave.type:id,name'])
             ->where('status', $request->input('status', 'Pending'))->latest()->paginate(100);
     }
 }

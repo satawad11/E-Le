@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Models\Department;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -44,11 +44,18 @@ class UserTest extends TestCase
         $this->assertEquals('นายธราเชฏฐ์ สุคนธ์', $user->full_name_with_title);
     }
 
+    /**
+     * `department()` เป็นชื่อพ้องของ `orgUnit()`
+     *
+     * ผังองค์กรเหลือชุดเดียว (`org_units`) — คงชื่อเดิมไว้เพื่อไม่ให้ผู้เรียกที่
+     * eager-load `user.department` พังพร้อมกันทั้งระบบ
+     */
     public function test_user_has_department_relation()
     {
         $user = new User;
         $this->assertInstanceOf(BelongsTo::class, $user->department());
-        $this->assertInstanceOf(Department::class, $user->department()->getRelated());
+        $this->assertInstanceOf(OrgUnit::class, $user->department()->getRelated());
+        $this->assertInstanceOf(OrgUnit::class, $user->orgUnit()->getRelated());
     }
 
     public function test_user_has_profile_relation()

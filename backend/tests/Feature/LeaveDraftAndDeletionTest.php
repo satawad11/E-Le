@@ -3,13 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\FiscalYear;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\Role;
 use App\Models\User;
@@ -44,7 +44,7 @@ class LeaveDraftAndDeletionTest extends TestCase
 
         Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\FiscalYearSeeder', '--force' => true]);
 
-        $department = Department::create(['name' => 'ฝ่ายทดสอบร่าง']);
+        $department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบร่าง']);
         $personnelType = PersonnelType::firstOrCreate(['code' => 'civil_servant'], ['name' => 'ข้าราชการ']);
 
         $this->type = LeaveType::create(['name' => 'ลากิจร่าง', 'code_prefix' => 'ลก.', 'max_days' => 30]);
@@ -63,8 +63,8 @@ class LeaveDraftAndDeletionTest extends TestCase
         $role = Role::firstOrCreate(['name' => 'HR Head'], ['description' => 'หัวหน้าบุคลากร']);
         ApprovalStep::firstOrCreate(['step_order' => 1], ['role_id' => $role->id, 'name' => 'อนุมัติ']);
 
-        $this->employee = User::factory()->create(['department_id' => $department->id, 'personnel_type_id' => $personnelType->id]);
-        $this->approver = User::factory()->create(['department_id' => $department->id]);
+        $this->employee = User::factory()->create(['org_unit_id' => $department->id, 'personnel_type_id' => $personnelType->id]);
+        $this->approver = User::factory()->create(['org_unit_id' => $department->id]);
         $this->approver->assignRole($role);
         $this->approver->givePermissionTo(Permission::findOrCreate('leave.approval.hr', 'web'));
 

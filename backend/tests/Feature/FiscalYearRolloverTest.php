@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\FiscalYear;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,10 +32,10 @@ class FiscalYearRolloverTest extends TestCase
 
         Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\FiscalYearSeeder', '--force' => true]);
 
-        $department = Department::create(['name' => 'ฝ่ายทดสอบรอบปี']);
+        $department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบรอบปี']);
         $this->personnelType = PersonnelType::firstOrCreate(['code' => 'civil_servant'], ['name' => 'ข้าราชการ']);
         $this->employee = User::factory()->create([
-            'department_id' => $department->id,
+            'org_unit_id' => $department->id,
             'personnel_type_id' => $this->personnelType->id,
             'is_active' => true,
         ]);

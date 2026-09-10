@@ -3,9 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,10 +30,10 @@ class LeaveCancellationRequestTest extends TestCase
         $approverRole = Role::firstOrCreate(['name' => 'Director', 'guard_name' => 'web']);
         ApprovalStep::create(['name' => 'ผู้อำนวยการ', 'role_id' => $approverRole->id, 'step_order' => 1]);
 
-        $department = Department::create(['name' => 'ฝ่ายทดสอบ']);
+        $department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ']);
         $type = LeaveType::create(['name' => 'ลาป่วย', 'max_days' => 30]);
 
-        $this->owner = User::factory()->create(['department_id' => $department->id]);
+        $this->owner = User::factory()->create(['org_unit_id' => $department->id]);
         $this->owner->assignRole('Employee');
 
         $this->leave = Leave::create([

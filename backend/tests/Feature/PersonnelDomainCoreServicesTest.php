@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\OrgUnit;
@@ -167,12 +166,12 @@ class PersonnelDomainCoreServicesTest extends TestCase
 
     public function test_fallback_to_legacy_fields_when_no_domain_assignment_exists(): void
     {
-        $dept = Department::create(['name' => 'ฝ่ายแผนงาน']);
+        $dept = OrgUnit::factory()->create(['name' => 'ฝ่ายแผนงาน']);
         $type = PersonnelType::firstOrCreate(['code' => 'staff'], ['name' => 'เจ้าหน้าที่', 'is_active' => true]);
 
         $user = User::factory()->create([
             'name' => 'สมปอง ยิ้มแย้ม',
-            'department_id' => $dept->id,
+            'org_unit_id' => $dept->id,
             'personnel_type_id' => $type->id,
         ]);
 

@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\User;
 use Carbon\Carbon;
@@ -55,8 +55,8 @@ class LeaveEligibilityRulesTest extends TestCase
             'eligibility_rules' => $eligibilityRules,
         ]);
 
-        $dept = Department::create(['name' => 'ทดสอบ']);
-        $user = User::factory()->create(['department_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
+        $dept = OrgUnit::factory()->create(['name' => 'ทดสอบ']);
+        $user = User::factory()->create(['org_unit_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
         $user->profile()->create($profile + ['position' => 'ครู']);
 
         LeaveBalance::create([

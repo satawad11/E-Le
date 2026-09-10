@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveAuditLog;
 use App\Models\LeaveBalance;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use App\Services\Attendance\LeaveAttendanceSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,9 +37,9 @@ class LeavePendingCancellationConcurrencyTest extends TestCase
     {
         parent::setUp();
 
-        $department = Department::create(['name' => 'ฝ่ายทดสอบ']);
+        $department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ']);
         $this->type = LeaveType::create(['name' => 'ลาพักผ่อน', 'max_days' => 10]);
-        $this->owner = User::factory()->create(['department_id' => $department->id]);
+        $this->owner = User::factory()->create(['org_unit_id' => $department->id]);
 
         LeaveBalance::create([
             'user_id' => $this->owner->id,

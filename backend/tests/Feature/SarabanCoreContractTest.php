@@ -248,7 +248,7 @@ class SarabanCoreContractTest extends TestCase
         );
 
         $this->assertNotEmpty(
-            $this->violationsIn('$query->where("department_id", $user->department_id);'),
+            $this->violationsIn('$query->where("department_id", $user->org_unit_id);'),
             'ตัวสแกนต้องจับการอ้าง department_id ได้'
         );
 

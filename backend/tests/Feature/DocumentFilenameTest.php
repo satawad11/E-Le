@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\DocumentFilename;
@@ -25,9 +25,9 @@ class DocumentFilenameTest extends TestCase
     private function leave(string $typeName, string $userName): Leave
     {
         Role::firstOrCreate(['name' => 'Employee', 'guard_name' => 'web']);
-        $dept = Department::create(['name' => 'ทดสอบ']);
+        $dept = OrgUnit::factory()->create(['name' => 'ทดสอบ']);
 
-        $user = User::factory()->create(['name' => $userName, 'department_id' => $dept->id]);
+        $user = User::factory()->create(['name' => $userName, 'org_unit_id' => $dept->id]);
         $user->assignRole('Employee');
 
         $type = LeaveType::create(['name' => $typeName, 'max_days' => 30]);

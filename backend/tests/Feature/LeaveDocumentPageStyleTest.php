@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\DocumentTemplate;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\LeaveDocumentTemplateResolver;
@@ -25,8 +25,8 @@ class LeaveDocumentPageStyleTest extends TestCase
 
     private function leave(): Leave
     {
-        $department = Department::create(['name' => 'แผนกทดสอบสไตล์เอกสาร']);
-        $user = User::factory()->create(['department_id' => $department->id, 'is_active' => true]);
+        $department = OrgUnit::factory()->create(['name' => 'แผนกทดสอบสไตล์เอกสาร']);
+        $user = User::factory()->create(['org_unit_id' => $department->id, 'is_active' => true]);
         $type = LeaveType::create(['name' => 'ลาป่วย', 'code_prefix' => 'S']);
 
         return Leave::create([

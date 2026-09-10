@@ -3,9 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Attendance;
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\User;
 use Carbon\Carbon;
@@ -40,10 +40,10 @@ class PromotionScreeningTest extends TestCase
     private function staff(string $name): User
     {
         $personnel = PersonnelType::where('code', 'civil_servant')->firstOrFail();
-        $dept = Department::firstOrCreate(['name' => 'แผนกทดสอบ']);
+        $dept = OrgUnit::factory()->create(['name' => 'แผนกทดสอบ']);
         $user = User::factory()->create([
             'name' => $name,
-            'department_id' => $dept->id,
+            'org_unit_id' => $dept->id,
             'personnel_type_id' => $personnel->id,
             'is_active' => true,
         ]);

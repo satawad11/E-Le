@@ -41,7 +41,7 @@ class AttendanceCorrectionController extends Controller
         ]);
 
         $query = AttendanceCorrection::query()
-            ->with(['attendance:id,date,check_in_time,check_out_time,status', 'user:id,name,department_id', 'user.department:id,name'])
+            ->with(['attendance:id,date,check_in_time,check_out_time,status', 'user:id,name,org_unit_id', 'user.orgUnit:id,name'])
             ->when(
                 ($filters['status'] ?? 'pending') !== 'all',
                 fn ($builder) => $builder->where('status', $filters['status'] ?? 'pending')

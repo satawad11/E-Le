@@ -168,8 +168,8 @@ class OrgScopeResolver
     /**
      * หน่วยงานต้นสังกัดของผู้ใช้
      *
-     * รองรับทั้ง `users.org_unit_id` (LEGACY-03) และ `users.department_id` เดิม
-     * ที่ map ผ่าน `department_org_unit_map` เพื่อให้ข้อมูลที่ยังไม่ backfill ใช้งานได้
+     * ลำดับ: การมอบหมายที่มีผลอยู่ใน `personnel_assignments` ก่อน
+     * แล้วจึงหน่วยงานที่บันทึกไว้บนบัญชีผู้ใช้
      */
     public function homeOrgUnitId(User $user): ?int
     {
@@ -190,21 +190,14 @@ class OrgScopeResolver
             return (int) $activeAssignmentOrgUnitId;
         }
 
-        // 2. Fallback to users.org_unit_id
-        if ($user->org_unit_id !== null) {
-            return (int) $user->org_unit_id;
-        }
-
-        // 3. Fallback to legacy department_id via map
-        $departmentId = $user->department_id ?? $user->profile?->department_id;
-
-        if ($departmentId === null || ! DB::getSchemaBuilder()->hasTable('department_org_unit_map')) {
-            return null;
-        }
-
-        $mapped = DB::table('department_org_unit_map')->where('department_id', $departmentId)->value('org_unit_id');
-
-        return $mapped === null ? null : (int) $mapped;
+        /*
+         * 2. หน่วยงานที่บันทึกไว้บนบัญชีผู้ใช้
+         *
+         * เดิมมีขั้นที่ 3 เป็นทางถอยผ่าน `users.department_id` + `department_org_unit_map`
+         * สำหรับข้อมูลที่ยังไม่ backfill · ผังองค์กรเหลือชุดเดียวแล้ว ทั้งคอลัมน์และ
+         * ตารางสะพานถูกถอดออก ทางถอยจึงหมดหน้าที่ไปพร้อมกัน
+         */
+        return $user->org_unit_id === null ? null : (int) $user->org_unit_id;
     }
 
     /**
@@ -227,10 +220,9 @@ class OrgScopeResolver
     {
         $unitId = $this->homeOrgUnitId($user);
 
+        // ผู้ใช้ที่ยังไม่มีหน่วยงานในผัง — ปล่อยช่องว่างไว้ ดีกว่าเดาชื่อให้ผิด
         if ($unitId === null) {
-            $legacy = (string) ($user->department?->name ?? '');
-
-            return ['unit' => $legacy, 'parent' => $legacy];
+            return ['unit' => '', 'parent' => ''];
         }
 
         $unit = OrgUnit::query()

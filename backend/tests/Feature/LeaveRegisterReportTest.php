@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,9 +30,9 @@ class LeaveRegisterReportTest extends TestCase
     private function leaveFor(string $status, bool $deleted): Leave
     {
         $personnel = PersonnelType::where('code', 'civil_servant')->firstOrFail();
-        $dept = Department::firstOrCreate(['name' => 'แผนกทดสอบ']);
+        $dept = OrgUnit::factory()->create(['name' => 'แผนกทดสอบ']);
         $type = LeaveType::firstOrCreate(['name' => 'ลาป่วย'], ['code_prefix' => 'S']);
-        $user = User::factory()->create(['department_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
+        $user = User::factory()->create(['org_unit_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
 
         $leave = Leave::create([
             'user_id' => $user->id, 'leave_type_id' => $type->id,

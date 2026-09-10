@@ -3,9 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\LeaveBalance;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\SystemRoles;
@@ -57,14 +57,9 @@ class DatabaseSeeder extends Seeder
             CancelSettingSeeder::class,
         ]);
 
-        $itDept = Department::firstOrCreate(
-            ['name' => 'ฝ่ายสารสนเทศ'],
-            ['description' => 'ฝ่ายเทคโนโลยีสารสนเทศ']
-        );
-        $hrDept = Department::firstOrCreate(
-            ['name' => 'ฝ่ายทรัพยากรบุคคล'],
-            ['description' => 'ฝ่ายบริหารทรัพยากรบุคคล']
-        );
+        // หน่วยงานอยู่ในผังจริงชุดเดียว (`org_units`) — โครง `departments` ถูกถอดออกแล้ว
+        $itDept = $this->seedOrgUnit('ฝ่ายสารสนเทศ');
+        $hrDept = $this->seedOrgUnit('ฝ่ายทรัพยากรบุคคล');
 
         $employeeRole = Role::firstOrCreate(['name' => 'Employee'], ['description' => 'ผู้ใช้งานทั่วไป']);
         $hrHeadRole = Role::firstOrCreate(['name' => 'HR Head'], ['description' => 'หัวหน้าบุคลากร']);
@@ -124,7 +119,7 @@ class DatabaseSeeder extends Seeder
             foreach ($demoAccounts as [$email, $name, $role, $department, $firstName, $lastName, $position, $idCard]) {
                 $account = User::firstOrCreate(
                     ['email' => $email],
-                    ['name' => $name, 'password' => bcrypt($idCard), 'department_id' => $department->id]
+                    ['name' => $name, 'password' => bcrypt($idCard), 'org_unit_id' => $department->id]
                 );
                 $account->assignRole($role);
                 $this->seedProfile($account, $faker, $firstName, $lastName, $position, $idCard);
@@ -190,6 +185,26 @@ class DatabaseSeeder extends Seeder
      *   local/testing  ใช้รหัสเดิมเพื่อให้ชุดทดสอบและเครื่องพัฒนาทำงานได้เหมือนเดิม
      *   นอกจากนั้น    ใช้ `ADMIN_PASSWORD` ถ้ามี ไม่มีก็สุ่มให้แล้วพิมพ์ครั้งเดียวตอนติดตั้ง
      */
+    /**
+     * หน่วยงานในผังองค์กร แขวนใต้ยอดผัง
+     *
+     * เดิมหน่วยงานถูกสร้างเป็น `Department` แล้วให้ observer มิเรอร์เข้าผังให้เอง
+     * ผังเหลือชุดเดียวแล้ว จึงสร้างตรงเข้า `org_units`
+     */
+    private function seedOrgUnit(string $name): OrgUnit
+    {
+        $root = OrgUnit::whereNull('parent_id')->first();
+
+        return OrgUnit::firstOrCreate(['name' => $name], [
+            'uuid' => (string) Str::uuid(),
+            'parent_id' => $root?->id,
+            'code' => 'ORG-'.Str::upper(Str::random(6)),
+            'type' => 'department',
+            'effective_from' => now()->toDateString(),
+            'is_active' => true,
+        ]);
+    }
+
     private function seedAdministrator($superAdminRole, $department, $faker, bool $withDemoAccounts): User
     {
         $email = env('ADMIN_EMAIL', 'superadmin@example.com');
@@ -204,7 +219,7 @@ class DatabaseSeeder extends Seeder
                 'email' => $email,
                 'name' => 'ผู้ดูแลระบบ สูงสุด',
                 'password' => bcrypt($password),
-                'department_id' => $department->id,
+                'org_unit_id' => $department->id,
             ]);
 
             if (! $withDemoAccounts && ! env('ADMIN_PASSWORD')) {

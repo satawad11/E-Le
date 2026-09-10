@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -23,7 +23,7 @@ class UserImportTest extends TestCase
 
     private User $admin;
 
-    private Department $department;
+    private OrgUnit $department;
 
     private Role $employeeRole;
 
@@ -35,7 +35,7 @@ class UserImportTest extends TestCase
             Permission::findOrCreate($permission, 'web');
         }
 
-        $this->department = Department::create(['name' => 'ฝ่ายทดสอบ', 'is_active' => true]);
+        $this->department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ', 'is_active' => true]);
         $this->employeeRole = Role::findOrCreate('Employee', 'web');
 
         $this->admin = User::factory()->create();
@@ -44,16 +44,20 @@ class UserImportTest extends TestCase
 
     public function test_department_filter_list_returns_active_departments_to_any_signed_in_user(): void
     {
-        Department::create(['name' => 'ฝ่ายที่ปิดใช้งาน', 'is_active' => false]);
+        OrgUnit::factory()->create(['name' => 'ฝ่ายที่ปิดใช้งาน', 'is_active' => false]);
 
-        $response = $this->actingAs(User::factory()->create())->getJson('/api/departments')->assertOk();
+        $response = $this->actingAs(User::factory()->create())->getJson('/api/org-units')->assertOk();
 
-        $this->assertSame(['ฝ่ายทดสอบ'], array_column($response->json(), 'name'));
+        $names = array_column($response->json(), 'name');
+
+        // ยอดผังก็เป็นหน่วยงานหนึ่งในผัง จึงอยู่ในรายการด้วย — ที่ต้องไม่มีคือหน่วยที่ปิดใช้งาน
+        $this->assertContains('ฝ่ายทดสอบ', $names);
+        $this->assertNotContains('ฝ่ายที่ปิดใช้งาน', $names);
     }
 
     public function test_csv_import_creates_users_with_role_profile_and_leave_balances(): void
     {
-        $csv = "id_card_number,name,email,role_id,department_id,title,first_name,last_name,gender,phone,position\n"
+        $csv = "id_card_number,name,email,role_id,org_unit_id,title,first_name,last_name,gender,phone,position\n"
             ."1234567890123,นายสมชาย ใจดี,somchai@example.com,{$this->employeeRole->id},{$this->department->id},นาย,สมชาย,ใจดี,ชาย,0812345678,ครู\n";
 
         $response = $this->actingAs($this->admin)
@@ -65,14 +69,14 @@ class UserImportTest extends TestCase
 
         $created = User::where('email', 'somchai@example.com')->firstOrFail();
         $this->assertTrue($created->hasRole('Employee'));
-        $this->assertSame($this->department->id, $created->department_id);
+        $this->assertSame($this->department->id, $created->org_unit_id);
         $this->assertSame('ครู', $created->profile->position);
         $this->assertDatabaseHas('leave_balances', ['user_id' => $created->id]);
     }
 
     public function test_csv_import_never_accepts_a_password_from_the_file(): void
     {
-        $csv = "name,email,role_id,department_id,password\n"
+        $csv = "name,email,role_id,org_unit_id,password\n"
             ."ผู้ใช้ทดสอบ,plain@example.com,{$this->employeeRole->id},{$this->department->id},password-from-file\n";
 
         $this->actingAs($this->admin)
@@ -87,7 +91,7 @@ class UserImportTest extends TestCase
     {
         User::factory()->create(['email' => 'taken@example.com']);
 
-        $csv = "name,email,role_id,department_id\n"
+        $csv = "name,email,role_id,org_unit_id\n"
             .",no-name@example.com,{$this->employeeRole->id},{$this->department->id}\n"
             ."ซ้ำอีเมล,taken@example.com,{$this->employeeRole->id},{$this->department->id}\n"
             ."ถูกต้อง,good@example.com,{$this->employeeRole->id},{$this->department->id}\n";
@@ -119,7 +123,7 @@ class UserImportTest extends TestCase
         $outsider = User::factory()->create();
 
         $this->actingAs($outsider)
-            ->post('/api/admin/users/import', ['file' => UploadedFile::fake()->createWithContent('users.csv', "name,email,role_id,department_id\n")])
+            ->post('/api/admin/users/import', ['file' => UploadedFile::fake()->createWithContent('users.csv', "name,email,role_id,org_unit_id\n")])
             ->assertForbidden();
     }
 }

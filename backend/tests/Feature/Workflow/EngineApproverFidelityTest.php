@@ -3,7 +3,6 @@
 namespace Tests\Feature\Workflow;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveType;
@@ -39,8 +38,8 @@ class EngineApproverFidelityTest extends TestCase
     /** @return array{0: User, 1: Leave} ผู้ยื่นพร้อมใบลาที่มี snapshot สายอนุมัติแล้ว */
     private function leaveWithSnapshot(): array
     {
-        $dept = Department::create(['name' => 'แผนกทดสอบ engine']);
-        $requester = User::factory()->create(['department_id' => $dept->id, 'is_active' => true]);
+        $dept = OrgUnit::factory()->create(['name' => 'แผนกทดสอบ engine']);
+        $requester = User::factory()->create(['org_unit_id' => $dept->id, 'is_active' => true]);
         $type = LeaveType::create(['name' => 'ลาพักผ่อน']);
 
         $leave = Leave::create([

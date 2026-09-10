@@ -3,13 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Attendance;
-use App\Models\Department;
 use App\Models\FiscalYear;
 use App\Models\Leave;
 use App\Models\LeaveAdjustment;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\User;
 use App\Services\Attendance\LeaveAttendanceSync;
@@ -45,7 +45,7 @@ class LeavePartialCancellationTest extends TestCase
 
         Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\FiscalYearSeeder', '--force' => true]);
 
-        $department = Department::create(['name' => 'ฝ่ายทดสอบยกเลิกบางช่วง']);
+        $department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบยกเลิกบางช่วง']);
         $personnelType = PersonnelType::firstOrCreate(['code' => 'civil_servant'], ['name' => 'ข้าราชการ']);
 
         $this->type = LeaveType::create(['name' => 'ลากิจบางช่วง', 'code_prefix' => 'ลก.', 'max_days' => 30, 'attendance_bucket' => 'personal']);
@@ -62,8 +62,8 @@ class LeavePartialCancellationTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->employee = User::factory()->create(['department_id' => $department->id, 'personnel_type_id' => $personnelType->id]);
-        $this->officer = User::factory()->create(['department_id' => $department->id]);
+        $this->employee = User::factory()->create(['org_unit_id' => $department->id, 'personnel_type_id' => $personnelType->id]);
+        $this->officer = User::factory()->create(['org_unit_id' => $department->id]);
         $this->officer->givePermissionTo(Permission::findOrCreate('leave.management.manage', 'web'));
     }
 

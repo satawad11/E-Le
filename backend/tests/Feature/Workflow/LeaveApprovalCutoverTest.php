@@ -3,11 +3,11 @@
 namespace Tests\Feature\Workflow;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveBalance;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Workflow\WorkflowInstance;
@@ -48,7 +48,7 @@ class LeaveApprovalCutoverTest extends TestCase
     {
         parent::setUp();
 
-        $department = Department::create(['name' => 'ทดสอบ']);
+        $department = OrgUnit::factory()->create(['name' => 'ทดสอบ']);
         Role::create(['name' => 'Employee', 'guard_name' => 'web']);
         $head = Role::create(['name' => 'Department Head', 'guard_name' => 'web']);
         $director = Role::create(['name' => 'Director', 'guard_name' => 'web']);
@@ -56,13 +56,13 @@ class LeaveApprovalCutoverTest extends TestCase
         ApprovalStep::create(['name' => 'หัวหน้าแผนก', 'role_id' => $head->id, 'step_order' => 1]);
         ApprovalStep::create(['name' => 'ผู้อำนวยการ', 'role_id' => $director->id, 'step_order' => 2]);
 
-        $this->employee = User::factory()->create(['department_id' => $department->id]);
+        $this->employee = User::factory()->create(['org_unit_id' => $department->id]);
         $this->employee->assignRole('Employee');
 
-        $this->firstApprover = User::factory()->create(['department_id' => $department->id]);
+        $this->firstApprover = User::factory()->create(['org_unit_id' => $department->id]);
         $this->firstApprover->assignRole('Department Head');
 
-        $this->secondApprover = User::factory()->create(['department_id' => $department->id]);
+        $this->secondApprover = User::factory()->create(['org_unit_id' => $department->id]);
         $this->secondApprover->assignRole('Director');
 
         $this->leaveType = LeaveType::create(['name' => 'ลาพักผ่อน', 'max_days' => 10]);

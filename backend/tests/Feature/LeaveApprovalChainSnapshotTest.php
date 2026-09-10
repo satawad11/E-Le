@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\LeaveApproval;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
@@ -41,8 +40,8 @@ class LeaveApprovalChainSnapshotTest extends TestCase
             'effective_from' => '2025-10-01', 'annual_quota' => 10, 'period_basis' => 'fiscal_year',
             'exclude_holidays' => true, 'allow_half_day' => true, 'is_active' => true,
         ]);
-        $dept = Department::create(['name' => 'ทดสอบสายอนุมัติ']);
-        $user = User::factory()->create(['department_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
+        $dept = OrgUnit::factory()->create(['name' => 'ทดสอบสายอนุมัติ']);
+        $user = User::factory()->create(['org_unit_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
 
         return [$user, $type];
     }

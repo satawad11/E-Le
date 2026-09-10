@@ -3,11 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\Role;
 use App\Models\User;
@@ -24,8 +24,8 @@ class GovernmentLeaveGovernanceTest extends TestCase
         $personnel = PersonnelType::where('code', 'civil_servant')->firstOrFail();
         $type = LeaveType::create(['name' => 'ลาทดสอบ', 'code_prefix' => 'T']);
         $policy = LeavePolicy::create(['personnel_type_id' => $personnel->id, 'leave_type_id' => $type->id, 'effective_from' => '2025-10-01', 'annual_quota' => $quota, 'period_basis' => 'fiscal_year', 'exclude_holidays' => true, 'allow_half_day' => true, 'is_active' => true]);
-        $dept = Department::create(['name' => 'ทดสอบ']);
-        $user = User::factory()->create(['department_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
+        $dept = OrgUnit::factory()->create(['name' => 'ทดสอบ']);
+        $user = User::factory()->create(['org_unit_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
 
         return [$user, $type, $policy];
     }
@@ -49,7 +49,7 @@ class GovernmentLeaveGovernanceTest extends TestCase
         [$employee,$type] = $this->setupPolicy();
         $role = Role::create(['name' => 'Approver', 'guard_name' => 'web']);
         ApprovalStep::create(['name' => 'อนุมัติ', 'role_id' => $role->id, 'step_order' => 1]);
-        $approver = User::factory()->create(['department_id' => $employee->department_id]);
+        $approver = User::factory()->create(['org_unit_id' => $employee->org_unit_id]);
         $approver->assignRole($role);
         $day = now()->addWeek()->nextWeekday()->toDateString();
         $leave = $this->actingAs($employee)->postJson('/api/leaves', ['leave_type_id' => $type->id, 'start_date' => $day, 'end_date' => $day, 'reason' => 'ทดสอบ'])->assertCreated()->json('leave');

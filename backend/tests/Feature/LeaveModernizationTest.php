@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentTemplateVersion;
 use App\Models\FiscalYear;
@@ -13,6 +12,7 @@ use App\Models\LeaveBalance;
 use App\Models\LeaveEvidence;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\Role;
 use App\Models\Time\WorkSchedule;
@@ -84,7 +84,7 @@ class LeaveModernizationTest extends TestCase
     {
         $user = User::factory()->create([
             'personnel_type_id' => $this->personnelType->id,
-            'department_id' => Department::create(['name' => 'ฝ่ายทดสอบ'])->id,
+            'org_unit_id' => OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ'])->id,
         ])->fresh();
 
         /*

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Document\DocumentBindingRule;
 use App\Models\Document\DocumentGeneratedFile;
 use App\Models\Document\DocumentPrintCalibration;
@@ -11,6 +10,7 @@ use App\Models\DocumentTemplateVersion;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use App\Services\DocumentEngine\DocumentEngine;
 use App\Services\DocumentEngine\LeaveDocumentGateway;
@@ -85,8 +85,8 @@ class DocumentEngineTest extends TestCase
     /** @return array{0: Leave, 1: LeaveType, 2: User} */
     private function approvedLeave(): array
     {
-        $dept = Department::create(['name' => 'แผนกทดสอบเอกสาร']);
-        $user = User::factory()->create(['department_id' => $dept->id, 'is_active' => true]);
+        $dept = OrgUnit::factory()->create(['name' => 'แผนกทดสอบเอกสาร']);
+        $user = User::factory()->create(['org_unit_id' => $dept->id, 'is_active' => true]);
         $type = LeaveType::create(['name' => 'ลาพักผ่อน', 'code_prefix' => 'V']);
 
         $leave = Leave::create([

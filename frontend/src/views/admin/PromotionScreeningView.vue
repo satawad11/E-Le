@@ -16,7 +16,7 @@
         </select>
       </label>
       <label class="text-sm">หน่วยงาน
-        <select v-model="filters.department_id" class="mt-1 block min-w-44 rounded-lg border p-2">
+        <select v-model="filters.org_unit_id" class="mt-1 block min-w-44 rounded-lg border p-2">
           <option value="">ทั้งหมด</option>
           <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
         </select>
@@ -127,11 +127,11 @@ const currentRound = () => {
 }
 
 const thaiYear = ref(currentFiscalYear() + 543)
-const filters = reactive({ round: currentRound(), department_id: '', max_leave_days: 23, max_late_times: 18 })
+const filters = reactive({ round: currentRound(), org_unit_id: '', max_leave_days: 23, max_late_times: 18 })
 
 const params = () => {
   const p = { year: thaiYear.value - 543, round: filters.round, max_leave_days: filters.max_leave_days, max_late_times: filters.max_late_times }
-  if (filters.department_id) p.department_id = filters.department_id
+  if (filters.org_unit_id) p.org_unit_id = filters.org_unit_id
   return p
 }
 
@@ -167,7 +167,7 @@ const exportCsv = async () => {
 
 onMounted(async () => {
   try {
-    const { data } = await api.get('/departments')
+    const { data } = await api.get('/org-units')
     departments.value = data.data || data
   } catch { /* ไม่มีสิทธิ์ดูหน่วยงานก็ยังใช้รายงานได้ */ }
   await load()

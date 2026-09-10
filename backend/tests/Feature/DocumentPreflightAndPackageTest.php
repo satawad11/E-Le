@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentTemplateVersion;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use App\Services\DocumentEngine\PrintCalibrationSheet;
 use App\Services\DocumentEngine\TemplatePackage;
@@ -174,8 +174,8 @@ class DocumentPreflightAndPackageTest extends TestCase
     /** @return array{0: Leave, 1: User} */
     private function approvedLeave(): array
     {
-        $department = Department::create(['name' => 'แผนกทดสอบพรีวิว']);
-        $owner = User::factory()->create(['department_id' => $department->id, 'is_active' => true]);
+        $department = OrgUnit::factory()->create(['name' => 'แผนกทดสอบพรีวิว']);
+        $owner = User::factory()->create(['org_unit_id' => $department->id, 'is_active' => true]);
         $type = LeaveType::create(['name' => 'ลาพักผ่อน', 'code_prefix' => 'V']);
 
         $leave = Leave::create([

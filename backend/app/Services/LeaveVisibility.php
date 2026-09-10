@@ -83,24 +83,12 @@ class LeaveVisibility
             return $query->where('user_id', $user->id);
         }
 
-        return $query->whereHas('user', function (Builder $owner) use ($visible): void {
-            $owner->whereIn('org_unit_id', $visible)
-                /*
-                 * ทางถอยผ่านแผนกเดิมใช้ได้เฉพาะกับผู้ใช้ที่ **ยังไม่มี** org_unit_id เท่านั้น
-                 *
-                 * เดิมเงื่อนไขนี้เป็น `orWhereIn('department_id', ...)` เฉย ๆ ผู้ใช้ที่มี
-                 * org_unit_id อยู่นอกขอบเขตที่มองเห็นได้ แต่บังเอิญแผนกเดิมของเขา map
-                 * เข้ามาในขอบเขตนั้น จะโผล่ให้เห็นด้วย — เป็นการขยายสิทธิ์การมองเห็น
-                 * โดยไม่ตั้งใจเมื่อผังสองชุดไม่ตรงกัน ซึ่งเป็นเหตุผลเดียวกับที่ต้องเหลือผังชุดเดียว
-                 */
-                ->orWhere(function (Builder $legacy) use ($visible): void {
-                    $legacy->whereNull('org_unit_id')
-                        ->whereIn('department_id', function ($sub) use ($visible): void {
-                            $sub->select('department_id')
-                                ->from('department_org_unit_map')
-                                ->whereIn('org_unit_id', $visible);
-                        });
-                });
-        });
+        /*
+         * เดิมมีทางถอยผ่าน `department_id` สำหรับข้อมูลที่ยังไม่ backfill · ผังองค์กร
+         * เหลือชุดเดียวและผู้ใช้ทุกคนถูก backfill เข้า `org_unit_id` แล้ว ทางถอยจึงหมดหน้าที่
+         * ผู้ใช้ที่ไม่มีหน่วยงานเลยจะไม่ปรากฏต่อผู้ที่มองเห็นเฉพาะบางหน่วย ซึ่งถูกต้อง
+         * ตามหลัก fail-closed — และหน้าตรวจความพร้อมของสายอนุมัติชี้คนกลุ่มนี้ให้เห็นอยู่แล้ว
+         */
+        return $query->whereHas('user', fn (Builder $owner) => $owner->whereIn('org_unit_id', $visible));
     }
 }

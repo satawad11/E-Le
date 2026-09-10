@@ -111,7 +111,7 @@ class ReportingDataService
             ->whereIn('users.id', $this->scope->users($viewer, $ability, $filter, true))
             ->with(['personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit:id,name', 'department:id,name', 'personnelType:id,name', 'profile:id,user_id,position'])
             ->orderBy('users.name')
-            ->get(['users.id', 'users.uuid', 'users.name', 'users.org_unit_id', 'users.department_id', 'users.personnel_type_id', 'users.is_active']);
+            ->get(['users.id', 'users.uuid', 'users.name', 'users.org_unit_id', 'users.org_unit_id', 'users.personnel_type_id', 'users.is_active']);
         $rows = $users->map(fn (User $user): array => [
             'user_id' => $user->id,
             'uuid' => $user->uuid,

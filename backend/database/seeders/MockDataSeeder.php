@@ -2,9 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\Department;
+use App\Models\OrgUnit;
 use App\Models\Setting;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class MockDataSeeder extends Seeder
 {
@@ -28,10 +29,7 @@ class MockDataSeeder extends Seeder
         ];
 
         foreach ($departments as $deptName) {
-            Department::updateOrCreate(
-                ['name' => $deptName],
-                ['is_active' => true]
-            );
+            $this->seedOrgUnit($deptName);
         }
 
         // 2. จำลองข้อมูลการตั้งค่าสถานศึกษา
@@ -74,5 +72,20 @@ class MockDataSeeder extends Seeder
                 ['value' => $value]
             );
         }
+    }
+
+    /** แผนกวิชาเป็นหน่วยงานในผังจริง แขวนใต้ยอดผัง */
+    private function seedOrgUnit(string $name): OrgUnit
+    {
+        $root = OrgUnit::whereNull('parent_id')->first();
+
+        return OrgUnit::firstOrCreate(['name' => $name], [
+            'uuid' => (string) Str::uuid(),
+            'parent_id' => $root?->id,
+            'code' => 'ORG-'.Str::upper(Str::random(6)),
+            'type' => 'department',
+            'effective_from' => now()->toDateString(),
+            'is_active' => true,
+        ]);
     }
 }

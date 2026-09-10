@@ -3,10 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,18 +30,18 @@ class ApprovalTest extends TestCase
 
         $empRole = Role::create(['name' => 'Employee', 'guard_name' => 'web']);
         $mgmtRole = Role::create(['name' => 'Manager',  'guard_name' => 'web']);
-        $dept = Department::create(['name' => 'ทดสอบ']);
+        $dept = OrgUnit::factory()->create(['name' => 'ทดสอบ']);
 
         // Approval step: Manager approves at step 1
         ApprovalStep::create(['name' => 'Manager approval', 'role_id' => $mgmtRole->id, 'step_order' => 1]);
 
         $this->employee = User::factory()->create([
-            'department_id' => $dept->id,
+            'org_unit_id' => $dept->id,
         ]);
         $this->employee->assignRole('Employee');
 
         $this->manager = User::factory()->create([
-            'department_id' => $dept->id,
+            'org_unit_id' => $dept->id,
         ]);
         $this->manager->assignRole('Manager');
 

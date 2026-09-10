@@ -3,12 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,8 +54,8 @@ class LeaveCancellationChainTest extends TestCase
             'effective_from' => '2025-10-01', 'annual_quota' => 10, 'period_basis' => 'fiscal_year',
             'exclude_holidays' => true, 'allow_half_day' => true, 'is_active' => true,
         ]);
-        $dept = Department::create(['name' => 'ทดสอบยกเลิกใบลา']);
-        $user = User::factory()->create(['department_id' => $dept->id, 'personnel_type_id' => $personnel->id, 'is_active' => true]);
+        $dept = OrgUnit::factory()->create(['name' => 'ทดสอบยกเลิกใบลา']);
+        $user = User::factory()->create(['org_unit_id' => $dept->id, 'personnel_type_id' => $personnel->id, 'is_active' => true]);
 
         return [$user, $type];
     }

@@ -631,11 +631,12 @@ class MenuSeeder extends Seeder
                     'permissions' => ['system.setting.manage', 'leave.calendar.manage'],
                 ],
                 [
+                    // ผังองค์กรเหลือชุดเดียว — หน้านี้จัดการ `org_units` โดยตรง
                     'code' => 'settings.departments',
-                    'title_th' => 'จัดการแผนกวิชา',
-                    'title_en' => 'Departments',
-                    'route_name' => 'admin-departments',
-                    'route_path' => '/admin/departments',
+                    'title_th' => 'หน่วยงานในผังองค์กร',
+                    'title_en' => 'Org Units',
+                    'route_name' => 'admin-org-units',
+                    'route_path' => '/admin/org-units',
                     'permissions' => ['manage_departments'],
                 ],
                 [

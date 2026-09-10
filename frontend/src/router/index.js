@@ -519,12 +519,20 @@ const router = createRouter({
       component: () => import('../views/admin/WorkCalendarView.vue'),
       meta: { requiresAuth: true, permission: 'system.setting.manage', title: 'ปฏิทินวันทำการ', parent: 'ตั้งค่าระบบ' }
     },
+    /*
+     * หน่วยงานในผังองค์กร — เดิมคือหน้า "จัดการแผนกวิชา"
+     *
+     * `org_units` เคยไม่มีหน้าจอจัดการเลย หน่วยงานจึงเกิดได้ทางเดียวคือเป็นผลพลอยได้
+     * ตอนสร้างแผนกวิชา ซึ่งแขวนใต้ยอดผังเสมอ — ผังลึกเกินสองชั้นไม่ได้ตลอดอายุระบบ
+     */
     {
-      path: '/admin/departments',
-      name: 'admin-departments',
-      component: () => import('../views/admin/DepartmentsManagementView.vue'),
-      meta: { requiresAuth: true, permission: 'manage_departments', title: 'จัดการแผนกวิชา', parent: 'ตั้งค่าระบบ' }
+      path: '/admin/org-units',
+      name: 'admin-org-units',
+      component: () => import('../views/admin/OrgUnitsManagementView.vue'),
+      meta: { requiresAuth: true, permission: 'manage_departments', title: 'หน่วยงานในผังองค์กร', parent: 'ตั้งค่าระบบ' }
     },
+    // เส้นทางเดิมคงไว้ไม่ให้ลิงก์และบุ๊กมาร์กที่มีอยู่เสีย
+    { path: '/admin/departments', redirect: { name: 'admin-org-units' } },
     /*
      * ผู้รับผิดชอบหน่วยงาน — ข้อมูลที่ตัวหาผู้อนุมัติใช้จริง
      * แทนช่อง "หัวหน้าแผนก" เดิมในหน้าจัดการแผนกวิชา ซึ่งตั้งค่าได้แต่ไม่มีใครอ่าน

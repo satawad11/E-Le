@@ -1,10 +1,10 @@
 <?php
 
-use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\DocumentEngineController;
 use App\Http\Controllers\Admin\DocumentReportController;
 use App\Http\Controllers\Admin\LeaveTypeController;
 use App\Http\Controllers\Admin\ModuleController;
+use App\Http\Controllers\Admin\OrgUnitController;
 use App\Http\Controllers\Admin\OrgUnitManagerController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\UserController;
@@ -256,7 +256,14 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      * เดิมมีสองเส้นทางที่พังทั้งคู่: `/departments` ไม่เคยมี route และ
      * `/admin/departments-list` ชี้ไปยังเมธอดที่ไม่มีอยู่ รวมเหลือเส้นทางเดียว
      */
-    Route::get('/departments', [DepartmentController::class, 'options']);
+    /*
+     * รายชื่อหน่วยงานสำหรับช่องตัวกรอง — ผู้ใช้ที่ล็อกอินแล้วเรียกได้ทุกคน
+     *
+     * เดิมชื่อ `/departments` และชี้ไปยังโครงหน่วยงานชั้นเดียวที่ถูกถอดออกแล้ว
+     * ทุกหน้าจอย้ายมาเรียกเส้นทางนี้พร้อมกันในรอบเดียว จึงไม่คงชื่อพ้องไว้ให้เป็น
+     * พื้นผิว API ที่ไม่มีใครเรียก (ดู `ApiSurfaceContractTest`)
+     */
+    Route::get('/org-units', [OrgUnitController::class, 'options']);
 
     Route::group(['middleware' => ['can:system.user.manage']], function () {
         Route::post('/admin/users', [UserController::class, 'store']);
@@ -283,13 +290,17 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->middleware('can:delete_users');
 
-    // Admin: Departments CRUD
+    // Admin: หน่วยงานในผังองค์กร
     Route::group(['middleware' => ['can:manage_departments']], function () {
-        Route::get('/admin/departments', [DepartmentController::class, 'index']);
-        Route::post('/admin/departments', [DepartmentController::class, 'store']);
-        Route::put('/admin/departments/{department}', [DepartmentController::class, 'update']);
-        Route::delete('/admin/departments/{department}', [DepartmentController::class, 'destroy']);
-        Route::put('/admin/departments/{department}/toggle-status', [DepartmentController::class, 'toggleStatus']);
+        /*
+         * `org_units` เคยไม่มีหน้าจอจัดการเลย หน่วยงานจึงเกิดได้ทางเดียวคือเป็น
+         * ผลพลอยได้ตอนสร้าง "แผนกวิชา" ซึ่งแขวนใต้ยอดผังเสมอ — ผังลึกเกินสองชั้นไม่ได้
+         */
+        Route::get('/admin/org-units', [OrgUnitController::class, 'index']);
+        Route::post('/admin/org-units', [OrgUnitController::class, 'store']);
+        Route::put('/admin/org-units/{orgUnit}', [OrgUnitController::class, 'update']);
+        Route::delete('/admin/org-units/{orgUnit}', [OrgUnitController::class, 'destroy']);
+        Route::put('/admin/org-units/{orgUnit}/toggle-status', [OrgUnitController::class, 'toggleStatus']);
 
         /*
          * หัวหน้าหน่วยงาน — ข้อมูลที่ตัวหาผู้อนุมัติใช้จริง

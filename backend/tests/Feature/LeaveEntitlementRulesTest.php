@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\FiscalYear;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\User;
 use App\Services\LeavePolicyService;
@@ -38,8 +38,8 @@ class LeaveEntitlementRulesTest extends TestCase
             'is_active' => true,
         ], $policyAttributes));
 
-        $dept = Department::create(['name' => 'ทดสอบ']);
-        $user = User::factory()->create(['department_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
+        $dept = OrgUnit::factory()->create(['name' => 'ทดสอบ']);
+        $user = User::factory()->create(['org_unit_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
 
         $balance = LeaveBalance::create(array_merge([
             'user_id' => $user->id,

@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Attendance;
-use App\Models\Department;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -38,7 +38,7 @@ class AttendanceExportAuthorizationTest extends TestCase
         ];
     }
 
-    private Department $department;
+    private OrgUnit $department;
 
     protected function setUp(): void
     {
@@ -48,9 +48,9 @@ class AttendanceExportAuthorizationTest extends TestCase
             Permission::findOrCreate($name, 'web');
         }
 
-        $this->department = Department::create(['name' => 'ฝ่ายทดสอบ']);
+        $this->department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ']);
 
-        $staff = User::factory()->create(['department_id' => $this->department->id]);
+        $staff = User::factory()->create(['org_unit_id' => $this->department->id]);
         Attendance::create([
             'user_id' => $staff->id,
             'date' => now()->toDateString(),
@@ -73,7 +73,7 @@ class AttendanceExportAuthorizationTest extends TestCase
     #[DataProvider('exportEndpoints')]
     public function test_authenticated_user_without_permission_is_forbidden(string $endpoint): void
     {
-        $user = User::factory()->create(['department_id' => $this->department->id]);
+        $user = User::factory()->create(['org_unit_id' => $this->department->id]);
 
         $this->actingAs($user)
             ->getJson($endpoint.'?'.$this->exportQuery())
@@ -83,7 +83,7 @@ class AttendanceExportAuthorizationTest extends TestCase
     #[DataProvider('exportEndpoints')]
     public function test_user_with_permission_is_allowed(string $endpoint): void
     {
-        $user = User::factory()->create(['department_id' => $this->department->id]);
+        $user = User::factory()->create(['org_unit_id' => $this->department->id]);
         $user->givePermissionTo('attendance.view_all');
         $user->givePermissionTo('attendance.ot_summary');
 
@@ -99,7 +99,7 @@ class AttendanceExportAuthorizationTest extends TestCase
     #[DataProvider('exportEndpoints')]
     public function test_token_in_query_string_is_no_longer_accepted(string $endpoint): void
     {
-        $user = User::factory()->create(['department_id' => $this->department->id]);
+        $user = User::factory()->create(['org_unit_id' => $this->department->id]);
         $user->givePermissionTo('attendance.view_all');
         $token = $user->createToken('export-test')->plainTextToken;
 

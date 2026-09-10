@@ -4,11 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Attendance;
 use App\Models\AuditLog;
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveAuditLog;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -28,8 +28,8 @@ class CentralAuditLogTest extends TestCase
 
     public function test_legacy_leave_audit_dual_writes_to_central_log(): void
     {
-        $department = Department::create(['name' => 'Audit']);
-        $user = User::factory()->create(['department_id' => $department->id]);
+        $department = OrgUnit::factory()->create(['name' => 'Audit']);
+        $user = User::factory()->create(['org_unit_id' => $department->id]);
         $type = LeaveType::create(['name' => 'ลา Audit', 'max_days' => 1]);
         $leave = Leave::create(['user_id' => $user->id, 'leave_type_id' => $type->id, 'start_date' => today(), 'end_date' => today(), 'total_days' => 1, 'reason' => 'test']);
 
@@ -47,8 +47,8 @@ class CentralAuditLogTest extends TestCase
      */
     public function test_the_leave_history_endpoint_shows_actions_from_every_source(): void
     {
-        $department = Department::create(['name' => 'ประวัติ']);
-        $user = User::factory()->create(['department_id' => $department->id]);
+        $department = OrgUnit::factory()->create(['name' => 'ประวัติ']);
+        $user = User::factory()->create(['org_unit_id' => $department->id]);
         $type = LeaveType::create(['name' => 'ลาประวัติ', 'max_days' => 1]);
         $leave = Leave::create([
             'user_id' => $user->id, 'leave_type_id' => $type->id,
@@ -68,8 +68,8 @@ class CentralAuditLogTest extends TestCase
 
     public function test_the_leave_history_is_not_readable_by_an_unrelated_person(): void
     {
-        $department = Department::create(['name' => 'ประวัติปิด']);
-        $owner = User::factory()->create(['department_id' => $department->id]);
+        $department = OrgUnit::factory()->create(['name' => 'ประวัติปิด']);
+        $owner = User::factory()->create(['org_unit_id' => $department->id]);
         $type = LeaveType::create(['name' => 'ลาปิด', 'max_days' => 1]);
         $leave = Leave::create([
             'user_id' => $owner->id, 'leave_type_id' => $type->id,
@@ -83,8 +83,8 @@ class CentralAuditLogTest extends TestCase
 
     public function test_user_and_attendance_mutations_are_audited(): void
     {
-        $department = Department::create(['name' => 'Audit mutation']);
-        $user = User::factory()->create(['department_id' => $department->id]);
+        $department = OrgUnit::factory()->create(['name' => 'Audit mutation']);
+        $user = User::factory()->create(['org_unit_id' => $department->id]);
         $attendance = Attendance::create(['user_id' => $user->id, 'date' => today()]);
         $attendance->update(['notes' => 'แก้ไข']);
 

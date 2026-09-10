@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\LeaveEvidence;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,8 +23,8 @@ class PersonalDataProtectionTest extends TestCase
     private function staff(string $name = 'สมชาย ใจดี'): User
     {
         $personnel = PersonnelType::where('code', 'civil_servant')->firstOrFail();
-        $dept = Department::firstOrCreate(['name' => 'แผนกทดสอบ']);
-        $user = User::factory()->create(['name' => $name, 'department_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
+        $dept = OrgUnit::factory()->create(['name' => 'แผนกทดสอบ']);
+        $user = User::factory()->create(['name' => $name, 'org_unit_id' => $dept->id, 'personnel_type_id' => $personnel->id]);
         /*
          * first/last name ต้องมาจาก $name ที่ผู้เรียกส่งมา
          * เดิม hardcode เป็น "สมชาย ใจดี" แล้ว PersonnelSyncService จะ sync
@@ -188,7 +188,7 @@ class PersonalDataProtectionTest extends TestCase
             'name' => 'ชื่อใหม่',
             'email' => $subject->email,
             'role_id' => $role->id,
-            'department_id' => $subject->department_id,
+            'org_unit_id' => $subject->org_unit_id,
         ])->assertOk();
 
         $log = DB::table('personal_data_access_logs')

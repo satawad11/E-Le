@@ -3,11 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\SystemRoles;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -111,14 +111,14 @@ class SystemRoleProtectionTest extends TestCase
         $this->superAdminRole();
         $admin = $this->superAdminAccount();
         $employee = Role::create(['name' => 'Employee', 'guard_name' => 'web']);
-        $department = DB::table('departments')->insertGetId(['name' => 'ฝ่ายทดสอบ', 'created_at' => now(), 'updated_at' => now()]);
+        $department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ'])->id;
 
         $this->actingAs($admin)
             ->putJson("/api/admin/users/{$admin->id}", [
                 'name' => $admin->name,
                 'email' => $admin->email,
                 'role_id' => $employee->id,
-                'department_id' => $department,
+                'org_unit_id' => $department,
             ])
             ->assertStatus(422);
 
@@ -132,14 +132,14 @@ class SystemRoleProtectionTest extends TestCase
         $admin = $this->superAdminAccount();
         $this->superAdminAccount('second-root@example.test');
         $employee = Role::create(['name' => 'Employee', 'guard_name' => 'web']);
-        $department = DB::table('departments')->insertGetId(['name' => 'ฝ่ายทดสอบ', 'created_at' => now(), 'updated_at' => now()]);
+        $department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ'])->id;
 
         $this->actingAs($admin)
             ->putJson("/api/admin/users/{$admin->id}", [
                 'name' => $admin->name,
                 'email' => $admin->email,
                 'role_id' => $employee->id,
-                'department_id' => $department,
+                'org_unit_id' => $department,
             ])
             ->assertOk();
 

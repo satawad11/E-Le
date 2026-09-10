@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,10 +26,10 @@ class LeaveExportTest extends TestCase
         parent::setUp();
 
         Role::firstOrCreate(['name' => 'Employee', 'guard_name' => 'web']);
-        $dept = Department::create(['name' => 'ทดสอบ']);
+        $dept = OrgUnit::factory()->create(['name' => 'ทดสอบ']);
 
         $this->employee = User::factory()->create([
-            'department_id' => $dept->id,
+            'org_unit_id' => $dept->id,
         ]);
         $this->employee->assignRole('Employee');
 

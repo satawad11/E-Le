@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class OrgUnit extends Model
 {
+    use HasFactory;
+
     protected $fillable = ['uuid', 'parent_id', 'code', 'name', 'type', 'effective_from', 'effective_to', 'is_active'];
 
     protected $casts = ['effective_from' => 'date', 'effective_to' => 'date', 'is_active' => 'boolean'];

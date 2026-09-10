@@ -23,7 +23,7 @@ class LeaveQueryController extends Controller
         $perPage = min((int) ($request->input('per_page', 100)), 500);
 
         if ($canViewAll) {
-            $query = Leave::with(['user:id,name,department_id', 'user.department', 'type:id,name', 'approvals.approver:id,name', 'actionLogs.user:id,name'])
+            $query = Leave::with(['user:id,name,org_unit_id', 'user.orgUnit', 'type:id,name', 'approvals.approver:id,name', 'actionLogs.user:id,name'])
                 ->orderBy('created_at', 'desc')
                 /*
                  * ร่างเป็นของส่วนตัวจนกว่าจะส่ง — ยังไม่มีเลขที่หนังสือ ยังไม่เข้าสายอนุมัติ
@@ -53,7 +53,7 @@ class LeaveQueryController extends Controller
             ]);
         }
 
-        $leaves = Leave::with(['user:id,name,department_id', 'user.department', 'type:id,name', 'approvals.approver:id,name', 'actionLogs.user:id,name'])
+        $leaves = Leave::with(['user:id,name,org_unit_id', 'user.orgUnit', 'type:id,name', 'approvals.approver:id,name', 'actionLogs.user:id,name'])
             ->where(function ($query) use ($user) {
                 $query->where('user_id', $user->id)
                     // ผู้ปฏิบัติงานแทนเห็นเฉพาะใบที่ยื่นจริงแล้ว ไม่เห็นร่างของคนอื่น
@@ -195,14 +195,14 @@ class LeaveQueryController extends Controller
     public function teamCalendar(Request $request)
     {
         $user = $request->user();
-        $query = Leave::with(['user.profile', 'user.department', 'type'])
+        $query = Leave::with(['user.profile', 'user.orgUnit', 'type'])
             ->whereIn('status', ['Approved', 'Pending']);
 
         if (! $user->can('attendance.view_all')) {
-            $departmentId = $user->department_id ?? ($user->profile->department_id ?? null);
-            if ($departmentId) {
-                $query->whereHas('user', function ($q) use ($departmentId) {
-                    $q->where('department_id', $departmentId);
+            $orgUnitId = $user->org_unit_id ?? ($user->profile->org_unit_id ?? null);
+            if ($orgUnitId) {
+                $query->whereHas('user', function ($q) use ($orgUnitId) {
+                    $q->where('org_unit_id', $orgUnitId);
                 });
             } else {
                 $query->where('user_id', $user->id);

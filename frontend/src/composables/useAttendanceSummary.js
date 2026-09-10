@@ -28,7 +28,7 @@ export function useAttendanceSummary(basePath) {
   const filters = ref({
     month: now.getMonth() + 1,
     year: now.getFullYear(),
-    department_id: '',
+    org_unit_id: '',
     user_id: '',
   })
 
@@ -40,8 +40,8 @@ export function useAttendanceSummary(basePath) {
   const daysInMonth = computed(() => new Date(filters.value.year, filters.value.month, 0).getDate())
 
   const filteredUsers = computed(() => {
-    if (!filters.value.department_id) return users.value
-    return users.value.filter((u) => u.department_id === filters.value.department_id)
+    if (!filters.value.org_unit_id) return users.value
+    return users.value.filter((u) => u.org_unit_id === filters.value.org_unit_id)
   })
 
   /*
@@ -52,7 +52,7 @@ export function useAttendanceSummary(basePath) {
    */
   const fetchDepartments = async () => {
     try {
-      const res = await api.get('/departments')
+      const res = await api.get('/org-units')
       departments.value = res.data
     } catch (error) {
       console.error(error)

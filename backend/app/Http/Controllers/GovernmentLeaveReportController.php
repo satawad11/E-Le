@@ -17,14 +17,14 @@ class GovernmentLeaveReportController extends Controller
     private function registerQuery(Request $r)
     {
         abort_unless($r->user()->can('leave.report.view') || $r->user()->can('leave.management.manage'), 403);
-        $data = $r->validate(['from' => 'required|date', 'to' => 'required|date|after_or_equal:from', 'department_id' => 'nullable|exists:departments,id', 'personnel_type_id' => 'nullable|exists:personnel_types,id']);
+        $data = $r->validate(['from' => 'required|date', 'to' => 'required|date|after_or_equal:from', 'org_unit_id' => 'nullable|exists:org_units,id', 'personnel_type_id' => 'nullable|exists:personnel_types,id']);
         // ร่างยังไม่ออกเลขที่หนังสือและยังไม่เข้ากระบวนการ จึงยังไม่ใช่รายการในทะเบียนคุม
         $q = Leave::withTrashed()->where('status', '!=', 'Draft')
-            ->with(['user:id,name,department_id,personnel_type_id', 'user.department:id,name', 'user.personnelType:id,name', 'type:id,name'])
+            ->with(['user:id,name,org_unit_id,personnel_type_id', 'user.orgUnit:id,name', 'user.personnelType:id,name', 'type:id,name'])
             ->whereBetween('start_date', [$data['from'], $data['to']]);
         $this->applyReportScope($q, $r);
-        if ($data['department_id'] ?? null) {
-            $q->whereHas('user', fn ($x) => $x->where('department_id', $data['department_id']));
+        if ($data['org_unit_id'] ?? null) {
+            $q->whereHas('user', fn ($x) => $x->where('org_unit_id', $data['org_unit_id']));
         }
         if ($data['personnel_type_id'] ?? null) {
             $q->whereHas('user', fn ($x) => $x->where('personnel_type_id', $data['personnel_type_id']));

@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveEvidence;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -124,12 +124,12 @@ class LeaveEvidenceAccessTest extends TestCase
      */
     public function test_an_approver_can_now_see_the_evidence(): void
     {
-        $department = Department::create(['name' => 'ฝ่ายเดียวกัน']);
+        $department = OrgUnit::factory()->create(['name' => 'ฝ่ายเดียวกัน']);
 
-        $owner = User::factory()->create(['department_id' => $department->id]);
+        $owner = User::factory()->create(['org_unit_id' => $department->id]);
         $leave = $this->leaveFor($owner);
 
-        $approver = User::factory()->create(['department_id' => $department->id]);
+        $approver = User::factory()->create(['org_unit_id' => $department->id]);
         $approver->givePermissionTo('leave.approval.dept');
 
         $this->actingAs($approver->fresh())
@@ -143,10 +143,10 @@ class LeaveEvidenceAccessTest extends TestCase
      */
     public function test_an_approver_from_another_department_is_still_refused(): void
     {
-        $owner = User::factory()->create(['department_id' => Department::create(['name' => 'ฝ่าย ก'])->id]);
+        $owner = User::factory()->create(['org_unit_id' => OrgUnit::factory()->create(['name' => 'ฝ่าย ก'])->id]);
         $leave = $this->leaveFor($owner);
 
-        $approver = User::factory()->create(['department_id' => Department::create(['name' => 'ฝ่าย ข'])->id]);
+        $approver = User::factory()->create(['org_unit_id' => OrgUnit::factory()->create(['name' => 'ฝ่าย ข'])->id]);
         $approver->givePermissionTo('leave.approval.dept');
 
         $this->actingAs($approver->fresh())

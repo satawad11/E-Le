@@ -64,7 +64,7 @@
         <div>
           <select
             aria-label="กรองตามแผนก"
-            v-model="filters.department_id"
+            v-model="filters.org_unit_id"
             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#800000] text-sm transition-colors text-gray-700 bg-white"
           >
             <option value="">แผนกทั้งหมด</option>
@@ -360,7 +360,7 @@
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-xs text-gray-700 mb-1">แผนกวิชา</label>
-                    <select aria-label="แผนกวิชา" v-model="form.department_id" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
+                    <select aria-label="แผนกวิชา" v-model="form.org_unit_id" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
                       <option value="">เลือกแผนกวิชา</option>
                       <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
                     </select>
@@ -599,7 +599,7 @@ const tabTitles = {
 
 const filters = reactive({
   search: '',
-  department_id: '',
+  org_unit_id: '',
   status: ''
 })
 
@@ -660,7 +660,7 @@ const form = reactive({
   email: '',
   phone: '',
   password: '',
-  department_id: '',
+  org_unit_id: '',
   role_id: '',
   telegram_chat_id: '',
   work_start_time: '',
@@ -766,7 +766,7 @@ const filteredUsers = computed(() => {
       u.name.toLowerCase().includes(filters.search.toLowerCase()) ||
       (searchDigits !== '' && u.profile?.id_card_last_four?.includes(searchDigits))
     
-    const deptMatch = !filters.department_id || u.department_id === Number(filters.department_id)
+    const deptMatch = !filters.org_unit_id || u.org_unit_id === Number(filters.org_unit_id)
     const statusMatch = !filters.status || (u.profile?.status || 'ปฏิบัติหน้าที่') === filters.status
 
     return searchMatch && deptMatch && statusMatch
@@ -782,7 +782,7 @@ const openAddModal = () => {
   form.email = ''
   form.phone = ''
   form.password = ''
-  form.department_id = ''
+  form.org_unit_id = ''
   form.role_id = ''
   form.telegram_chat_id = ''
   form.work_start_time = ''
@@ -821,7 +821,7 @@ const openEditModal = async (row) => {
   form.email = user.email
   form.phone = user.phone || ''
   form.password = ''
-  form.department_id = user.department_id || ''
+  form.org_unit_id = user.org_unit_id || ''
   form.role_id = user.role_id || user.role?.id || (user.roles && user.roles[0] ? user.roles[0].id : '')
   form.telegram_chat_id = user.telegram_chat_id || ''
   form.work_start_time = user.work_start_time || ''
@@ -858,7 +858,7 @@ const submitForm = async () => {
     formData.append('email', form.email)
     formData.append('phone', form.phone || '')
     if (form.password) formData.append('password', form.password)
-    formData.append('department_id', form.department_id)
+    formData.append('org_unit_id', form.org_unit_id)
     formData.append('role_id', form.role_id)
     formData.append('telegram_chat_id', form.telegram_chat_id || '')
     if (form.work_start_time) formData.append('work_start_time', form.work_start_time)
@@ -924,7 +924,7 @@ const triggerCsvUpload = () => {
 }
 
 const downloadCsvTemplate = () => {
-  const headers = ['id_card_number', 'name', 'email', 'role_id', 'department_id', 'title', 'first_name', 'last_name', 'gender', 'phone', 'position']
+  const headers = ['id_card_number', 'name', 'email', 'role_id', 'org_unit_id', 'title', 'first_name', 'last_name', 'gender', 'phone', 'position']
   const sample = ['1234567890123', 'นายสมชาย ใจดี', 'somchai@example.com', '1', '1', 'นาย', 'สมชาย', 'ใจดี', 'ชาย', '0812345678', 'พนักงานทั่วไป']
   
   const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + 

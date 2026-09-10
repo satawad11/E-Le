@@ -112,8 +112,9 @@ class LeavePolicy
      * ค่าเริ่มต้นเมื่อไม่ได้กำหนดขอบเขตไว้คือ UNIT ซึ่งให้ผลเท่ากับโค้ดเดิม
      * ผู้ดูแลจึงขยายเป็น DESCENDANTS ให้บางคนได้ภายหลังโดยไม่ต้องแก้โค้ด
      *
-     * ถ้ายังไม่มีข้อมูล org_unit (เช่นข้อมูลเก่าที่ยัง backfill ไม่ถึง)
-     * จะถอยไปเทียบ `department_id` แบบเดิมเพื่อไม่ให้ผู้ใช้เสียสิทธิ์
+     * เดิมมีทางถอยไปเทียบ `department_id` สำหรับข้อมูลที่ยัง backfill ไม่ถึง ·
+     * ผังองค์กรเหลือชุดเดียวและคอลัมน์นั้นถูกถอดออกแล้ว ผู้ที่ยังไม่มีหน่วยงาน
+     * จึงไม่ถือว่าอยู่หน่วยงานเดียวกับใคร ซึ่งเป็นผลแบบ fail-closed ที่ถูกต้อง
      */
     private function sharesDepartmentWith(User $user, Leave $leave): bool
     {
@@ -127,16 +128,8 @@ class LeavePolicy
         $ownerOrgUnit = $resolver->homeOrgUnitId($owner);
         $viewerOrgUnit = $resolver->homeOrgUnitId($user);
 
-        if ($ownerOrgUnit !== null && $viewerOrgUnit !== null) {
-            return $resolver->canSeeOrgUnit($user, self::DEPARTMENT_SCOPED, $ownerOrgUnit);
-        }
-
-        // ข้อมูลยังไม่มี org_unit — ใช้วิธีเดิม
-        $viewerDepartment = $user->department_id ?? $user->profile?->department_id;
-        $ownerDepartment = $owner->department_id ?? $owner->profile?->department_id;
-
-        return $viewerDepartment !== null
-            && $ownerDepartment !== null
-            && (int) $viewerDepartment === (int) $ownerDepartment;
+        return $ownerOrgUnit !== null
+            && $viewerOrgUnit !== null
+            && $resolver->canSeeOrgUnit($user, self::DEPARTMENT_SCOPED, $ownerOrgUnit);
     }
 }

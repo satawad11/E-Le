@@ -50,7 +50,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">แผนก</label>
-          <select v-model="filters.department_id" @change="fetchRecords" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]">
+          <select v-model="filters.org_unit_id" @change="fetchRecords" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]">
             <option value="">ทั้งหมด</option>
             <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
           </select>

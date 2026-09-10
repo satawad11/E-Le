@@ -3,11 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\Document\DocumentFieldDefinition;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use App\Services\DocumentEngine\EngineActivation;
 use App\Services\DocumentEngine\FieldDictionarySynchronizer;
@@ -116,8 +116,8 @@ class DocumentFieldDictionaryTest extends TestCase
 
     public function test_the_provider_supplies_values_for_the_flattened_codes(): void
     {
-        $department = Department::create(['name' => 'แผนกทดสอบพจนานุกรม']);
-        $user = User::factory()->create(['department_id' => $department->id, 'is_active' => true]);
+        $department = OrgUnit::factory()->create(['name' => 'แผนกทดสอบพจนานุกรม']);
+        $user = User::factory()->create(['org_unit_id' => $department->id, 'is_active' => true]);
         $type = $this->leaveTypeWithExtraFields();
 
         $leave = Leave::create([

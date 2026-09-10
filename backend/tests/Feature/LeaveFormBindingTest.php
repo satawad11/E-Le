@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
@@ -28,9 +28,9 @@ class LeaveFormBindingTest extends TestCase
         parent::setUp();
 
         Role::firstOrCreate(['name' => 'Employee', 'guard_name' => 'web']);
-        $department = Department::create(['name' => 'แผนกวิชาช่างยนต์']);
+        $department = OrgUnit::factory()->create(['name' => 'แผนกวิชาช่างยนต์']);
 
-        $this->employee = User::factory()->create(['department_id' => $department->id]);
+        $this->employee = User::factory()->create(['org_unit_id' => $department->id]);
         $this->employee->assignRole('Employee');
     }
 

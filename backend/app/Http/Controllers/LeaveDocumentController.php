@@ -90,7 +90,7 @@ class LeaveDocumentController extends Controller
         $this->authorize('view', $leave);
         $this->assertIssued($leave, $request->query('form') === 'cancel');
 
-        $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
+        $leave->load(['user.orgUnit', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
 
         /*
          * DOC-ENGINE — ถ้าใบลาประเภทนี้ถูกเปิดให้ใช้ Document Engine แล้ว
@@ -233,7 +233,7 @@ class LeaveDocumentController extends Controller
         $this->authorize('view', $leave);
         $this->assertIssued($leave, $request->query('form') === 'cancel');
 
-        $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
+        $leave->load(['user.orgUnit', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
 
         $lastLeave = Leave::where('user_id', $leave->user_id)
             ->where('leave_type_id', $leave->leave_type_id)

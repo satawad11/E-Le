@@ -30,7 +30,7 @@ class EvaluationMetricsService
             ->whereIn('users.id', $this->scope->users($viewer, 'attendance.view_all', $filter, true))
             ->with(['orgUnit:id,name', 'department:id,name', 'personnelType:id,name'])
             ->orderBy('users.name')
-            ->get(['users.id', 'users.name', 'users.org_unit_id', 'users.department_id', 'users.personnel_type_id']);
+            ->get(['users.id', 'users.name', 'users.org_unit_id', 'users.org_unit_id', 'users.personnel_type_id']);
         $ids = $users->pluck('id');
 
         $leave = Leave::query()

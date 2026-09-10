@@ -44,7 +44,7 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::with(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType'])
+        $query = User::with(['roles', 'orgUnit', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType'])
             ->orderBy('name', 'asc');
 
         $idCard = preg_replace('/\D/', '', (string) $request->query('id_card', ''));
@@ -110,7 +110,7 @@ class UserController extends Controller
 
     public function list(Request $request)
     {
-        $users = User::select('id', 'uuid', 'name', 'department_id', 'org_unit_id')->with('personnel:id,user_id,uuid,personnel_code')->orderBy('name', 'asc')->get();
+        $users = User::select('id', 'uuid', 'name', 'org_unit_id', 'org_unit_id')->with('personnel:id,user_id,uuid,personnel_code')->orderBy('name', 'asc')->get();
 
         return response()->json($users);
     }
@@ -122,7 +122,7 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:12',
             'role_id' => 'required|exists:roles,id',
-            'department_id' => 'required|exists:departments,id',
+            'org_unit_id' => 'required|exists:org_units,id',
             'telegram_chat_id' => 'nullable|string|max:255',
             'personnel_type_id' => 'nullable|exists:personnel_types,id',
             'profile' => 'nullable|array',
@@ -145,7 +145,7 @@ class UserController extends Controller
                 'email' => $request->email,
                 'password' => bcrypt($password),
                 // ไม่ใส่ role_id — เป็น accessor จาก Spatie ไม่ใช่คอลัมน์ (กำหนดผ่าน syncRoles() ด้านล่าง)
-                'department_id' => $request->department_id,
+                'org_unit_id' => $request->org_unit_id,
                 'telegram_chat_id' => $request->telegram_chat_id,
                 // ต้องมีประเภทบุคลากรเสมอ ไม่งั้นนโยบายสิทธิการลาจะหาไม่เจอ
                 'personnel_type_id' => $request->personnel_type_id
@@ -182,7 +182,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'สร้างผู้ใช้เรียบร้อยแล้ว',
-            'user' => $user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
+            'user' => $user->load(['roles', 'orgUnit', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
         ], 201);
     }
 
@@ -219,7 +219,7 @@ class UserController extends Controller
         $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $header[0]);
         $header = array_map(fn ($column) => trim((string) $column), $header);
 
-        $missing = array_diff(['name', 'email', 'role_id', 'department_id'], $header);
+        $missing = array_diff(['name', 'email', 'role_id', 'org_unit_id'], $header);
         if ($missing !== []) {
             fclose($handle);
 
@@ -245,7 +245,7 @@ class UserController extends Controller
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users,email',
                 'role_id' => 'required|exists:roles,id',
-                'department_id' => 'required|exists:departments,id',
+                'org_unit_id' => 'required|exists:org_units,id',
                 'personnel_type_id' => 'nullable|exists:personnel_types,id',
             ]);
 
@@ -263,7 +263,7 @@ class UserController extends Controller
                     'email' => $valid['email'],
                     // รหัสผ่านสุ่มที่ไม่มีใครรู้ — เจ้าตัวต้องตั้งเองผ่าน "ลืมรหัสผ่าน"
                     'password' => bcrypt(Str::password(24)),
-                    'department_id' => $valid['department_id'],
+                    'org_unit_id' => $valid['org_unit_id'],
                     'personnel_type_id' => $valid['personnel_type_id']
                         ?? PersonnelType::where('code', 'civil_servant')->value('id'),
                 ]);
@@ -328,7 +328,7 @@ class UserController extends Controller
         app(PersonalDataAccessLogger::class)
             ->record($request, $user->id, 'user_profile', 'เปิดดูทะเบียนประวัติบุคลากร (รวมเลขประจำตัวประชาชนฉบับเต็ม)');
 
-        return response()->json($user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']));
+        return response()->json($user->load(['roles', 'orgUnit', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']));
     }
 
     public function update(Request $request, User $user)
@@ -341,7 +341,7 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => 'nullable|string|min:12',
             'role_id' => 'required|exists:roles,id',
-            'department_id' => 'required|exists:departments,id',
+            'org_unit_id' => 'required|exists:org_units,id',
             'telegram_chat_id' => 'nullable|string|max:255',
             'profile' => 'nullable|array',
             // SEC-028 — เดิมช่องนี้ไม่มีกฎ validate ใด ๆ เลย อัปโหลดไฟล์ชนิดใดขนาดใดก็ได้
@@ -362,7 +362,7 @@ class UserController extends Controller
         $user->name = $request->name;
         $user->email = $request->email;
         // role_id เป็น accessor ที่อ่านมาจาก Spatie ไม่ใช่คอลัมน์จริง — บทบาทกำหนดผ่าน syncRoles() ด้านล่าง
-        $user->department_id = $request->department_id;
+        $user->org_unit_id = $request->org_unit_id;
         $user->telegram_chat_id = $request->telegram_chat_id;
 
         if ($request->filled('password')) {
@@ -405,7 +405,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว',
-            'user' => $user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
+            'user' => $user->load(['roles', 'orgUnit', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
         ]);
     }
 
@@ -465,7 +465,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => $user->is_active ? 'เปิดใช้งานผู้ใช้แล้ว' : 'ระงับการใช้งานผู้ใช้แล้ว',
-            'user' => $user->fresh()->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
+            'user' => $user->fresh()->load(['roles', 'orgUnit', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
         ]);
     }
 }

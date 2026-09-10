@@ -185,7 +185,7 @@ class LeaveDocumentFields
      */
     public function build(Leave $leave): array
     {
-        $leave->loadMissing(['user.profile', 'user.department', 'type', 'policy']);
+        $leave->loadMissing(['user.profile', 'user.orgUnit', 'type', 'policy']);
 
         $settings = $this->settings();
         $user = $leave->user;

@@ -57,7 +57,7 @@ class PromotionScreeningController extends Controller
         $data = $request->validate([
             'year' => 'nullable|integer|min:2000|max:2100',
             'round' => 'nullable|integer|in:1,2',
-            'department_id' => 'nullable|exists:departments,id',
+            'org_unit_id' => 'nullable|exists:org_units,id',
             'personnel_type_id' => 'nullable|exists:personnel_types,id',
             'max_leave_days' => 'nullable|numeric|min:0',
             'max_late_times' => 'nullable|integer|min:0',
@@ -79,7 +79,7 @@ class PromotionScreeningController extends Controller
         $users = User::with(['profile:id,user_id,position,start_date', 'department:id,name', 'personnelType:id,name'])
             ->where('is_active', true)
             ->when($visible !== null, fn ($q) => $q->whereIn('org_unit_id', $visible))
-            ->when($data['department_id'] ?? null, fn ($q, $v) => $q->where('department_id', $v))
+            ->when($data['org_unit_id'] ?? null, fn ($q, $v) => $q->where('org_unit_id', $v))
             ->when($data['personnel_type_id'] ?? null, fn ($q, $v) => $q->where('personnel_type_id', $v))
             ->orderBy('name')
             ->get();

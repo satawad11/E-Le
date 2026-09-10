@@ -78,7 +78,7 @@ class SarabanDataModelTest extends TestCase
         $offenders = [];
 
         foreach ($this->sarabanTables() as $table) {
-            if (Schema::hasColumn($table, 'department_id')) {
+            if (Schema::hasColumn($table, 'org_unit_id')) {
                 $offenders[] = $table;
             }
         }

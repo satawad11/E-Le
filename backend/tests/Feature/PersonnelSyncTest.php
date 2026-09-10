@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\OrgUnit;
 use App\Models\Personnel;
 use App\Models\PersonnelAssignment;
@@ -109,28 +108,18 @@ class PersonnelSyncTest extends TestCase
         $this->assertEquals('สุภาณี ดวงมณี', $user->fresh()->name);
     }
 
-    public function test_assignment_change_syncs_user_org_unit_and_legacy_department(): void
+    /**
+     * การมอบหมายบุคลากรย้ายหน่วยงานต้นสังกัดของผู้ใช้ตาม
+     *
+     * เดิมเทสต์นี้ตรวจว่าการซิงก์ประคอง `department_id` ให้ตรงกับ `org_unit_id` ด้วย ·
+     * ผังองค์กรเหลือชุดเดียวแล้ว เหลือแค่ต้องตามผังจริงให้ถูก
+     */
+    public function test_assignment_change_syncs_user_org_unit(): void
     {
-        $dept = Department::create(['name' => 'ฝ่ายบริหารทั่วไป']);
-        $orgUnit = OrgUnit::create([
-            'uuid' => (string) Str::uuid(),
-            'code' => 'UNIT-ADM',
-            'name' => 'ฝ่ายบริหารทั่วไป',
-            'type' => 'department',
-            'effective_from' => now()->toDateString(),
-            'is_active' => true,
-        ]);
-
-        // การสร้าง Department ผูก org unit ให้เองแล้ว และ department_id เป็น unique
-        // จึงต้องเขียนแบบ upsert ไม่ใช่ insert ตรง ๆ มิฉะนั้นชน unique constraint
-        DB::table('department_org_unit_map')->updateOrInsert(
-            ['department_id' => $dept->id],
-            ['org_unit_id' => $orgUnit->id, 'updated_at' => now(), 'created_at' => now()]
-        );
-
+        $orgUnit = OrgUnit::factory()->create(['name' => 'ฝ่ายบริหารทั่วไป', 'code' => 'UNIT-ADM']);
         $user = User::factory()->create(['name' => 'วิชัย มั่นคง']);
 
-        $assignment = PersonnelAssignment::create([
+        PersonnelAssignment::create([
             'uuid' => (string) Str::uuid(),
             'user_id' => $user->id,
             'org_unit_id' => $orgUnit->id,
@@ -138,7 +127,6 @@ class PersonnelSyncTest extends TestCase
         ]);
 
         $this->assertEquals($orgUnit->id, $user->fresh()->org_unit_id);
-        $this->assertEquals($dept->id, $user->fresh()->department_id);
     }
 
     public function test_assign_position_preserves_historical_effective_dates(): void

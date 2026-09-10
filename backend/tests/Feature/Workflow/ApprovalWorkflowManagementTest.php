@@ -3,13 +3,13 @@
 namespace Tests\Feature\Workflow;
 
 use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\FiscalYear;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\PersonnelType;
 use App\Models\Role;
 use App\Models\User;
@@ -56,7 +56,7 @@ class ApprovalWorkflowManagementTest extends TestCase
             Permission::firstOrCreate(['name' => 'leave.management.manage', 'guard_name' => 'web'])
         );
 
-        $dept = Department::firstOrCreate(['name' => 'วิชาการ'], ['code' => 'ACAD', 'is_active' => true]);
+        $dept = OrgUnit::factory()->create(['name' => 'วิชาการ', 'code' => 'ACAD', 'is_active' => true]);
         $this->personnelType = PersonnelType::firstOrCreate(
             ['code' => 'civil_servant'],
             ['name' => 'ข้าราชการพลเรือน', 'is_active' => true]
@@ -68,13 +68,13 @@ class ApprovalWorkflowManagementTest extends TestCase
         );
 
         $this->admin = User::factory()->create([
-            'department_id' => $dept->id,
+            'org_unit_id' => $dept->id,
             'personnel_type_id' => $this->personnelType->id,
         ]);
         $this->admin->assignRole($this->adminRole);
 
         $this->employee = User::factory()->create([
-            'department_id' => $dept->id,
+            'org_unit_id' => $dept->id,
             'personnel_type_id' => $this->personnelType->id,
         ]);
         $this->employee->assignRole($this->employeeRole);

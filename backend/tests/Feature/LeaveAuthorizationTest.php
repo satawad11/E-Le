@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
@@ -25,9 +25,9 @@ class LeaveAuthorizationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Department $deptA;
+    private OrgUnit $deptA;
 
-    private Department $deptB;
+    private OrgUnit $deptB;
 
     private LeaveType $leaveType;
 
@@ -48,12 +48,12 @@ class LeaveAuthorizationTest extends TestCase
             Permission::findOrCreate($name, 'web');
         }
 
-        $this->deptA = Department::create(['name' => 'ฝ่าย ก']);
-        $this->deptB = Department::create(['name' => 'ฝ่าย ข']);
+        $this->deptA = OrgUnit::factory()->create(['name' => 'ฝ่าย ก']);
+        $this->deptB = OrgUnit::factory()->create(['name' => 'ฝ่าย ข']);
 
         $this->leaveType = LeaveType::create(['name' => 'ลาป่วย', 'max_days' => 30]);
 
-        $this->owner = User::factory()->create(['department_id' => $this->deptA->id]);
+        $this->owner = User::factory()->create(['org_unit_id' => $this->deptA->id]);
 
         $this->leave = Leave::create([
             'user_id' => $this->owner->id,
@@ -66,9 +66,9 @@ class LeaveAuthorizationTest extends TestCase
         ]);
     }
 
-    private function userIn(?Department $department, array $permissions = []): User
+    private function userIn(?OrgUnit $department, array $permissions = []): User
     {
-        $user = User::factory()->create(['department_id' => $department?->id]);
+        $user = User::factory()->create(['org_unit_id' => $department?->id]);
 
         foreach ($permissions as $permission) {
             $user->givePermissionTo($permission);

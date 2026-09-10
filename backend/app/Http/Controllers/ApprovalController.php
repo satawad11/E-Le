@@ -29,7 +29,7 @@ class ApprovalController extends Controller
     {
         $user = $request->user();
 
-        $query = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name', 'cancellationApprovals.approver:id,name'])
+        $query = Leave::with(['user.profile', 'user.orgUnit', 'type:id,name', 'approvals.approver:id,name', 'cancellationApprovals.approver:id,name'])
             ->where(function ($sub) {
                 $sub->where('status', 'Pending')
                     ->orWhere('cancellation_status', 'Pending');

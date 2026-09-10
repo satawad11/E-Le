@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use App\Services\OrgScopeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,9 +26,9 @@ class LeaveVisibilityTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Department $deptA;
+    private OrgUnit $deptA;
 
-    private Department $deptB;
+    private OrgUnit $deptB;
 
     private LeaveType $type;
 
@@ -47,17 +47,17 @@ class LeaveVisibilityTest extends TestCase
             Permission::findOrCreate($name, 'web');
         }
 
-        $this->deptA = Department::create(['name' => 'ฝ่าย ก']);
-        $this->deptB = Department::create(['name' => 'ฝ่าย ข']);
+        $this->deptA = OrgUnit::factory()->create(['name' => 'ฝ่าย ก']);
+        $this->deptB = OrgUnit::factory()->create(['name' => 'ฝ่าย ข']);
         $this->type = LeaveType::create(['name' => 'ลาป่วย', 'max_days' => 30]);
 
         $this->leaveInA = $this->leaveFor($this->deptA);
         $this->leaveInB = $this->leaveFor($this->deptB);
     }
 
-    private function leaveFor(Department $department): Leave
+    private function leaveFor(OrgUnit $department): Leave
     {
-        $owner = User::factory()->create(['department_id' => $department->id]);
+        $owner = User::factory()->create(['org_unit_id' => $department->id]);
 
         return Leave::create([
             'user_id' => $owner->id,
@@ -70,9 +70,9 @@ class LeaveVisibilityTest extends TestCase
         ]);
     }
 
-    private function viewer(Department $department, array $permissions): User
+    private function viewer(OrgUnit $department, array $permissions): User
     {
-        $user = User::factory()->create(['department_id' => $department->id]);
+        $user = User::factory()->create(['org_unit_id' => $department->id]);
 
         foreach ($permissions as $permission) {
             $user->givePermissionTo($permission);

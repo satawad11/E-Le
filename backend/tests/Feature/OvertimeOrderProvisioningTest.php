@@ -26,17 +26,12 @@ class OvertimeOrderProvisioningTest extends TestCase
 
         $this->assertSame(
             0,
-            DB::table('users')->whereNotNull('department_id')->whereNull('org_unit_id')->count(),
-            'ผู้ใช้ที่มีแผนกต้องได้ org_unit_id ครบทุกคนหลังติดตั้ง'
+            DB::table('users')->whereNull('org_unit_id')->count(),
+            'ผู้ใช้ทุกคนต้องมีหน่วยงานต้นสังกัดในผังหลังติดตั้ง'
         );
 
-        $departments = DB::table('departments')->count();
-        $this->assertGreaterThan(0, $departments);
-        $this->assertSame(
-            $departments,
-            DB::table('department_org_unit_map')->count(),
-            'ทุกแผนกต้องถูก map เข้ากับ org unit'
-        );
+        // ผังต้องมีมากกว่ายอดผัง — ไม่งั้นทุกคนกองอยู่ที่รากเดียวกัน
+        $this->assertGreaterThan(1, DB::table('org_units')->count());
     }
 
     /**
@@ -83,16 +78,10 @@ class OvertimeOrderProvisioningTest extends TestCase
     {
         $this->seed();
 
-        $before = [
-            DB::table('org_units')->count(),
-            DB::table('department_org_unit_map')->count(),
-        ];
+        $before = DB::table('org_units')->count();
 
         $this->seed(OrgUnitBackfillSeeder::class);
 
-        $this->assertSame($before, [
-            DB::table('org_units')->count(),
-            DB::table('department_org_unit_map')->count(),
-        ], 'รันซ้ำต้องไม่สร้างหน่วยงานหรือ mapping ซ้ำ');
+        $this->assertSame($before, DB::table('org_units')->count(), 'รันซ้ำต้องไม่สร้างหน่วยงานซ้ำ');
     }
 }

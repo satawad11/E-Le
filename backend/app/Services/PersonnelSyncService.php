@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Department;
 use App\Models\Personnel;
 use App\Models\PersonnelAssignment;
 use App\Models\User;
@@ -51,22 +50,13 @@ class PersonnelSyncService
         $key = 'user:'.$user->id;
         $this->withoutSyncRecursion($key, function () use ($user): void {
             DB::transaction(function () use ($user): void {
-                // 1. Resolve org_unit_id if department_id was modified
-                if ($user->department_id && ! $user->org_unit_id) {
-                    $resolvedOrgUnitId = $this->resolveOrgUnitForDepartment($user->department_id);
-                    if ($resolvedOrgUnitId) {
-                        $user->org_unit_id = $resolvedOrgUnitId;
-                        $user->saveQuietly();
-                    }
-                } elseif ($user->org_unit_id && ! $user->department_id) {
-                    $resolvedDeptId = $this->resolveDepartmentForOrgUnit($user->org_unit_id);
-                    if ($resolvedDeptId) {
-                        $user->department_id = $resolvedDeptId;
-                        $user->saveQuietly();
-                    }
-                }
+                /*
+                 * เดิมขั้นแรกของที่นี่คือการประคอง `department_id` กับ `org_unit_id`
+                 * ให้ตรงกันสองทางผ่าน `department_org_unit_map` · ผังองค์กรเหลือชุดเดียว
+                 * แล้ว (`org_units`) จึงไม่มีอะไรให้ประคองและไม่มีสะพานให้ข้ามอีก
+                 */
 
-                // 2. Ensure Personnel entity exists
+                // Ensure Personnel entity exists
                 $personnel = Personnel::where('user_id', $user->id)->first();
                 if (! $personnel) {
                     $profile = $user->profile ?: UserProfile::where('user_id', $user->id)->first();
@@ -266,10 +256,6 @@ class PersonnelSyncService
                 $dirty = false;
                 if ($assignment->org_unit_id && $user->org_unit_id !== $assignment->org_unit_id) {
                     $user->org_unit_id = $assignment->org_unit_id;
-                    $deptId = $this->resolveDepartmentForOrgUnit($assignment->org_unit_id);
-                    if ($deptId && $user->department_id !== $deptId) {
-                        $user->department_id = $deptId;
-                    }
                     $dirty = true;
                 }
 
@@ -331,31 +317,9 @@ class PersonnelSyncService
         });
     }
 
-    /**
-     * Resolve OrgUnit ID for a legacy Department ID.
+    /*
+     * `resolveOrgUnitForDepartment()` และ `resolveDepartmentForOrgUnit()` ถูกถอดออก
+     * พร้อมกับตาราง `department_org_unit_map` — สะพานข้ามผังสองชุดไม่มีความหมายอีก
+     * เมื่อผังเหลือชุดเดียว
      */
-    public function resolveOrgUnitForDepartment(?int $departmentId): ?int
-    {
-        if (! $departmentId) {
-            return null;
-        }
-
-        return DB::table('department_org_unit_map')
-            ->where('department_id', $departmentId)
-            ->value('org_unit_id');
-    }
-
-    /**
-     * Resolve legacy Department ID for an OrgUnit ID.
-     */
-    public function resolveDepartmentForOrgUnit(?int $orgUnitId): ?int
-    {
-        if (! $orgUnitId) {
-            return null;
-        }
-
-        return DB::table('department_org_unit_map')
-            ->where('org_unit_id', $orgUnitId)
-            ->value('department_id');
-    }
 }

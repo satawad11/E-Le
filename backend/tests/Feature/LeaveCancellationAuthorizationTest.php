@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
@@ -45,9 +45,9 @@ class LeaveCancellationAuthorizationTest extends TestCase
             Permission::findOrCreate($name, 'web');
         }
 
-        $department = Department::create(['name' => 'ฝ่ายทดสอบ']);
+        $department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ']);
         $type = LeaveType::create(['name' => 'ลาป่วย', 'max_days' => 30]);
-        $owner = User::factory()->create(['department_id' => $department->id]);
+        $owner = User::factory()->create(['org_unit_id' => $department->id]);
 
         $this->othersLeave = Leave::create([
             'user_id' => $owner->id,

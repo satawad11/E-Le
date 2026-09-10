@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Database\Seeders\FiscalYearSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,7 +28,7 @@ class DashboardReportScopeTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Department $department;
+    private OrgUnit $department;
 
     private LeaveType $type;
 
@@ -45,10 +45,10 @@ class DashboardReportScopeTest extends TestCase
         // รายงานกรองตามปีงบประมาณ — ถ้าไม่มีข้อมูลปีงบประมาณจะกรองไม่เจออะไรเลย
         $this->seed(FiscalYearSeeder::class);
 
-        $this->department = Department::create(['name' => 'ฝ่ายทดสอบ']);
+        $this->department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ']);
         $this->type = LeaveType::create(['name' => 'ลาป่วย', 'max_days' => 30]);
 
-        $someoneElse = User::factory()->create(['department_id' => $this->department->id]);
+        $someoneElse = User::factory()->create(['org_unit_id' => $this->department->id]);
         $this->othersLeave = Leave::create([
             'user_id' => $someoneElse->id,
             'leave_type_id' => $this->type->id,
@@ -62,7 +62,7 @@ class DashboardReportScopeTest extends TestCase
 
     private function userWith(array $permissions): User
     {
-        $user = User::factory()->create(['department_id' => $this->department->id]);
+        $user = User::factory()->create(['org_unit_id' => $this->department->id]);
 
         foreach ($permissions as $permission) {
             $user->givePermissionTo($permission);

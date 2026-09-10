@@ -32,7 +32,7 @@ class LeaveAdjustmentController extends Controller
             $d['cancel_from'],
             $d['cancel_to'],
             $leave->policy?->exclude_holidays ?? true,
-            $owner?->department_id,
+            $owner?->org_unit_id,
             $owner,
         );
 

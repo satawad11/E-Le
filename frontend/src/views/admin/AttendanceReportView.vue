@@ -20,7 +20,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">แผนก</label>
-          <select v-model="filters.department_id" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]">
+          <select v-model="filters.org_unit_id" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]">
             <option value="">ทั้งหมด</option>
             <option v-for="dept in departments" :key="dept.id" :value="dept.id">{{ dept.name }}</option>
           </select>
@@ -241,7 +241,7 @@ const filters = ref({
   date: localDateStr,
   month: '',
   year: today.getFullYear(),
-  department_id: '',
+  org_unit_id: '',
   user_id: ''
 })
 
@@ -252,7 +252,7 @@ const users = ref([])
 
 const fetchDepartments = async () => {
   try {
-    const res = await api.get('/departments')
+    const res = await api.get('/org-units')
     departments.value = res.data
   } catch (error) {
     console.error(error)

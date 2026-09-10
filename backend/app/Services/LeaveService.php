@@ -45,7 +45,7 @@ class LeaveService
      *
      * ผลลัพธ์เท่าเดิมทุกกรณี — มีเทสต์เทียบไว้ใน `TimeServiceTest`
      */
-    public function calculateTotalDays($startDate, $endDate, bool $excludeHolidays = true, ?int $departmentId = null, ?User $user = null): float
+    public function calculateTotalDays($startDate, $endDate, bool $excludeHolidays = true, ?int $orgUnitId = null, ?User $user = null): float
     {
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate);
@@ -61,7 +61,7 @@ class LeaveService
          * เรียกโดยไม่ส่ง `$user` ได้เหมือนเดิม (ใช้ตารางระดับองค์กร) เพื่อไม่ให้
          * ผู้เรียกเดิมพัง
          */
-        return $this->time->workingDaysBetween($start, $end, $user, $departmentId);
+        return $this->time->workingDaysBetween($start, $end, $user, $orgUnitId);
     }
 
     /**
@@ -282,7 +282,7 @@ class LeaveService
         $period = $data['leave_period'] ?? 'full_day';
 
         $days = $period === 'full_day'
-            ? $this->calculateTotalDays($start, $end, $policy->exclude_holidays, $user->department_id, $user)
+            ? $this->calculateTotalDays($start, $end, $policy->exclude_holidays, $user->org_unit_id, $user)
             : 0.5;
 
         if ($days <= 0) {

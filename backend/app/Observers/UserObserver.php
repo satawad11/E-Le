@@ -2,22 +2,16 @@
 
 namespace App\Observers;
 
-use App\Models\Department;
 use App\Models\User;
 use App\Services\PersonnelSyncService;
 
 class UserObserver
 {
-    public function saving(User $user): void
-    {
-        if ($user->isDirty('department_id') && ! $user->isDirty('org_unit_id')) {
-            $user->org_unit_id = $user->department_id
-                ? Department::find($user->department_id)?->orgUnit?->id
-                : null;
-        } elseif ($user->isDirty('org_unit_id') && ! $user->isDirty('department_id')) {
-            $user->department_id = app(PersonnelSyncService::class)->resolveDepartmentForOrgUnit($user->org_unit_id);
-        }
-    }
+    /*
+     * เดิมมี `saving()` ที่ประคอง `department_id` กับ `org_unit_id` ให้ตรงกันสองทาง
+     * เมื่อผังองค์กรเหลือชุดเดียว (`org_units`) ก็ไม่มีอะไรให้ประคองอีก — ผู้ใช้มี
+     * หน่วยงานต้นสังกัดเดียวและเขียนตรงเข้า `org_unit_id`
+     */
 
     public function saved(User $user): void
     {
