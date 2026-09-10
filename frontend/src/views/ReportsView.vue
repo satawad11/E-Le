@@ -116,6 +116,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../axios'
 import { useAlertStore } from '../stores/alert'
+import { buildFilename, filenameFromHeaders } from '../utils/downloadFilename'
 import { getErrorMessage } from '../utils/errorHandler'
 import { ICONS } from '../utils/icons'
 import LoadingState from '../components/ui/LoadingState.vue'
@@ -193,7 +194,9 @@ const exportCsv = async () => {
     const u = URL.createObjectURL(r.data)
     const a = document.createElement('a')
     a.href = u
-    a.download = `leave-register-${filters.from}-${filters.to}.csv`
+    // ชื่อไฟล์ที่เซิร์ฟเวอร์ประกาศเป็นภาษาไทยและบอกช่วงข้อมูลอยู่แล้ว
+    a.download = filenameFromHeaders(r.headers)
+      || buildFilename(['ทะเบียนคุมการลา', filters.from, 'ถึง', filters.to], 'csv')
     a.click()
     URL.revokeObjectURL(u)
     alerts.success('ส่งออกรายงานเรียบร้อยแล้ว')

@@ -155,7 +155,7 @@ class LeaveSettingsFormsAuditTest extends TestCase
 
         $this->assertArrayHasKey($mime, $formats, 'ต้องประกาศชนิดไฟล์ Word ที่ระบบรองรับจริง');
         $this->assertStringContainsString('.'.$formats[$mime], (string) $disposition, 'นามสกุลในชื่อไฟล์ต้องตรงกับชนิดที่ประกาศ');
-        $this->assertStringStartsWith('cancel_', $this->filenameOf($disposition), 'ใบยกเลิกต้องแยกชื่อไฟล์จากใบลาปกติ');
+        $this->assertStringStartsWith('ใบยกเลิกวันลา_', $this->filenameOf($disposition), 'ใบยกเลิกต้องแยกชื่อไฟล์จากใบลาปกติ');
 
         $body = $response->getContent();
 
@@ -166,8 +166,13 @@ class LeaveSettingsFormsAuditTest extends TestCase
         }
     }
 
+    /** ชื่อไฟล์จริงอยู่ใน `filename*` ตาม RFC 6266 ส่วน `filename` เป็นชื่อสำรอง ASCII */
     private function filenameOf(?string $disposition): string
     {
+        if (preg_match("/filename\*=UTF-8''([^;]+)/i", (string) $disposition, $matches)) {
+            return rawurldecode(trim($matches[1]));
+        }
+
         preg_match('/filename="?([^";]+)"?/i', (string) $disposition, $matches);
 
         return $matches[1] ?? '';

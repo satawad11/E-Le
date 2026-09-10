@@ -144,6 +144,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { buildFilename, filenameFromHeaders } from '../../utils/downloadFilename'
 import { getErrorMessage } from '../../utils/errorHandler'
 import { ICONS } from '../../utils/icons'
 import LoadingState from '../../components/ui/LoadingState.vue'
@@ -243,7 +244,8 @@ const download = async (format) => {
     const url = URL.createObjectURL(response.data)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${activeReport.value}-report.${format}`
+    link.download = filenameFromHeaders(response.headers)
+      || buildFilename([dataset.value?.title || activeReport.value], format)
     link.click()
     URL.revokeObjectURL(url)
     alerts.success('ส่งออกรายงานเรียบร้อยแล้ว')

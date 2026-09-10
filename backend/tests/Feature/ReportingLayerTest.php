@@ -118,10 +118,17 @@ class ReportingLayerTest extends TestCase
         $this->assertStringContainsString('Visible Employee', $csv->getContent());
         $this->assertStringNotContainsString('Hidden Employee', $csv->getContent());
 
+        /*
+         * ชื่อไฟล์เป็นชื่อรายงานภาษาไทยที่ผู้ใช้เห็นบนหน้าจอ ไม่ใช่รหัสภายใน
+         * ชื่อไทยเดินทางในส่วน `filename*` ตาม RFC 6266 — ต้องตรวจตรงนั้น
+         */
         foreach (['xlsx', 'docx'] as $format) {
             $response = $this->actingAs($this->viewer)->get("/api/reporting/personnel/export/{$format}");
             $response->assertOk();
-            $this->assertStringContainsString("personnel-report.{$format}", (string) $response->headers->get('content-disposition'));
+
+            $disposition = (string) $response->headers->get('content-disposition');
+            $this->assertMatchesRegularExpression("/filename\*=utf-8''[^;]+\.{$format}/i", $disposition);
+            $this->assertStringContainsString(rawurlencode('รายงานข้อมูลบุคลากร'), $disposition);
         }
         $this->assertSame(4, DB::table('audit_logs')->where('action', 'report.exported')->count());
     }

@@ -101,6 +101,7 @@ import { ref, computed, onMounted } from 'vue'
 import api from '../axios'
 import { useAlertStore } from '../stores/alert'
 import { useAuthStore } from '../stores/auth'
+import { buildFilename, filenameFromHeaders } from '../utils/downloadFilename'
 
 const alertStore = useAlertStore()
 const auth = useAuthStore()
@@ -146,7 +147,7 @@ const exportReport = async (report, format) => {
 
     const link = document.createElement('a')
     link.href = url
-    link.download = `${report.code}.${format}`
+    link.download = filenameFromHeaders(res.headers) || buildFilename([report.name_th || report.code], format)
     link.click()
     URL.revokeObjectURL(url)
   } catch (error) {

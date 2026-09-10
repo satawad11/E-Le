@@ -420,6 +420,7 @@ import { useAlertStore } from '../stores/alert'
 import { compositeStatusLabel, compositeStatusBadgeClass } from '../utils/statusHelper'
 import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
 import { getErrorMessage } from '../utils/errorHandler'
+import { buildFilename, filenameFromHeaders } from '../utils/downloadFilename'
 import LoadingState from '../components/ui/LoadingState.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import { ICONS } from '../utils/icons'
@@ -549,34 +550,19 @@ const changePage = (p) => {
   }
 }
 
-const generateFilename = (leave, extension, isCancel = false) => {
-  const leaveTypeName = leave?.type?.name || 'การลา'
-  const userName = (leave?.user?.name || authStore.user?.name || '').trim().replace(/ /g, '_')
-  const docNumber = leave?.document_number || leave?.id
-  
-  let baseFilename = `${leaveTypeName}_${userName}_${docNumber}`
-  baseFilename = baseFilename.replace(/[/\\]/g, '_')
-  
-  return isCancel ? `cancel_${baseFilename}.${extension}` : `${baseFilename}.${extension}`
-}
-
 /*
- * LS-07 — ชื่อไฟล์และชนิดไฟล์ต้องมาจากคำตอบของเซิร์ฟเวอร์
+ * ชื่อไฟล์สำรอง — ใช้ต่อเมื่อคำตอบไม่มี `Content-Disposition` ให้อ่าน
  *
- * เดิมหน้าจอตั้งชื่อเป็น `.docx` และประกาศ MIME ของ DOCX เอง ขณะที่เซิร์ฟเวอร์ส่ง Word
- * แบบ HTML (`.doc`) ผู้ใช้จึงได้ไฟล์ที่นามสกุลไม่ตรงกับเนื้อใน และเปิดแล้วโปรแกรมเตือน
- *
- * ตอนนี้อ่านจาก `Content-Disposition` กับ `Content-Type` ที่เซิร์ฟเวอร์ประกาศ
- * ถ้าวันหนึ่งเปลี่ยนไปออกเป็น DOCX จริง หน้าจอก็ตามได้เองโดยไม่ต้องแก้
+ * ต้องให้ผลตรงกับ `App\Support\DocumentFilename` ฝั่งเซิร์ฟเวอร์ ผู้ใช้จึงได้ชื่อไฟล์
+ * แบบเดียวกันเสมอ ไม่ว่าเส้นทางไหนเป็นคนตั้งชื่อ (ดู `LeaveDocumentController::filenameFor`)
  */
-const filenameFromHeaders = (headers) => {
-  const disposition = headers?.['content-disposition'] || ''
-  const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(disposition)
-  if (utf8) return decodeURIComponent(utf8[1].trim().replace(/^"|"$/g, ''))
-
-  const plain = /filename="?([^";]+)"?/i.exec(disposition)
-  return plain ? plain[1].trim() : ''
-}
+const generateFilename = (leave, extension, isCancel = false) =>
+  buildFilename([
+    isCancel ? 'ใบยกเลิกวันลา' : 'ใบลา',
+    leave?.type?.name || 'การลา',
+    leave?.user?.name || authStore.user?.name,
+    leave?.document_number || leave?.id,
+  ], extension)
 
 /*
  * เมื่อขอเป็น blob ตัว error body จะเป็น Blob ไม่ใช่ JSON
@@ -593,6 +579,15 @@ const readBlobError = async (error) => {
   }
 }
 
+/*
+ * LS-07 — ชื่อไฟล์และชนิดไฟล์ต้องมาจากคำตอบของเซิร์ฟเวอร์
+ *
+ * เดิมหน้าจอตั้งชื่อเป็น `.docx` และประกาศ MIME ของ DOCX เอง ขณะที่เซิร์ฟเวอร์ส่ง Word
+ * แบบ HTML (`.doc`) ผู้ใช้จึงได้ไฟล์ที่นามสกุลไม่ตรงกับเนื้อใน และเปิดแล้วโปรแกรมเตือน
+ *
+ * ตอนนี้อ่านจาก `Content-Disposition` กับ `Content-Type` ที่เซิร์ฟเวอร์ประกาศ
+ * ถ้าวันหนึ่งเปลี่ยนไปออกเป็น DOCX จริง หน้าจอก็ตามได้เองโดยไม่ต้องแก้
+ */
 const downloadLeaveDocument = async (leave, { format, isCancel = false }) => {
   const loadingRef = format === 'pdf' ? pdfLoading : wordLoading
   const loadingKey = isCancel ? 'cancel_' + leave.id : leave.id

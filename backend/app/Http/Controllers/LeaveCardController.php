@@ -10,6 +10,7 @@ use App\Services\LeaveVisibility;
 use App\Services\OrgScopeResolver;
 use App\Services\PersonalDataAccessLogger;
 use App\Services\ThaiDateService;
+use App\Support\DocumentFilename;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -162,6 +163,15 @@ class LeaveCardController extends Controller
             'thaiDateService' => $thaiDateService,
         ])->setPaper('a4', 'portrait');
 
-        return $pdf->download("บัตรลา_{$card['user']['name']}_พ.ศ.{$card['fiscal_year_th']}.pdf");
+        // ชื่อคนอาจมีช่องว่างหรืออักขระที่ระบบไฟล์ห้าม จึงผ่านตัวช่วยเดียวกับเอกสารใบลา
+        $filename = DocumentFilename::make(
+            ['บัตรลา', $card['user']['name'] ?? null, 'พ.ศ.'.$card['fiscal_year_th']],
+            'pdf',
+        );
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => DocumentFilename::disposition($filename),
+        ]);
     }
 }

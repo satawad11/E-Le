@@ -8,6 +8,7 @@ use App\Services\Reporting\EvaluationMetricsService;
 use App\Services\Reporting\ReportExportService;
 use App\Services\Reporting\ReportFilter;
 use App\Services\Reporting\ReportingDataService;
+use App\Support\DocumentFilename;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -77,7 +78,18 @@ class ReportingController extends Controller
         abort_unless(in_array($format, ['pdf', 'xlsx', 'docx', 'csv'], true), 404);
 
         $dataset = $this->reports->build($report, $this->filter($request), $request->user());
-        $filename = "{$report}-report";
+
+        /*
+         * ใช้ชื่อรายงานที่ผู้ใช้เห็นบนหน้าจอเป็นชื่อไฟล์ พร้อมช่วงข้อมูลถ้ามี
+         * เดิมได้ชื่อเป็นรหัสภาษาอังกฤษ (`leave-summary-report.pdf`) ซึ่งผู้ใช้ต้องเปิดดู
+         * ถึงจะรู้ว่าไฟล์ไหนคือรายงานอะไรและช่วงใด
+         */
+        $filename = DocumentFilename::make([
+            $dataset->title !== '' ? $dataset->title : $report,
+            ($dataset->meta['from'] ?? null) && ($dataset->meta['to'] ?? null)
+                ? $dataset->meta['from'].'_ถึง_'.$dataset->meta['to']
+                : ($dataset->meta['from'] ?? $dataset->meta['to'] ?? null),
+        ], $format);
         $this->audit->log('report.exported', 'report', $report, after: [
             'format' => $format,
             'rows' => count($dataset->rows),
@@ -87,20 +99,25 @@ class ReportingController extends Controller
         ]);
 
         if ($format === 'pdf') {
-            return Pdf::loadView('pdf.reporting-generic', ['dataset' => $dataset])
-                ->setPaper('a4', 'landscape')
-                ->download("{$filename}.pdf");
+            $pdf = Pdf::loadView('pdf.reporting-generic', ['dataset' => $dataset])
+                ->setPaper('a4', 'landscape');
+
+            return response($pdf->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => DocumentFilename::disposition($filename),
+            ]);
         }
         if ($format === 'csv') {
             return response($this->exports->csv($dataset), 200, [
                 'Content-Type' => 'text/csv; charset=UTF-8',
-                'Content-Disposition' => "attachment; filename=\"{$filename}.csv\"",
+                'Content-Disposition' => DocumentFilename::disposition($filename),
             ]);
         }
 
         $path = $format === 'xlsx' ? $this->exports->xlsx($dataset) : $this->exports->docx($dataset);
 
-        return response()->download($path, "{$filename}.{$format}")->deleteFileAfterSend(true);
+        // `response()->download()` ประกาศ `filename*` ให้เองอยู่แล้ว ชื่อไทยจึงส่งตรงได้
+        return response()->download($path, $filename)->deleteFileAfterSend(true);
     }
 
     private function filter(Request $request): ReportFilter

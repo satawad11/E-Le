@@ -110,6 +110,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { buildFilename, filenameFromHeaders } from '../../utils/downloadFilename'
 
 const alerts = useAlertStore()
 const loading = ref(false)
@@ -152,7 +153,11 @@ const exportCsv = async () => {
     const url = URL.createObjectURL(res.data)
     const a = document.createElement('a')
     a.href = url
-    a.download = `promotion-screening-${thaiYear.value}-r${filters.round}.csv`
+    a.download = filenameFromHeaders(res.headers)
+      || buildFilename(
+        ['รายงานคัดกรองเลื่อนเงินเดือน', `ปีงบประมาณ${thaiYear.value}`, `รอบที่${filters.round}`],
+        'csv',
+      )
     a.click()
     URL.revokeObjectURL(url)
   } catch {

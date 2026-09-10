@@ -116,6 +116,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../axios'
 import { useAlertStore } from '../stores/alert'
 import { useAuthStore } from '../stores/auth'
+import { buildFilename, filenameFromHeaders } from '../utils/downloadFilename'
 
 const alerts = useAlertStore()
 const auth = useAuthStore()
@@ -160,7 +161,12 @@ const exportPdf = async () => {
     const url = URL.createObjectURL(res.data)
     const a = document.createElement('a')
     a.href = url
-    a.download = `leave-card-${thaiYear.value}.pdf`
+    /*
+     * ใช้ชื่อไฟล์ที่เซิร์ฟเวอร์ประกาศ (เป็นภาษาไทยและมีชื่อเจ้าของบัตร) เดิมหน้าจอทับด้วย
+     * `leave-card-<ปี>.pdf` เสมอ ผู้ใช้ที่พิมพ์บัตรลาของหลายคนในปีเดียวกันจึงได้ไฟล์ชื่อซ้ำกัน
+     */
+    a.download = filenameFromHeaders(res.headers)
+      || buildFilename(['บัตรลา', card.value?.user?.name, `พ.ศ.${thaiYear.value}`], 'pdf')
     a.click()
     URL.revokeObjectURL(url)
   } catch {

@@ -7,6 +7,7 @@ use App\Models\Document\DocumentReportDefinition;
 use App\Services\AuditLogger;
 use App\Services\DocumentEngine\DataProviderRegistry;
 use App\Services\DocumentEngine\ReportEngine;
+use App\Support\DocumentFilename;
 use Illuminate\Http\Request;
 
 /**
@@ -107,9 +108,17 @@ class DocumentReportController extends Controller
             default => [$this->engine->csv($result), 'text/csv; charset=UTF-8', 'csv'],
         };
 
+        // ชื่อรายงานที่ผู้ใช้เห็นบนหน้าจอ พร้อมช่วงข้อมูลที่กรอง — ไม่ใช่รหัสภายในอย่างเดียว
+        $filename = DocumentFilename::make([
+            $report->name_th ?: $report->code,
+            ($filters['from'] ?? null) && ($filters['to'] ?? null)
+                ? $filters['from'].'_ถึง_'.$filters['to']
+                : ($filters['from'] ?? $filters['to'] ?? null),
+        ], $extension);
+
         return response($content, 200, [
             'Content-Type' => $mime,
-            'Content-Disposition' => 'attachment; filename="'.$report->code.'.'.$extension.'"',
+            'Content-Disposition' => DocumentFilename::disposition($filename),
         ]);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Leave;
 use App\Services\OrgScopeResolver;
+use App\Support\DocumentFilename;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -95,7 +96,19 @@ class GovernmentLeaveReportController extends Controller
         $content = stream_get_contents($out);
         fclose($out);
 
-        return response("\xEF\xBB\xBF".$content, 200, ['Content-Type' => 'text/csv; charset=UTF-8', 'Content-Disposition' => 'attachment; filename="leave-register.csv"']);
+        /*
+         * ชื่อไฟล์ต้องบอกช่วงข้อมูลในไฟล์ · เดิมทุกครั้งได้ชื่อ `leave-register.csv` เหมือนกันหมด
+         * ผู้ใช้ที่ส่งออกหลายช่วงจึงได้ไฟล์ทับกัน (หรือ `(1)`, `(2)`) และแยกไม่ออกว่าไฟล์ไหนช่วงไหน
+         */
+        $filename = DocumentFilename::make(
+            ['ทะเบียนคุมการลา', $r->input('from'), 'ถึง', $r->input('to')],
+            'csv',
+        );
+
+        return response("\xEF\xBB\xBF".$content, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => DocumentFilename::disposition($filename),
+        ]);
     }
 
     private function applyReportScope(Builder $query, Request $request): void

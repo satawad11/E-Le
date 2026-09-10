@@ -8,6 +8,7 @@ use App\Models\LeaveType;
 use App\Models\User;
 use App\Services\OrgScopeResolver;
 use App\Services\PersonalDataAccessLogger;
+use App\Support\DocumentFilename;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -194,11 +195,15 @@ class PromotionScreeningController extends Controller
         $content = stream_get_contents($out);
         fclose($out);
 
-        $filename = "promotion-screening-{$result['fiscal_year_th']}-r{$result['round']}.csv";
+        $filename = DocumentFilename::make([
+            'รายงานคัดกรองเลื่อนเงินเดือน',
+            'ปีงบประมาณ'.$result['fiscal_year_th'],
+            'รอบที่'.$result['round'],
+        ], 'csv');
 
         return response("\xEF\xBB\xBF".$content, 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Content-Disposition' => DocumentFilename::disposition($filename),
         ]);
     }
 }

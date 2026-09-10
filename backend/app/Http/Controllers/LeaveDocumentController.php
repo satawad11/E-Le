@@ -11,6 +11,7 @@ use App\Services\DocumentEngine\LeaveDocumentGateway;
 use App\Services\LeaveDocumentTemplateResolver;
 use App\Services\LeaveVerificationService;
 use App\Services\ThaiDateService;
+use App\Support\DocumentFilename;
 use App\Support\StoredFile;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -25,16 +26,21 @@ class LeaveDocumentController extends Controller
      * ผู้ดูแลจึงเพิ่ม/เปลี่ยนชื่อประเภทการลาไม่ได้โดยไม่ทำให้พิมพ์ผิดแบบฟอร์ม
      * ตอนนี้ยึด `leave_types.document_template_code` ที่ตั้งค่าได้จากหน้าผู้ดูแล
      */
-    /** ชื่อไฟล์เอกสารที่ส่งให้ผู้ใช้ — ใช้ร่วมกันทั้งเส้นทางเดิมและ Document Engine */
+    /**
+     * ชื่อไฟล์เอกสารที่ส่งให้ผู้ใช้ — ใช้ร่วมกันทั้งเส้นทางเดิมและ Document Engine
+     *
+     * ขึ้นต้นด้วยชนิดเอกสารเป็นภาษาไทย ("ใบลา" / "ใบยกเลิกวันลา") ผู้ใช้ที่ดาวน์โหลด
+     * ทั้งสองแบบของใบเดียวกันจึงแยกไฟล์ออกจากกันได้ทันทีในโฟลเดอร์ดาวน์โหลด
+     * เดิมใบยกเลิกใช้คำนำหน้า `cancel_` ซึ่งเป็นภาษาอังกฤษปนอยู่ในชื่อไทยทั้งไฟล์
+     */
     private function filenameFor(Leave $leave, bool $isCancel, string $extension = 'pdf'): string
     {
-        $leaveTypeName = $leave->type->name ?? 'การลา';
-        $userName = str_replace(' ', '_', trim((string) $leave->user?->name));
-        $docNumber = $leave->document_number ?? $leave->id;
-
-        $base = str_replace(['/', '\\'], '_', "{$leaveTypeName}_{$userName}_{$docNumber}");
-
-        return ($isCancel ? "cancel_{$base}" : $base).'.'.$extension;
+        return DocumentFilename::make([
+            $isCancel ? 'ใบยกเลิกวันลา' : 'ใบลา',
+            $leave->type->name ?? 'การลา',
+            $leave->user?->name,
+            $leave->document_number ?? $leave->id,
+        ], $extension);
     }
 
     private function viewFor(Leave $leave, bool $isCancel): string
@@ -102,7 +108,9 @@ class LeaveDocumentController extends Controller
         if ($engineContent !== null) {
             return response($engineContent, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="'.$this->filenameFor($leave, $request->query('form') === 'cancel').'"',
+                'Content-Disposition' => DocumentFilename::disposition(
+                    $this->filenameFor($leave, $request->query('form') === 'cancel'),
+                ),
             ]);
         }
 
@@ -205,16 +213,15 @@ class LeaveDocumentController extends Controller
 
         $pdf = Pdf::loadHTML($html)->setPaper($paper['paper'], $paper['orientation']);
 
-        $leaveTypeName = $leave->type->name ?? 'การลา';
-        $userName = str_replace(' ', '_', trim($leave->user->name));
-        $docNumber = $leave->document_number ?? $leave->id;
-
-        $baseFilename = "{$leaveTypeName}_{$userName}_{$docNumber}";
-        $baseFilename = str_replace(['/', '\\'], '_', $baseFilename);
-
-        $filename = $isCancel ? "cancel_{$baseFilename}.pdf" : "{$baseFilename}.pdf";
-
-        return $pdf->download($filename);
+        /*
+         * ตั้งชื่อไฟล์ด้วยตัวช่วยตัวเดียวกับเส้นทาง Document Engine เพื่อให้ผู้ใช้ได้ชื่อไฟล์
+         * เหมือนกันไม่ว่าใบลาใบนั้นจะพิมพ์ด้วยเส้นทางไหน · ไม่ใช้ `$pdf->download()`
+         * เพราะมันประกาศเฉพาะ `filename=` ธรรมดา ชื่อไทยจึงเพี้ยนบนบางเบราว์เซอร์
+         */
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => DocumentFilename::disposition($this->filenameFor($leave, $isCancel)),
+        ]);
     }
 
     /**
@@ -351,6 +358,6 @@ class LeaveDocumentController extends Controller
 
         return response($content)
             ->header('Content-Type', 'application/vnd.ms-word; charset=UTF-8')
-            ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
+            ->header('Content-Disposition', DocumentFilename::disposition($filename));
     }
 }

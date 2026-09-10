@@ -28,6 +28,7 @@ use App\Services\DocumentEngine\TemplatePreflight;
 use App\Services\DocumentEngine\TemplateResolver;
 use App\Services\DocumentEngine\ValueFormatter;
 use App\Services\LeaveDocumentFields;
+use App\Support\DocumentFilename;
 use App\Support\UploadRules;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -977,9 +978,20 @@ class DocumentEngineController extends Controller
 
         $this->audit->log('document_downloaded', 'DocumentGeneratedFile', $file->id, after: ['revision' => $file->revision]);
 
+        /*
+         * ชื่อไฟล์บอกว่าเป็นเอกสารอะไร ของรายการไหน ฉบับที่เท่าไร
+         * เดิมได้ชื่อเป็นรหัสภายในล้วน (`leave-12-r2.pdf`) ซึ่งผู้ดูแลที่ดาวน์โหลดหลายไฟล์
+         * มาตรวจสอบพร้อมกันแยกไม่ออกว่าไฟล์ไหนคือแบบฟอร์มใด
+         */
+        $filename = DocumentFilename::make([
+            $file->template?->name ?: $file->source_type,
+            'เลขที่'.$file->source_id,
+            'ฉบับที่'.$file->revision,
+        ], 'pdf');
+
         return response($disk->get($file->file_path), 200, [
             'Content-Type' => $file->mime_type,
-            'Content-Disposition' => 'attachment; filename="'.$file->source_type.'-'.$file->source_id.'-r'.$file->revision.'.pdf"',
+            'Content-Disposition' => DocumentFilename::disposition($filename),
         ]);
     }
 
