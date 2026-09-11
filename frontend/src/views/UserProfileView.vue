@@ -225,6 +225,15 @@
       และการเปลี่ยนรหัสผ่านต้องยืนยันตัวตนด้วยรหัสผ่านปัจจุบันเสมอ
     -->
     <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 max-w-4xl mt-6">
+      <!--
+        บัญชีที่ยังใช้รหัสผ่านชั่วคราวถูกพามาที่นี่จากทุกหน้า — ต้องบอกให้ชัดว่าทำไม
+        ไม่งั้นผู้ใช้จะงงว่าเข้าหน้าอื่นไม่ได้เพราะอะไร
+      -->
+      <div v-if="mustChangePassword" class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <strong>กรุณาตั้งรหัสผ่านใหม่ก่อนใช้งานระบบ</strong> —
+        รหัสผ่านปัจจุบันเป็นรหัสชั่วคราวที่ผู้ดูแลตั้งให้ ซึ่งผู้ดูแลก็ทราบรหัสนี้เช่นกัน
+        เมื่อตั้งรหัสใหม่แล้วจะใช้งานหน้าอื่นได้ตามปกติ
+      </div>
       <h2 class="text-lg font-bold text-red-700 mb-1">เปลี่ยนรหัสผ่าน</h2>
       <p class="text-sm text-gray-500 mb-4">
         ต้องกรอกรหัสผ่านปัจจุบันเพื่อยืนยันตัวตน · เมื่อเปลี่ยนสำเร็จ ระบบจะออกจากระบบในอุปกรณ์อื่นทั้งหมด
@@ -337,7 +346,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { computed, ref, reactive, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
 import api from '../axios'
@@ -349,6 +358,9 @@ const alertStore = useAlertStore()
 
 const loading = ref(true)
 const submitting = ref(false)
+
+// รหัสผ่านชั่วคราวที่ผู้ดูแลตั้งให้ — ฝั่งเซิร์ฟเวอร์เป็นผู้ตัดสิน หน้าจอแค่บอกเหตุผล
+const mustChangePassword = computed(() => authStore.user?.must_change_password === true)
 
 const downloadPersonalData = async () => {
   try {
@@ -688,6 +700,10 @@ const submitPasswordChange = async () => {
     // การเปลี่ยนรหัสผ่านเพิกถอน token ทุกใบ — รับใบใหม่ของอุปกรณ์นี้มาใช้ต่อทันที
     if (res.data.access_token) {
       authStore.adoptToken(res.data.access_token, res.data.expires_in)
+    }
+    // ธงบังคับเปลี่ยนรหัสถูกปลดที่ฝั่งเซิร์ฟเวอร์แล้ว — โหลดผู้ใช้ใหม่ให้หน้าจอตรงกัน
+    if (mustChangePassword.value) {
+      await authStore.fetchUser()
     }
     alertStore.success(res.data.message || 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว')
   } catch (e) {

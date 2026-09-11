@@ -5,6 +5,7 @@ use App\Http\Middleware\EnforceReadOnlyMode;
 use App\Http\Middleware\EnsureAnyAbility;
 use App\Http\Middleware\EnsureIdempotentRequest;
 use App\Http\Middleware\EnsureModuleEnabled;
+use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Middleware\RequireRecentAuthentication;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
@@ -36,6 +37,11 @@ return Application::configure(basePath: dirname(__DIR__))
              * ไม่ใช่เฉพาะของสารบรรณ · การผูกทีละ route จะมีคนลืมเสมอ
              */
             EnforceReadOnlyMode::class,
+            /*
+             * รหัสผ่านชั่วคราวที่ผู้ดูแลตั้งให้ ต้องถูกเปลี่ยนก่อนใช้งานระบบ
+             * กันที่ชั้น api ทั้งชุด เพราะหน้าเว็บไม่ใช่ด่านความปลอดภัย (SoT §6)
+             */
+            EnsurePasswordIsChanged::class,
             AttachRequestContext::class,
             SecurityHeaders::class,
         ]);

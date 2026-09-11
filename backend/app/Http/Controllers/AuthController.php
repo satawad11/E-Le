@@ -184,8 +184,10 @@ class AuthController extends Controller
         $status = Password::reset(
             $data,
             function (User $user, string $password) {
+                // เจ้าตัวตั้งรหัสเองผ่านลิงก์แล้ว — ปลดการบังคับเปลี่ยนรหัสไปด้วย
                 $user->forceFill([
                     'password' => Hash::make($password),
+                    'must_change_password' => false,
                     'remember_token' => Str::random(60),
                 ])->save();
             }

@@ -270,6 +270,13 @@ class UserController extends Controller
                     ?: PersonnelType::where('code', 'civil_servant')->value('id'),
             ]);
 
+            /*
+             * รหัสที่ผู้ดูแลตั้งให้เป็นรหัสชั่วคราวเสมอ — บังคับให้เจ้าตัวเปลี่ยนก่อนใช้งาน
+             * ไม่งั้นผู้ดูแลกับเจ้าของบัญชีจะรู้รหัสเดียวกันตลอดไป และ audit log
+             * ก็ตอบไม่ได้ว่าใครเป็นคนทำรายการจริง
+             */
+            $user->forceFill(['must_change_password' => true])->save();
+
             if ($role) {
                 $user->syncRoles([$role->name]);
             }
@@ -386,6 +393,9 @@ class UserController extends Controller
                         ?? PersonnelType::where('code', 'civil_servant')->value('id'),
                 ]);
 
+                // ไม่มีใครรู้รหัสสุ่มนี้ — เจ้าตัวต้องตั้งใหม่ก่อนใช้งานเช่นเดียวกัน
+                $user->forceFill(['must_change_password' => true])->save();
+
                 if ($role = Role::find($valid['role_id'])) {
                     $user->syncRoles([$role->name]);
                 }
@@ -485,6 +495,8 @@ class UserController extends Controller
 
         if ($request->filled('password')) {
             $user->password = bcrypt($request->password);
+            // ผู้ดูแลรีเซ็ตรหัสให้ = รหัสชั่วคราว เจ้าตัวต้องตั้งใหม่ก่อนใช้งานต่อ
+            $user->must_change_password = true;
         }
 
         $role = Role::find($request->role_id);

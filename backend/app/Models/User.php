@@ -31,10 +31,21 @@ class User extends Authenticatable
 
     protected function casts(): array
     {
-        return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean', 'phone' => 'encrypted'];
+        return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean', 'must_change_password' => 'boolean', 'phone' => 'encrypted'];
     }
 
     protected $appends = ['full_name_with_title', 'role', 'role_id', 'personnel_uuid', 'personnel_code', 'personnel_status', 'position'];
+
+    /*
+     * ค่าตั้งต้นของธงบังคับเปลี่ยนรหัสผ่าน
+     *
+     * ฐานข้อมูลมี default อยู่แล้ว แต่ instance ที่เพิ่งสร้างในหน่วยความจำจะได้ null
+     * จนกว่าจะโหลดใหม่ · โค้ดที่อ่านค่านี้เพื่อ "ตัดสินใจ" ต้องไม่เจอ null
+     *
+     * **ไม่ใส่ใน Fillable โดยตั้งใจ** — เป็นด่านความปลอดภัย ไม่ควรตั้งได้จาก
+     * mass assignment ผู้ที่ต้องตั้งใช้ `forceFill()` อย่างชัดเจน
+     */
+    protected $attributes = ['must_change_password' => false];
 
     public function getPersonnelUuidAttribute(): ?string
     {

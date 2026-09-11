@@ -155,7 +155,11 @@ class ProfileController extends Controller
         $tokensBefore = $user->tokens()->count();
 
         DB::transaction(function () use ($user, $request): void {
-            $user->forceFill(['password' => Hash::make($request->input('password'))])->save();
+            // เจ้าตัวตั้งรหัสเองแล้ว — ปลดการบังคับเปลี่ยนรหัสที่ผู้ดูแลตั้งไว้ให้
+            $user->forceFill([
+                'password' => Hash::make($request->input('password')),
+                'must_change_password' => false,
+            ])->save();
         }, 3);
 
         if ($request->hasSession()) {
