@@ -7,6 +7,7 @@ use App\Models\Overtime\OvertimeTimeRecord;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -18,7 +19,15 @@ use Spatie\Permission\Traits\HasRoles;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, HasPublicUuid, HasRoles, Notifiable;
+    /*
+     * `SoftDeletes` — ลบบัญชีแล้วประวัติการลาต้องไม่หายตาม
+     *
+     * foreign key ที่ชี้มาที่ตารางนี้ตั้งเป็น CASCADE หลายตัว (`leaves`,
+     * `leave_balances`, `attendances`, `leave_approvals`) การลบแถวจริงจึงลบ
+     * ทะเบียนการลาของบุคลากรคนนั้นทั้งหมด และลบแถวผู้อนุมัติบนใบลาของคนอื่นด้วย
+     * เมื่อลบแบบ soft แถวยังอยู่ CASCADE จึงไม่ทำงานเลย
+     */
+    use HasApiTokens, HasFactory, HasPublicUuid, HasRoles, Notifiable, SoftDeletes;
 
     protected function casts(): array
     {

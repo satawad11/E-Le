@@ -21,8 +21,15 @@ return new class extends Migration
             Role::firstOrCreate(['name' => $oldRole->name, 'guard_name' => 'web']);
         }
 
-        // Map users to new roles
-        $users = User::all();
+        /*
+         * Map users to new roles
+         *
+         * ต้องข้าม global scope ของโมเดล — `User` ใช้ SoftDeletes แล้ว (เพิ่มภายหลัง
+         * ใน `2026_09_22_100000_soft_delete_users_to_protect_leave_history`)
+         * การ query ผ่านโมเดลตรง ๆ จะเติมเงื่อนไข `deleted_at is null` ซึ่งคอลัมน์นั้น
+         * ยังไม่มีอยู่ ณ จุดนี้ของลำดับ migration
+         */
+        $users = User::withoutGlobalScopes()->get();
         foreach ($users as $user) {
             if ($user->role_id) {
                 $oldRole = DB::table('legacy_roles')->where('id', $user->role_id)->first();

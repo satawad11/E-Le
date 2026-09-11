@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\FiscalYear;
+use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
@@ -44,8 +45,18 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::with(['roles', 'orgUnit', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType'])
+        $query = User::with($this->userRelations())
             ->orderBy('name', 'asc');
+
+        /*
+         * `trashed=only` — บัญชีที่ถูกลบ
+         *
+         * การลบเป็นแบบ soft เพื่อไม่ให้ประวัติการลาหายไปด้วย ถ้าไม่มีทางเห็นบัญชี
+         * ที่ถูกลบเลย ผู้ดูแลก็กู้คืนไม่ได้และไม่รู้ว่าเคยลบใครไปบ้าง
+         */
+        if ($request->query('trashed') === 'only') {
+            $query->onlyTrashed();
+        }
 
         $idCard = preg_replace('/\D/', '', (string) $request->query('id_card', ''));
 
@@ -110,7 +121,7 @@ class UserController extends Controller
 
     public function list(Request $request)
     {
-        $users = User::select('id', 'uuid', 'name', 'org_unit_id', 'org_unit_id')->with('personnel:id,user_id,uuid,personnel_code')->orderBy('name', 'asc')->get();
+        $users = User::select('id', 'uuid', 'name', 'org_unit_id')->with('personnel:id,user_id,uuid,personnel_code')->orderBy('name', 'asc')->get();
 
         return response()->json($users);
     }
@@ -182,7 +193,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'สร้างผู้ใช้เรียบร้อยแล้ว',
-            'user' => $user->load(['roles', 'orgUnit', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
+            'user' => $user->load($this->userRelations()),
         ], 201);
     }
 
@@ -328,7 +339,7 @@ class UserController extends Controller
         app(PersonalDataAccessLogger::class)
             ->record($request, $user->id, 'user_profile', 'เปิดดูทะเบียนประวัติบุคลากร (รวมเลขประจำตัวประชาชนฉบับเต็ม)');
 
-        return response()->json($user->load(['roles', 'orgUnit', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']));
+        return response()->json($user->load($this->userRelations()));
     }
 
     public function update(Request $request, User $user)
@@ -405,7 +416,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว',
-            'user' => $user->load(['roles', 'orgUnit', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
+            'user' => $user->load($this->userRelations()),
         ]);
     }
 
@@ -439,6 +450,16 @@ class UserController extends Controller
         }
     }
 
+    /**
+     * ลบบัญชีผู้ใช้
+     *
+     * **ปฏิเสธเมื่อยังมีเอกสารอ้างถึง** — ทะเบียนการลาของราชการเป็นเอกสารที่ต้องเก็บ
+     * ตามระเบียบ และแถวผู้อนุมัติบนใบลาของคนอื่นก็ผูกกับบัญชีนี้ การลบทั้งที่ยังมี
+     * เอกสารอ้างอยู่ทำให้ใบลาของผู้อื่นอธิบายไม่ได้ว่าใครเป็นผู้อนุมัติ
+     *
+     * บัญชีที่ไม่มีเอกสารใดอ้างถึง (เช่นสร้างผิดแล้วยังไม่ได้ใช้งาน) ลบได้ และเป็น
+     * การลบแบบ soft — แถวยังอยู่ CASCADE จึงไม่ทำงาน และกู้คืนได้ที่ `restore()`
+     */
     public function destroy(User $user)
     {
         // SEC-026 — ลบผู้ดูแลระบบสูงสุดคนสุดท้ายไม่ได้ ระบบจะไม่เหลือใครแก้กลับ
@@ -447,9 +468,79 @@ class UserController extends Controller
             return response()->json(['message' => $guard->blockedMessage()], 422);
         }
 
+        $blockers = $this->deletionBlockers($user);
+
+        if ($blockers !== []) {
+            return response()->json([
+                'message' => 'ลบบัญชีนี้ไม่ได้เพราะยังมี '.implode(' · ', $blockers)
+                    .' — ข้อมูลเหล่านี้เป็นเอกสารที่ต้องเก็บตามระเบียบ '
+                    .'ให้ใช้ "ระงับการใช้งาน" แทน ผู้ใช้จะเข้าระบบไม่ได้แต่ประวัติยังอยู่ครบ',
+                'blockers' => $blockers,
+            ], 422);
+        }
+
         $user->delete();
 
-        return response()->json(['message' => 'ลบผู้ใช้เรียบร้อยแล้ว']);
+        return response()->json(['message' => 'ลบบัญชีผู้ใช้เรียบร้อยแล้ว']);
+    }
+
+    /**
+     * กู้บัญชีที่ถูกลบกลับคืน
+     *
+     * การลบเป็นแบบ soft ข้อมูลจึงยังอยู่ครบ · บัญชีที่กู้กลับมาจะอยู่ในสถานะ
+     * "ระงับการใช้งาน" เสมอ เพื่อให้ผู้ดูแลตัดสินใจอีกครั้งก่อนให้เข้าระบบได้จริง
+     */
+    public function restore(int $id)
+    {
+        $user = User::onlyTrashed()->findOrFail($id);
+
+        $user->restore();
+        $user->forceFill(['is_active' => false])->save();
+
+        return response()->json([
+            'message' => 'กู้บัญชีผู้ใช้คืนแล้ว — อยู่ในสถานะระงับการใช้งาน กรุณาเปิดใช้งานอีกครั้งเมื่อพร้อม',
+            'user' => $user->fresh()->load($this->userRelations()),
+        ]);
+    }
+
+    /**
+     * ความสัมพันธ์ที่หน้าจอจัดการผู้ใช้ต้องใช้เสมอ
+     *
+     * เดิมรายการชุดนี้ถูกคัดลอกไว้ 5 ที่ในคลาสนี้ การเพิ่ม/แก้ความสัมพันธ์จึงต้อง
+     * ไล่แก้ทุกจุด และพลาดจุดใดจุดหนึ่งแล้วหน้าจอจะได้ข้อมูลไม่ครบเฉพาะบางเส้นทาง
+     *
+     * @return array<int,string>
+     */
+    private function userRelations(): array
+    {
+        return [
+            'roles', 'orgUnit', 'profile', 'personnel',
+            'currentAssignment.orgUnit', 'currentAssignment.personnelType',
+            'personnelType',
+        ];
+    }
+
+    /**
+     * เอกสารที่อ้างถึงบัญชีนี้และจะหายไปถ้าลบแถวจริง
+     *
+     * @return array<int,string>
+     */
+    private function deletionBlockers(User $user): array
+    {
+        $counts = [
+            'ใบลา' => Leave::withTrashed()->where('user_id', $user->id)->count(),
+            'รายการลงเวลา' => DB::table('attendances')->where('user_id', $user->id)->count(),
+            'การอนุมัติที่ลงนามไว้บนใบลาของผู้อื่น' => DB::table('leave_approvals')
+                ->where('approver_id', $user->id)->count(),
+            'การมอบหมายเป็นผู้รับผิดชอบหน่วยงาน' => DB::table('org_unit_managers')
+                ->where('user_id', $user->id)->count(),
+        ];
+
+        return collect($counts)
+            ->filter()
+            ->map(fn (int $count, string $label) => "{$label} {$count} รายการ")
+            ->values()
+            ->all();
     }
 
     public function toggleStatus(User $user)
@@ -465,7 +556,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => $user->is_active ? 'เปิดใช้งานผู้ใช้แล้ว' : 'ระงับการใช้งานผู้ใช้แล้ว',
-            'user' => $user->fresh()->load(['roles', 'orgUnit', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
+            'user' => $user->fresh()->load($this->userRelations()),
         ]);
     }
 }

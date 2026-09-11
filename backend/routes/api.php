@@ -288,7 +288,12 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::put('/admin/users/{user}/permissions', [PermissionController::class, 'updateUserPermissions']);
     });
 
+    /*
+     * ลบบัญชีเป็นแบบ soft และถูกปฏิเสธเมื่อยังมีเอกสารอ้างถึง — ประวัติการลาเป็น
+     * เอกสารที่ต้องเก็บตามระเบียบ · `restore` ใช้สิทธิ์เดียวกันเพราะเป็นการย้อนคำสั่งเดิม
+     */
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->middleware('can:delete_users');
+    Route::post('/admin/users/{id}/restore', [UserController::class, 'restore'])->middleware('can:delete_users');
 
     // Admin: หน่วยงานในผังองค์กร
     Route::group(['middleware' => ['can:manage_departments']], function () {

@@ -87,6 +87,15 @@
           </select>
         </div>
       </div>
+
+      <!--
+        บัญชีที่ถูกลบ — การลบเป็นแบบเก็บประวัติไว้ ไม่ได้ลบแถวจริง
+        ถ้าไม่มีทางเห็น ผู้ดูแลก็กู้คืนไม่ได้และไม่รู้ว่าเคยลบใครไปบ้าง
+      -->
+      <label class="mt-3 flex items-center gap-2 text-sm text-gray-600">
+        <input v-model="showTrashed" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-[#800000] focus:ring-[#800000]" @change="fetchUsers">
+        แสดงเฉพาะบัญชีที่ถูกลบ (กู้คืนได้)
+      </label>
     </div>
 
     <!-- Users Table -->
@@ -140,7 +149,16 @@
                   </span>
                 </td>
                 <td class="px-4 py-3 text-center">
-                  <div class="flex flex-wrap items-center justify-center gap-2">
+                  <!-- บัญชีที่ถูกลบทำได้อย่างเดียวคือกู้คืน — แก้ไข/ระงับ/ลบซ้ำไม่มีความหมาย -->
+                  <div v-if="showTrashed" class="flex items-center justify-center">
+                    <button @click="restoreUser(user)" class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700 transition">
+                      <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9"/>
+                      </svg>
+                      กู้คืน
+                    </button>
+                  </div>
+                  <div v-else class="flex flex-wrap items-center justify-center gap-2">
                     <button @click="toggleStatus(user)" class="inline-flex items-center gap-1 px-3 py-1 rounded text-xs transition" :class="user.is_active ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'" :disabled="submitting" title="เปิด-ปิด การใช้งาน">
                       <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="user.is_active ? ICONS.ban : ICONS.check"/>
@@ -704,9 +722,31 @@ onMounted(() => {
  * ตารางแสดงเลขแบบปิดบัง (เห็น 4 หลักท้าย) ส่วนการค้นหาด้วยเลขเต็ม 13 หลัก
  * ส่งไปให้ server เทียบด้วยค่าแฮช จึงยังค้นเจอได้โดยไม่ต้องส่งเลขของใครออกมา
  */
+const showTrashed = ref(false)
+
 const fetchUsers = async (idCard = '') => {
-  const res = await api.get('/admin/users', idCard ? { params: { id_card: idCard } } : undefined)
+  const params = {}
+  if (idCard) params.id_card = idCard
+  if (showTrashed.value) params.trashed = 'only'
+
+  const res = await api.get('/admin/users', Object.keys(params).length ? { params } : undefined)
   users.value = res.data
+}
+
+/*
+ * กู้บัญชีที่ถูกลบคืน — กลับมาในสถานะระงับการใช้งานเสมอ
+ * ให้ผู้ดูแลตัดสินใจอีกครั้งก่อนให้เข้าระบบได้จริง
+ */
+const restoreUser = async (user) => {
+  if (!confirm(`กู้บัญชี “${user.name}” คืนหรือไม่?\nบัญชีจะกลับมาในสถานะระงับการใช้งาน`)) return
+
+  try {
+    const res = await api.post(`/admin/users/${user.id}/restore`)
+    alertStore.success(res.data.message || 'กู้บัญชีคืนแล้ว')
+    await fetchUsers()
+  } catch (error) {
+    alertStore.error(getErrorMessage(error, 'กู้บัญชีคืนไม่สำเร็จ'))
+  }
 }
 
 /** ข้อความค้นหาเป็นเลขบัตรประชาชนครบ 13 หลักหรือไม่ */
