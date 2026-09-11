@@ -8,7 +8,6 @@ use App\Models\Leave;
 use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
-use App\Models\PersonnelType;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\Files\ImageUploadService;
@@ -242,7 +241,12 @@ class UserController extends Controller
             'role_id' => 'required|exists:roles,id',
             'org_unit_id' => 'required|exists:org_units,id',
             'telegram_chat_id' => 'nullable|string|max:255',
-            'personnel_type_id' => 'nullable|exists:personnel_types,id',
+            /*
+             * ประเภทบุคลากรเป็นตัวตัดสินสิทธิวันลาทั้งปี (`leave_policies` แยกตามประเภท)
+             * เดิมช่องนี้ไม่บังคับและระบบเดาเป็น "ข้าราชการ" ให้เงียบ ๆ ทุกครั้ง —
+             * บุคลากรที่ไม่ใช่ข้าราชการจึงได้โควตาผิดตั้งแต่วันแรกโดยไม่มีอะไรบอก
+             */
+            'personnel_type_id' => 'required|exists:personnel_types,id',
             'profile' => 'nullable|array',
             // SEC-028 — เดิมช่องนี้ไม่มีกฎ validate ใด ๆ เลย อัปโหลดไฟล์ชนิดใดขนาดใดก็ได้
             'profile_photo' => array_merge(['nullable'], UploadRules::profilePhoto()),
@@ -265,9 +269,7 @@ class UserController extends Controller
                 // ไม่ใส่ role_id — เป็น accessor จาก Spatie ไม่ใช่คอลัมน์ (กำหนดผ่าน syncRoles() ด้านล่าง)
                 'org_unit_id' => $request->org_unit_id,
                 'telegram_chat_id' => $request->telegram_chat_id,
-                // ต้องมีประเภทบุคลากรเสมอ ไม่งั้นนโยบายสิทธิการลาจะหาไม่เจอ
-                'personnel_type_id' => $request->personnel_type_id
-                    ?: PersonnelType::where('code', 'civil_servant')->value('id'),
+                'personnel_type_id' => $request->personnel_type_id,
             ]);
 
             /*
@@ -344,7 +346,7 @@ class UserController extends Controller
         $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $header[0]);
         $header = array_map(fn ($column) => trim((string) $column), $header);
 
-        $missing = array_diff(['name', 'email', 'role_id', 'org_unit_id'], $header);
+        $missing = array_diff(['name', 'email', 'role_id', 'org_unit_id', 'personnel_type_id'], $header);
         if ($missing !== []) {
             fclose($handle);
 
@@ -371,7 +373,7 @@ class UserController extends Controller
                 'email' => 'required|string|email|max:255|unique:users,email',
                 'role_id' => 'required|exists:roles,id',
                 'org_unit_id' => 'required|exists:org_units,id',
-                'personnel_type_id' => 'nullable|exists:personnel_types,id',
+                'personnel_type_id' => 'required|exists:personnel_types,id',
             ]);
 
             if ($validator->fails()) {
@@ -389,8 +391,7 @@ class UserController extends Controller
                     // รหัสผ่านสุ่มที่ไม่มีใครรู้ — เจ้าตัวต้องตั้งเองผ่าน "ลืมรหัสผ่าน"
                     'password' => bcrypt(Str::password(24)),
                     'org_unit_id' => $valid['org_unit_id'],
-                    'personnel_type_id' => $valid['personnel_type_id']
-                        ?? PersonnelType::where('code', 'civil_servant')->value('id'),
+                    'personnel_type_id' => $valid['personnel_type_id'],
                 ]);
 
                 // ไม่มีใครรู้รหัสสุ่มนี้ — เจ้าตัวต้องตั้งใหม่ก่อนใช้งานเช่นเดียวกัน
@@ -470,6 +471,11 @@ class UserController extends Controller
             'password' => 'nullable|string|min:12',
             'role_id' => 'required|exists:roles,id',
             'org_unit_id' => 'required|exists:org_units,id',
+            /*
+             * เดิมหน้านี้แก้ประเภทบุคลากรไม่ได้เลย ค่าที่ระบบเดาให้ตอนสร้างบัญชี
+             * จึงติดอยู่ถาวร ทั้งที่มันเป็นตัวตัดสินสิทธิวันลาทั้งปี
+             */
+            'personnel_type_id' => 'required|exists:personnel_types,id',
             'telegram_chat_id' => 'nullable|string|max:255',
             'profile' => 'nullable|array',
             // SEC-028 — เดิมช่องนี้ไม่มีกฎ validate ใด ๆ เลย อัปโหลดไฟล์ชนิดใดขนาดใดก็ได้
@@ -491,6 +497,7 @@ class UserController extends Controller
         $user->email = $request->email;
         // role_id เป็น accessor ที่อ่านมาจาก Spatie ไม่ใช่คอลัมน์จริง — บทบาทกำหนดผ่าน syncRoles() ด้านล่าง
         $user->org_unit_id = $request->org_unit_id;
+        $user->personnel_type_id = $request->personnel_type_id;
         $user->telegram_chat_id = $request->telegram_chat_id;
 
         if ($request->filled('password')) {
@@ -619,6 +626,80 @@ class UserController extends Controller
         return response()->json([
             'message' => 'กู้บัญชีผู้ใช้คืนแล้ว — อยู่ในสถานะระงับการใช้งาน กรุณาเปิดใช้งานอีกครั้งเมื่อพร้อม',
             'user' => $user->fresh()->load($this->userRelations()),
+        ]);
+    }
+
+    /**
+     * ดำเนินการกับบุคลากรหลายคนพร้อมกัน
+     *
+     * **ที่มา:** งานจริงตอนต้นปีการศึกษาคือย้ายคนทั้งกลุ่มไปอีกหน่วยงาน หรือระงับ
+     * บัญชีของผู้ที่พ้นหน้าที่พร้อมกันหลายคน · เดิมทำได้ทีละคนเท่านั้น ผู้ดูแลจึงต้อง
+     * เปิด–แก้–บันทึกซ้ำหลายสิบรอบ ซึ่งนอกจากช้าแล้วยังพลาดง่าย
+     *
+     * ทุกการกระทำเดินผ่านด่านเดิมทั้งหมด — ขอบเขตหน่วยงานของผู้เรียก และด่านกัน
+     * ถอดผู้ดูแลระบบสูงสุดคนสุดท้าย — ไม่ใช่ทางลัดที่ข้ามกติกาของการทำทีละคน
+     */
+    public function bulk(Request $request)
+    {
+        $data = $request->validate([
+            'action' => ['required', 'in:activate,suspend,move_org_unit'],
+            'user_ids' => ['required', 'array', 'min:1', 'max:200'],
+            'user_ids.*' => ['integer', 'exists:users,id'],
+            'org_unit_id' => ['required_if:action,move_org_unit', 'nullable', 'integer', 'exists:org_units,id'],
+        ], [
+            'user_ids.required' => 'กรุณาเลือกบุคลากรอย่างน้อย 1 คน',
+            'user_ids.max' => 'เลือกได้ครั้งละไม่เกิน 200 คน',
+            'org_unit_id.required_if' => 'กรุณาเลือกหน่วยงานปลายทาง',
+        ]);
+
+        $scoped = User::query();
+        $this->applyDirectoryScope($scoped, $request);
+        $targets = $scoped->whereIn('id', $data['user_ids'])->get();
+
+        $guard = app(SystemRoleGuard::class);
+        $changed = 0;
+        $skipped = [];
+
+        foreach ($targets as $user) {
+            // ตัวเองไม่ควรถูกกวาดไปกับการกระทำหมู่โดยไม่ตั้งใจ
+            if ($user->is($request->user())) {
+                $skipped[] = $user->name.' (บัญชีของท่านเอง)';
+
+                continue;
+            }
+
+            if ($data['action'] === 'suspend' && $guard->isLastActiveSuperAdmin($user)) {
+                $skipped[] = $user->name.' (ผู้ดูแลระบบสูงสุดคนสุดท้าย)';
+
+                continue;
+            }
+
+            match ($data['action']) {
+                'activate' => $user->forceFill(['is_active' => true])->save(),
+                'suspend' => $user->forceFill(['is_active' => false])->save(),
+                'move_org_unit' => $user->forceFill(['org_unit_id' => $data['org_unit_id']])->save(),
+            };
+
+            $changed++;
+        }
+
+        // คนที่เลือกมาแต่อยู่นอกขอบเขตของผู้เรียก จะไม่อยู่ใน $targets ตั้งแต่แรก
+        $outOfScope = count($data['user_ids']) - $targets->count();
+
+        app(AuditLogger::class)->log('user.bulk_updated', 'user', null, after: [
+            'action' => $data['action'],
+            'org_unit_id' => $data['org_unit_id'] ?? null,
+            'requested' => count($data['user_ids']),
+            'changed' => $changed,
+            'skipped' => $skipped,
+            'out_of_scope' => $outOfScope,
+        ]);
+
+        return response()->json([
+            'message' => "ดำเนินการกับบุคลากร {$changed} คนเรียบร้อยแล้ว",
+            'changed' => $changed,
+            'skipped' => $skipped,
+            'out_of_scope' => $outOfScope,
         ]);
     }
 

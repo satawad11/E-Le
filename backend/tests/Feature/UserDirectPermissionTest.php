@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\OrgUnit;
+use App\Models\PersonnelType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -29,6 +30,8 @@ class UserDirectPermissionTest extends TestCase
 
     private OrgUnit $department;
 
+    private PersonnelType $personnelType;
+
     private Role $employeeRole;
 
     protected function setUp(): void
@@ -41,6 +44,7 @@ class UserDirectPermissionTest extends TestCase
         Permission::findOrCreate('attendance.view_all', 'web');
 
         $this->department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ']);
+        $this->personnelType = PersonnelType::firstOrCreate(['code' => 'civil_servant'], ['name' => 'ข้าราชการ', 'is_active' => true]);
 
         $this->admin = User::factory()->create();
         $this->admin->assignRole('Super Admin');
@@ -63,6 +67,7 @@ class UserDirectPermissionTest extends TestCase
             'password' => 'a-very-long-password',
             'role_id' => $this->employeeRole->id,
             'org_unit_id' => $this->department->id,
+            'personnel_type_id' => $this->personnelType->id,
             'custom_permissions' => json_encode(['leave.report.view']),
         ]);
 
@@ -86,6 +91,7 @@ class UserDirectPermissionTest extends TestCase
             'email' => $target->email,
             'role_id' => $this->employeeRole->id,
             'org_unit_id' => $this->department->id,
+            'personnel_type_id' => $this->personnelType->id,
             'custom_permissions' => json_encode(['attendance.view_all']),
         ]);
 
@@ -105,6 +111,7 @@ class UserDirectPermissionTest extends TestCase
             'email' => $target->email,
             'role_id' => $this->employeeRole->id,
             'org_unit_id' => $this->department->id,
+            'personnel_type_id' => $this->personnelType->id,
             'custom_permissions' => json_encode([]),
         ]);
 

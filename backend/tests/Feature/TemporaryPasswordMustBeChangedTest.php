@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\OrgUnit;
+use App\Models\PersonnelType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -30,6 +31,8 @@ class TemporaryPasswordMustBeChangedTest extends TestCase
 
     private Role $employeeRole;
 
+    private PersonnelType $personnelType;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -40,6 +43,10 @@ class TemporaryPasswordMustBeChangedTest extends TestCase
 
         $this->unit = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ']);
         $this->employeeRole = Role::findOrCreate('Employee', 'web');
+        $this->personnelType = PersonnelType::firstOrCreate(
+            ['code' => 'civil_servant'],
+            ['name' => 'ข้าราชการ', 'is_active' => true],
+        );
 
         $this->admin = User::factory()->create(['must_change_password' => false]);
         $this->admin->givePermissionTo(['view_users', 'edit_users', 'system.user.manage']);
@@ -54,6 +61,7 @@ class TemporaryPasswordMustBeChangedTest extends TestCase
                 'password' => 'temporary-pass-1234',
                 'role_id' => $this->employeeRole->id,
                 'org_unit_id' => $this->unit->id,
+                'personnel_type_id' => $this->personnelType->id,
             ])
             ->assertCreated();
 
@@ -71,6 +79,7 @@ class TemporaryPasswordMustBeChangedTest extends TestCase
                 'password' => 'reset-by-admin-1234',
                 'role_id' => $this->employeeRole->id,
                 'org_unit_id' => $this->unit->id,
+                'personnel_type_id' => $this->personnelType->id,
             ])
             ->assertOk();
 
@@ -79,8 +88,8 @@ class TemporaryPasswordMustBeChangedTest extends TestCase
 
     public function test_นำเข้าด้วย_csv_ก็ตั้งธงเดียวกัน(): void
     {
-        $csv = "name,email,role_id,org_unit_id\n"
-            ."นำเข้า ทดสอบ,imported@example.test,{$this->employeeRole->id},{$this->unit->id}\n";
+        $csv = "name,email,role_id,org_unit_id,personnel_type_id\n"
+            ."นำเข้า ทดสอบ,imported@example.test,{$this->employeeRole->id},{$this->unit->id},{$this->personnelType->id}\n";
 
         $this->actingAs($this->admin->fresh())
             ->post('/api/admin/users/import', ['file' => UploadedFile::fake()->createWithContent('users.csv', $csv)])

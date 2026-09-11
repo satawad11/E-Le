@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\OrgUnit;
+use App\Models\PersonnelType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -27,6 +28,8 @@ class UserImportTest extends TestCase
 
     private Role $employeeRole;
 
+    private PersonnelType $personnelType;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -37,6 +40,10 @@ class UserImportTest extends TestCase
 
         $this->department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ', 'is_active' => true]);
         $this->employeeRole = Role::findOrCreate('Employee', 'web');
+        $this->personnelType = PersonnelType::firstOrCreate(
+            ['code' => 'civil_servant'],
+            ['name' => 'ข้าราชการ', 'is_active' => true],
+        );
 
         $this->admin = User::factory()->create();
         $this->admin->givePermissionTo(['view_users', 'edit_users']);
@@ -57,8 +64,8 @@ class UserImportTest extends TestCase
 
     public function test_csv_import_creates_users_with_role_profile_and_leave_balances(): void
     {
-        $csv = "id_card_number,name,email,role_id,org_unit_id,title,first_name,last_name,gender,phone,position\n"
-            ."1234567890123,นายสมชาย ใจดี,somchai@example.com,{$this->employeeRole->id},{$this->department->id},นาย,สมชาย,ใจดี,ชาย,0812345678,ครู\n";
+        $csv = "id_card_number,name,email,role_id,org_unit_id,personnel_type_id,title,first_name,last_name,gender,phone,position\n"
+            ."1234567890123,นายสมชาย ใจดี,somchai@example.com,{$this->employeeRole->id},{$this->department->id},{$this->personnelType->id},นาย,สมชาย,ใจดี,ชาย,0812345678,ครู\n";
 
         $response = $this->actingAs($this->admin)
             ->post('/api/admin/users/import', ['file' => UploadedFile::fake()->createWithContent('users.csv', $csv)])
@@ -76,8 +83,8 @@ class UserImportTest extends TestCase
 
     public function test_csv_import_never_accepts_a_password_from_the_file(): void
     {
-        $csv = "name,email,role_id,org_unit_id,password\n"
-            ."ผู้ใช้ทดสอบ,plain@example.com,{$this->employeeRole->id},{$this->department->id},password-from-file\n";
+        $csv = "name,email,role_id,org_unit_id,personnel_type_id,password\n"
+            ."ผู้ใช้ทดสอบ,plain@example.com,{$this->employeeRole->id},{$this->department->id},{$this->personnelType->id},password-from-file\n";
 
         $this->actingAs($this->admin)
             ->post('/api/admin/users/import', ['file' => UploadedFile::fake()->createWithContent('users.csv', $csv)])
@@ -91,10 +98,10 @@ class UserImportTest extends TestCase
     {
         User::factory()->create(['email' => 'taken@example.com']);
 
-        $csv = "name,email,role_id,org_unit_id\n"
-            .",no-name@example.com,{$this->employeeRole->id},{$this->department->id}\n"
-            ."ซ้ำอีเมล,taken@example.com,{$this->employeeRole->id},{$this->department->id}\n"
-            ."ถูกต้อง,good@example.com,{$this->employeeRole->id},{$this->department->id}\n";
+        $csv = "name,email,role_id,org_unit_id,personnel_type_id\n"
+            .",no-name@example.com,{$this->employeeRole->id},{$this->department->id},{$this->personnelType->id}\n"
+            ."ซ้ำอีเมล,taken@example.com,{$this->employeeRole->id},{$this->department->id},{$this->personnelType->id}\n"
+            ."ถูกต้อง,good@example.com,{$this->employeeRole->id},{$this->department->id},{$this->personnelType->id}\n";
 
         $response = $this->actingAs($this->admin)
             ->post('/api/admin/users/import', ['file' => UploadedFile::fake()->createWithContent('users.csv', $csv)])

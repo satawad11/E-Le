@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use App\Models\OrgUnit;
+use App\Models\PersonnelType;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\SystemRoles;
@@ -112,6 +113,7 @@ class SystemRoleProtectionTest extends TestCase
         $admin = $this->superAdminAccount();
         $employee = Role::create(['name' => 'Employee', 'guard_name' => 'web']);
         $department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ'])->id;
+        $personnelType = PersonnelType::firstOrCreate(['code' => 'civil_servant'], ['name' => 'ข้าราชการ', 'is_active' => true])->id;
 
         $this->actingAs($admin)
             ->putJson("/api/admin/users/{$admin->id}", [
@@ -119,6 +121,7 @@ class SystemRoleProtectionTest extends TestCase
                 'email' => $admin->email,
                 'role_id' => $employee->id,
                 'org_unit_id' => $department,
+                'personnel_type_id' => $personnelType,
             ])
             ->assertStatus(422);
 
@@ -133,6 +136,7 @@ class SystemRoleProtectionTest extends TestCase
         $this->superAdminAccount('second-root@example.test');
         $employee = Role::create(['name' => 'Employee', 'guard_name' => 'web']);
         $department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ'])->id;
+        $personnelType = PersonnelType::firstOrCreate(['code' => 'civil_servant'], ['name' => 'ข้าราชการ', 'is_active' => true])->id;
 
         $this->actingAs($admin)
             ->putJson("/api/admin/users/{$admin->id}", [
@@ -140,6 +144,7 @@ class SystemRoleProtectionTest extends TestCase
                 'email' => $admin->email,
                 'role_id' => $employee->id,
                 'org_unit_id' => $department,
+                'personnel_type_id' => $personnelType,
             ])
             ->assertOk();
 

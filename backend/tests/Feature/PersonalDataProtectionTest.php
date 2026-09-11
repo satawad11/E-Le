@@ -189,6 +189,7 @@ class PersonalDataProtectionTest extends TestCase
             'email' => $subject->email,
             'role_id' => $role->id,
             'org_unit_id' => $subject->org_unit_id,
+            'personnel_type_id' => $subject->personnel_type_id,
         ])->assertOk();
 
         $log = DB::table('personal_data_access_logs')

@@ -270,6 +270,11 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/admin/users/import', [UserController::class, 'importCsv']);
         Route::put('/admin/users/{user}', [UserController::class, 'update']);
         Route::post('/admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
+        /*
+         * ดำเนินการหลายคนพร้อมกัน — ย้ายสังกัด เปิด/ระงับการใช้งาน
+         * ใช้ด่านเดียวกับการทำทีละคน ไม่ใช่ทางลัดที่ข้ามขอบเขตหรือกติกาผู้ดูแลสูงสุด
+         */
+        Route::post('/admin/users/bulk', [UserController::class, 'bulk']);
     });
 
     /*
