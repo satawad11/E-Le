@@ -18,6 +18,7 @@ use App\Services\PermissionEvaluator;
 use App\Services\PersonalDataAccessLogger;
 use App\Services\SystemRoleGuard;
 use App\Support\UploadRules;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -45,8 +46,19 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::with($this->userRelations())
-            ->orderBy('name', 'asc');
+        $data = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'org_unit_id' => ['nullable', 'integer', 'exists:org_units,id'],
+            'status' => ['nullable', 'string', 'max:50'],
+            'id_card' => ['nullable', 'string', 'max:32'],
+            'trashed' => ['nullable', 'in:only'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $query = User::with($this->userRelations())->orderBy('name', 'asc');
+
+        $this->applyDirectoryScope($query, $request);
 
         /*
          * `trashed=only` — บัญชีที่ถูกลบ
@@ -54,24 +66,119 @@ class UserController extends Controller
          * การลบเป็นแบบ soft เพื่อไม่ให้ประวัติการลาหายไปด้วย ถ้าไม่มีทางเห็นบัญชี
          * ที่ถูกลบเลย ผู้ดูแลก็กู้คืนไม่ได้และไม่รู้ว่าเคยลบใครไปบ้าง
          */
-        if ($request->query('trashed') === 'only') {
+        if (($data['trashed'] ?? null) === 'only') {
             $query->onlyTrashed();
         }
 
-        $idCard = preg_replace('/\D/', '', (string) $request->query('id_card', ''));
+        $idCard = preg_replace('/\D/', '', (string) ($data['id_card'] ?? ''));
 
         if ($idCard !== '') {
             $hash = hash('sha256', $idCard.config('app.key'));
             $query->whereHas('profile', fn ($profile) => $profile->where('id_card_number_hash', $hash));
         }
 
-        $users = $query->get();
+        $this->applyDirectoryFilters($query, $data);
 
-        // คืนทะเบียนประวัติของบุคลากรทุกคน จึงถือเป็นการเข้าถึงข้อมูลส่วนบุคคลแบบรวม
+        /*
+         * แบ่งหน้าเสมอ
+         *
+         * เดิม endpoint นี้คืนบุคลากร **ทุกคน** พร้อมความสัมพันธ์ครบชุดในคำขอเดียว
+         * แล้วให้หน้าจอค้นหาและกรองเอง — ทะเบียนประวัติทั้งสถานศึกษาจึงถูกส่งออกไป
+         * ทุกครั้งที่เปิดหน้า ทั้งที่ผู้ใช้ดูจริงแค่ไม่กี่แถว
+         */
+        $users = $query->paginate(min((int) ($data['per_page'] ?? 25), 100))->withQueryString();
+
+        // ยังเป็นการเข้าถึงข้อมูลส่วนบุคคลแบบรวม — บันทึกตามจำนวนที่ส่งออกไปจริง
         app(PersonalDataAccessLogger::class)
-            ->recordBulk($request, 'user_directory', $users->count(), 'เปิดหน้าจัดการผู้ใช้งาน (ทะเบียนประวัติบุคลากรทั้งหมด)');
+            ->recordBulk($request, 'user_directory', $users->count(), 'เปิดหน้าจัดการผู้ใช้งาน (ทะเบียนประวัติบุคลากร)');
 
-        return response()->json($users->map(fn (User $user) => $this->withMaskedIdentifiers($user)));
+        $users->getCollection()->transform(fn (User $user) => $this->withMaskedIdentifiers($user));
+
+        return response()->json($users);
+    }
+
+    /**
+     * จำกัดทะเบียนบุคลากรตามขอบเขตของผู้เรียก
+     *
+     * **ที่มา:** หน้ารายละเอียด (`show()`) ตรวจขอบเขตหน่วยงานมาตลอด แต่หน้ารายการ
+     * ไม่เคยตรวจเลย — ผู้ดูแลที่ถูกจำกัดขอบเขตไว้จึงเห็นรายชื่อบุคลากรทั้งองค์กร
+     * แต่กดเปิดแล้วได้ 403 · ใช้กติกาเดียวกับ `show()` ทั้งสองที่จึงตรงกัน
+     *
+     * ไม่ได้กำหนดขอบเขตไว้ = ไม่จำกัด ตามพฤติกรรมเดิม
+     *
+     * @param  Builder<User>  $query
+     */
+    private function applyDirectoryScope($query, Request $request): void
+    {
+        $viewer = $request->user();
+        $ability = app(PermissionEvaluator::class)->allows($viewer, 'system.user.manage')
+            ? 'system.user.manage'
+            : 'system.user.view';
+
+        $visible = app(OrgScopeResolver::class)
+            ->visibleOrgUnitIds($viewer, $ability, OrgScopeResolver::ORGANIZATION);
+
+        if ($visible === null) {
+            return;
+        }
+
+        // ไม่เห็นหน่วยงานใดเลย — เหลือเฉพาะทะเบียนของตนเอง
+        if ($visible === []) {
+            $query->whereKey($viewer->getKey());
+
+            return;
+        }
+
+        // เห็นทะเบียนของตนเองเสมอ แม้จะย้ายออกนอกขอบเขตที่รับผิดชอบไปแล้ว
+        $query->where(fn ($scoped) => $scoped
+            ->whereIn('org_unit_id', $visible)
+            ->orWhere('id', $viewer->getKey()));
+    }
+
+    /**
+     * ค้นหาและกรองฝั่งเซิร์ฟเวอร์
+     *
+     * เดิมหน้าจอกรองจากข้อมูลทั้งก้อนที่โหลดมาแล้ว การแบ่งหน้าจึงเป็นไปไม่ได้
+     *
+     * @param  Builder<User>  $query
+     * @param  array<string,mixed>  $data
+     */
+    private function applyDirectoryFilters($query, array $data): void
+    {
+        if (($data['org_unit_id'] ?? null) !== null) {
+            $query->where('org_unit_id', $data['org_unit_id']);
+        }
+
+        if (($status = $data['status'] ?? null) !== null && $status !== '') {
+            /*
+             * สถานะว่าง = "ปฏิบัติหน้าที่" ตามที่หน้าจอแสดงมาตลอด จึงต้องนับรวม
+             * แถวที่ยังไม่เคยกรอกสถานะไว้ด้วย ไม่งั้นตัวกรองจะทำให้คนหายไปเฉย ๆ
+             */
+            $query->whereHas('profile', function ($profile) use ($status) {
+                $profile->where('status', $status);
+
+                if ($status === 'ปฏิบัติหน้าที่') {
+                    $profile->orWhereNull('status');
+                }
+            });
+        }
+
+        if (($search = trim((string) ($data['search'] ?? ''))) === '') {
+            return;
+        }
+
+        /*
+         * ค้นจากชื่อและรหัสบุคลากรเท่านั้น
+         *
+         * `id_card_number` เข้ารหัสไว้ในฐานข้อมูล การ LIKE บนไซเฟอร์เท็กซ์จึงไม่มีทาง
+         * ตรงกับอะไรเลย · การค้นด้วยเลขบัตรทำผ่านพารามิเตอร์ `id_card` ซึ่งเทียบด้วย
+         * ค่าแฮชของเลขเต็ม 13 หลัก และไม่ต้องส่งเลขของใครออกไปจากเซิร์ฟเวอร์
+         */
+        $query->where(function ($match) use ($search) {
+            $match->where('name', 'like', '%'.$search.'%')
+                ->orWhereHas('personnel', fn ($p) => $p->where('personnel_code', 'like', '%'.$search.'%'))
+                ->orWhereHas('profile', fn ($p) => $p->where('personnel_code', 'like', '%'.$search.'%'));
+        });
     }
 
     /**

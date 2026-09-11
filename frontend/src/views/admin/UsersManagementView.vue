@@ -93,7 +93,7 @@
         ถ้าไม่มีทางเห็น ผู้ดูแลก็กู้คืนไม่ได้และไม่รู้ว่าเคยลบใครไปบ้าง
       -->
       <label class="mt-3 flex items-center gap-2 text-sm text-gray-600">
-        <input v-model="showTrashed" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-[#800000] focus:ring-[#800000]" @change="fetchUsers">
+        <input v-model="showTrashed" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-[#800000] focus:ring-[#800000]" @change="reloadFirstPage">
         แสดงเฉพาะบัญชีที่ถูกลบ (กู้คืนได้)
       </label>
     </div>
@@ -135,7 +135,8 @@
             </thead>
             <tbody class="divide-y divide-gray-100">
               <tr v-for="(user, index) in filteredUsers" :key="user.id" class="hover:bg-gray-50 transition-colors">
-                <td class="px-4 py-3 text-center text-gray-500">{{ index + 1 }}</td>
+                <!-- ลำดับต่อเนื่องข้ามหน้า ไม่ใช่เริ่มที่ 1 ใหม่ทุกหน้า -->
+                <td class="px-4 py-3 text-center text-gray-500">{{ (pagination.current_page - 1) * pagination.per_page + index + 1 }}</td>
                 <td class="px-4 py-3 text-blue-600 font-medium">{{ user.profile?.id_card_number || '-' }}</td>
                 <td class="px-4 py-3">
                   <div class="font-medium text-gray-900">{{ user.personnel?.full_name || user.name }}</div>
@@ -188,6 +189,29 @@
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- แถบแบ่งหน้า — รายชื่อโหลดทีละหน้าจากเซิร์ฟเวอร์ -->
+        <div v-if="pagination.total > 0" class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 text-sm">
+          <p class="text-gray-500">
+            หน้า {{ pagination.current_page }} จาก {{ pagination.last_page }} · ทั้งหมด {{ pagination.total }} คน
+          </p>
+          <div class="flex items-center gap-2">
+            <button
+              class="rounded-lg border border-gray-200 px-3 py-1.5 text-gray-700 disabled:opacity-40"
+              :disabled="pagination.current_page <= 1"
+              @click="goToPage(pagination.current_page - 1)"
+            >
+              ก่อนหน้า
+            </button>
+            <button
+              class="rounded-lg border border-gray-200 px-3 py-1.5 text-gray-700 disabled:opacity-40"
+              :disabled="pagination.current_page >= pagination.last_page"
+              @click="goToPage(pagination.current_page + 1)"
+            >
+              ถัดไป
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -724,13 +748,45 @@ onMounted(() => {
  */
 const showTrashed = ref(false)
 
-const fetchUsers = async (idCard = '') => {
-  const params = {}
-  if (idCard) params.id_card = idCard
+/*
+ * รายชื่อบุคลากรโหลดทีละหน้า และกรอง/ค้นหาที่ฝั่งเซิร์ฟเวอร์
+ *
+ * เดิมหน้านี้ดึงบุคลากร "ทุกคน" พร้อมความสัมพันธ์ครบชุดมาในคำขอเดียว แล้วกรองใน
+ * เบราว์เซอร์ — ทะเบียนประวัติทั้งสถานศึกษาจึงถูกส่งออกไปทุกครั้งที่เปิดหน้า
+ * ทั้งที่ผู้ใช้ดูจริงแค่ไม่กี่แถว
+ */
+const pagination = reactive({ current_page: 1, last_page: 1, total: 0, per_page: 25 })
+
+// ไม่ระบุหน้า = โหลดหน้าเดิมซ้ำ (เช่นหลังบันทึกหรือระงับ) ผู้ดูแลจึงไม่ถูกดีดกลับหน้าแรก
+const fetchUsers = async (page = pagination.current_page) => {
+  const params = { page: Number(page) || 1, per_page: pagination.per_page }
+
+  // เลขบัตรครบ 13 หลักส่งไปให้ server เทียบด้วยค่าแฮช ที่เหลือค้นจากชื่อ/รหัสบุคลากร
+  const fullIdCard = asFullIdCard(filters.search)
+  if (fullIdCard) params.id_card = fullIdCard
+  else if (filters.search) params.search = filters.search
+
+  if (filters.org_unit_id) params.org_unit_id = filters.org_unit_id
+  if (filters.status) params.status = filters.status
   if (showTrashed.value) params.trashed = 'only'
 
-  const res = await api.get('/admin/users', Object.keys(params).length ? { params } : undefined)
-  users.value = res.data
+  const res = await api.get('/admin/users', { params })
+
+  users.value = res.data.data ?? res.data
+  Object.assign(pagination, {
+    current_page: res.data.current_page ?? 1,
+    last_page: res.data.last_page ?? 1,
+    total: res.data.total ?? users.value.length,
+    per_page: res.data.per_page ?? pagination.per_page,
+  })
+}
+
+/** โหลดหน้าแรกใหม่ — ใช้เมื่อเงื่อนไขการค้นหาเปลี่ยน */
+const reloadFirstPage = () => fetchUsers(1)
+
+const goToPage = (page) => {
+  if (page < 1 || page > pagination.last_page || page === pagination.current_page) return
+  fetchUsers(page)
 }
 
 /*
@@ -755,21 +811,19 @@ const asFullIdCard = (value) => {
   return digits.length === 13 ? digits : ''
 }
 
-const lastServerIdCardSearch = ref('')
-
-/* ค้นด้วยเลขเต็มเมื่อไร ให้ถามฝั่ง server เมื่อนั้น (ที่เหลือกรองในหน้าจอตามเดิม) */
-watch(() => filters.search, (value) => {
-  const fullIdCard = asFullIdCard(value)
-  if (fullIdCard) {
-    fetchUsers(fullIdCard)
-  } else if (lastServerIdCardSearch.value) {
-    fetchUsers()
-  }
-  lastServerIdCardSearch.value = fullIdCard
+/*
+ * ทุกตัวกรองถามเซิร์ฟเวอร์ใหม่เสมอ — หน่วงการพิมพ์ไว้ไม่ให้ยิงทุกตัวอักษร
+ */
+let searchTimer = null
+watch(() => filters.search, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(reloadFirstPage, 300)
 })
 
+watch([() => filters.org_unit_id, () => filters.status], reloadFirstPage)
+
 const fetchDepartments = async () => {
-  const res = await api.get('/admin/departments')
+  const res = await api.get('/admin/org-units')
   departments.value = res.data
 }
 
@@ -797,21 +851,8 @@ const formatDate = (dateStr) => {
   return ThaiDateFormatter.toThaiSlash(dateStr)
 }
 
-const filteredUsers = computed(() => {
-  return users.value.filter(u => {
-    // ค้นด้วยเลขเต็มถูกกรองมาจาก server แล้ว ที่นี่จึงเทียบชื่อและ 4 หลักท้ายพอ
-    const searchDigits = String(filters.search || '').replace(/\D/g, '')
-    const searchMatch = !filters.search ||
-      asFullIdCard(filters.search) !== '' ||
-      u.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-      (searchDigits !== '' && u.profile?.id_card_last_four?.includes(searchDigits))
-    
-    const deptMatch = !filters.org_unit_id || u.org_unit_id === Number(filters.org_unit_id)
-    const statusMatch = !filters.status || (u.profile?.status || 'ปฏิบัติหน้าที่') === filters.status
-
-    return searchMatch && deptMatch && statusMatch
-  })
-})
+// เซิร์ฟเวอร์กรองและแบ่งหน้ามาให้แล้ว หน้าจอจึงแสดงตามที่ได้รับมาตรง ๆ
+const filteredUsers = computed(() => users.value)
 
 const openAddModal = () => {
   modal.isEdit = false

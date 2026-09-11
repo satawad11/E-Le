@@ -119,7 +119,7 @@ class PersonnelApiAlignmentTest extends TestCase
         // GET /api/admin/users
         $indexRes = $this->actingAs($admin)->getJson('/api/admin/users');
         $indexRes->assertStatus(200);
-        $found = collect($indexRes->json())->firstWhere('id', $targetUser->id);
+        $found = collect($indexRes->json('data'))->firstWhere('id', $targetUser->id);
         $this->assertNotNull($found);
         $this->assertEquals('ADM-999', $found['personnel_code']);
         $this->assertEquals('นายประสิทธิ์ ทองคำ', $found['personnel']['full_name']);

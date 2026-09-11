@@ -64,7 +64,7 @@ class PersonalIdentifierMaskingTest extends TestCase
 
         $this->assertStringNotContainsString(self::ID_CARD, $response->getContent());
 
-        $row = collect($response->json())->firstWhere('id', $subject->id);
+        $row = collect($response->json('data'))->firstWhere('id', $subject->id);
 
         $this->assertSame('x-xxxx-xxxx0-12-3', $row['profile']['id_card_number']);
         $this->assertSame('0123', $row['profile']['id_card_last_four']);
@@ -76,7 +76,7 @@ class PersonalIdentifierMaskingTest extends TestCase
         $subject = $this->subject();
         $admin = $this->administrator();
 
-        $row = collect($this->actingAs($admin)->getJson('/api/admin/users')->json())
+        $row = collect($this->actingAs($admin)->getJson('/api/admin/users')->json('data'))
             ->firstWhere('id', $subject->id);
 
         $this->assertArrayNotHasKey('id_card_number_hash', $row['profile']);
@@ -90,15 +90,16 @@ class PersonalIdentifierMaskingTest extends TestCase
         $this->subject(); // อีกคนหนึ่งที่ต้องไม่ติดมาด้วย
         $admin = $this->administrator();
 
+        // รายการแบ่งหน้าแล้ว — ผลลัพธ์อยู่ใน `data`
         $found = $this->actingAs($admin)
             ->getJson('/api/admin/users?id_card='.self::ID_CARD)
             ->assertOk()
-            ->json();
+            ->json('data');
 
         $this->assertCount(2, $found, 'ทั้งสองคนใช้เลขทดสอบเดียวกัน จึงต้องเจอทั้งคู่');
         $this->assertContains($subject->id, array_column($found, 'id'));
 
-        $none = $this->actingAs($admin)->getJson('/api/admin/users?id_card=9999999999999')->json();
+        $none = $this->actingAs($admin)->getJson('/api/admin/users?id_card=9999999999999')->json('data');
         $this->assertCount(0, $none);
     }
 
