@@ -12,6 +12,7 @@ import DocumentTools from '../src/components/saraban/DocumentTools.vue'
 import RetentionPanel from '../src/components/saraban/RetentionPanel.vue'
 import OperationsTools from '../src/components/saraban/OperationsTools.vue'
 import SavedViews from '../src/components/saraban/SavedViews.vue'
+import { fetchObjectUrl } from '../src/utils/secureFile'
 const global = {
   stubs: { AppModal: { template: '<div><slot/><slot name="footer"/></div>' }, PdfWorkspace: true, RouterLink: { template: '<a><slot/></a>' } },
   directives: { can: { mounted(el) { if (!access.allowed) el.remove() } } },
@@ -19,7 +20,14 @@ const global = {
 const render = (component, props = {}) => mount(component, { props, global })
 async function click(w, text) { const button = w.findAll('button').find(b => b.text() === text); expect(button, text).toBeTruthy(); await button.trigger('click'); await flushPromises() }
 const doc = { id: 7, status: 'signed', finalized_at: null, versions: [{ id: 10, version_no: 1, pdf_file_path: 'saraban/one.pdf' }, { id: 20, version_no: 2, pdf_file_path: 'saraban/two.pdf' }] }
-beforeEach(() => { for (const fn of Object.values(api)) fn.mockReset(); push.mockReset(); api.post.mockResolvedValue({ data: {} }); access.allowed = true; URL.revokeObjectURL = vi.fn() })
+beforeEach(() => { for (const fn of Object.values(api)) fn.mockReset(); push.mockReset(); fetchObjectUrl.mockReset().mockResolvedValue('blob:preview'); api.post.mockResolvedValue({ data: {} }); access.allowed = true; URL.revokeObjectURL = vi.fn() })
+
+async function openRedactions(w) {
+  const details = w.findAll('details').at(-1)
+  details.element.open = true
+  await details.trigger('toggle')
+  await flushPromises()
+}
 
 describe('ยืนยันการทำงานที่มีผลต่อเอกสาร', () => {
   it('ไม่ส่งคำขอก่อนยืนยัน และยืนยันรหัสผ่านใหม่เมื่อ server ตอบ 423', async () => {
@@ -98,6 +106,49 @@ describe('เครื่องมือรายฉบับ', () => {
     expect(api.post).toHaveBeenCalledWith('/saraban/documents/7/redactions', { source_version_id: 10, reason: 'ปกปิดข้อมูลส่วนบุคคล', areas: [{ page: 1, x: 60, y: 100, width: 160, height: 30 }] })
     w.unmount()
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview')
+  })
+  it('เปิดสำเนาที่ปกปิดแล้วต้องหยุดแก้พื้นที่ของต้นฉบับ', async () => {
+    api.get.mockResolvedValue({ data: { available: true, redactions: [{ id: 3, reason: 'สำเนาทดสอบ', area_count: 1, pdf_file_path: 'saraban/redacted.pdf' }] } })
+    const w = render(DocumentTools, { document: doc })
+    await openRedactions(w)
+    await w.findAll('select')[2].setValue(10); await flushPromises()
+    await click(w, 'เพิ่มพื้นที่ปกปิด')
+    await click(w, 'สำเนาทดสอบ · 1 พื้นที่ — เปิดสำเนา')
+    expect(w.findComponent({ name: 'PdfWorkspace' }).props('editable')).toBe(false)
+    expect(w.findAll('button').find(b => b.text() === 'เพิ่มพื้นที่ปกปิด').attributes('disabled')).toBeDefined()
+    expect(w.findAll('button').find(b => b.text() === 'สร้างสำเนาปกปิด').attributes('disabled')).toBeDefined()
+    expect(api.post).not.toHaveBeenCalled()
+    w.unmount()
+  })
+  it('ไฟล์ฉบับก่อนที่โหลดช้าต้องไม่ทับฉบับที่เลือกใหม่', async () => {
+    api.get.mockResolvedValue({ data: { available: true, redactions: [] } })
+    let finishFirst
+    fetchObjectUrl.mockImplementationOnce(() => new Promise(resolve => { finishFirst = resolve }))
+      .mockResolvedValueOnce('blob:second')
+    const w = render(DocumentTools, { document: doc })
+    await openRedactions(w)
+    await w.findAll('select')[2].setValue(10)
+    expect(w.findAll('button').find(b => b.text() === 'เพิ่มพื้นที่ปกปิด').attributes('disabled')).toBeDefined()
+    await w.findAll('select')[2].setValue(20); await flushPromises()
+    finishFirst('blob:first'); await flushPromises()
+    expect(w.findComponent({ name: 'PdfWorkspace' }).props('source')).toBe('blob:second')
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:first')
+    await click(w, 'เพิ่มพื้นที่ปกปิด')
+    await w.findAll('input:not([type])').at(-1).setValue('ปกปิดฉบับที่สอง')
+    await click(w, 'สร้างสำเนาปกปิด'); await click(w, 'ยืนยันสร้างสำเนาปกปิด')
+    expect(api.post).toHaveBeenCalledWith('/saraban/documents/7/redactions', expect.objectContaining({ source_version_id: 20 }))
+    w.unmount()
+  })
+  it('คืน blob ที่โหลดเสร็จหลังออกจากหน้าจอ', async () => {
+    api.get.mockResolvedValue({ data: { available: true, redactions: [] } })
+    let finish
+    fetchObjectUrl.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    const w = render(DocumentTools, { document: doc })
+    await openRedactions(w)
+    await w.findAll('select')[2].setValue(10)
+    w.unmount()
+    finish('blob:late'); await flushPromises()
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:late')
   })
 })
 

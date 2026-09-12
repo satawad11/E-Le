@@ -52,7 +52,7 @@ const auth = useAuthStore()
 const health = ref(null), revocations = ref(null), flags = ref([]), channels = ref([]), deliveries = ref(null), meta = ref(null), operation = ref(null), error = ref(''), busy = ref(false)
 const healthLabel = v => ({ ok: 'ปกติ', degraded: 'ควรตรวจสอบ', down: 'ขัดข้อง', disabled: 'ปิดอยู่' }[v] || 'ไม่ทราบสถานะ')
 const checkLabel = v => ({ database: 'ฐานข้อมูล', cache: 'แคช', queue: 'คิวงาน', storage: 'พื้นที่จัดเก็บ', pdf_renderer: 'การสร้างเอกสาร', notification_providers: 'ผู้ให้บริการแจ้งเตือน', scheduler: 'งานตามเวลา', exceptions: 'ข้อผิดพลาด' }[v] || 'องค์ประกอบระบบ')
-const channelLabel = v => ({ in_app: 'ในระบบ', email: 'อีเมล', web_push: 'เบราว์เซอร์', line: 'ไลน์', telegram: 'เทเลแกรม' }[v] || v)
+const channelLabel = v => ({ in_app: 'ในระบบ', email: 'อีเมล', web_push: 'เบราว์เซอร์', line: 'ไลน์', line_oa: 'ไลน์ทางการ', telegram: 'เทเลแกรม' }[v] || 'ช่องทางอื่น')
 async function read(fn) { busy.value = true; error.value = ''; try { await fn() } catch (e) { error.value = getErrorMessage(e, 'โหลดข้อมูลไม่สำเร็จ') } finally { busy.value = false } }
 const loadHealth = () => read(async () => { health.value = (await api.get('/saraban/operations/health')).data })
 const loadRevocations = () => read(async () => { revocations.value = (await api.get('/saraban/revocations/pending')).data.pending })
