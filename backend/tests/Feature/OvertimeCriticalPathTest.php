@@ -100,7 +100,7 @@ class OvertimeCriticalPathTest extends TestCase
         $this->assertSame('pending', $order->status);
         $this->assertDatabaseHas('workflow_instances', [
             'subject_type' => $order->getMorphClass(), 'subject_id' => $order->id,
-            'status' => 'running', 'is_shadow' => false,
+            'status' => 'running',
         ]);
 
         $this->actingAs($this->reviewer)

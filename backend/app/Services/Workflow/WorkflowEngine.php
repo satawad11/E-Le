@@ -30,9 +30,8 @@ use Illuminate\Support\Facades\Schema;
  * สารบรรณจริง ส่วนตรรกะเดิมของใบลายังถูกเขียนคู่กันไว้เป็นทางถอย
  * (`config('workflow.engine_is_source_of_truth')`)
  *
- * `$shadow` ที่เหลืออยู่ในลายเซ็นแปลว่า "instance ที่ไม่ใช่ของจริง" — ตอนนี้ไม่มี
- * ผู้เรียกใดตั้งเป็น true แล้ว ค่าเริ่มต้นจึงเป็น false เพื่อไม่ให้ผู้เรียกใหม่
- * เผลอสร้าง instance ที่ถูกคิวงานมองข้าม
+ * ไม่มีแนวคิด "instance ที่เดินคู่ขนานเพื่อทดสอบ" เหลืออยู่แล้ว — instance ทุกตัว
+ * ที่ engine สร้างคือของจริง และคิวงานนับมันทั้งหมด
  */
 class WorkflowEngine
 {
@@ -207,7 +206,7 @@ class WorkflowEngine
      * ถ้ามี instance ของเรื่องนี้บนเวอร์ชันนั้นอยู่แล้วจะคืนตัวเดิม (idempotent)
      * เพื่อให้ backfill รันซ้ำได้อย่างปลอดภัย
      */
-    public function start(WorkflowDefinition $definition, Model $subject, ?int $initiatedBy = null, bool $shadow = false, array $meta = []): WorkflowInstance
+    public function start(WorkflowDefinition $definition, Model $subject, ?int $initiatedBy = null, array $meta = []): WorkflowInstance
     {
         $version = $definition->activeVersion();
 
@@ -215,10 +214,10 @@ class WorkflowEngine
             throw new \RuntimeException("workflow `{$definition->code}` ยังไม่มีเวอร์ชันที่มีผลบังคับใช้");
         }
 
-        return $this->startOnVersion($version, $subject, $initiatedBy, $shadow, $meta);
+        return $this->startOnVersion($version, $subject, $initiatedBy, $meta);
     }
 
-    public function startOnVersion(WorkflowVersion $version, Model $subject, ?int $initiatedBy = null, bool $shadow = false, array $meta = []): WorkflowInstance
+    public function startOnVersion(WorkflowVersion $version, Model $subject, ?int $initiatedBy = null, array $meta = []): WorkflowInstance
     {
         /*
          * รอบที่ยังเดินอยู่ = เรื่องเดิม เรียกซ้ำต้องได้ instance เดิม ไม่ใช่เปิดรอบใหม่ซ้อน
@@ -240,7 +239,7 @@ class WorkflowEngine
 
         $runNo = ($latest?->run_no ?? 0) + 1;
 
-        return DB::transaction(function () use ($version, $subject, $initiatedBy, $shadow, $meta, $runNo) {
+        return DB::transaction(function () use ($version, $subject, $initiatedBy, $meta, $runNo) {
             $steps = $version->steps()->get();
 
             if ($steps->isEmpty()) {
@@ -255,7 +254,6 @@ class WorkflowEngine
                 'status' => WorkflowInstance::STATUS_RUNNING,
                 'current_step_id' => $steps->first()->getKey(),
                 'initiated_by' => $initiatedBy,
-                'is_shadow' => $shadow,
                 'correlation_id' => request()?->attributes?->get('request_id'),
                 'meta' => $meta === [] ? null : $meta,
                 'started_at' => now(),
@@ -557,7 +555,6 @@ class WorkflowEngine
                 'to_step' => $to?->code,
                 'effective_actor_id' => $decision['effective_actor_id'] ?? null,
                 'delegated_by_id' => $decision['delegated_by_id'] ?? null,
-                'is_shadow' => $instance->is_shadow,
             ],
         );
     }

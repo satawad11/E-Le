@@ -313,7 +313,6 @@ class SarabanWorkflowDesignTest extends TestCase
             'subject_id' => $document->id,
             'status' => WorkflowInstance::STATUS_RUNNING,
             'current_step_id' => $active->steps()->first()->id,
-            'is_shadow' => false,
         ]);
 
         $this->actAs($this->admin());

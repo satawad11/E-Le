@@ -10,10 +10,10 @@
 - [x] ถอด shadow mode ทั้งชุด — `LeaveWorkflowShadow`, `WorkflowShadowComparison`, `workflow:shadow-report` / `shadow-replay`, `WORKFLOW_SHADOW_MODE` และตาราง `workflow_shadow_comparisons`
 - [x] backend 1,305 tests ผ่าน · Pint 726 ไฟล์สะอาด
 
-### ยังไม่ทำในรอบนี้ — ตัดสินใจแล้วว่าเลื่อนออกไป
+### ปิดงานสองรายการที่เหลือ — 2026-09-12
 
-- [ ] **หน้าจอออกแบบสายอนุมัติแบบอิงเวอร์ชัน แล้วจึงถอด `approval_steps`** — ตอนนี้ `approval_steps` ยังเป็นหน้าจอที่ผู้ดูแลใช้จริงและเป็นต้นทางที่ `publishCurrentVersion()` อ่าน · ถอดก่อนมีตัวแทนเท่ากับเอาความสามารถในการแก้สายอนุมัติออกจากมือผู้ดูแล
-- [ ] **ถอดคอลัมน์ `workflow_instances.is_shadow`** — ไม่มีผู้เรียกใดตั้งเป็น true แล้ว (ค่าเริ่มต้นของ `$shadow` เปลี่ยนเป็น false) แต่ `WorkQueueService` ของสารบรรณยังใช้กรองคิวงาน · รอให้งานปรับโมดูลสารบรรณที่กำลังทำอยู่จบก่อน จะได้ไม่แก้เทสต์ชุดเดียวกันชนกัน
+- [x] **ถอดคอลัมน์ `workflow_instances.is_shadow` ทิ้ง** — migration `2026_09_24_130000_drop_the_shadow_flag_from_workflow_instances` · ถอดพารามิเตอร์ `$shadow` ออกจาก `WorkflowEngine::start()` / `startOnVersion()` และ `LeaveWorkflowProvisioner::backfill()` ด้วย · คอลัมน์ที่ไม่มีผู้เขียนแต่ยังมีผู้กรอง (`WorkQueueService`) เป็นกับดัก — เผลอเขียน true กลับเข้ามาเมื่อไร เรื่องนั้นหายจากคิวงานเงียบ ๆ
+- [x] **หน้าจอออกแบบสายอนุมัติแบบอิงเวอร์ชัน — ตัดสินใจว่า "ไม่ทำ" ไม่ใช่ "เลื่อน"** — `approval_steps` เป็นหน้าจอตั้งสายอนุมัติถาวรของระบบ ไม่ใช่ของเก่าที่รอถูกแทน · ดู ADR-APPROVAL-CHAIN-EDITOR-20260912
 
 ## MENU NAMING — 2026-09-10
 

@@ -181,7 +181,7 @@ class LeaveService
     {
         try {
             $this->workflow->publishCurrentVersion();
-            $this->workflow->backfill($leave, shadow: false);
+            $this->workflow->backfill($leave);
         } catch (\Throwable $exception) {
             Log::warning('เปิด workflow instance ให้ใบลาไม่สำเร็จ', [
                 'leave_id' => $leave->id,

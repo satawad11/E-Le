@@ -287,7 +287,6 @@ class SarabanSecurityAuditTest extends TestCase
             'subject_type' => $document->getMorphClass(),
             'subject_id' => $document->id,
             'status' => 'running',
-            'is_shadow' => false,
             'started_at' => now(),
         ]);
 
@@ -315,7 +314,6 @@ class SarabanSecurityAuditTest extends TestCase
             'subject_type' => $document->getMorphClass(),
             'subject_id' => $document->id,
             'status' => 'running',
-            'is_shadow' => false,
             'started_at' => now(),
         ]);
 

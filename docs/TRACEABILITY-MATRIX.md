@@ -38,7 +38,7 @@
 | LEGACY-05-SARABAN | LEGACY-MIGRATION-PLAN 05-5 | SarabanWorkflowProvisioner (draft เท่านั้น ไม่แตะสิทธิ์) | WorkflowAuthorizationTest | Prepared |
 | LEGACY-05-DELEGATION | งานหลัก 4 | DelegationResolver + workflow_delegations mirror จาก user_delegations | WorkflowEngineTest (delegate/expired) | Verified |
 | LEGACY-05-AUDIT | งานหลัก 6 | workflow_actions append-only + central audit dual-write | WorkflowEngineTest (audit completeness) | Verified |
-| LEGACY-05-READONLY | LEGACY-MIGRATION-PLAN 05-7 | approval_steps คงไว้เป็นหน้าจอตั้งสายอนุมัติและต้นทางของทุกเวอร์ชัน; leave_approvals คงไว้เป็นประวัติรายขั้นและ snapshot ที่ engine ใช้ตรวจสิทธิ์ | LeaveApprovalCutoverTest, WorkflowAuthorizationTest | Verified |
+| LEGACY-05-READONLY | LEGACY-MIGRATION-PLAN 05-7; ADR-APPROVAL-CHAIN-EDITOR-20260912 | approval_steps เป็นหน้าจอตั้งสายอนุมัติถาวรและต้นทางของทุกเวอร์ชัน (ไม่ถอด); leave_approvals คงไว้เป็นประวัติรายขั้นและ snapshot ที่ engine ใช้ตรวจสิทธิ์ | LeaveApprovalCutoverTest, WorkflowAuthorizationTest | Verified |
 | CORE-CP-P0 | CORE CHECKPOINT | P0 gaps 16/16 ปิดครบ | 49 test class · composer audit สะอาด | Verified |
 | CORE-CP-P1 | CORE CHECKPOINT | P1 gaps 18/18 ปิดครบ | ดู 3 แถวล่าง | Verified |
 | CORE-CP-DEPLOY | DEPLOY-001 / DEPLOY-004 | nginx + php-fpm เป็นทางเข้าเดียว · Dockerfile ชุดเดียว · `docker/nginx/default.conf` ใช้งานจริง | ตรวจ HTTP จริง: `/api/ping` 200, `/storage` 404, backend ไม่เปิดพอร์ต | Verified |

@@ -164,7 +164,7 @@ class LeaveApprovalCoordinator
         ];
     }
 
-    /** instance ที่ใช้ตัดสินจริงของสายนี้ — ไม่ใช่ shadow */
+    /** instance ที่ใช้ตัดสินจริงของสายนี้ */
     private function authoritativeInstance(Leave $leave, string $stage): ?WorkflowInstance
     {
         $provisioner = $this->provisionerFor($stage);
@@ -179,10 +179,6 @@ class LeaveApprovalCoordinator
         $running = $this->engine->instanceFor($leave, $provisioner::DEFINITION_CODE);
 
         if ($running !== null && $running->isRunning()) {
-            if ($running->is_shadow) {
-                $running->forceFill(['is_shadow' => false])->save();
-            }
-
             return $running;
         }
 
@@ -201,7 +197,7 @@ class LeaveApprovalCoordinator
             return null;
         }
 
-        $instance = $provisioner->backfill($leave, shadow: false);
+        $instance = $provisioner->backfill($leave);
 
         /*
          * รอบก่อนจบไปแล้ว แต่สายนี้กลับมาเดินใหม่ — ต้องเริ่ม instance รอบใหม่
@@ -228,18 +224,8 @@ class LeaveApprovalCoordinator
             $provisioner->definition(),
             $leave,
             $leave->user_id,
-            shadow: false,
             meta: ['stage' => $stage],
         );
-
-        /*
-         * ใบลาที่เคยถูกเดิน shadow มาก่อนจะมี instance ที่ `is_shadow = true` อยู่แล้ว
-         * เมื่อ cutover แล้ว instance เดิมกลายเป็นตัวจริง — ปลดธง shadow ทิ้ง
-         * เพื่อไม่ให้รายงานเทียบผลนับมันเป็นการทดลองต่อไป
-         */
-        if ($instance->is_shadow) {
-            $instance->forceFill(['is_shadow' => false])->save();
-        }
 
         return $instance;
     }

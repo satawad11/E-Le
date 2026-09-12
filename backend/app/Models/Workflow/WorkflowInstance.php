@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 #[Fillable([
     'workflow_version_id', 'subject_type', 'subject_id', 'run_no', 'status', 'current_step_id',
-    'initiated_by', 'is_shadow', 'correlation_id', 'meta', 'started_at', 'completed_at',
+    'initiated_by', 'correlation_id', 'meta', 'started_at', 'completed_at',
 ])]
 class WorkflowInstance extends Model
 {
@@ -30,7 +30,6 @@ class WorkflowInstance extends Model
     {
         return [
             'meta' => 'array',
-            'is_shadow' => 'boolean',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
         ];

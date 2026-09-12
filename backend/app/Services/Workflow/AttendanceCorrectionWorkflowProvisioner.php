@@ -21,7 +21,7 @@ class AttendanceCorrectionWorkflowProvisioner
         $definition = $this->definition();
         $this->ensureVersion($definition);
 
-        return $this->engine->start($definition, $correction, $correction->requested_by, false, [
+        return $this->engine->start($definition, $correction, $correction->requested_by, [
             'attendance_id' => $correction->attendance_id,
             'user_id' => $correction->user_id,
         ]);

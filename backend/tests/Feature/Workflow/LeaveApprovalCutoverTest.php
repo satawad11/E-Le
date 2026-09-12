@@ -175,7 +175,7 @@ class LeaveApprovalCutoverTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_the_engine_path_leaves_a_real_instance_not_a_shadow_one(): void
+    public function test_the_engine_path_leaves_a_running_instance_pinned_to_a_version(): void
     {
         config(['workflow.engine_is_source_of_truth' => true]);
         $leave = $this->pendingLeave();
@@ -183,8 +183,8 @@ class LeaveApprovalCutoverTest extends TestCase
         $this->actingAs($this->firstApprover)->postJson("/api/approvals/{$leave->id}/approve")->assertOk();
 
         $instance = WorkflowInstance::where('subject_id', $leave->id)->firstOrFail();
-        $this->assertFalse((bool) $instance->is_shadow, 'instance ที่ตัดสินจริงต้องไม่ถูกทำเครื่องหมายว่าเป็นการทดลอง');
         $this->assertSame(WorkflowInstance::STATUS_RUNNING, $instance->status);
+        $this->assertNotNull($instance->workflow_version_id, 'ต้อง pin เวอร์ชันไว้ เรื่องที่เดินอยู่จึงไม่ถูกกระทบเมื่อผู้ดูแลแก้สายอนุมัติ');
     }
 
     private function pendingLeave(): Leave

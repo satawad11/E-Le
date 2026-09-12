@@ -54,11 +54,6 @@ class WorkQueueService
         $instances = WorkflowInstance::query()
             ->where('subject_type', (new Document)->getMorphClass())
             ->where('status', WorkflowInstance::STATUS_RUNNING)
-            /*
-             * `is_shadow` = เรื่องที่เดินคู่ขนานเพื่อทดสอบ ไม่ใช่ของจริง
-             * ถ้าติดเข้ามาในคิว ผู้ใช้จะเห็นงานที่ไม่มีอยู่จริง
-             */
-            ->where('is_shadow', false)
             ->latest('id')
             ->limit(self::SCAN_LIMIT)
             ->get();

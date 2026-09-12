@@ -352,7 +352,6 @@ class LeaveModernizationTest extends TestCase
             ->first();
 
         $this->assertNotNull($instance, 'ใบลาใหม่ต้องมี workflow instance');
-        $this->assertFalse((bool) $instance->is_shadow, 'instance ที่ตัดสินจริงต้องไม่ถูกทำเครื่องหมายว่าเป็นการทดลอง');
         $this->assertNotNull($instance->workflow_version_id, 'ต้อง pin เวอร์ชันไว้');
     }
 

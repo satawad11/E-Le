@@ -43,7 +43,7 @@ class OvertimeOrderWorkflowProvisioner
         );
         $this->ensureVersion($definition);
 
-        return $this->engine->start($definition, $order, $order->created_by, false, ['org_unit_id' => $order->org_unit_id]);
+        return $this->engine->start($definition, $order, $order->created_by, ['org_unit_id' => $order->org_unit_id]);
     }
 
     private function ensureVersion(WorkflowDefinition $definition): WorkflowVersion

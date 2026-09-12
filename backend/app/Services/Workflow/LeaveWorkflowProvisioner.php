@@ -20,14 +20,14 @@ use Illuminate\Support\Facades\DB;
  * — หน้าจอตั้งสายอนุมัติยังเป็นหน้าเดิม ผู้ดูแลไม่ต้องเรียนรู้อะไรใหม่ และการออก
  * เวอร์ชันเป็นผลพลอยได้ของการกดบันทึก
  *
- * ของเดิมทั้งหมดยังอยู่ครบและยังถูกเขียนคู่กันไปเสมอ (dual-write) เพื่อเป็นทางถอย:
- *   - `approval_steps`        สายอนุมัติที่ผู้ดูแลแก้ไข และเป็นต้นทางของทุกเวอร์ชัน
+ * `approval_steps` ไม่ใช่ของเก่าที่รอถูกถอด — เป็นหน้าจอตั้งสายอนุมัติถาวรของระบบ
+ * ตาม ADR-APPROVAL-CHAIN-EDITOR-20260912 · ส่วนอีกสองตารางถูกเขียนคู่กันไปเสมอ
+ * (dual-write) เพื่อเป็นทางถอยถ้าต้องปิดสวิตช์ engine:
  *   - `leave_approvals`       ประวัติรายขั้นของใบลาแต่ละใบ และเป็น snapshot ที่
  *                             engine ใช้ตัดสินว่าใครมีสิทธิ์ในขั้นนั้น
  *   - `leaves.approval_level` ขั้นปัจจุบัน ใช้โดยรายงานและแบบฟอร์มราชการ
  *
- * instance ที่สร้างจากที่นี่เป็นของจริง (`is_shadow = false`) — การอนุมัติจริง
- * เดินบน instance เดียวกันนี้ตั้งแต่ cutover (CLEANUP-01 · D4)
+ * instance ที่สร้างจากที่นี่เป็นตัวที่การอนุมัติจริงเดินอยู่ ตั้งแต่ cutover (CLEANUP-01 · D4)
  */
 class LeaveWorkflowProvisioner
 {
@@ -226,7 +226,7 @@ class LeaveWorkflowProvisioner
      * ที่เป็นประวัติจริง เพื่อให้ instance สะท้อนความจริง ณ ตอนนี้
      * ประวัติเดิมไม่ถูกแก้ไขแม้แต่แถวเดียว
      */
-    public function backfill(Leave $leave, bool $shadow = false): ?WorkflowInstance
+    public function backfill(Leave $leave): ?WorkflowInstance
     {
         $definition = $this->definition();
         $version = $definition->activeVersion();
@@ -255,7 +255,7 @@ class LeaveWorkflowProvisioner
             return null;
         }
 
-        return DB::transaction(function () use ($leave, $version, $approvals, $shadow) {
+        return DB::transaction(function () use ($leave, $version, $approvals) {
             $steps = $version->steps()->get()->keyBy('step_order');
 
             $instance = WorkflowInstance::create([
@@ -264,7 +264,6 @@ class LeaveWorkflowProvisioner
                 'subject_id' => $leave->getKey(),
                 'status' => WorkflowInstance::STATUS_RUNNING,
                 'initiated_by' => $leave->user_id,
-                'is_shadow' => $shadow,
                 'started_at' => $leave->submitted_at ?? $leave->created_at,
                 'meta' => ['backfilled_from' => 'leave_approvals', 'stage' => $this->approvalStage(), 'legacy_approval_level' => $this->currentLevel($leave)],
             ]);

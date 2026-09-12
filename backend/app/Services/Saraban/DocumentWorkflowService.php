@@ -42,11 +42,7 @@ class DocumentWorkflowService
     {
         $definition = WorkflowDefinition::query()->where('code', self::DEFINITION_CODE)->firstOrFail();
 
-        /*
-         * `shadow: false` — สายของสารบรรณเป็นของจริงตั้งแต่วันแรก ไม่ใช่การเดินคู่ขนาน
-         * เพื่อเทียบกับระบบเดิมแบบที่โมดูลการลาต้องทำ (โมดูลนี้ไม่มีระบบเดิมให้เทียบ)
-         */
-        return $this->engine->start($definition, $document, $initiator->id, shadow: false);
+        return $this->engine->start($definition, $document, $initiator->id);
     }
 
     public function instanceFor(Document $document): ?WorkflowInstance

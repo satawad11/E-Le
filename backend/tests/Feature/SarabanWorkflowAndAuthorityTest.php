@@ -125,7 +125,6 @@ class SarabanWorkflowAndAuthorityTest extends TestCase
 
         $this->assertNotNull($instance, 'ต้องเดินบน workflow engine กลาง ไม่ใช่ state machine ของตัวเอง');
         $this->assertSame(WorkflowInstance::STATUS_RUNNING, $instance->status);
-        $this->assertFalse((bool) $instance->is_shadow);
         $this->assertSame('saraban.document', $instance->version->definition->code);
     }
 
