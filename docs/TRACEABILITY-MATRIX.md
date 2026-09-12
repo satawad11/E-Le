@@ -32,12 +32,12 @@
 | LEGACY-04-LEASTPRIV | Security Rule (2026-08-14) | แยก admin.users.manage_permissions / system.menu.manage และ /api/saraban/settings | PrivilegeEscalationGuardTest | Verified |
 | LEGACY-05-SCHEMA | LEGACY-MIGRATION-PLAN 05-1, docs/07 | workflow_definitions/versions/steps/transitions/instances/tasks/actions/delegations + shadow comparisons | WorkflowEngineTest | Verified |
 | LEGACY-05-LEAVE-V1 | LEGACY-MIGRATION-PLAN 05-2 | LeaveWorkflowProvisioner แปลง approval_steps เป็น Leave Workflow v1 พร้อม version pinning | WorkflowEngineTest (version pinning) | Verified |
-| LEGACY-05-SHADOW | LEGACY-MIGRATION-PLAN 05-3 | LeaveWorkflowShadow + workflow:shadow-replay / shadow-report บน GovernmentApprovalController | LeaveWorkflowShadowParityTest | Verified |
-| LEGACY-05-CUTOVER | LEGACY-MIGRATION-PLAN 05-4 | config workflow.engine_is_source_of_truth (ยังไม่เปิด และยังไม่มีโค้ดอ่าน) | — | Deferred |
+| LEGACY-05-SHADOW | LEGACY-MIGRATION-PLAN 05-3 | ถอดออกแล้ว 2026-09-12 พร้อมตาราง workflow_shadow_comparisons — ดู ADR-WORKFLOW-CUTOVER-20260912 | — | Removed after cutover |
+| LEGACY-05-CUTOVER | LEGACY-MIGRATION-PLAN 05-4; ADR-WORKFLOW-CUTOVER-20260912 | workflow.engine_is_source_of_truth = true โดยค่าเริ่มต้น; LeaveApprovalCoordinator ตัดสินทั้งสองสายบนเวอร์ชันที่ instance pin ไว้; dual-write คงไว้เป็นทางถอย | LeaveApprovalCutoverTest + LeaveCancellationCutoverTest (รันทั้งเปิดและปิดสวิตช์) + WorkflowAuthorizationTest | Verified |
 | LEGACY-05-SARABAN | LEGACY-MIGRATION-PLAN 05-5 | SarabanWorkflowProvisioner (draft เท่านั้น ไม่แตะสิทธิ์) | WorkflowAuthorizationTest | Prepared |
 | LEGACY-05-DELEGATION | งานหลัก 4 | DelegationResolver + workflow_delegations mirror จาก user_delegations | WorkflowEngineTest (delegate/expired) | Verified |
 | LEGACY-05-AUDIT | งานหลัก 6 | workflow_actions append-only + central audit dual-write | WorkflowEngineTest (audit completeness) | Verified |
-| LEGACY-05-READONLY | LEGACY-MIGRATION-PLAN 05-7 | approval_steps / leave_approvals คงไว้เป็น read-only | LeaveWorkflowShadowParityTest, WorkflowAuthorizationTest | Verified |
+| LEGACY-05-READONLY | LEGACY-MIGRATION-PLAN 05-7 | approval_steps คงไว้เป็นหน้าจอตั้งสายอนุมัติและต้นทางของทุกเวอร์ชัน; leave_approvals คงไว้เป็นประวัติรายขั้นและ snapshot ที่ engine ใช้ตรวจสิทธิ์ | LeaveApprovalCutoverTest, WorkflowAuthorizationTest | Verified |
 | CORE-CP-P0 | CORE CHECKPOINT | P0 gaps 16/16 ปิดครบ | 49 test class · composer audit สะอาด | Verified |
 | CORE-CP-P1 | CORE CHECKPOINT | P1 gaps 18/18 ปิดครบ | ดู 3 แถวล่าง | Verified |
 | CORE-CP-DEPLOY | DEPLOY-001 / DEPLOY-004 | nginx + php-fpm เป็นทางเข้าเดียว · Dockerfile ชุดเดียว · `docker/nginx/default.conf` ใช้งานจริง | ตรวจ HTTP จริง: `/api/ping` 200, `/storage` 404, backend ไม่เปิดพอร์ต | Verified |
