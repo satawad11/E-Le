@@ -16,20 +16,18 @@ use Illuminate\Support\Facades\DB;
 /**
  * LEGACY-05 · 05-2 — แปลงสายอนุมัติใบลาปัจจุบันเป็น "Leave Workflow v1"
  *
- * แหล่งที่มาของ v1 คือ `approval_steps` ที่ระบบใช้อยู่จริง ณ วันที่แปลง
- * ไม่ใช่สายอนุมัติในอุดมคติ — เพราะเป้าหมายของ shadow mode คือพิสูจน์ว่า
- * engine ใหม่ให้ผล **เหมือนเดิมทุกประการ** ก่อนจะเปลี่ยนอะไร
+ * แหล่งที่มาของเวอร์ชันคือ `approval_steps` ที่ผู้ดูแลตั้งไว้จริง ณ วันที่ออกเวอร์ชัน
+ * — หน้าจอตั้งสายอนุมัติยังเป็นหน้าเดิม ผู้ดูแลไม่ต้องเรียนรู้อะไรใหม่ และการออก
+ * เวอร์ชันเป็นผลพลอยได้ของการกดบันทึก
  *
- * ของเดิมทั้งหมดยังอยู่ครบและยังเป็น source of truth:
- *   - `approval_steps`      คงไว้ (กฎข้อ 1)
- *   - `leave_approvals`     คงไว้ (กฎข้อ 2) — ยังเป็นตัวตัดสินสถานะจริง
- *   - `leaves.approval_level` คงไว้
+ * ของเดิมทั้งหมดยังอยู่ครบและยังถูกเขียนคู่กันไปเสมอ (dual-write) เพื่อเป็นทางถอย:
+ *   - `approval_steps`        สายอนุมัติที่ผู้ดูแลแก้ไข และเป็นต้นทางของทุกเวอร์ชัน
+ *   - `leave_approvals`       ประวัติรายขั้นของใบลาแต่ละใบ และเป็น snapshot ที่
+ *                             engine ใช้ตัดสินว่าใครมีสิทธิ์ในขั้นนั้น
+ *   - `leaves.approval_level` ขั้นปัจจุบัน ใช้โดยรายงานและแบบฟอร์มราชการ
  *
- * instance ที่สร้างจากที่นี่เป็น shadow โดยค่าเริ่มต้น (`is_shadow = true`)
- *
- * CLEANUP-01 (D4) — เมื่อเปิด `workflow.engine_is_source_of_truth` การอนุมัติจริง
- * จะเดินบน instance เดียวกันนี้ จึงต้องสร้างแบบไม่ใช่ shadow (`backfill($leave, shadow: false)`)
- * ของเดิมทั้งหมดยังถูกเขียนคู่กันไปเสมอ (dual-write) ตามข้อกำหนดของเฟส
+ * instance ที่สร้างจากที่นี่เป็นของจริง (`is_shadow = false`) — การอนุมัติจริง
+ * เดินบน instance เดียวกันนี้ตั้งแต่ cutover (CLEANUP-01 · D4)
  */
 class LeaveWorkflowProvisioner
 {
@@ -222,13 +220,13 @@ class LeaveWorkflowProvisioner
     }
 
     /**
-     * สร้าง shadow instance ให้ใบลาหนึ่งใบ โดยสะท้อนสถานะปัจจุบันของมัน
+     * สร้าง instance ให้ใบลาหนึ่งใบ โดยสะท้อนสถานะปัจจุบันของมัน
      *
      * **สำคัญ:** ไม่ได้ "เดินสายใหม่" แต่ reconstruct จาก `leave_approvals`
      * ที่เป็นประวัติจริง เพื่อให้ instance สะท้อนความจริง ณ ตอนนี้
      * ประวัติเดิมไม่ถูกแก้ไขแม้แต่แถวเดียว
      */
-    public function backfill(Leave $leave, bool $shadow = true): ?WorkflowInstance
+    public function backfill(Leave $leave, bool $shadow = false): ?WorkflowInstance
     {
         $definition = $this->definition();
         $version = $definition->activeVersion();
@@ -237,10 +235,12 @@ class LeaveWorkflowProvisioner
             return null;
         }
 
+        // เรื่องหนึ่งเดินสายเดียวกันได้หลายรอบ (เช่นคำขอยกเลิกที่ยื่นใหม่) — เอารอบล่าสุด
         $existing = WorkflowInstance::query()
             ->where('subject_type', $leave->getMorphClass())
             ->where('subject_id', $leave->getKey())
             ->where('workflow_version_id', $version->getKey())
+            ->orderByDesc('run_no')
             ->first();
 
         if ($existing !== null) {

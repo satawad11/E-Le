@@ -289,7 +289,7 @@ class WorkflowController extends Controller
                 ]);
             }
 
-            // workflow engine (shadow) สะท้อนเฉพาะสายของใบลา
+            // ออกเวอร์ชันใหม่ให้ engine ทันทีที่ผู้ดูแลแก้สาย — เฉพาะสายของใบลา
             if ($chain === ApprovalStep::CHAIN_LEAVE) {
                 try {
                     app(LeaveWorkflowProvisioner::class)->publishCurrentVersion();

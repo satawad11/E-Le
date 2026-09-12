@@ -26,9 +26,13 @@ use Illuminate\Support\Facades\Schema;
  *   - บันทึกทุกการกระทำลง `workflow_actions` แบบ append-only
  *   - แยก "ผู้กด" ออกจาก "ผู้ที่ควรเป็นเจ้าของงาน" เพื่อรองรับผู้รักษาการ
  *
- * **สถานะปัจจุบัน: shadow mode** — engine คำนวณคู่ขนานกับตรรกะเดิมและบันทึก
- * ผลเทียบไว้ แต่ยังไม่ได้เป็นผู้ตัดสินสถานะจริงของใบลา (กฎข้อ 5 และ 7 ของเฟสนี้)
- * การ cutover เป็นขั้นตอนแยก (05-4) ที่ทำได้ต่อเมื่อผลเทียบตรง 100%
+ * **สถานะปัจจุบัน: cutover แล้ว** — engine เป็นผู้ตัดสินสายอนุมัติของใบลาและของ
+ * สารบรรณจริง ส่วนตรรกะเดิมของใบลายังถูกเขียนคู่กันไว้เป็นทางถอย
+ * (`config('workflow.engine_is_source_of_truth')`)
+ *
+ * `$shadow` ที่เหลืออยู่ในลายเซ็นแปลว่า "instance ที่ไม่ใช่ของจริง" — ตอนนี้ไม่มี
+ * ผู้เรียกใดตั้งเป็น true แล้ว ค่าเริ่มต้นจึงเป็น false เพื่อไม่ให้ผู้เรียกใหม่
+ * เผลอสร้าง instance ที่ถูกคิวงานมองข้าม
  */
 class WorkflowEngine
 {
@@ -203,7 +207,7 @@ class WorkflowEngine
      * ถ้ามี instance ของเรื่องนี้บนเวอร์ชันนั้นอยู่แล้วจะคืนตัวเดิม (idempotent)
      * เพื่อให้ backfill รันซ้ำได้อย่างปลอดภัย
      */
-    public function start(WorkflowDefinition $definition, Model $subject, ?int $initiatedBy = null, bool $shadow = true, array $meta = []): WorkflowInstance
+    public function start(WorkflowDefinition $definition, Model $subject, ?int $initiatedBy = null, bool $shadow = false, array $meta = []): WorkflowInstance
     {
         $version = $definition->activeVersion();
 
@@ -214,19 +218,29 @@ class WorkflowEngine
         return $this->startOnVersion($version, $subject, $initiatedBy, $shadow, $meta);
     }
 
-    public function startOnVersion(WorkflowVersion $version, Model $subject, ?int $initiatedBy = null, bool $shadow = true, array $meta = []): WorkflowInstance
+    public function startOnVersion(WorkflowVersion $version, Model $subject, ?int $initiatedBy = null, bool $shadow = false, array $meta = []): WorkflowInstance
     {
-        $existing = WorkflowInstance::query()
+        /*
+         * รอบที่ยังเดินอยู่ = เรื่องเดิม เรียกซ้ำต้องได้ instance เดิม ไม่ใช่เปิดรอบใหม่ซ้อน
+         *
+         * แต่ถ้ารอบก่อน **จบไปแล้ว** (อนุมัติ/ปฏิเสธ/ยกเลิก) การเรียก start ใหม่แปลว่า
+         * เรื่องนี้ถูกยื่นเข้ามาอีกรอบจริง ๆ เช่นคำขอยกเลิกใบลาที่ถูกปฏิเสธแล้วยื่นใหม่ —
+         * ต้องเปิดรอบใหม่ ไม่ใช่คืนรอบที่จบไปแล้วซึ่งไม่มีขั้นตอนให้ทำต่อ
+         */
+        $latest = WorkflowInstance::query()
             ->where('subject_type', $subject->getMorphClass())
             ->where('subject_id', $subject->getKey())
             ->where('workflow_version_id', $version->getKey())
+            ->orderByDesc('run_no')
             ->first();
 
-        if ($existing !== null) {
-            return $existing;
+        if ($latest !== null && $latest->isRunning()) {
+            return $latest;
         }
 
-        return DB::transaction(function () use ($version, $subject, $initiatedBy, $shadow, $meta) {
+        $runNo = ($latest?->run_no ?? 0) + 1;
+
+        return DB::transaction(function () use ($version, $subject, $initiatedBy, $shadow, $meta, $runNo) {
             $steps = $version->steps()->get();
 
             if ($steps->isEmpty()) {
@@ -237,6 +251,7 @@ class WorkflowEngine
                 'workflow_version_id' => $version->getKey(),
                 'subject_type' => $subject->getMorphClass(),
                 'subject_id' => $subject->getKey(),
+                'run_no' => $runNo,
                 'status' => WorkflowInstance::STATUS_RUNNING,
                 'current_step_id' => $steps->first()->getKey(),
                 'initiated_by' => $initiatedBy,

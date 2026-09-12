@@ -169,7 +169,7 @@ class DatabaseSeeder extends Seeder
         // เพราะอ่าน users.work_start_time เพื่อแยกคนที่มีเวลาเฉพาะตัว
         $this->call([WorkScheduleSeeder::class]);
 
-        // LEGACY-05: แปลงสายอนุมัติด้านบนเป็น Leave Workflow v1 (shadow mode)
+        // LEGACY-05: แปลงสายอนุมัติด้านบนเป็นเวอร์ชันแรกของ Leave Workflow
         // ต้องอยู่ท้ายสุดเพราะอ่านจาก approval_steps ที่เพิ่งสร้าง
         $this->call([LeaveWorkflowSeeder::class]);
 

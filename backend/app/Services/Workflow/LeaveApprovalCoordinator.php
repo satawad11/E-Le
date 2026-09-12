@@ -14,7 +14,7 @@ use App\Models\Workflow\WorkflowInstance;
  * CLEANUP-01 / CLEANUP-02 (D4) — รวมจุดตัดสินใจของสองระบบไว้ที่เดียว
  *
  * ก่อนหน้านี้ตรรกะเดินสายอยู่สองที่: controller ของเดิม กับ `WorkflowEngine`
- * ที่เดินแบบ shadow การเปลี่ยนกฎอนุมัติจึงต้องแก้สองที่ให้ตรงกันเอง
+ * ที่เดินคู่ขนาน การเปลี่ยนกฎอนุมัติจึงต้องแก้สองที่ให้ตรงกันเอง
  * คลาสนี้ทำให้เหลือทางเข้าเดียว และการ cutover กลายเป็นการสลับ "ใครเป็นคนตัดสิน"
  * ไม่ใช่การเขียนสายอนุมัติใหม่ทั้งชุด
  *
@@ -28,8 +28,8 @@ use App\Models\Workflow\WorkflowInstance;
  * ไม่ว่าผู้ตัดสินจะเป็นใคร (dual-write ตามข้อกำหนดข้อ 3 ของ LEGACY-05 · 05-4)
  *
  * สลับผู้ตัดสินด้วย `config('workflow.engine_is_source_of_truth')` — ค่าเริ่มต้นคือ
- * ตรรกะเดิม การเปิดใช้ engine ต้องมีหลักฐาน shadow ที่ตรงกัน 100% จากการอนุมัติจริง
- * ตามที่ `docs/checkpoints/LEGACY-05-REPORT.md` ข้อ 11 กำหนดไว้
+ * engine · ปิดสวิตช์แล้วระบบถอยกลับไปใช้ `leave_approvals` + `leaves.approval_level`
+ * ได้ทันทีโดยไม่ต้อง revert โค้ด เพราะของเดิมยังถูกเขียนครบทุกแถว
  */
 class LeaveApprovalCoordinator
 {
@@ -170,29 +170,74 @@ class LeaveApprovalCoordinator
         $provisioner = $this->provisionerFor($stage);
 
         /*
-         * CLEANUP-02 — ออกเวอร์ชันจากสายอนุมัติปัจจุบันให้เองถ้ายังไม่มี
+         * เรื่องที่กำลังเดินอยู่ต้องไม่ถูกกระทบจากการแก้สายอนุมัติ
          *
-         * ระบบที่ไม่เคยรัน `LeaveWorkflowSeeder` จะไม่มีเวอร์ชันที่ใช้งานอยู่เลย
-         * ถ้าเปิดสวิตช์ cutover ในสภาพนั้น การอนุมัติทุกใบจะล้มทันที
-         * `publishCurrentVersion()` เป็น idempotent — เรียกซ้ำไม่ออกเวอร์ชันใหม่
+         * instance pin เวอร์ชันของตัวเองไว้ จึงต้องหา "รอบที่ยังเดินอยู่" ก่อนเสมอ
+         * และไม่ผูกกับเวอร์ชันที่มีผลอยู่ตอนนี้ — ไม่งั้นการเผยแพร่เวอร์ชันใหม่
+         * ระหว่างที่ใบลาเดินค้างอยู่ จะทำให้ระบบเปิดรอบใหม่ทับของเดิมกลางคัน
          */
-        if ($provisioner->definition()->activeVersion() === null) {
-            try {
-                $provisioner->publishCurrentVersion();
-            } catch (\RuntimeException) {
-                // ยังไม่ได้ตั้งค่าสายอนุมัติเลย — ปล่อยให้ผู้เรียกแจ้งข้อความมาตรฐานด้านล่าง
-                return null;
+        $running = $this->engine->instanceFor($leave, $provisioner::DEFINITION_CODE);
+
+        if ($running !== null && $running->isRunning()) {
+            if ($running->is_shadow) {
+                $running->forceFill(['is_shadow' => false])->save();
             }
+
+            return $running;
+        }
+
+        /*
+         * เริ่มรอบใหม่ = ใช้สายอนุมัติ "ตามที่ตั้งไว้ตอนนี้"
+         *
+         * เดิมออกเวอร์ชันให้เฉพาะตอนที่ยังไม่มีเวอร์ชันใดเลย ผู้ดูแลที่แก้สายอนุมัติ
+         * ภายหลังจึงไม่มีผลกับรอบใหม่ ๆ — ใบที่ยื่นหลังแก้ยังเดินสายเก่าต่อไปเงียบ ๆ
+         * ขณะที่เส้นทางเดิมอ่านสายใหม่ทุกครั้งที่ยื่น · `publishCurrentVersion()`
+         * เทียบลายนิ้วมือก่อน จึงออกเวอร์ชันใหม่เฉพาะเมื่อสายเปลี่ยนจริง
+         */
+        try {
+            $provisioner->publishCurrentVersion();
+        } catch (\RuntimeException) {
+            // ยังไม่ได้ตั้งค่าสายอนุมัติเลย — ปล่อยให้ผู้เรียกแจ้งข้อความมาตรฐาน
+            return null;
         }
 
         $instance = $provisioner->backfill($leave, shadow: false);
+
+        /*
+         * รอบก่อนจบไปแล้ว แต่สายนี้กลับมาเดินใหม่ — ต้องเริ่ม instance รอบใหม่
+         *
+         * เกิดกับคำขอยกเลิกใบลาที่ถูกปฏิเสธแล้วผู้ยื่นยื่นใหม่ · instance เดิมอยู่ในสถานะ
+         * `rejected` และหาไม่เจอขั้นที่รออยู่ ถ้าใช้ตัวเดิมต่อ ระบบจะตอบว่า "ไม่มีขั้นตอน
+         * ที่รออนุมัติ" ทั้งที่ผู้ยื่นเพิ่งยื่นคำขอใหม่มาหมาด ๆ
+         *
+         * เส้นทางเดิมไม่เจอปัญหานี้เพราะมันสร้างแถวสรุปชุดใหม่ทุกครั้งที่ยื่นใหม่
+         */
+        if ($instance !== null && ! $instance->isRunning()) {
+            $instance = null;
+        }
+
+        /*
+         * ไม่มีอะไรให้ backfill = ใบลานี้ยังไม่มีแถวสรุปใน `leave_approvals`
+         *
+         * `backfill()` สร้าง instance **จากแถวสรุปเดิม** ซึ่งเป็นสิ่งที่ถูกต้องตอนที่
+         * ตรรกะเดิมยังเป็นผู้ตัดสิน · เมื่อ engine เป็นผู้ตัดสินแล้ว สายอนุมัติเป็นของ
+         * engine เต็มตัว ใบที่ยังไม่มีแถวสรุปจึงต้อง "เริ่มเดินที่ขั้นแรก" ได้เอง
+         * ไม่ใช่ล้มด้วยข้อความว่ายังไม่ได้ตั้งค่าสายอนุมัติ ทั้งที่ตั้งไว้แล้ว
+         */
+        $instance ??= $this->engine->start(
+            $provisioner->definition(),
+            $leave,
+            $leave->user_id,
+            shadow: false,
+            meta: ['stage' => $stage],
+        );
 
         /*
          * ใบลาที่เคยถูกเดิน shadow มาก่อนจะมี instance ที่ `is_shadow = true` อยู่แล้ว
          * เมื่อ cutover แล้ว instance เดิมกลายเป็นตัวจริง — ปลดธง shadow ทิ้ง
          * เพื่อไม่ให้รายงานเทียบผลนับมันเป็นการทดลองต่อไป
          */
-        if ($instance !== null && $instance->is_shadow) {
+        if ($instance->is_shadow) {
             $instance->forceFill(['is_shadow' => false])->save();
         }
 

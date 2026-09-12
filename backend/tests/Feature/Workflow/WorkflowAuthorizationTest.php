@@ -9,8 +9,6 @@ use App\Models\LeaveBalance;
 use App\Models\LeaveType;
 use App\Models\Role;
 use App\Models\User;
-use App\Models\Workflow\WorkflowInstance;
-use App\Models\Workflow\WorkflowShadowComparison;
 use App\Models\Workflow\WorkflowVersion;
 use App\Services\Workflow\LeaveWorkflowProvisioner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,9 +17,9 @@ use Tests\TestCase;
 
 /**
  * LEGACY-05 — authorization ต่อ workflow action, IDOR และการยืนยันว่า
- * ใบลาที่ค้างอยู่เดิมยังเดินต่อได้เหมือนเดิมหลังเปิด shadow mode
+ * ใบลาที่ค้างอยู่เดิมยังเดินต่อได้เหมือนเดิมหลัง cutover ไป workflow engine
  *
- * เทสต์ชุดนี้ยิงผ่าน HTTP จริง เพื่อพิสูจน์ว่า **การเพิ่ม shadow mode
+ * เทสต์ชุดนี้ยิงผ่าน HTTP จริง เพื่อพิสูจน์ว่า **การย้ายผู้ตัดสินไปที่ engine
  * ไม่ได้เปลี่ยนพฤติกรรมของ endpoint อนุมัติแม้แต่น้อย**
  */
 class WorkflowAuthorizationTest extends TestCase
@@ -262,50 +260,16 @@ class WorkflowAuthorizationTest extends TestCase
             ->assertStatus(422);
     }
 
-    // --------------------------------------------------- shadow ไม่รบกวนของจริง
-
-    public function test_shadow_mode_records_a_comparison_without_changing_the_outcome(): void
-    {
-        $leave = $this->pendingLeave();
-
-        $this->actingAs($this->userWithRole($this->hr))
-            ->postJson("/api/approvals/{$leave->id}/approve")
-            ->assertOk();
-
-        $comparisons = WorkflowShadowComparison::where('subject_id', $leave->id)->get();
-
-        $this->assertNotEmpty($comparisons, 'shadow mode ต้องบันทึกผลเทียบ');
-        $this->assertTrue(
-            $comparisons->every(fn (WorkflowShadowComparison $row) => $row->matched),
-            'ผล engine ต้องตรงกับตรรกะเดิม',
-        );
-
-        // และ instance ต้องเป็น shadow เสมอ — ยังไม่ใช่ผู้ตัดสินสถานะจริง
-        $this->assertTrue(WorkflowInstance::where('subject_id', $leave->id)->first()->is_shadow);
-    }
-
-    public function test_turning_shadow_mode_off_leaves_the_approval_path_working(): void
-    {
-        config(['workflow.shadow_mode' => false]);
-
-        $leave = $this->pendingLeave();
-
-        $this->actingAs($this->userWithRole($this->hr))
-            ->postJson("/api/approvals/{$leave->id}/approve")
-            ->assertOk();
-
-        $this->assertSame(2, (int) $leave->fresh()->approval_level);
-        $this->assertSame(0, WorkflowShadowComparison::where('subject_id', $leave->id)->count());
-    }
-
     /**
-     * ถ้า shadow ล้มด้วยเหตุใดก็ตาม การอนุมัติจริงต้องไม่ล้มตาม
+     * ถอนเวอร์ชันของสายอนุมัติทิ้งทั้งหมดแล้ว การอนุมัติต้องไม่ล้มตาม
+     *
+     * เคยเป็นสถานการณ์ที่ shadow ต้องยอมแพ้เงียบ ๆ · ตอนนี้ engine เป็นผู้ตัดสินจริง
+     * จึงต้องออกเวอร์ชันใหม่จากสายอนุมัติที่ตั้งไว้ให้เองแทนที่จะปฏิเสธคำขอ
      */
-    public function test_a_broken_shadow_never_breaks_the_real_approval(): void
+    public function test_approval_still_works_when_every_version_has_been_retired(): void
     {
         $leave = $this->pendingLeave();
 
-        // ทำให้ engine หาเวอร์ชันไม่เจอ — สถานการณ์ที่ shadow ต้องยอมแพ้เงียบ ๆ
         WorkflowVersion::query()->update(['status' => 'retired']);
 
         $this->actingAs($this->userWithRole($this->hr))

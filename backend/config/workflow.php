@@ -4,52 +4,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Shadow mode (LEGACY-05 · 05-3)
+    | Workflow Engine เป็นผู้ตัดสินสายอนุมัติใบลา (LEGACY-05 · 05-4 — cutover แล้ว)
     |--------------------------------------------------------------------------
     |
-    | เปิดให้ Workflow Engine ใหม่คำนวณคู่ขนานกับตรรกะเดิม แล้วบันทึกผลเทียบลง
-    | `workflow_shadow_comparisons` โดย **ยังใช้ผลของตรรกะเดิมเป็น source of truth**
+    | ครอบทั้งสองสายของใบลา — "ขอลา" และ "ขอยกเลิกใบลา"
     |
-    | ตั้งเป็น false เพื่อปิด shadow ทันทีโดยไม่ต้อง revert โค้ด
-    | (ใช้เมื่อ shadow สร้างภาระให้ระบบจริงหรือมีพฤติกรรมไม่พึงประสงค์)
+    |   true (ค่าเริ่มต้นตอนนี้) = Workflow Engine ตัดสินสิทธิ์และขั้นถัดไป
+    |                              โดยเดินบนเวอร์ชันที่ instance pin ไว้
+    |   false                    = ถอยกลับไปใช้ `leave_approvals` +
+    |                              `leaves.approval_level` เป็นผู้ตัดสินแบบเดิม
     |
-    */
-
-    'shadow_mode' => (bool) env('WORKFLOW_SHADOW_MODE', true),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Cutover (LEGACY-05 · 05-4)
-    |--------------------------------------------------------------------------
+    | **ของเดิมยังถูกเขียนครบทุกแถวเหมือนเดิม** (dual-write) — `leave_approvals`,
+    | `leaves.approval_level`, `leaves.cancellation_approval_level`, สถานะใบลา
+    | และ audit log · การปิดสวิตช์จึงเป็นทางถอยที่ใช้ได้จริงถ้าพบปัญหาหน้างาน
+    | ไม่ใช่สวิตช์ที่เปิดแล้วย้อนไม่ได้
     |
-    | สลับให้ Workflow Engine เป็นผู้ตัดสินสถานะจริงแทนตรรกะเดิม
-    |
-    | **ห้ามเปิดจนกว่า** ผลเทียบใน `workflow_shadow_comparisons` จะตรงกัน 100%
-    | ตลอดช่วงเวลาที่ตกลงกัน ตามกฎข้อ 9 ของเฟสนี้ (mismatch แม้แต่รายการเดียว
-    | = ห้าม cutover) ตรวจสถานะได้ด้วย `php artisan workflow:shadow-report`
-    |
-    | CLEANUP-01 (D4) — `App\Services\Workflow\LeaveApprovalCoordinator` อ่านค่านี้แล้ว
-    |
-    |   false (ค่าเริ่มต้น) = `leave_approvals` + `leaves.approval_level` เป็นผู้ตัดสิน
-    |                        และ engine เดินคู่ขนานแบบ shadow เหมือนเดิม
-    |   true               = Workflow Engine เป็นผู้ตัดสินสิทธิ์และขั้นถัดไป
-    |                        ของเดิมยังถูกเขียนครบทุกแถวเหมือนเดิม (dual-write)
-    |
-    | ผลลัพธ์ของทั้งสองเส้นทางถูกล็อกไว้ด้วย `LeaveApprovalCutoverTest` ที่รัน
-    | สถานการณ์เดียวกันทั้งเปิดและปิดสวิตช์
-    |
-    | ขอบเขต: ครอบทั้งสองสายของใบลาแล้ว — "ขอลา" และ "ขอยกเลิกใบลา" (CLEANUP-02)
-    | ทั้งสองสายมีเทสต์ parity ที่รันสถานการณ์เดียวกันทั้งเปิดและปิดสวิตช์
-    | (`LeaveApprovalCutoverTest`, `LeaveCancellationCutoverTest`)
+    | ผลลัพธ์ของทั้งสองเส้นทางถูกล็อกไว้ด้วยเทสต์ parity ที่รันสถานการณ์เดียวกัน
+    | ทั้งเปิดและปิดสวิตช์ (`LeaveApprovalCutoverTest`, `LeaveCancellationCutoverTest`)
     |
     | ถ้าระบบยังไม่เคยออกเวอร์ชันของสายอนุมัติ ระบบจะออกให้เองจาก `approval_steps`
-    | ที่ใช้อยู่ ณ ตอนนั้น การเปิดสวิตช์จึงไม่ทำให้การอนุมัติล้มเพราะยังไม่ได้ seed
-    |
-    | การเปิดใช้บน production ต้องมีคำสั่งจากเจ้าของระบบ และควรเปิดหลังจากมีหลักฐาน
-    | shadow จากการอนุมัติจริงตามที่ `docs/checkpoints/LEGACY-05-REPORT.md` ข้อ 11 กำหนด
+    | ที่ตั้งไว้ ณ ตอนนั้น และออกเวอร์ชันใหม่ให้เมื่อผู้ดูแลแก้สายอนุมัติ —
+    | เรื่องที่กำลังเดินอยู่ไม่ถูกกระทบ เพราะ instance pin เวอร์ชันของตัวเองไว้
     |
     */
 
-    'engine_is_source_of_truth' => (bool) env('WORKFLOW_ENGINE_SOURCE_OF_TRUTH', false),
+    'engine_is_source_of_truth' => (bool) env('WORKFLOW_ENGINE_SOURCE_OF_TRUTH', true),
 
 ];

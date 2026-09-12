@@ -7,6 +7,7 @@ use App\Models\LeaveApproval;
 use App\Models\Workflow\WorkflowInstance;
 use App\Models\Workflow\WorkflowStep;
 use App\Services\Workflow\ApproverResolverService;
+use App\Services\Workflow\LeaveCancellationWorkflowProvisioner;
 
 /**
  * ผู้มีสิทธิ์อนุมัติใบลาในสายตาของ workflow engine
@@ -42,7 +43,7 @@ class LeaveAssigneeResolver implements SubjectAssigneeResolver
 
         $snapshot = LeaveApproval::query()
             ->where('leave_id', $leave->id)
-            ->where('stage', LeaveApproval::STAGE_REQUEST)
+            ->where('stage', $this->stageOf($instance))
             ->where('step_order', $step->step_order)
             ->first();
 
@@ -52,5 +53,29 @@ class LeaveAssigneeResolver implements SubjectAssigneeResolver
         }
 
         return $this->approvers->resolveEligibleApproverIds($leave->user, $snapshot);
+    }
+
+    /**
+     * instance นี้เป็นสายไหนของใบลา — "ขอลา" หรือ "ขอยกเลิก"
+     *
+     * **ที่มา:** เดิมตรงนี้อ่าน snapshot ของสาย "ขอลา" ตายตัวเสมอ · ใบลาหนึ่งใบมีทั้ง
+     * สองสาย และทั้งคู่มีขั้นที่ `step_order` ซ้ำกันได้ ผลคือคำขอยกเลิกถูกตรวจสิทธิ์
+     * ด้วยผู้อนุมัติของสายขอลาแทน — ผู้อนุมัติขั้นแรกของใบลาจึงอนุมัติการยกเลิกได้
+     * ทั้งที่ผู้ดูแลตั้งสายยกเลิกให้เป็นคนละคน
+     *
+     * ตอนที่ engine ยังเป็น shadow ความผิดนี้ถูกบันทึกไว้เฉย ๆ ไม่มีผลกับใคร
+     * และการเทียบผลครอบเฉพาะสายขอลา จึงไม่มีอะไรจับได้
+     */
+    private function stageOf(WorkflowInstance $instance): string
+    {
+        $fromMeta = $instance->meta['stage'] ?? null;
+
+        if (is_string($fromMeta) && $fromMeta !== '') {
+            return $fromMeta;
+        }
+
+        return $instance->version?->definition?->code === LeaveCancellationWorkflowProvisioner::DEFINITION_CODE
+            ? LeaveApproval::STAGE_CANCELLATION
+            : LeaveApproval::STAGE_REQUEST;
     }
 }

@@ -29,8 +29,8 @@ use Tests\TestCase;
  * เทสต์ชุดนี้รันสถานการณ์เดียวกัน **สองรอบ** คือปิดและเปิดสวิตช์ แล้วยืนยันว่า
  * ผลลัพธ์ที่ผู้ใช้และเอกสารมองเห็นตรงกันทุกจุด — เป็นหลักฐาน parity ที่เฟสกำหนดไว้
  *
- * หมายเหตุสำคัญ: สวิตช์ยังเป็น `false` โดยค่าเริ่มต้น การเปิดใช้จริงบนระบบ production
- * ต้องมีหลักฐาน shadow จากการอนุมัติจริงตาม `docs/checkpoints/LEGACY-05-REPORT.md` ข้อ 11
+ * ตอนนี้สวิตช์เป็น `true` โดยค่าเริ่มต้นแล้ว (cutover) · รอบ `false` ในเทสต์ชุดนี้
+ * จึงเป็นหลักฐานว่าทางถอยกลับไปตรรกะเดิมยังใช้ได้จริงถ้าพบปัญหาหน้างาน
  */
 class LeaveApprovalCutoverTest extends TestCase
 {
@@ -185,16 +185,6 @@ class LeaveApprovalCutoverTest extends TestCase
         $instance = WorkflowInstance::where('subject_id', $leave->id)->firstOrFail();
         $this->assertFalse((bool) $instance->is_shadow, 'instance ที่ตัดสินจริงต้องไม่ถูกทำเครื่องหมายว่าเป็นการทดลอง');
         $this->assertSame(WorkflowInstance::STATUS_RUNNING, $instance->status);
-    }
-
-    public function test_the_legacy_path_still_records_a_shadow_comparison(): void
-    {
-        config(['workflow.engine_is_source_of_truth' => false, 'workflow.shadow_mode' => true]);
-        $leave = $this->pendingLeave();
-
-        $this->actingAs($this->firstApprover)->postJson("/api/approvals/{$leave->id}/approve")->assertOk();
-
-        $this->assertDatabaseCount('workflow_shadow_comparisons', 1);
     }
 
     private function pendingLeave(): Leave

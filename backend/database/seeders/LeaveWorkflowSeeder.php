@@ -24,6 +24,6 @@ class LeaveWorkflowSeeder extends Seeder
 
         $version = app(LeaveWorkflowProvisioner::class)->publishCurrentVersion();
 
-        $this->command?->info("Leave Workflow v{$version->version} พร้อมใช้งาน (shadow mode)");
+        $this->command?->info("Leave Workflow v{$version->version} พร้อมใช้งาน");
     }
 }

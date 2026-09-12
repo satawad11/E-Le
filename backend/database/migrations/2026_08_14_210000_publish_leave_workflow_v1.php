@@ -36,7 +36,7 @@ return new class extends Migration
         // สะท้อนการมอบอำนาจที่มีอยู่เข้า workflow_delegations (ของเดิมยังเป็นตัวจริง)
         $this->mirrorDelegations();
 
-        // สร้าง shadow instance ให้ใบลาที่มีประวัติการอนุมัติอยู่แล้ว
+        // สร้าง instance ให้ใบลาที่มีประวัติการอนุมัติอยู่แล้ว
         Leave::query()->orderBy('id')->chunkById(200, function ($leaves) use ($provisioner): void {
             foreach ($leaves as $leave) {
                 $provisioner->backfill($leave);

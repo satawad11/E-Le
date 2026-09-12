@@ -21,8 +21,8 @@ use Tests\TestCase;
  * CLEANUP-02 (D4) — สาย "ขอยกเลิกใบลา" เดินด้วย Workflow Engine ได้ผลเท่าตรรกะเดิม
  *
  * `docs/checkpoints/LEGACY-05-REPORT.md` ระบุว่าสายนี้ยังใช้ `approval_level` +
- * `ApprovalStep` ตรง ๆ และ **ยังไม่ถูกครอบด้วย shadow** จึงเป็น "สายที่สองที่ต้อง
- * รวมเข้า engine ก่อน cutover" — เทสต์ชุดนี้เป็นหลักฐานว่ารวมแล้วและผลตรงกัน
+ * `ApprovalStep` ตรง ๆ จึงเป็น "สายที่สองที่ต้องรวมเข้า engine ก่อน cutover"
+ * — เทสต์ชุดนี้เป็นหลักฐานว่ารวมแล้วและผลตรงกัน
  *
  * รันสถานการณ์เดียวกันสองรอบ คือปิดและเปิด `workflow.engine_is_source_of_truth`
  */

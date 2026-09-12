@@ -9,7 +9,6 @@ use App\Services\Attendance\LeaveAttendanceSync;
 use App\Services\LeaveService;
 use App\Services\NotificationCenter\NotificationCenter;
 use App\Services\Workflow\LeaveApprovalCoordinator;
-use App\Services\Workflow\LeaveWorkflowShadow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -18,38 +17,9 @@ class GovernmentApprovalController extends Controller
     public function __construct(
         private LeaveService $service,
         private LeaveApprovalCoordinator $coordinator,
-        private LeaveWorkflowShadow $shadow,
         private NotificationCenter $notifications,
         private LeaveAttendanceSync $attendanceSync,
     ) {}
-
-    /**
-     * Shadow mode (LEGACY-05 · 05-3)
-     *
-     * ให้ workflow engine ใหม่คำนวณคู่ขนานแล้วบันทึกผลเทียบไว้ ตรรกะเดิมยังตัดสินจริง
-     * ทุกอย่างในนี้ถูกห่อ try/catch ไว้แล้วในตัว shadow เอง จึงไม่ทำให้การอนุมัติจริงล้ม
-     *
-     * CLEANUP-01 (D4) — เมื่อ engine เป็นผู้ตัดสินแล้ว (`engine_is_source_of_truth`)
-     * ไม่ต้องเดิน shadow อีก เพราะ engine เดินของจริงไปแล้วในคำสั่งเดียวกัน
-     */
-    private function shadowEnabled(): bool
-    {
-        return config('workflow.shadow_mode', true) && ! $this->coordinator->engineIsSourceOfTruth();
-    }
-
-    private function shadowPrepare(Leave $leave): ?int
-    {
-        return $this->shadowEnabled() ? $this->shadow->prepare($leave) : null;
-    }
-
-    private function shadow(Leave $leave, string $action, Request $request, ?string $comment, ?int $instanceId): void
-    {
-        if (! $this->shadowEnabled()) {
-            return;
-        }
-
-        $this->shadow->mirrorAction($leave, $action, $request->user(), $comment, $instanceId);
-    }
 
     /**
      * แจ้งเตือนผู้ยื่นใบลาทุกช่องทาง — ห้ามให้ช่องทางภายนอกล้มแล้วทำให้คำขออนุมัติพังตาม
@@ -95,8 +65,6 @@ class GovernmentApprovalController extends Controller
             abort_unless($leave->substitute_status === 'Accepted', 422, 'ผู้ปฏิบัติงานแทนยังไม่ตอบรับ');
         }
 
-        $shadowInstanceId = $this->shadowPrepare($leave);
-
         DB::transaction(function () use ($r, $leave, $data) {
             $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
             $decision = $this->coordinator->decide($locked, 'approve', $r->user(), $data['comment'] ?? null);
@@ -126,7 +94,6 @@ class GovernmentApprovalController extends Controller
         }, 5);
 
         $leave->refresh();
-        $this->shadow($leave, 'approve', $r, $data['comment'] ?? null, $shadowInstanceId);
 
         if ($leave->status === 'Approved') {
             $this->notify($leave, 'Approved', $r);
@@ -140,8 +107,6 @@ class GovernmentApprovalController extends Controller
         $data = $r->validate(['comment' => 'required|string|max:1000']);
         abort_unless($leave->status === 'Pending', 422, 'ใบลาไม่ได้อยู่ระหว่างอนุมัติ');
         abort_if($leave->user_id === $r->user()->id, 403, 'ห้ามปฏิเสธใบลาของตนเอง');
-
-        $shadowInstanceId = $this->shadowPrepare($leave);
 
         DB::transaction(function () use ($r, $leave, $data) {
             $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
@@ -163,7 +128,6 @@ class GovernmentApprovalController extends Controller
         }, 5);
 
         $leave->refresh();
-        $this->shadow($leave, 'reject', $r, $data['comment'], $shadowInstanceId);
         $this->notify($leave, 'Rejected', $r);
 
         return response()->json(['message' => 'ปฏิเสธใบลาเรียบร้อย']);

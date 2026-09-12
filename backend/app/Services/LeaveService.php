@@ -12,7 +12,7 @@ use App\Models\LeaveType;
 use App\Models\User;
 use App\Services\Attendance\LeaveAttendanceSync;
 use App\Services\Time\TimeService;
-use App\Services\Workflow\LeaveWorkflowShadow;
+use App\Services\Workflow\LeaveWorkflowProvisioner;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -31,8 +31,8 @@ class LeaveService
         private LeaveVerificationService $verification,
         // LEGACY-06 — บริการเวลากลาง โมดูลนี้ไม่คำนวณวันทำงานเองอีกต่อไป
         private TimeService $time,
-        // LEGACY-07 — เปิด workflow instance ให้ใบลาใหม่ (ยังเป็น shadow)
-        private LeaveWorkflowShadow $workflow,
+        // LEGACY-07 — เปิด workflow instance ของสายอนุมัติให้ใบลาที่ยื่นใหม่
+        private LeaveWorkflowProvisioner $workflow,
     ) {}
 
     /**
@@ -161,26 +161,33 @@ class LeaveService
             return $leave;
         }
 
-        /*
-         * LEGACY-07 — เปิด workflow instance ให้ใบลาใบใหม่ (shadow mode)
-         *
-         * ทำนอก transaction และห่อ try/catch เพราะ workflow engine ยังเป็น
-         * shadow อยู่ (LEGACY-05 · ADR-009) ตรรกะเดิมใน `leave_approvals`
-         * ยังเป็น source of truth การเปิด instance ไม่สำเร็จจึงต้องไม่ทำให้
-         * การยื่นใบลาล้ม
-         */
-        if (config('workflow.shadow_mode', true)) {
-            try {
-                $this->workflow->prepare($leave);
-            } catch (\Throwable $exception) {
-                Log::warning('เปิด workflow instance ให้ใบลาไม่สำเร็จ', [
-                    'leave_id' => $leave->id,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
+        $this->openWorkflowInstance($leave);
 
         return $leave;
+    }
+
+    /**
+     * เปิด workflow instance ของสายอนุมัติให้ใบลาที่เพิ่งยื่น
+     *
+     * เปิดตั้งแต่ตอนยื่น เพื่อให้ instance pin เวอร์ชันของสายอนุมัติ "ณ วันที่ยื่น"
+     * ตรงกับ snapshot ที่เพิ่งบันทึกลง `leave_approvals` — ผู้ดูแลแก้สายอนุมัติ
+     * ทีหลังจึงไม่เปลี่ยนสายของใบที่ยื่นค้างไว้แล้ว
+     *
+     * ทำนอก transaction และห่อ try/catch ไว้ เพราะการเปิด instance ไม่สำเร็จ
+     * ต้องไม่ทำให้การยื่นใบลาล้ม — `LeaveApprovalCoordinator` เปิดให้เองได้อีกครั้ง
+     * ตอนมีคนกดอนุมัติ
+     */
+    private function openWorkflowInstance(Leave $leave): void
+    {
+        try {
+            $this->workflow->publishCurrentVersion();
+            $this->workflow->backfill($leave, shadow: false);
+        } catch (\Throwable $exception) {
+            Log::warning('เปิด workflow instance ให้ใบลาไม่สำเร็จ', [
+                'leave_id' => $leave->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -397,16 +404,7 @@ class LeaveService
             return $locked;
         }, 5);
 
-        if (config('workflow.shadow_mode', true)) {
-            try {
-                $this->workflow->prepare($submitted);
-            } catch (\Throwable $exception) {
-                Log::warning('เปิด workflow instance ให้ใบลาไม่สำเร็จ', [
-                    'leave_id' => $submitted->id,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
+        $this->openWorkflowInstance($submitted);
 
         return $submitted;
     }

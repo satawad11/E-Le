@@ -336,9 +336,9 @@ class LeaveModernizationTest extends TestCase
     }
 
     /**
-     * LEGACY-07 — ใบลาใหม่ต้องมี workflow instance (shadow) ผูกไว้
+     * LEGACY-07 — ใบลาใหม่ต้องมี workflow instance ของจริงผูกไว้ พร้อม pin เวอร์ชัน
      */
-    public function test_a_new_leave_opens_a_shadow_workflow_instance(): void
+    public function test_a_new_leave_opens_a_real_workflow_instance(): void
     {
         $hr = Role::firstOrCreate(['name' => 'HR Head', 'guard_name' => 'web']);
         ApprovalStep::create(['step_order' => 1, 'role_id' => $hr->id, 'name' => 'ขั้นที่ 1']);
@@ -352,7 +352,7 @@ class LeaveModernizationTest extends TestCase
             ->first();
 
         $this->assertNotNull($instance, 'ใบลาใหม่ต้องมี workflow instance');
-        $this->assertTrue($instance->is_shadow, 'ต้องยังเป็น shadow — ตรรกะเดิมยังตัดสินจริง');
+        $this->assertFalse((bool) $instance->is_shadow, 'instance ที่ตัดสินจริงต้องไม่ถูกทำเครื่องหมายว่าเป็นการทดลอง');
         $this->assertNotNull($instance->workflow_version_id, 'ต้อง pin เวอร์ชันไว้');
     }
 
