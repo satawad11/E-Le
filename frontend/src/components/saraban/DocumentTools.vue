@@ -123,7 +123,7 @@
             {{ n.formatted }} · {{ n.series }}
           </option>
         </AppSelect>
-        <p v-else class="text-sm text-gray-500">ยังไม่มีเลขที่จองไว้ — จองได้ที่เมนู "จอง/ออกเลข"</p>
+        <p v-else class="text-sm text-gray-500">ยังไม่มีเลขที่จองไว้ — จองได้ที่เมนู "จองและออกเลขหนังสือ"</p>
         <AppButton v-if="reservedNumbers.length" class="mt-3" :disabled="!numberId" @click="allocateNumber">
           ผูกเลขกับหนังสือฉบับนี้
         </AppButton>

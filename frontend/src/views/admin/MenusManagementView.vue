@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">จัดการเมนูตามสิทธิ์</h2>
+        <h2 class="text-2xl font-bold text-gray-800">สิทธิ์การเข้าถึงเมนู</h2>
         <p class="text-gray-500 text-sm mt-1">
           กำหนดว่าเมนูใดแสดงกับใคร — ผู้ใช้จะเห็นเมนูเมื่อมีสิทธิ์อย่างน้อยหนึ่งข้อที่ผูกไว้
           เมนูที่ไม่ผูกสิทธิ์ใดเลยจะเห็นได้ทุกคนที่เข้าสู่ระบบ

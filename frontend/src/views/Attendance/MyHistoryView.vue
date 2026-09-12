@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-5xl mx-auto space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-      <h2 class="text-2xl font-bold text-gray-800">ประวัติการลงเวลา</h2>
+      <h2 class="text-2xl font-bold text-gray-800">การลงเวลาของฉัน</h2>
       
       <div class="flex flex-wrap gap-2">
         <select v-model="selectedMonth" class="border-gray-300 rounded-lg text-sm focus:border-[#800000] focus:ring-[#800000]">

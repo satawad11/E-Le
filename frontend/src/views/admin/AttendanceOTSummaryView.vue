@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">สรุปผลการปฏิบัติงาน OT</h2>
+        <h2 class="text-2xl font-bold text-gray-800">สรุปเวลาล่วงเวลา (OT)</h2>
         <p class="text-gray-500 text-sm mt-1">สรุปเวลาปฏิบัติงานล่วงเวลา (OT) รายเดือนของบุคลากร</p>
       </div>
       <div class="flex flex-wrap gap-2">

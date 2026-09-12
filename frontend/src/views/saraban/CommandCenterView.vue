@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
     <div>
-      <h1 class="text-2xl font-bold text-gray-800">ศูนย์เฝ้าระวังการปฏิบัติการ</h1>
+      <h1 class="text-2xl font-bold text-gray-800">รายการที่ต้องตามแก้</h1>
       <p class="text-sm text-gray-500 mt-1">
         รวมสิ่งที่ค้างและสิ่งที่หยุดทำงาน · ตัวเลขทุกตัวมาจากตารางที่ระบบใช้ทำงานจริง
       </p>

@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Menu;
 use Database\Seeders\MenuSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -27,6 +29,8 @@ use Tests\TestCase;
  */
 class MenuDriftTest extends TestCase
 {
+    use RefreshDatabase;
+
     /**
      * ลายนิ้วมือของ `MenuSeeder::TREE` ณ migration ล่าสุดที่ sync เมนู
      *
@@ -38,10 +42,10 @@ class MenuDriftTest extends TestCase
      *
      * การอัปเดตค่านี้เฉย ๆ โดยไม่ทำข้อ 1 = ปิดปากเทสต์ ไม่ใช่แก้ปัญหา
      */
-    private const TREE_FINGERPRINT = '9840fbc64a86acdaa1ad5403c7a7cfb41690fc2270ea844ddd1aa1c55f6d5bf4';
+    private const TREE_FINGERPRINT = '39d295fefefaa5655ab8a7d413ab364f9f89b5a34f2a9a314999c61592696b9a';
 
     /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว */
-    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_21_110000_point_departments_menu_at_org_units';
+    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_24_120000_rename_menus_for_readability';
 
     public function test_changing_the_menu_tree_requires_a_migration_for_installed_systems(): void
     {
@@ -62,6 +66,35 @@ class MenuDriftTest extends TestCase
         $path = database_path('migrations/'.self::LATEST_MENU_SYNC_MIGRATION.'.php');
 
         $this->assertFileExists($path, 'migration ที่เทสต์นี้อ้างถึงหายไปแล้ว: '.self::LATEST_MENU_SYNC_MIGRATION);
+    }
+
+    /**
+     * migration ที่อ้างถึงต้องเปลี่ยนชื่อเมนูของ **ระบบที่ติดตั้งไปแล้ว** ได้จริง
+     *
+     * เทสต์ข้างบนตรวจแค่ว่าไฟล์มีอยู่ ซึ่งยังปิดปากตัวเองได้ด้วย migration เปล่า ๆ
+     * ความต่างที่เทสต์ชุดนี้เกิดมาเพื่อกันอยู่ที่แถวใน `menus` ที่ค้างชื่อเก่าไว้ —
+     * จำลองด้วยการ seed แล้วเขียนชื่อเก่าทับ ก่อนเรียก `up()` ของ migration ตรง ๆ
+     */
+    public function test_the_referenced_migration_actually_renames_installed_menus(): void
+    {
+        $this->seed(MenuSeeder::class);
+
+        $renamed = Menu::query()->whereIn('code', [
+            'attendance.history', 'saraban.reports', 'users.menus',
+        ])->get();
+
+        $this->assertCount(3, $renamed, 'เมนูที่ใช้ทดสอบต้องถูก seed ครบก่อน');
+
+        foreach ($renamed as $menu) {
+            $menu->forceFill(['title_th' => 'ชื่อเดิมก่อนเปลี่ยน', 'title_en' => 'Old Title'])->save();
+        }
+
+        (require database_path('migrations/'.self::LATEST_MENU_SYNC_MIGRATION.'.php'))->up();
+
+        $this->assertSame('การลงเวลาของฉัน', Menu::where('code', 'attendance.history')->value('title_th'));
+        $this->assertSame('รายงานสารบรรณ', Menu::where('code', 'saraban.reports')->value('title_th'));
+        $this->assertSame('สิทธิ์การเข้าถึงเมนู', Menu::where('code', 'users.menus')->value('title_th'));
+        $this->assertSame('Menu Access', Menu::where('code', 'users.menus')->value('title_en'));
     }
 
     /**

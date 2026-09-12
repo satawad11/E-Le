@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-7xl mx-auto space-y-6" aria-labelledby="screening-title">
     <header>
-      <h1 id="screening-title" class="text-2xl font-bold text-gray-900">คัดกรองเกณฑ์การเลื่อนเงินเดือน</h1>
+      <h1 id="screening-title" class="text-2xl font-bold text-gray-900">เกณฑ์เลื่อนเงินเดือน</h1>
       <p class="text-sm text-gray-500">ตรวจวันลาและการมาสายของบุคลากรทั้งหน่วยงานตามรอบการประเมิน</p>
     </header>
 

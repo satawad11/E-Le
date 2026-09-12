@@ -113,7 +113,7 @@ class MenuSeeder extends Seeder
                 ],
                 [
                     'code' => 'leave.management',
-                    'title_th' => 'จัดการ/ซิงค์วันลา (HR)',
+                    'title_th' => 'จัดการข้อมูลการลา',
                     'title_en' => 'Leave Management',
                     'route_name' => 'admin-leaves-management',
                     'route_path' => '/admin/leaves-management',
@@ -121,7 +121,7 @@ class MenuSeeder extends Seeder
                 ],
                 [
                     'code' => 'leave.promotion_screening',
-                    'title_th' => 'คัดกรองเลื่อนเงินเดือน',
+                    'title_th' => 'เกณฑ์เลื่อนเงินเดือน',
                     'title_en' => 'Promotion Screening',
                     'route_name' => 'admin-promotion-screening',
                     'route_path' => '/admin/promotion-screening',
@@ -129,8 +129,8 @@ class MenuSeeder extends Seeder
                 ],
                 [
                     'code' => 'leave.governance',
-                    'title_th' => 'ศูนย์งานกำกับการลา',
-                    'title_en' => 'Leave Governance',
+                    'title_th' => 'ตรวจหลักฐานการลา',
+                    'title_en' => 'Leave Evidence Review',
                     'route_name' => 'admin-leave-governance',
                     'route_path' => '/admin/leave-governance',
                     'permissions' => ['leave.approval.hr', 'leave.management.manage'],
@@ -155,7 +155,7 @@ class MenuSeeder extends Seeder
                 ],
                 [
                     'code' => 'attendance.history',
-                    'title_th' => 'ประวัติการลงเวลา',
+                    'title_th' => 'การลงเวลาของฉัน',
                     'title_en' => 'My Attendance',
                     'route_name' => 'attendance-history',
                     'route_path' => '/attendance/history',
@@ -163,15 +163,15 @@ class MenuSeeder extends Seeder
                 ],
                 [
                     'code' => 'attendance.records',
-                    'title_th' => 'รายงานการลงเวลา',
-                    'title_en' => 'Attendance Records',
+                    'title_th' => 'การลงเวลาบุคลากร',
+                    'title_en' => 'Staff Attendance',
                     'route_name' => 'admin-attendances',
                     'route_path' => '/admin/attendances',
                     'permissions' => ['attendance.view_all'],
                 ],
                 [
                     'code' => 'attendance.summary',
-                    'title_th' => 'สรุปผลการปฏิบัติงาน',
+                    'title_th' => 'สรุปเวลาปฏิบัติงาน',
                     'title_en' => 'Attendance Summary',
                     'route_name' => 'admin-attendances-summary',
                     'route_path' => '/admin/attendances/summary',
@@ -188,7 +188,7 @@ class MenuSeeder extends Seeder
                 ],
                 [
                     'code' => 'overtime.summary',
-                    'title_th' => 'สรุปผลการปฏิบัติงาน (OT)',
+                    'title_th' => 'สรุปเวลาล่วงเวลา (OT)',
                     'title_en' => 'Overtime Summary',
                     'module' => 'overtime',
                     'route_name' => 'admin-ot-summary',
@@ -332,8 +332,8 @@ class MenuSeeder extends Seeder
                  */
                 [
                     'code' => 'saraban.numbers',
-                    'title_th' => 'จอง/ออกเลข',
-                    'title_en' => 'Reserve / Issue Number',
+                    'title_th' => 'จองและออกเลขหนังสือ',
+                    'title_en' => 'Reserve & Issue Number',
                     'route_name' => 'saraban-numbers',
                     'route_path' => '/saraban/numbers',
                     'permissions' => ['saraban.number.reserve'],
@@ -404,8 +404,8 @@ class MenuSeeder extends Seeder
                 [
                     // NAV §2 · §4.10 — ค้นหา / คลังเอกสาร
                     'code' => 'saraban.documents',
-                    'title_th' => 'ค้นหา / คลังเอกสาร',
-                    'title_en' => 'Search / Archive',
+                    'title_th' => 'คลังหนังสือ',
+                    'title_en' => 'Document Archive',
                     'route_name' => 'saraban-documents',
                     'route_path' => '/saraban/documents',
                     'permissions' => ['saraban.document.view'],
@@ -422,8 +422,8 @@ class MenuSeeder extends Seeder
                 [
                     // INT-19 — รายงานทะเบียน (SoT §28)
                     'code' => 'saraban.reports',
-                    'title_th' => 'รายงาน',
-                    'title_en' => 'Reports',
+                    'title_th' => 'รายงานสารบรรณ',
+                    'title_en' => 'Saraban Reports',
                     'route_name' => 'saraban-reports',
                     'route_path' => '/saraban/reports',
                     'permissions' => ['saraban.report.view'],
@@ -525,8 +525,8 @@ class MenuSeeder extends Seeder
                 [
                     // INT-17 — SoT §19, §20, §21
                     'code' => 'saraban.operations',
-                    'title_th' => 'ศูนย์เฝ้าระวังการปฏิบัติการ',
-                    'title_en' => 'Operational Command Center',
+                    'title_th' => 'รายการที่ต้องตามแก้',
+                    'title_en' => 'Issues to Follow Up',
                     'route_name' => 'saraban-command-center',
                     'route_path' => '/saraban/operations',
                     'permissions' => ['saraban.operations.view'],
@@ -548,7 +548,7 @@ class MenuSeeder extends Seeder
                 [
                     // INT-20 — ทะเบียนหลักฐาน (SoT §23)
                     'code' => 'saraban.compliance',
-                    'title_th' => 'ทะเบียนหลักฐานการปฏิบัติตามข้อกำหนด',
+                    'title_th' => 'หลักฐานตามระเบียบ',
                     'title_en' => 'Compliance Evidence',
                     'route_name' => 'saraban-compliance',
                     'route_path' => '/saraban/compliance',
@@ -590,8 +590,8 @@ class MenuSeeder extends Seeder
                 ],
                 [
                     'code' => 'users.menus',
-                    'title_th' => 'จัดการเมนูตามสิทธิ์',
-                    'title_en' => 'Menu Management',
+                    'title_th' => 'สิทธิ์การเข้าถึงเมนู',
+                    'title_en' => 'Menu Access',
                     'route_name' => 'admin-menus',
                     'route_path' => '/admin/menus',
                     'permissions' => ['system.menu.manage'],
@@ -633,7 +633,7 @@ class MenuSeeder extends Seeder
                 [
                     // ผังองค์กรเหลือชุดเดียว — หน้านี้จัดการ `org_units` โดยตรง
                     'code' => 'settings.departments',
-                    'title_th' => 'หน่วยงานในผังองค์กร',
+                    'title_th' => 'โครงสร้างหน่วยงาน',
                     'title_en' => 'Org Units',
                     'route_name' => 'admin-org-units',
                     'route_path' => '/admin/org-units',

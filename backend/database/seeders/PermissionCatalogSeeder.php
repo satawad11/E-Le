@@ -121,7 +121,7 @@ class PermissionCatalogSeeder extends Seeder
         'saraban.config.manage' => 'ตั้งค่าทะเบียนหนังสือและหน่วยงานสารบรรณ',
         'saraban.exception.view' => 'ดูรายการข้อผิดพลาดที่ต้องตามแก้',
         'saraban.exception.manage' => 'มอบหมายและปิดรายการข้อผิดพลาด',
-        'saraban.operations.view' => 'ดูศูนย์เฝ้าระวังการปฏิบัติการ',
+        'saraban.operations.view' => 'ดูรายการที่ต้องตามแก้ของงานสารบรรณ',
         'saraban.operations.retry' => 'สั่งประมวลผลงานที่ล้มเหลวซ้ำ',
         'saraban.feature_flags.manage' => 'เปิด-ปิดความสามารถของโมดูลสารบรรณ',
 
@@ -130,7 +130,7 @@ class PermissionCatalogSeeder extends Seeder
         'system.user.view' => 'ดูรายการข้อมูลผู้ใช้งาน',
         'system.user.manage' => 'เพิ่ม/แก้ไข/ระงับผู้ใช้งานระบบ',
         'system.role.manage' => 'จัดการบทบาทและสิทธิ์การเข้าถึง',
-        'system.menu.manage' => 'จัดการเมนูตามสิทธิ์',
+        'system.menu.manage' => 'ตั้งค่าสิทธิ์การเข้าถึงเมนู',
         'system.setting.manage' => 'ตั้งค่าระบบและข้อมูลสถานศึกษา',
         'admin.users.manage_permissions' => 'กำหนดสิทธิ์รายบุคคล',
     ];

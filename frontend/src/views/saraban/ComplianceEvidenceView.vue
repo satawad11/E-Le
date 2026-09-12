@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-5xl mx-auto space-y-6">
     <div>
-      <h1 class="text-2xl font-bold text-gray-800">ทะเบียนหลักฐานการปฏิบัติตามข้อกำหนด</h1>
+      <h1 class="text-2xl font-bold text-gray-800">หลักฐานตามระเบียบ</h1>
       <p class="text-sm text-gray-500 mt-1">
         สถานะทุกช่องคำนวณสดจากการตรวจจริง ณ เวลาที่เปิดหน้านี้
         <strong class="text-gray-700">ไม่มีช่องให้กรอกสถานะเอง</strong>

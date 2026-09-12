@@ -76,7 +76,7 @@ const router = createRouter({
       path: '/reports',
       name: 'reports',
       component: () => import('../views/ReportsView.vue'),
-      meta: { requiresAuth: true, title: 'รายงานสถิติการลา', parent: 'ระบบลางาน' }
+      meta: { requiresAuth: true, title: 'รายงานการลาราชการ', parent: 'ระบบลางาน' }
     },
     {
       /*
@@ -138,10 +138,10 @@ const router = createRouter({
       component: () => import('../views/saraban/DocumentsView.vue'),
       meta: {
         requiresAuth: true,
-        title: 'ค้นหา / คลังเอกสาร',
+        title: 'คลังหนังสือ',
         parent: 'งานสารบรรณ',
         saraban: {
-          title: 'ค้นหา / คลังเอกสาร',
+          title: 'คลังหนังสือ',
           description: 'หนังสือรับ หนังสือส่ง และหนังสือภายในที่อยู่ในขอบเขตของท่าน',
         },
       }
@@ -205,7 +205,7 @@ const router = createRouter({
       path: '/saraban/numbers',
       name: 'saraban-numbers',
       component: () => import('../views/saraban/NumberReservationView.vue'),
-      meta: { requiresAuth: true, title: 'จอง/ออกเลข', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'จองและออกเลขหนังสือ', parent: 'งานสารบรรณ' }
     },
     {
       path: '/saraban/documents/new',
@@ -272,14 +272,14 @@ const router = createRouter({
       path: '/saraban/compliance',
       name: 'saraban-compliance',
       component: () => import('../views/saraban/ComplianceEvidenceView.vue'),
-      meta: { requiresAuth: true, title: 'ทะเบียนหลักฐานการปฏิบัติตามข้อกำหนด', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'หลักฐานตามระเบียบ', parent: 'งานสารบรรณ' }
     },
     {
       // INT-19 — รายงานทะเบียน (SoT §28)
       path: '/saraban/reports',
       name: 'saraban-reports',
       component: () => import('../views/saraban/RegisterReportsView.vue'),
-      meta: { requiresAuth: true, title: 'รายงาน', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'รายงานสารบรรณ', parent: 'งานสารบรรณ' }
     },
     {
       // INT-18 — สารบบเรื่อง (SoT §22)
@@ -293,7 +293,7 @@ const router = createRouter({
       path: '/saraban/operations',
       name: 'saraban-command-center',
       component: () => import('../views/saraban/CommandCenterView.vue'),
-      meta: { requiresAuth: true, title: 'ศูนย์เฝ้าระวังการปฏิบัติการ', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'รายการที่ต้องตามแก้', parent: 'งานสารบรรณ' }
     },
     {
       // INT-16 — ศูนย์นโยบายและตารางอำนาจ (SoT §6, §18)
@@ -401,19 +401,19 @@ const router = createRouter({
       path: '/admin/leaves-management',
       name: 'admin-leaves-management',
       component: () => import('../views/admin/LeaveManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['leave.approval.dept', 'leave.management.manage'], title: 'จัดการ/ซิงค์วันลา (HR)', parent: 'ระบบลางาน' }
+      meta: { requiresAuth: true, permissions: ['leave.approval.dept', 'leave.management.manage'], title: 'จัดการข้อมูลการลา', parent: 'ระบบลางาน' }
     },
     {
       path: '/admin/promotion-screening',
       name: 'admin-promotion-screening',
       component: () => import('../views/admin/PromotionScreeningView.vue'),
-      meta: { requiresAuth: true, permissions: ['leave.report.view', 'leave.management.manage'], title: 'คัดกรองเลื่อนเงินเดือน', parent: 'ระบบลางาน' }
+      meta: { requiresAuth: true, permissions: ['leave.report.view', 'leave.management.manage'], title: 'เกณฑ์เลื่อนเงินเดือน', parent: 'ระบบลางาน' }
     },
     {
       path: '/admin/leave-governance',
       name: 'admin-leave-governance',
       component: () => import('../views/admin/LeaveGovernanceView.vue'),
-      meta: { requiresAuth: true, permissions: ['leave.approval.hr', 'leave.management.manage'], title: 'ศูนย์งานกำกับการลา', parent: 'ระบบลางาน' }
+      meta: { requiresAuth: true, permissions: ['leave.approval.hr', 'leave.management.manage'], title: 'ตรวจหลักฐานการลา', parent: 'ระบบลางาน' }
     },
 
     // === โปรไฟล์ผู้ใช้ ===
@@ -441,25 +441,25 @@ const router = createRouter({
       path: '/attendance/history',
       name: 'attendance-history',
       component: () => import('../views/Attendance/MyHistoryView.vue'),
-      meta: { requiresAuth: true, title: 'ประวัติการลงเวลา', parent: 'ระบบลงเวลาออนไลน์' }
+      meta: { requiresAuth: true, title: 'การลงเวลาของฉัน', parent: 'ระบบลงเวลาออนไลน์' }
     },
     {
       path: '/admin/attendances',
       name: 'admin-attendances',
       component: () => import('../views/admin/AttendanceReportView.vue'),
-      meta: { requiresAuth: true, permission: 'attendance.view_all', title: 'รายงานการลงเวลา', parent: 'ระบบลงเวลาออนไลน์' }
+      meta: { requiresAuth: true, permission: 'attendance.view_all', title: 'การลงเวลาบุคลากร', parent: 'ระบบลงเวลาออนไลน์' }
     },
     {
       path: '/admin/attendances/summary',
       name: 'admin-attendances-summary',
       component: () => import('../views/admin/AttendanceSummaryView.vue'),
-      meta: { requiresAuth: true, permission: 'attendance.view_all', title: 'สรุปผลการปฏิบัติงาน', parent: 'ระบบลงเวลาออนไลน์' }
+      meta: { requiresAuth: true, permission: 'attendance.view_all', title: 'สรุปเวลาปฏิบัติงาน', parent: 'ระบบลงเวลาออนไลน์' }
     },
     {
       path: '/admin/ot-summary',
       name: 'admin-ot-summary',
       component: () => import('../views/admin/AttendanceOTSummaryView.vue'),
-      meta: { requiresAuth: true, permissions: ['attendance.ot', 'attendance.ot_summary'], title: 'สรุปผลการปฏิบัติงาน (OT)', parent: 'ระบบลงเวลาออนไลน์' }
+      meta: { requiresAuth: true, permissions: ['attendance.ot', 'attendance.ot_summary'], title: 'สรุปเวลาล่วงเวลา (OT)', parent: 'ระบบลงเวลาออนไลน์' }
     },
     {
       path: '/admin/overtime-orders',
@@ -485,7 +485,7 @@ const router = createRouter({
       path: '/admin/menus',
       name: 'admin-menus',
       component: () => import('../views/admin/MenusManagementView.vue'),
-      meta: { requiresAuth: true, permission: 'system.menu.manage', title: 'จัดการเมนูตามสิทธิ์', parent: 'จัดการผู้ใช้งาน' }
+      meta: { requiresAuth: true, permission: 'system.menu.manage', title: 'สิทธิ์การเข้าถึงเมนู', parent: 'จัดการผู้ใช้งาน' }
     },
     {
       path: '/admin/roles',
@@ -529,7 +529,7 @@ const router = createRouter({
       path: '/admin/org-units',
       name: 'admin-org-units',
       component: () => import('../views/admin/OrgUnitsManagementView.vue'),
-      meta: { requiresAuth: true, permission: 'manage_departments', title: 'หน่วยงานในผังองค์กร', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permission: 'manage_departments', title: 'โครงสร้างหน่วยงาน', parent: 'ตั้งค่าระบบ' }
     },
     // เส้นทางเดิมคงไว้ไม่ให้ลิงก์และบุ๊กมาร์กที่มีอยู่เสีย
     { path: '/admin/departments', redirect: { name: 'admin-org-units' } },

@@ -15,6 +15,19 @@
 - [ ] **หน้าจอออกแบบสายอนุมัติแบบอิงเวอร์ชัน แล้วจึงถอด `approval_steps`** — ตอนนี้ `approval_steps` ยังเป็นหน้าจอที่ผู้ดูแลใช้จริงและเป็นต้นทางที่ `publishCurrentVersion()` อ่าน · ถอดก่อนมีตัวแทนเท่ากับเอาความสามารถในการแก้สายอนุมัติออกจากมือผู้ดูแล
 - [ ] **ถอดคอลัมน์ `workflow_instances.is_shadow`** — ไม่มีผู้เรียกใดตั้งเป็น true แล้ว (ค่าเริ่มต้นของ `$shadow` เปลี่ยนเป็น false) แต่ `WorkQueueService` ของสารบรรณยังใช้กรองคิวงาน · รอให้งานปรับโมดูลสารบรรณที่กำลังทำอยู่จบก่อน จะได้ไม่แก้เทสต์ชุดเดียวกันชนกัน
 
+## MENU NAMING — 2026-09-10
+
+- [x] สำรวจชื่อเมนูทั้ง 64 รายการใน `MenuSeeder::TREE` และจัดกลุ่มปัญหา 4 แบบ (ชื่อซ้ำ · ไม่บอกขอบเขต · ศัพท์เทคนิค · ยาวเกินแถบเมนู)
+- [x] MENU-NAME-01: แก้ `title_th`/`title_en` 14 รายการที่ `MenuSeeder::TREE` โดยไม่แตะ `code`/`route_path`/permissions
+- [x] MENU-NAME-02: migration `2026_09_24_120000_rename_menus_for_readability` พาชื่อใหม่ไปยังระบบที่ติดตั้งแล้ว + ล้าง cache `user_menu_tree_*` · เขียนเฉพาะ `title_th`/`title_en` ของ 14 รายการที่ระบุไว้ ไม่แตะ `code`/เส้นทาง/สิทธิ์ และอ่านค่าจาก `MenuSeeder::TREE` ไม่พิมพ์ชื่อซ้ำไว้ในตัว migration
+- [x] MENU-NAME-03: แก้ `meta.title` ใน `frontend/src/router/index.js` ให้ breadcrumb ตรงกับแถบเมนู
+- [x] MENU-NAME-04: แก้หัวข้อบนหน้าจอ 13 หน้าให้ตรงกับชื่อเมนูใหม่
+- [x] MENU-NAME-05: อัปเดต `MenuDriftTest::TREE_FINGERPRINT` และ `LATEST_MENU_SYNC_MIGRATION`
+- [x] บันทึกเกณฑ์การตั้งชื่อเมนูไว้เป็น ADR-MENU-NAMING-20260910 เพื่อให้เมนูที่เพิ่มในอนาคตตั้งชื่อตามแนวเดียวกัน
+- [x] MENU-NAME-06: เก็บกวาดข้อความที่อ้างชื่อเมนูเดิม — `DocumentTools.vue` ชี้ไปเมนู "จอง/ออกเลข" และคำอธิบายสิทธิ์ใน `PermissionCatalogSeeder` ยังใช้ชื่อเก่า
+- [x] MENU-NAME-07: เทสต์ใหม่ใน `MenuDriftTest` พิสูจน์ว่า migration เปลี่ยนชื่อเมนูของระบบที่ติดตั้งแล้วได้จริง — ของเดิมตรวจแค่ว่าไฟล์มีอยู่ ซึ่ง migration เปล่า ๆ ก็ผ่าน
+- [x] รัน quality gates: backend 1,307 tests ผ่าน · Pint 727 ไฟล์ · frontend eslint / vitest 168 / vite build ผ่าน
+
 ## LEAVE MODULE AUDIT — 2026-09-05
 
 - [x] ตรวจโมดูลลาและเพิ่ม regression tests ยืนยัน 4 ปัญหา — `docs/checkpoints/LEAVE-MODULE-AUDIT-2026-09-05.md`
