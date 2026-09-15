@@ -192,9 +192,16 @@ const render = async () => {
   }
 }
 
-const backToDocument = () =>
-  router.push({ name: 'saraban-document-detail', params: { id: route.params.id } })
+const backToDocument = async () => {
+  try {
+    await router.push({ name: 'saraban-document-detail', params: { id: route.params.id } })
+  } catch {
+    await router.push(`/saraban/documents/${route.params.id}`)
+  }
+}
 
 onMounted(boot)
-onBeforeUnmount(releaseFile)
+onBeforeUnmount(() => {
+  try { releaseFile() } catch {}
+})
 </script>

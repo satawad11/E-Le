@@ -160,7 +160,11 @@ const SIZES = {
   date: { width: 150, height: 20 },
 }
 
-const VOCATIONAL_PRESETS = [
+/*
+ * ชุดข้อความเกษียนด่วน ๔ ฝ่าย — ค่าตั้งต้นสำรองไว้ใช้ทันทีระหว่างรอ API
+ * (`GET /saraban/templates`) เพื่อไม่ให้ปุ่มว่างเปล่าหากโหลดไม่ทัน/ล้มเหลว
+ */
+const VOCATIONAL_PRESETS = ref([
   { label: 'ทราบ / ดำเนินการตามระเบียบ', text: 'ทราบ ดำเนินการตามระเบียบ' },
   { label: 'อนุมัติ ตามเสนอ', text: 'อนุมัติ ตามเสนอ' },
   { label: 'มอบ รอง ผอ. ฝ่ายบริหารทรัพยากร', text: 'มอบ รองผู้อำนวยการฝ่ายบริหารทรัพยากร ดำเนินการต่อไป' },
@@ -169,7 +173,18 @@ const VOCATIONAL_PRESETS = [
   { label: 'มอบ รอง ผอ. ฝ่ายแผนงานและความร่วมมือ', text: 'มอบ รองผู้อำนวยการฝ่ายแผนงานและความร่วมมือ ดำเนินการต่อไป' },
   { label: 'แจ้งเวียนบุคลากรเพื่อทราบ', text: 'แจ้งเวียนบุคลากรทุกท่านเพื่อทราบและถือปฏิบัติ' },
   { label: 'ขอข้อมูลเพิ่มเติม', text: 'ขอข้อมูลและรายละเอียดเพิ่มเติมเพื่อประกอบการพิจารณา' },
-]
+])
+
+const loadEndorsementPresets = async () => {
+  try {
+    const { data } = await api.get('/saraban/templates')
+    if (Array.isArray(data.endorsement_presets) && data.endorsement_presets.length) {
+      VOCATIONAL_PRESETS.value = data.endorsement_presets
+    }
+  } catch {
+    // เงียบไว้ — ใช้ค่าตั้งต้นสำรองต่อได้ ไม่ต้องรบกวนผู้ใช้
+  }
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -283,14 +298,29 @@ const submit = () =>
     })),
   })
 
-const onEndorsed = () => {
+const onEndorsed = async () => {
   confirming.value = false
   alertStore.success('บันทึกเกษียนเรียบร้อยแล้ว')
-  router.push({ name: 'saraban-document-detail', params: { id: route.params.id } })
+  try {
+    await router.push({ name: 'saraban-document-detail', params: { id: route.params.id } })
+  } catch {
+    await router.push(`/saraban/documents/${route.params.id}`)
+  }
 }
 
-const back = () => router.push({ name: 'saraban-document-detail', params: { id: route.params.id } })
+const back = async () => {
+  try {
+    await router.push({ name: 'saraban-document-detail', params: { id: route.params.id } })
+  } catch {
+    await router.push(`/saraban/documents/${route.params.id}`)
+  }
+}
 
-onBeforeUnmount(releaseFile)
-onMounted(boot)
+onBeforeUnmount(() => {
+  try { releaseFile() } catch {}
+})
+onMounted(() => {
+  boot()
+  loadEndorsementPresets()
+})
 </script>

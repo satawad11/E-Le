@@ -293,6 +293,74 @@
     </section>
 
     <!--
+      การยืนยันตัวตนสองชั้นด้วยแอป Authenticator (SoT §24)
+
+      ใช้ยืนยันตัวตนซ้ำก่อนลงนามหนังสือราชการแทนการกรอกรหัสผ่าน · ต้องกรอกรหัสผ่าน
+      ปัจจุบันเพื่อขอรหัสลับ และยืนยันด้วยรหัส 6 หลักจากแอปจริงจึงจะผูกสำเร็จ
+    -->
+    <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 max-w-4xl mt-6">
+      <h2 class="text-lg font-bold text-gray-900 mb-1">แอปยืนยันตัวตน (OTP / MFA)</h2>
+      <p class="text-sm text-gray-500 mb-4">
+        เมื่อผูกแอป Authenticator (เช่น Google Authenticator, Microsoft Authenticator) แล้ว
+        ท่านจะยืนยันตัวตนก่อนลงนามด้วยรหัส 6 หลักจากแอปแทนการกรอกรหัสผ่านได้
+      </p>
+
+      <div v-if="!totpSecret" class="space-y-3">
+        <div>
+          <label for="totp-password" class="block text-xs text-gray-700 mb-1">กรอกรหัสผ่านปัจจุบันเพื่อเริ่มผูกแอป</label>
+          <input
+            id="totp-password"
+            v-model="totpPassword"
+            type="password"
+            autocomplete="current-password"
+            class="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#800000]"
+          />
+        </div>
+        <button
+          type="button"
+          :disabled="totpBusy || !totpPassword"
+          class="px-5 py-2.5 bg-[#800000] text-white rounded-lg text-sm font-semibold hover:bg-[#600000] disabled:opacity-60"
+          @click="startTotpSetup"
+        >
+          {{ totpBusy ? 'กำลังสร้างรหัสลับ…' : 'เริ่มผูกแอป Authenticator' }}
+        </button>
+      </div>
+
+      <div v-else class="space-y-3">
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p class="font-semibold mb-1">เพิ่มบัญชีในแอป Authenticator ด้วยรหัสลับนี้</p>
+          <p class="font-mono text-base tracking-widest break-all">{{ totpSecret }}</p>
+          <p class="text-xs mt-1 break-all text-amber-700">{{ totpUri }}</p>
+        </div>
+        <div>
+          <label for="totp-confirm-code" class="block text-xs text-gray-700 mb-1">กรอกรหัส 6 หลักจากแอปเพื่อยืนยัน</label>
+          <input
+            id="totp-confirm-code"
+            v-model="totpCode"
+            type="text"
+            inputmode="numeric"
+            maxlength="6"
+            placeholder="123456"
+            class="w-40 px-3 py-2 border border-gray-300 rounded text-sm tracking-widest text-center focus:outline-none focus:border-[#800000]"
+          />
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            :disabled="totpBusy || totpCode.trim().length < 6"
+            class="px-5 py-2.5 bg-[#800000] text-white rounded-lg text-sm font-semibold hover:bg-[#600000] disabled:opacity-60"
+            @click="confirmTotpSetup"
+          >
+            {{ totpBusy ? 'กำลังยืนยัน…' : 'ยืนยันและผูกแอป' }}
+          </button>
+          <button type="button" class="px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900" @click="cancelTotpSetup">
+            ยกเลิก
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!--
       การแจ้งเตือนของฉัน (CLEANUP-02)
       Notification Center รองรับ preference รายบุคคลมาตั้งแต่ LEGACY-10 แต่ไม่มีหน้าจอให้ตั้งค่า
     -->
@@ -412,6 +480,46 @@ const passwordForm = reactive({
   password_confirmation: ''
 })
 const changingPassword = ref(false)
+
+/* SoT §24 — การผูกแอป Authenticator (TOTP) สองขั้น: ขอรหัสลับ แล้วยืนยันด้วยรหัสจากแอป */
+const totpPassword = ref('')
+const totpCode = ref('')
+const totpSecret = ref('')
+const totpUri = ref('')
+const totpBusy = ref(false)
+
+const startTotpSetup = async () => {
+  totpBusy.value = true
+  try {
+    const { data } = await api.post('/auth/totp-setup', { password: totpPassword.value })
+    totpSecret.value = data.secret
+    totpUri.value = data.qr_uri
+  } catch (e) {
+    alertStore.error(e.response?.data?.message || 'เริ่มผูกแอป Authenticator ไม่สำเร็จ')
+  } finally {
+    totpBusy.value = false
+  }
+}
+
+const confirmTotpSetup = async () => {
+  totpBusy.value = true
+  try {
+    await api.post('/auth/totp-setup', { password: totpPassword.value, totp_code: totpCode.value.trim() })
+    alertStore.success('ผูกแอป Authenticator เรียบร้อยแล้ว')
+    cancelTotpSetup()
+  } catch (e) {
+    alertStore.error(e.response?.data?.message || 'ยืนยันรหัส OTP ไม่สำเร็จ')
+  } finally {
+    totpBusy.value = false
+  }
+}
+
+const cancelTotpSetup = () => {
+  totpPassword.value = ''
+  totpCode.value = ''
+  totpSecret.value = ''
+  totpUri.value = ''
+}
 
 const delegationForm = reactive({
   delegate_id: null,

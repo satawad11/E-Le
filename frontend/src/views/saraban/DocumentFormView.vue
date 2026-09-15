@@ -132,6 +132,12 @@
             <span class="text-xs text-gray-500 mt-1">ใช้ติดต่อราชการภายนอกวิทยาลัย / ติดต่อหน่วยงานอื่น / เอกชน</span>
           </button>
         </div>
+
+        <!-- ข้อความปฏิเสธความรับผิดสำหรับแนบท้ายอีเมลหนังสือภายนอก (ภาคผนวก ๗) -->
+        <div v-if="externalDisclaimer" class="mt-3 rounded-xl bg-white/70 border border-primary-100 p-3">
+          <p class="text-xs font-semibold text-gray-700 mb-1">ข้อความปฏิเสธความรับผิดสำหรับแนบท้ายอีเมล (๒ ภาษา)</p>
+          <pre class="text-[11px] text-gray-500 whitespace-pre-wrap font-sans leading-relaxed">{{ externalDisclaimer }}</pre>
+        </div>
       </section>
 
       <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
@@ -251,8 +257,9 @@
                   <td class="px-4 py-2.5 font-medium text-gray-900">{{ version.version_no }}</td>
                   <td class="px-4 py-2.5 text-gray-600">{{ stageLabel(version.stage) }}</td>
                   <td class="px-4 py-2.5 text-gray-500">{{ version.created_at }}</td>
-                  <td class="px-4 py-2.5 text-right">
+                  <td class="px-4 py-2.5 text-right whitespace-nowrap">
                     <AppButton size="sm" variant="ghost" @click="preview(version)">ดูเอกสาร</AppButton>
+                    <AppButton size="sm" variant="ghost" :loading="downloading" @click="downloadOfficial">ดาวน์โหลด</AppButton>
                   </td>
                 </tr>
               </tbody>
@@ -426,6 +433,23 @@ const applyTemplate = (type) => {
       form.subject = 'ขอความอนุเคราะห์...'
     }
     form.summary = 'เรียน  [ระบุตำแหน่งผู้รับ]\nอ้างถึง  [ถ้ามี]\nสิ่งที่ส่งมาด้วย  [ถ้ามี]\n\nด้วย [ระบุความเป็นมา หรือข้อเท็จจริง]\n\nในการนี้ [ระบุวัตถุประสงค์ หรือสิ่งที่ขอความร่วมมือ]\n\nจึงเรียนมาเพื่อโปรดพิจารณาให้ความอนุเคราะห์\n\nขอแสดงความนับถือ'
+    loadExternalDisclaimer()
+  }
+}
+
+/*
+ * ข้อความปฏิเสธความรับผิด ๒ ภาษาสำหรับแนบท้ายอีเมลหนังสือภายนอก (ภาคผนวก ๗)
+ * โหลดเมื่อเลือกแม่แบบหนังสือภายนอกเท่านั้น เพราะเกี่ยวกับการส่งออกภายนอกโดยตรง
+ */
+const externalDisclaimer = ref('')
+
+const loadExternalDisclaimer = async () => {
+  if (externalDisclaimer.value) return
+  try {
+    const { data } = await api.get('/saraban/templates/disclaimer')
+    externalDisclaimer.value = data.disclaimer?.formatted || ''
+  } catch {
+    // ไม่รบกวนผู้ใช้ — เป็นข้อมูลประกอบ ไม่ใช่ขั้นตอนบังคับ
   }
 }
 
@@ -482,6 +506,36 @@ async function preview(version) {
     previewVersion.value = version
   } catch (e) {
     previewError.value = getErrorMessage(e, 'เปิดตัวอย่างเอกสารไม่สำเร็จ')
+  }
+}
+
+const downloading = ref(false)
+
+/*
+ * ดาวน์โหลดหนังสือพร้อมชื่อไฟล์ทางการตามระเบียบฯ (ภาคผนวก ๗ ข้อ ๔.๓)
+ *
+ * ชื่อไฟล์มาจาก Content-Disposition ที่ฝั่ง server สร้างให้ ไม่ใช่ประกอบเองที่นี่
+ * เพื่อให้ตรงกับกฎการตั้งชื่อไฟล์ราชการชุดเดียวกันเสมอ
+ */
+async function downloadOfficial() {
+  downloading.value = true
+  try {
+    const res = await api.get(`/saraban/documents/${route.params.id}/download`, { responseType: 'blob' })
+    const disposition = res.headers['content-disposition'] || ''
+    const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i)
+    const filename = match ? decodeURIComponent(match[1].replace(/"$/, '')) : `document-${route.params.id}.pdf`
+    const url = URL.createObjectURL(res.data)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    previewError.value = getErrorMessage(e, 'ดาวน์โหลดหนังสือไม่สำเร็จ')
+  } finally {
+    downloading.value = false
   }
 }
 
