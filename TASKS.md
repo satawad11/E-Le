@@ -1,5 +1,122 @@
 # TASKS
 
+## SCHOOL-FIT-01 — ตรวจข้อมูลและหน้าจอให้ตรงกับการใช้งานจริงของสถานศึกษา (2026-09-15)
+
+คำสั่งเจ้าของระบบ: (1) ทบทวน/จัดระเบียบข้อมูลให้สอดคล้องกับการใช้งานจริงของสถานศึกษา (2) หาจุดที่ใช้งานติดขัดหรือต้องปรับ UI/UX
+
+### แก้แล้ว
+- [x] **ช่องเลือกชื่อบุคลากรเห็นแค่ 25 คนแรก** — `/admin/users` แบ่งหน้าละ 25 คน แต่ 4 หน้าจอที่ใช้รายชื่อเป็นช่องเลือก (ไม่มีปุ่มเลื่อนหน้า) ดึงหน้าเดียว · เพิ่ม `utils/personnelDirectory.js` ไล่ดึงจนครบ แล้วใช้ที่ `LeaveManagementView` `OrgUnitManagersView` `PersonnelAssignmentsView` `AdminSettingsView`
+- [x] **หน้า "กำหนดประเภทบุคลากร" ไม่แสดงใครเลย** — รับทั้งซองแบ่งหน้ามาใส่ `users` ทำให้ `.filter()` พังทุกครั้ง · แก้แล้ว พร้อมเพิ่ม loading / empty / error ที่เดิมไม่มีเลย
+- [x] **เปลี่ยนปีในปฏิทินวันทำการแล้วรายการไม่โหลดใหม่** — ช่องปีไม่มี `@change` ต่างจากช่องหน่วยงาน
+- [x] **ปีเป็น ค.ศ. ขัดกับทั้งระบบที่ใช้ พ.ศ.** — `LeaveManagementView` และ `WorkCalendarView` เปลี่ยนเป็นรายการเลือก พ.ศ. ตามแบบ `AttendanceSummaryView`
+- [x] **ชื่อบทบาทเดียวกันแสดงคนละชื่อในแต่ละหน้า** — `WorkflowManagementView` มีตารางแปลชื่อของตัวเอง (`HR Head` = "หัวหน้าบุคลากร", `Employee` = "พนักงานทั่วไป") · ถอดทิ้ง ใช้ `utils/roleLabel.js` ชุดเดียว
+- [x] **คำเรียกบุคลากรไม่ตรงกับคำที่ราชการใช้** — แทน "พนักงาน" 11 จุดด้วย "บุคลากร" และตำแหน่งตัวอย่างใน CSV ต้นแบบเป็น "ครู"
+- [x] เก็บกวาด lint ที่ค้างอยู่ใน `WorkQueueView` และ `PolicyCenterView`
+
+### ข้อ 1 — ผังหน่วยงานตามโครง ๔ ฝ่าย ✅ เสร็จ 2026-09-15
+- [x] `VocationalOrgStructureSeeder` — ๔ ฝ่าย + ๒๕ งาน ตามระเบียบ สอศ. · อ้างอิงด้วย `code` คงที่ จึงรันซ้ำได้และไม่ทับชื่อ/สังกัดที่ผู้ดูแลแก้เอง
+- [x] `DatabaseSeeder` — เรียกผังตั้งแต่ต้น แล้วให้บัญชีระบบสังกัด "งานศูนย์ข้อมูลสารสนเทศ" / "งานบุคลากร" แทนหน่วยงานสมมติ `ฝ่ายสารสนเทศ` / `ฝ่ายทรัพยากรบุคคล`
+- [x] `MockDataSeeder` — แผนกวิชาสังกัดฝ่ายวิชาการ แทนการแขวนใต้ยอดผัง
+- [x] หน้า "โครงสร้างหน่วยงาน" — เรียงแบบต้นไม้ ย่อหน้าตามชั้น เพิ่มคอลัมน์ "ระดับ" และย่อหน้าในช่องเลือกหน่วยงานแม่
+- [x] เพิ่มช่อง "ระดับ" ในฟอร์ม — เดิมทุกหน่วยที่สร้างจากหน้าเว็บถูกบันทึกเป็น `department` หมด
+- [ ] **ค้างที่เจ้าของระบบ**: รัน `php artisan db:seed --class=VocationalOrgStructureSeeder` บนเครื่องที่ติดตั้งไปแล้ว แล้วย้ายหน่วยงานเดิมเข้าฝ่ายที่ถูกต้องผ่านหน้าจอ (seeder ไม่ย้ายของเดิมให้เอง โดยตั้งใจ)
+
+### ข้อ 2 — ชื่อผู้ลงนามยึดผู้มีอำนาจจริง ✅ เสร็จ 2026-09-16
+- [x] `pendingApproverName()` — ถามผู้มีอำนาจจริงจาก `ApproverResolverService` ก่อน แล้วค่อยตกไปที่ค่าในหน้าตั้งค่า แล้วจึงเป็นเส้นประ
+- [x] ไม่เดาเมื่อผู้มีอำนาจมีหลายคน — พิมพ์ไปคนหนึ่งผิดยิ่งกว่าเว้นว่าง
+- [x] การพิมพ์ต้องไม่ล้มเมื่อหาผู้มีอำนาจไม่ได้ — จับ `Throwable` แล้วใช้ค่าสำรอง
+- [x] ถอดบล็อกสร้างช่องลงนามที่ซ้ำกัน 60 บรรทัดระหว่าง `exportPdf()` / `exportWord()`
+- [x] หน้า "ผู้บริหารและผู้ลงนาม" ประกาศชัดว่าเป็นค่าสำรองสำหรับพิมพ์บนกระดาษ พร้อมลิงก์ไปแหล่งความจริง
+
+### ข้อ 3 — กล่องยืนยันมาตรฐานของระบบ ✅ เสร็จ 2026-09-16
+- [x] `stores/confirm.js` + `composables/useConfirm.js` + `components/ConfirmDialog.vue` วางไว้ครั้งเดียวที่ `App.vue` เหมือน `AlertList`
+- [x] แปลงครบทั้ง 27 จุดใน 15 หน้าจอ รวม navigation guard ที่กันงานหายเมื่อยังไม่ได้บันทึก
+- [x] `promptText()` บังคับกรอกได้จริง — สองจุดที่เคยเป็น `window.prompt` เป็นเหตุผลที่ผู้ถูกตรวจจะได้อ่าน แต่เดิมกด OK ทั้งช่องว่างได้
+- [x] ข้อความบนปุ่มบอกการกระทำจริง ("ลบหน่วยงาน" แทน "ตกลง") และมีบรรทัดอธิบายผลกระทบ
+
+### ข้อ 4 — จัดรูปแบบ `LeaveGovernanceView.vue` ✅ เสร็จ 2026-09-16
+- [x] แตกบล็อก `<script setup>` ที่ถูกบีบเหลือบรรทัดเดียว (ยาวกว่า 2,000 อักขระ) ออกเป็นโค้ดที่อ่านและ diff ได้
+- [x] เพิ่ม `try/catch` ที่ขาดไปใน `verify` / `decide` / `voidLeave` — เดิมถ้า API ล้ม ผู้ใช้ไม่เห็นอะไรเลย
+- [x] ใช้ `getErrorMessage` เหมือนหน้าอื่นแทนการอ่าน `e.response?.data?.message` ตรง ๆ
+
+### ข้อ 5 — จัดระเบียบลำดับและโครงสร้างเมนูระบบใหม่แบบ Zero-Impact ✅ เสร็จ 2026-09-16
+- [x] จัดเรียงลำดับเมนูใน `MenuSeeder::TREE` ตามลำดับความสำคัญและการใช้งานจริงของสถานศึกษา (งานตนเอง/ประจำวัน -> งานอนุมัติ -> งานกำกับดูแลและรายงาน)
+- [x] จัดเรียงงานสารบรรณตามกระบวนการเอกสารราชการ และจัดกลุ่มหน้าตั้งค่าระบบตามประเภทข้อมูล
+- [x] คง `code`, `route_name`, `route_path`, และสิทธิ์การเข้าถึงเดิม 100% (Zero-Impact ต่อ URL, bookmarks, authorization)
+- [x] เพิ่ม migration `2026_09_25_100000_reorganize_menus_structure` เพื่อซิงก์ลำดับและจัดระเบียบให้กับระบบที่ติดตั้งแล้ว
+- [x] อัปเดต `TREE_FINGERPRINT` และ `MenuDriftTest` พร้อมผ่านการทดสอบ `MenuIntegrityTest` (9/9), `MenuDriftTest` (5/5), `SarabanModuleRegistrationTest` (13/13) และ Vitest 184/184 tests 100%
+
+## SARABAN COMPLETE VOCATIONAL UPGRADE (8 MASTER PILLARS) — 2026-09-15
+
+- [x] **Pillar 1: Role-Tailored Workspace & Navigation Experience**
+  - แยกมุมมองการใช้งานสารบรรณตามบทบาทจริง 3 กลุ่ม: ครู/บุคลากรทั่วไป (กล่องหนังสือของฉัน, ร่างบันทึกข้อความ, ติดตามเรื่องเสนอ), ผู้บริหาร ผอ./รอง ผอ. 4 ฝ่าย (คิวงานรอดำเนินการ, รอลงนาม, ประวัติการสั่งการ), เจ้าหน้าที่สารบรรณกลาง (ลงทะเบียนรับ, ออกเลขส่ง, กระจายเอกสาร, สมุดทะเบียนราชการ)
+- [x] **Pillar 2: Executive Fast-Signing & Quick Endorsement Snippets (สำหรับ ๔ ฝ่ายอาชีวศึกษา)**
+  - Frontend: เพิ่มแถบข้อความเกษียนด่วน 8 รูปแบบสำหรับ ผอ. และ รอง ผอ. 4 ฝ่าย ใน `EndorseDocumentView.vue` (ทราบ/ดำเนินการตามระเบียบ, อนุมัติ ตามเสนอ, มอบ รอง ผอ. ฝ่ายบริหารทรัพยากร/วิชาการ/พัฒนากิจการนักเรียนฯ/แผนงานฯ, แจ้งเวียนบุคลากร, ขอข้อมูลเพิ่มเติม) พร้อมปุ่มคลิกเดียวแทรกข้อความและพร้อมประทับลงหน้าเอกสารทันที
+- [x] **Pillar 3: Pre-configured Vocational Workflows (สายการเดินหนังสือ ๔ ฝ่ายอาชีวะ)**
+  - รองรับเส้นทางเดินหนังสือของสถานศึกษาอาชีวศึกษา (บันทึกข้อความภายใน, ขออนุมัติโครงการ/งบประมาณ, หนังสือรับภายนอก, หนังสือส่งออกภายนอก)
+- [x] **Pillar 4: Urgent Priority Engine & Real-time Highlighting**
+  - Frontend: พัฒนาการแสดงผลชั้นความเร็วด่วนพิเศษ (ด่วนที่สุด สีแดงกระพริบ `animate-pulse`, ด่วนมาก สีส้ม, ด่วน สีเหลือง) บน `WorkQueueView.vue` และ `InboxView.vue`
+  - Frontend: เพิ่ม Quick Filter ปุ่มคัดกรอง "เฉพาะด่วนที่สุด / ด่วนมาก" ในหน้า `WorkQueueView.vue`
+- [x] **Pillar 5: Official Thai Government Document Templates (ระเบียบสำนักนายกฯ ๒๕๖๔)**
+  - Backend: พัฒนา `OfficialDocumentTemplateService` ให้บริการโครงสร้างแม่แบบ "บันทึกข้อความ" (แบบที่ ๒ - ครุฑซ้าย ๑.๕ ซม.) และ "หนังสือภายนอก" (แบบที่ ๑ - ครุฑกลาง ๓ ซม.)
+  - Backend: พัฒนา `DocumentTemplateController` (`GET /api/saraban/templates`)
+  - Frontend: เพิ่มแผงเลือกแม่แบบหนังสือราชการใน `DocumentFormView.vue` โหลดโครงสร้าง 3 ภาค (เหตุ - ความประสงค์ - สรุป) อัตโนมัติ
+- [x] **Pillar 6: QR Code Verification & Authenticity Check**
+  - ตรวจสอบความถูกต้องเอกสารและลายมือชื่อดิจิทัลผ่าน `VerifyDocumentView.vue` ยืนยันความสมบูรณ์และตรวจจับการแก้ไขดัดแปลงไฟล์หลังลงนาม
+- [x] **Pillar 7: Official Email Integration & Auto-reply with Bilingual Disclaimer (ภาคผนวก ๗)**
+  - Backend: พัฒนา `OfficialEmailTemplateService` ให้บริการข้อความปฏิเสธความรับผิดชอบ (Legal Disclaimer) ๒ ภาษา (ไทย-อังกฤษ), ข้อความตอบรับอัตโนมัติ (Auto-reply), และการจัดรูปแบบหัวเรื่องตามชั้นความเร็ว
+  - Backend: เพิ่ม endpoint `GET /api/saraban/templates/disclaimer`
+- [x] **Pillar 8: Executive SLA & Analytics Dashboard**
+  - Backend: ยกระดับ `DashboardService` เพิ่มสถิติการจำแนกตามทิศทาง (ภายใน/ส่งออก/รับเข้า) และชั้นความเร็ว (ด่วนที่สุด/ด่วนมาก/ด่วน/ปกติ)
+  - Frontend: เพิ่มการ์ดสถิติแสดงสัดส่วนหนังสือและการจำแนกตามชั้นความเร็วใน `SarabanDashboardView.vue`
+- [x] **Verification & Quality Gate**
+  - Backend: เพิ่มชุดทดสอบ `SarabanMasterSuiteTest.php` (4 passed / 83 assertions)
+  - Full Backend Suite: 331 passed (1,622 assertions), Laravel Pint 100% ผ่าน 741 ไฟล์
+  - Frontend: Vitest 170 passed (21 test files), `npm run build` ผ่าน 100% ปราศจากข้อผิดพลาด
+
+## SARABAN & SYSTEM READINESS UPGRADE (4 MAJOR TOPICS & REGULATION COMPLIANCE) — 2026-09-15
+
+- [x] **Topic 1: Pre-flight Readiness Dashboard & Quick Setup for Saraban**
+  - Backend: พัฒนา `PreflightReadinessChecker::checkSarabanReadiness()` ตรวจความพร้อม 4 ด้าน (ชุดเลขหนังสือ, ผู้ลงนาม, ClamAV, WebPush VAPID)
+  - Backend: พัฒนา `POST /api/saraban/number-series/quick-setup` (`NumberSeriesController::quickSetup`) สร้างชุดเลขเริ่มต้น 5 หมวดมาตรฐาน (คำสั่ง, ประกาศ, ภายใน, ส่ง, รับ)
+  - Frontend: เพิ่มปุ่ม Quick Setup ใน `AdminSettingsView.vue` และ `NumberSeriesView.vue` ช่วยให้ผู้ดูแลระบบกดสร้างชุดเลข 5 หมวดได้ในคลิกเดียว พร้อมอัปเดตสถานะทันที
+- [x] **Topic 2: ระบบส่งออกรายงานทะเบียนหนังสือเป็น Excel/CSV (RISK-69 & ระเบียบฯ ข้อ ๒๙/๑)**
+  - Backend: พัฒนา `RegisterReportExportService` ส่งออกไฟล์ CSV (พร้อม UTF-8 BOM) และ XLSX (OpenXML มาตรฐาน ไม่พึ่งพาแพ็กเกจภายนอก) สำหรับทะเบียนหนังสือรับ (แบบที่ ๑๓/๑), ทะเบียนส่ง (แบบที่ ๑๔/๒), ทะเบียนเลขหนังสือ, และการเวียนรับทราบ
+  - Backend: เพิ่ม endpoint `GET /api/saraban/reports/export` ภายใต้สิทธิ์ `saraban.report.export` พร้อม Org Scope Check
+  - Frontend: เพิ่มปุ่มส่งออกรายงานและ Modal ดาวน์โหลดไฟล์ใน `RegisterReportsView.vue` เลือกระบุช่วงวันที่ ทิศทาง และฟอร์แมตไฟล์ได้
+- [x] **Topic 3: Step-up Authentication & TOTP / MFA (RISK-29)**
+  - Backend: พัฒนา `TotpService` (RFC 6238 TOTP) Zero-Schema โดย derive secret key จาก APP_KEY + user uuid
+  - Backend: พัฒนา `StepUpAuthentication` รองรับการยืนยันตัวตนด้วย TOTP Code 6 หลัก ควบคู่กับรหัสผ่านเดิม
+  - Backend: เพิ่ม `GET /api/auth/totp/setup` และปรับ `POST /api/auth/confirm-password` รองรับทั้ง `password` และ `totp_code`
+  - Frontend: ปรับปรุง `ConfirmOperation.vue` และ Modal ใน `PolicyCenterView.vue` ให้สลับแท็บยืนยันตัวตนด้วยรหัสผ่าน หรือรหัส Authenticator OTP 6 หลักได้
+- [x] **Topic 4: การมอบอำนาจรับทราบหนังสือเวียนแทน (RISK-35) และ Form Wizard สำหรับ Policy Center (RISK-45)**
+  - Backend: ปรับ `DistributionService::acknowledge()` และ `InboxController` รองรับการมอบอำนาจ (Delegation) ปฏิบัติราชการแทนผ่านตาราง `user_delegations` โดยบันทึกผู้กดจริงและผู้มอบอำนาจใน Audit Trail อย่างเคร่งครัด
+  - Frontend: เพิ่มแถบแจ้งเตือนการมอบอำนาจ ตัวกรองเลือกดูหนังสือแทนผู้มอบอำนาจ และป้ายแสดง "แทน [ชื่อผู้มอบอำนาจ]" ใน `InboxView.vue`
+  - Frontend: เพิ่ม Form Wizard ใน `PolicyCenterView.vue` ช่วยให้ผู้ดูแลระบบแก้ไขนโยบายยอดนิยม (`distribution`, `document_layout`, `numbering`) ด้วยฟอร์ม UI ที่เข้าใจง่าย สลับกับโหมด Raw JSON แบบสองทาง
+- [x] **Regulation Compliance Additions (ระเบียบสำนักนายกรัฐมนตรีฯ)**
+  - Frontend: เพิ่มข้อแนะนำการตั้งชื่อไฟล์แนบอิเล็กทรอนิกส์ตามมาตรฐาน ภาคผนวก ๗ ข้อ ๔.๓ ใน `DocumentFormView.vue`
+- [x] **Quality Gates & Full Regression Testing**
+  - Backend: ผ่าน 333 tests (1,621 assertions) รวม `SarabanCoreContractTest`, `SarabanOfficialComplianceTest`, `AdminPreflightCheckApiTest`, `SarabanSignatureAndStepUpTest`, `SarabanDistributionAndInboxTest`
+  - Backend: Laravel Pint ผ่าน 100% (740 files)
+  - Frontend: Vitest ผ่าน 170 tests (21 test files), Build ผ่าน 100% (4.45s)
+
+## SARABAN REGULATION COMPLIANCE (ระเบียบสำนักนายกรัฐมนตรีฯ ฉบับที่ ๔ พ.ศ. ๒๕๖๔) — 2026-09-15
+
+- [x] **Official Saraban Filename Service (ภาคผนวก ๗ ข้อ ๔.๓)** — สร้าง `OfficialSarabanFilenameService` รองรับชื่อไฟล์ส่งออกตามรหัสตัวอักษรโรมันประจำกระทรวงศึกษาธิการ (`MOE`) และรหัสสถานศึกษาอาชีวศึกษา (`YYYY_MOE{unit}_{running}.pdf`), รองรับไฟล์แนบ `_1.pdf`, `_2.pdf` และทำความสะอาดอักขระต้องห้าม
+- [x] **Document Download Endpoint** — เพิ่ม `GET /api/saraban/documents/{document}/download` กำหนดส่วนหัว `Content-Disposition` ด้วยชื่อไฟล์ทางการตามระเบียบ
+- [x] **Top Secret Safeguard (ข้อ ๒๙ วรรคหนึ่ง, ภาคผนวก ๗ ข้อ ๓.๖)** — บล็อกการเวียนหนังสือชั้น "ลับที่สุด" ทางอิเล็กทรอนิกส์ใน `DistributionService` ด้วย `DistributionException`, พร้อมแสดงแถบเตือนสีแดงและล็อกปุ่มส่งใน `DistributeDocumentModal.vue`
+- [x] **Official Registry Reports (แบบที่ ๑ และ แบบที่ ๒)** — ปรับปรุง `RegisterReportService` และ `RegisterReportExportService` ให้มีคอลัมน์มาตรฐานสำหรับทะเบียนหนังสือรับ (แบบที่ ๑) และทะเบียนหนังสือส่ง (แบบที่ ๒)
+- [x] **Regression & Official Compliance Suite** — เพิ่ม `SarabanOfficialComplianceTest` (5 passed / 24 assertions), ผ่านชุดทดสอบ Saraban ทั้งหมด 80 tests (358 assertions) และ Frontend Vitest 170 tests
+
+## DEVOPS & DATA ONBOARDING (OPERATIONS & GO-LIVE READINESS) — 2026-09-14
+
+- [x] **DevOps & Operations: สคริปต์สำรองและกู้คืนข้อมูลอัตโนมัติ** — สร้าง `docker/scripts/backup.sh`, `docker/scripts/backup.ps1`, `docker/scripts/restore.sh`, `docker/scripts/restore.ps1` รองรับการสำรองฐานข้อมูล MySQL และ private_uploads พร้อมระบบลบไฟล์เก่าตาม Retention
+- [x] **DevOps & Operations: การจัดการ Log Rotation และตรวจสุขภาพคอนเทนเนอร์** — ตั้งค่า `x-logging` (`max-size: 20m`, `max-file: 5`) ใน `docker-compose.yml` ให้กับคอนเทนเนอร์หลักทั้งหมด; สร้างสคริปต์ `docker/scripts/healthcheck.sh` และ `docker/scripts/healthcheck.ps1` ตรวจสอบสถานะบริการทั้ง 6 ตัวและ API Ping
+- [x] **Data Onboarding: คำสั่งตรวจความพร้อมข้อมูลตั้งต้นก่อนเปิดระบบจริง** — พัฒนา `php artisan app:preflight-check` (`CheckPreflightReadinessCommand`) ตรวจสอบ 7 ด้านสำคัญ (OrgUnits, OrgUnitManagers, Users/Personnel, FiscalYear & LeavePolicies, WorkSchedules & Holidays, DocumentTemplates, Notification Channels) รายงานผลลัพธ์เป็นตารางภาษาไทย 100%
+- [x] **Data Onboarding: หน้าจอแดชบอร์ดตรวจความพร้อมระบบ (Pre-flight Dashboard)** — สกัด Service `PreflightReadinessChecker`, สร้าง API `GET /api/admin/preflight-check` (ภายใต้สิทธิ์ `system.setting.manage`), เพิ่มแท็บและ UI ตรวจความพร้อมใน `AdminSettingsView.vue` พร้อมสรุปสถานะ (เขียว/เหลือง/แดง) และปุ่ม Shortcut จัดการข้อมูลที่เกี่ยวข้อง
+- [x] **Data Onboarding: เทมเพลตและคู่มือเปิดใช้งานจริง** — สร้าง `docs/onboarding/GO-LIVE-CHECKLIST.md` (Checklist 8 ขั้นตอนสำหรับผู้ดูแลระบบและฝ่ายบุคคล) และ `docs/onboarding/users_import_template.csv` (เทมเพลตนำเข้าบุคลากร)
+- [x] **Quality Gate & Regression Tests** — เพิ่ม `AdminPreflightCheckApiTest` (4 passed / 67 assertions) และ `CheckPreflightReadinessCommandTest` (2 passed / 4 assertions); `ApiSurfaceContractTest` และ `MenuDriftTest` ผ่าน 100%; Pint ผ่าน 100% (733 ไฟล์สะอาด); Frontend build และ Vitest 170 ผ่านครบถ้วน
+
 ## สายอนุมัติใบลาเดินด้วย WORKFLOW ENGINE — 2026-09-12
 
 - [x] เปิด `WORKFLOW_ENGINE_SOURCE_OF_TRUTH` เป็นค่าเริ่มต้น ครอบทั้งสายขอลาและสายขอยกเลิก
