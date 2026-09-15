@@ -4,7 +4,7 @@
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">ปฏิทินวันลาทีม</h1>
-        <p class="text-gray-500 mt-1 text-sm">ดูตารางการลางานของพนักงานในทีมหรือแผนกของคุณ</p>
+        <p class="text-gray-500 mt-1 text-sm">ดูตารางการลางานของบุคลากรในทีมหรือหน่วยงานของคุณ</p>
       </div>
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2 text-xs font-semibold text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
@@ -79,7 +79,7 @@
           </div>
           <div class="p-6 space-y-4">
             <div>
-              <p class="text-xs text-gray-500 font-semibold mb-1">พนักงาน</p>
+              <p class="text-xs text-gray-500 font-semibold mb-1">บุคลากร</p>
               <p class="text-sm font-medium text-gray-900">{{ selectedLeave.user?.name }}</p>
             </div>
             <div>

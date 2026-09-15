@@ -143,9 +143,11 @@ import { onBeforeRouteLeave } from 'vue-router'
 import api from '../../axios'
 import OperationsTools from '../../components/saraban/OperationsTools.vue'
 import { useAlertStore } from '../../stores/alert'
+import { useConfirm } from '../../composables/useConfirm'
 import { ICONS } from '../../utils/icons'
 
 const alertStore = useAlertStore()
+const { confirmAction, confirmDanger } = useConfirm()
 
 const isSaving = ref(false)
 const testingChannel = ref('')
@@ -211,7 +213,14 @@ const saveSettings = async () => {
 }
 
 const clearSecret = async (key) => {
-  if (!window.confirm('ยืนยันการล้างข้อมูลลับนี้?')) return
+  const confirmed = await confirmDanger({
+    title: 'ล้างข้อมูลลับ',
+    message: 'ยืนยันการล้างข้อมูลลับนี้?',
+    detail: 'การแจ้งเตือนผ่านช่องทางนี้จะหยุดทำงานจนกว่าจะตั้งค่าใหม่',
+    confirmText: 'ล้างข้อมูล',
+  })
+
+  if (!confirmed) return
   try {
     await api.delete('/admin/settings/secrets/' + key)
     configured.value[key] = false
@@ -240,7 +249,13 @@ const handleBeforeUnload = (event) => {
   event.returnValue = ''
 }
 
-onBeforeRouteLeave(() => !isDirty.value || window.confirm('มีการตั้งค่าการแจ้งเตือนที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?'))
+onBeforeRouteLeave(async () => !isDirty.value || await confirmAction({
+  title: 'ออกจากหน้าตั้งค่าการแจ้งเตือน',
+  message: 'มีการตั้งค่าการแจ้งเตือนที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?',
+  detail: 'การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะหายไป',
+  confirmText: 'ออกโดยไม่บันทึก',
+  cancelText: 'อยู่หน้านี้ต่อ',
+}))
 
 onMounted(() => {
   fetchSettings()

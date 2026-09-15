@@ -503,8 +503,11 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useConfirm } from '../../composables/useConfirm'
+import { roleLabel } from '../../utils/roleLabel'
 
 const alertStore = useAlertStore()
+const { confirmAction } = useConfirm()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -548,7 +551,13 @@ const isCancellationChain = computed(() => activeChain.value === 'cancellation')
 
 const switchChain = async (chain) => {
   if (chain === activeChain.value) return
-  if (hasUnsavedChanges.value && ! window.confirm('มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก ต้องการสลับสายอนุมัติหรือไม่?')) return
+  if (hasUnsavedChanges.value && ! await confirmAction({
+    title: 'สลับสายอนุมัติ',
+    message: 'มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก ต้องการสลับสายอนุมัติหรือไม่?',
+    detail: 'การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะหายไป',
+    confirmText: 'สลับโดยไม่บันทึก',
+    cancelText: 'อยู่สายเดิม',
+  })) return
   activeChain.value = chain
   await fetchWorkflow()
 }
@@ -681,26 +690,14 @@ const readinessTone = computed(() => {
     : { box: 'bg-emerald-50 border-emerald-200 text-emerald-900', title: 'text-emerald-800' }
 })
 
-const roleLabel = (name) => {
-  const map = {
-    'ผู้ดูแลระบบสูงสุด': 'ผู้ดูแลระบบสูงสุด',
-    'ผู้อำนวยการ': 'ผู้อำนวยการ',
-    'รองผู้อำนวยการ': 'รองผู้อำนวยการ',
-    'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย': 'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย',
-    'เจ้าหน้าที่บุคลากร (HR)': 'เจ้าหน้าที่บุคลากร (HR)',
-    'เจ้าหน้าที่สารบรรณกลาง': 'เจ้าหน้าที่สารบรรณกลาง',
-    'บุคลากร / ครู / เจ้าหน้าที่': 'บุคลากร / ครู / เจ้าหน้าที่',
-    'Super Admin': 'ผู้ดูแลระบบสูงสุด',
-    'SuperAdmin':  'ผู้ดูแลระบบสูงสุด',
-    'Director':    'ผู้อำนวยการ',
-    'Deputy Director': 'รองผู้อำนวยการ',
-    'Deputy':      'รองผู้อำนวยการ',
-    'HR Head':     'หัวหน้าบุคลากร',
-    'HRHead':      'หัวหน้าบุคลากร',
-    'Employee':    'พนักงานทั่วไป',
-  }
-  return map[name] || name || ''
-}
+/*
+ * ชื่อบทบาทภาษาไทยใช้ชุดเดียวกับทั้งระบบที่ `utils/roleLabel.js`
+ *
+ * เดิมหน้านี้มีตารางแปลชื่อของตัวเองที่ไม่ตรงกับชุดกลาง — `HR Head` แสดงเป็น
+ * "หัวหน้าบุคลากร" และ `Employee` แสดงเป็น "พนักงานทั่วไป" ขณะที่หน้าจัดการบทบาท
+ * และหน้ารายชื่อผู้ใช้เรียกสองบทบาทเดียวกันนี้ว่า "เจ้าหน้าที่บุคลากร (HR)" และ
+ * "บุคลากร / ครู / เจ้าหน้าที่" ผู้ดูแลจึงเห็นชื่อบทบาทเดียวกันคนละชื่อในแต่ละหน้า
+ */
 
 const approvableRoles = computed(() => {
   return roles.value.filter(r => r.name !== 'Employee')
@@ -784,14 +781,22 @@ const handleBeforeUnload = (e) => {
   }
 }
 
-onBeforeRouteLeave((to, from, next) => {
-  if (hasUnsavedChanges.value) {
-    const answer = window.confirm('คุณมีการเปลี่ยนแปลงลำดับการอนุมัติที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?')
-    if (answer) next()
-    else next(false)
-  } else {
+onBeforeRouteLeave(async (to, from, next) => {
+  if (! hasUnsavedChanges.value) {
     next()
+
+    return
   }
+
+  const answer = await confirmAction({
+    title: 'ออกจากหน้าจัดการลำดับการอนุมัติ',
+    message: 'คุณมีการเปลี่ยนแปลงลำดับการอนุมัติที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?',
+    detail: 'การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะหายไป',
+    confirmText: 'ออกโดยไม่บันทึก',
+    cancelText: 'อยู่หน้านี้ต่อ',
+  })
+
+  next(answer ? undefined : false)
 })
 
 const addStep = () => {

@@ -62,8 +62,10 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useConfirm } from '../../composables/useConfirm'
 
 const alertStore = useAlertStore()
+const { confirmAction } = useConfirm()
 
 const isSaving = ref(false)
 const initialSnapshot = ref('')
@@ -112,7 +114,13 @@ const handleBeforeUnload = (event) => {
   event.returnValue = ''
 }
 
-onBeforeRouteLeave(() => !isDirty.value || window.confirm('มีการตั้งค่าที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?'))
+onBeforeRouteLeave(async () => !isDirty.value || await confirmAction({
+  title: 'ออกจากหน้าตั้งค่าระบบลงเวลา',
+  message: 'มีการตั้งค่าที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?',
+  detail: 'การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะหายไป',
+  confirmText: 'ออกโดยไม่บันทึก',
+  cancelText: 'อยู่หน้านี้ต่อ',
+}))
 
 onMounted(() => {
   fetchSettings()

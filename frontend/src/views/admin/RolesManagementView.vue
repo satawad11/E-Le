@@ -100,9 +100,9 @@
                 <svg class="w-5 h-5 flex-shrink-0 text-[#800000]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getRoleBadgeIcon(role.name)"/>
                 </svg>
-                <span>{{ role.name }}</span>
+                <span>{{ roleLabel(role.name) }}</span>
               </h3>
-              <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ role.description || 'ไม่มีคำอธิบาย' }}</p>
+              <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ role.description || roleDescription(role.name) || 'ไม่มีคำอธิบาย' }}</p>
             </div>
             <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-800 border border-amber-200">
               <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -127,9 +127,9 @@
               <span
                 v-for="perm in role.permissions.slice(0, 12)"
                 :key="perm.id"
-                class="px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-700 font-mono border border-slate-200"
+                class="px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-700 border border-slate-200"
               >
-                {{ perm.name }}
+                {{ permissionLabel(perm.name) }}
               </span>
               <span v-if="role.permissions.length > 12" class="px-2 py-0.5 rounded text-[11px] bg-gray-200 text-gray-600 font-medium">
                 + อีก {{ role.permissions.length - 12 }} สิทธิ์
@@ -151,7 +151,7 @@
             แก้ไขสิทธิ์
           </button>
           <button
-            v-if="!['SuperAdmin', 'Director', 'Employee', 'HR Head', 'Deputy Director'].includes(role.name)"
+            v-if="!SYSTEM_ROLES.includes(role.name)"
             @click="confirmDeleteRole(role)"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-medium transition-colors border border-red-200 cursor-pointer"
           >
@@ -251,7 +251,8 @@
                         v-model="form.permission_ids"
                         class="rounded border-gray-300 text-[#800000] focus:ring-[#800000] h-4 w-4"
                       />
-                      <span class="text-xs font-mono text-gray-800">{{ perm.name }}</span>
+                      <span class="text-xs text-gray-800">{{ permissionLabel(perm.name) }}</span>
+                      <span class="text-[10px] text-gray-400 font-mono block">{{ perm.name }}</span>
                     </label>
                   </div>
                 </div>
@@ -286,10 +287,13 @@
 import { ref, computed, onMounted } from 'vue';
 import api from '../../axios';
 import { useAuthStore } from '../../stores/auth';
+import { useConfirm } from '../../composables/useConfirm';
 import LoadingState from '../../components/ui/LoadingState.vue';
 import { ICONS } from '../../utils/icons';
+import { roleLabel, roleDescription, permissionLabel, groupPermissions, SYSTEM_ROLES } from '../../utils/roleLabel';
 
 const authStore = useAuthStore();
+const { confirmDanger } = useConfirm();
 const roles = ref([]);
 const availablePermissions = ref([]);
 const loading = ref(true);
@@ -331,20 +335,7 @@ const fetchRoles = async () => {
 };
 
 const groupedPermissions = computed(() => {
-  const groups = {};
-  availablePermissions.value.forEach(p => {
-    let groupName = 'ทั่วไป (GENERAL)';
-    if (p.name.includes('.')) {
-      groupName = p.name.split('.')[0].toUpperCase() + ' MODULE';
-    } else if (p.name.includes('_')) {
-      groupName = p.name.split('_')[0].toUpperCase() + ' MODULE';
-    }
-    if (!groups[groupName]) {
-      groups[groupName] = [];
-    }
-    groups[groupName].push(p);
-  });
-  return groups;
+  return groupPermissions(availablePermissions.value);
 });
 
 const filteredGroupedPermissions = computed(() => {
@@ -427,7 +418,14 @@ const saveRole = async () => {
 };
 
 const confirmDeleteRole = async (role) => {
-  if (!confirm(`คุณแน่ใจหรือไม่ที่จะลบบทบาท "${role.name}"?`)) return;
+  const confirmed = await confirmDanger({
+    title: 'ลบบทบาท',
+    message: `คุณแน่ใจหรือไม่ที่จะลบบทบาท "${roleLabel(role.name)}"?`,
+    detail: 'ผู้ใช้ที่ถือบทบาทนี้จะเสียสิทธิ์ที่มากับบทบาททันที',
+    confirmText: 'ลบบทบาท',
+  });
+
+  if (!confirmed) return;
   try {
     const response = await api.delete(`/admin/roles/${role.id}`);
     if (response.data && response.data.success) {

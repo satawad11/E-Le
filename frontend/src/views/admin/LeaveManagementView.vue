@@ -2,7 +2,7 @@
   <div>
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-900">จัดการข้อมูลการลา</h1>
-      <p class="text-gray-500 mt-1">บันทึกวันลาแทนพนักงาน หรือ ดึงข้อมูลการลาไปอัปเดตในระบบลงเวลา</p>
+      <p class="text-gray-500 mt-1">บันทึกวันลาแทนบุคลากร หรือ ดึงข้อมูลการลาไปอัปเดตในระบบลงเวลา</p>
     </div>
 
     <!-- Tabs -->
@@ -28,7 +28,7 @@
           <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.pencil"/>
           </svg>
-          บันทึกวันลาแทนพนักงาน
+          บันทึกวันลาแทนบุคลากร
         </span>
       </button>
     </div>
@@ -48,8 +48,10 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">ปี (ค.ศ.)</label>
-          <input type="number" v-model="syncForm.year" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] p-2.5" />
+          <label class="block text-sm font-medium text-gray-700 mb-1">ปี (พ.ศ.)</label>
+          <select v-model="syncForm.year" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] p-2.5">
+            <option v-for="y in yearOptions" :key="y" :value="y">{{ y + 543 }}</option>
+          </select>
         </div>
       </div>
 
@@ -67,21 +69,24 @@
 
     <!-- Tab Content: Manual -->
     <div v-if="activeTab === 'manual'" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 max-w-3xl">
-      <h2 class="text-lg font-bold text-gray-800 mb-4">บันทึกวันลาให้พนักงาน</h2>
+      <h2 class="text-lg font-bold text-gray-800 mb-4">บันทึกวันลาให้บุคลากร</h2>
       <p class="text-sm text-gray-600 mb-6">
-        เมื่อบันทึกผ่านหน้านี้ สถานะของใบลาจะถูกตั้งเป็น <strong>"อนุมัติแล้ว (Approved)"</strong> ทันที โดยไม่ต้องรอสายบังคับบัญชาอนุมัติ เหมาะสำหรับกรณีที่พนักงานไม่สามารถบันทึกได้ด้วยตนเอง
+        เมื่อบันทึกผ่านหน้านี้ สถานะของใบลาจะถูกตั้งเป็น <strong>"อนุมัติแล้ว (Approved)"</strong> ทันที โดยไม่ต้องรอสายบังคับบัญชาอนุมัติ เหมาะสำหรับกรณีที่บุคลากรไม่สามารถบันทึกได้ด้วยตนเอง
       </p>
 
       <form @submit.prevent="handleManualSubmit" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อพนักงาน *</label>
-            <select v-model="manualForm.user_id" required class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] p-2.5">
-              <option value="" disabled>เลือกพนักงาน</option>
+            <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อบุคลากร *</label>
+            <select v-model="manualForm.user_id" required :disabled="referenceLoading" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] p-2.5 disabled:opacity-60">
+              <option value="" disabled>{{ referenceLoading ? 'กำลังโหลดรายชื่อบุคลากร…' : 'เลือกบุคลากร' }}</option>
               <option v-for="user in users" :key="user.id" :value="user.id">
                 {{ user.name }} {{ user.department ? `(${user.department.name})` : '' }}
               </option>
             </select>
+            <p v-if="!referenceLoading && users.length === 0" class="text-xs text-red-600 mt-1">
+              ยังไม่มีรายชื่อบุคลากรให้เลือก — โหลดข้อมูลไม่สำเร็จหรือยังไม่มีบุคลากรในระบบ
+            </p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">ประเภทการลา *</label>
@@ -127,15 +132,24 @@ import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
 import { ICONS } from '../../utils/icons'
+import { fetchAllPersonnel } from '../../utils/personnelDirectory'
+import { getErrorMessage } from '../../utils/errorHandler'
 
 const alertStore = useAlertStore()
 
 const activeTab = ref('sync')
 const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
 
+/*
+ * ช่องปีแสดงเป็น พ.ศ. เหมือนทุกหน้าจอในระบบ แต่ส่ง ค.ศ. ให้ API เหมือนเดิม
+ * เดิมเป็นช่องพิมพ์ตัวเลข ค.ศ. เปล่า ๆ ซึ่งผู้ใช้ราชการมักกรอกเป็น พ.ศ. แล้วได้ผลลัพธ์ว่าง
+ */
+const currentYear = new Date().getFullYear()
+const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - 4 + i)
+
 const syncForm = ref({
   month: new Date().getMonth() + 1,
-  year: new Date().getFullYear()
+  year: currentYear
 })
 const syncLoading = ref(false)
 const syncResult = ref(null)
@@ -151,6 +165,7 @@ const manualLoading = ref(false)
 
 const users = ref([])
 const leaveTypes = ref([])
+const referenceLoading = ref(false)
 
 const handleSync = async () => {
   syncLoading.value = true
@@ -169,7 +184,7 @@ const handleManualSubmit = async () => {
   manualLoading.value = true
   try {
     await api.post('/admin/leaves', manualForm.value)
-    alertStore.success('บันทึกวันลาให้พนักงานสำเร็จ!')
+    alertStore.success('บันทึกวันลาให้บุคลากรสำเร็จ!')
     // Reset form
     manualForm.value = {
       user_id: '',
@@ -190,17 +205,24 @@ const handleManualSubmit = async () => {
   }
 }
 
+/*
+ * ช่องเลือกชื่อไม่มีปุ่มเลื่อนหน้า จึงต้องได้รายชื่อครบทุกคน
+ * `/admin/users` แบ่งหน้าละ 25 คน — เดิมดึงหน้าเดียว ทำให้บันทึกวันลาแทนบุคลากร
+ * ที่ชื่อเรียงหลังคนที่ 25 ไม่ได้เลย และเมื่อโหลดล้มเหลวก็เงียบไปเฉย ๆ
+ */
 onMounted(async () => {
+  referenceLoading.value = true
   try {
-    const [usersRes, typesRes] = await Promise.all([
-      api.get('/admin/users'),
+    const [personnel, typesRes] = await Promise.all([
+      fetchAllPersonnel(),
       api.get('/leaves/types')
     ])
-    // The admin users endpoint returns a paginated list or data array. Let's assume it returns { data: [...] } or [...] 
-    users.value = usersRes.data.data || usersRes.data
+    users.value = personnel
     leaveTypes.value = typesRes.data
   } catch (error) {
-    console.error('Failed to load initial data', error)
+    alertStore.error(getErrorMessage(error, 'โหลดรายชื่อบุคลากรและประเภทการลาไม่สำเร็จ'))
+  } finally {
+    referenceLoading.value = false
   }
 })
 </script>

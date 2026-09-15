@@ -113,6 +113,14 @@
                 </span>
               </td>
             </tr>
+            <tr v-if="loading">
+              <td colspan="4" class="px-5 py-8 text-center text-gray-500">กำลังโหลดรายชื่อบุคลากร…</td>
+            </tr>
+            <tr v-else-if="filtered.length === 0">
+              <td colspan="4" class="px-5 py-8 text-center text-gray-500">
+                {{ search ? 'ไม่พบบุคลากรที่ตรงกับคำค้น' : 'ยังไม่มีบุคลากรในระบบ' }}
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -161,6 +169,8 @@
 import { computed, onMounted, ref } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { fetchAllPersonnel } from '../../utils/personnelDirectory'
+import { getErrorMessage } from '../../utils/errorHandler'
 
 const alerts = useAlertStore()
 const users = ref([])
@@ -168,14 +178,33 @@ const types = ref([])
 const search = ref('')
 const typeForm = ref(null)
 const savingType = ref(false)
+const loading = ref(false)
 
+/*
+ * รายชื่อบุคลากรต้องเป็น array และต้องครบทุกคน
+ *
+ * เดิมเขียนว่า `users.value = userResponse.data` ซึ่งรับ **ทั้งซอง** ของ
+ * `/admin/users` (endpoint แบ่งหน้าแล้ว จึงคืน `{ data: [...], last_page: N }`)
+ * `users` จึงเป็น object ไม่ใช่ array และ `filtered` ที่เรียก `.filter()` ก็พัง
+ * ทุกครั้ง — ตาราง "กำหนดประเภทให้บุคลากร" ของหน้านี้จึงไม่เคยแสดงใครเลย
+ *
+ * `fetchAllPersonnel()` ไล่ดึงจนครบทุกหน้า เพราะหน้านี้ไม่มีปุ่มเลื่อนหน้า
+ * ถ้าดึงหน้าเดียวจะกำหนดประเภทให้คนที่ 26 เป็นต้นไปไม่ได้
+ */
 const load = async () => {
-  const [userResponse, typeResponse] = await Promise.all([
-    api.get('/admin/users'),
-    api.get('/personnel-types'),
-  ])
-  users.value = userResponse.data
-  types.value = typeResponse.data
+  loading.value = true
+  try {
+    const [personnel, typeResponse] = await Promise.all([
+      fetchAllPersonnel(),
+      api.get('/personnel-types'),
+    ])
+    users.value = personnel
+    types.value = typeResponse.data
+  } catch (e) {
+    alerts.error(getErrorMessage(e, 'โหลดข้อมูลประเภทบุคลากรไม่สำเร็จ'))
+  } finally {
+    loading.value = false
+  }
 }
 
 const filtered = computed(() => {

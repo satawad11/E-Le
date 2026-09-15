@@ -36,6 +36,7 @@
               <tr>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ลำดับ</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">หน่วยงาน</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ระดับ</th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">สังกัดใต้</th>
                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">จำนวนคน</th>
                 <th scope="col" class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">เลือกดำเนินการ</th>
@@ -43,11 +44,21 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="(dept, index) in orgUnits" :key="dept.id" class="hover:bg-gray-50">
+              <!--
+                เรียงแบบต้นไม้และย่อหน้าตามชั้น — ผังของวิทยาลัยมีถึงสามชั้น
+                (ฝ่าย > งาน / ฝ่ายวิชาการ > แผนกวิชา) ถ้าเรียงแบน ๆ เกือบสามสิบแถว
+                ผู้ดูแลจะอ่านไม่ออกว่าหน่วยไหนอยู่ใต้ฝ่ายใด
+              -->
+              <tr v-for="(dept, index) in orderedUnits" :key="dept.id" class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ index + 1 }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ dept.name }}
+                  <span :style="{ paddingInlineStart: `${dept.depth * 1.5}rem` }" class="inline-block">
+                    <span v-if="dept.depth > 0" class="text-gray-300 me-1">└</span>{{ dept.name }}
+                  </span>
                   <span v-if="dept.is_root" class="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">ยอดผัง</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{{ typeLabel(dept.type) }}</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ parentName(dept) }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">{{ dept.members }}</td>
@@ -98,7 +109,19 @@
           <div v-if="!form.is_root">
             <label class="block text-sm font-medium text-gray-700">สังกัดใต้หน่วยงาน</label>
             <select v-model="form.parent_id" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm">
-              <option v-for="unit in parentOptions" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
+              <option v-for="unit in parentOptions" :key="unit.id" :value="unit.id">
+                {{ indent(unit.depth) }}{{ unit.name }}
+              </option>
+            </select>
+          </div>
+          <!--
+            ระดับของหน่วยงาน — เดิมหน้าจอไม่มีช่องนี้ ทุกหน่วยที่สร้างจากหน้าเว็บ
+            จึงถูกบันทึกเป็น `department` หมด แม้จะเป็นฝ่ายหรืองานก็ตาม
+          -->
+          <div v-if="!form.is_root">
+            <label class="block text-sm font-medium text-gray-700">ระดับ</label>
+            <select v-model="form.type" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm">
+              <option v-for="option in TYPE_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
             </select>
           </div>
           <!--
@@ -133,12 +156,14 @@
 import { computed, ref, onMounted } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useConfirm } from '../../composables/useConfirm'
 import { getErrorMessage } from '../../utils/errorHandler'
 import LoadingState from '../../components/ui/LoadingState.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ErrorState from '../../components/ui/ErrorState.vue'
 
 const alertStore = useAlertStore()
+const { confirmDanger } = useConfirm()
 
 const loading = ref(true)
 const loadError = ref('')
@@ -152,13 +177,74 @@ const form = ref({
   id: null,
   name: '',
   parent_id: null,
+  type: 'section',
   is_active: true,
   is_root: false,
 })
 
+/**
+ * ระดับของหน่วยงานตามโครงของสถานศึกษาอาชีวศึกษา
+ * ตรงกับค่า `type` ที่ `VocationalOrgStructureSeeder` ใช้สร้างผังตั้งต้น
+ */
+const TYPE_OPTIONS = [
+  { value: 'division', label: 'ฝ่าย' },
+  { value: 'section', label: 'งาน' },
+  { value: 'department', label: 'แผนกวิชา' },
+]
+
+const TYPE_LABELS = {
+  organization: 'สถานศึกษา',
+  division: 'ฝ่าย',
+  section: 'งาน',
+  department: 'แผนกวิชา',
+}
+
+const typeLabel = (type) => TYPE_LABELS[type] || type || '—'
+
+/**
+ * ย่อหน้าตามชั้นสำหรับ `<option>` ซึ่งจัดรูปแบบด้วย CSS ไม่ได้
+ * ใช้ช่องว่างไม่ตัดบรรทัด (U+00A0) เพราะเบราว์เซอร์ยุบช่องว่างธรรมดาทิ้ง
+ */
+const indent = (depth) => String.fromCharCode(160).repeat(depth * 3)
+
+/**
+ * เรียงผังแบบต้นไม้ พร้อมความลึกของแต่ละหน่วยสำหรับย่อหน้า
+ *
+ * API คืนรายการเรียงตาม `parent_id` แล้วตามชื่อ ซึ่งอ่านไม่ออกเมื่อผังลึกหลายชั้น
+ * ที่นี่ไต่จากยอดผังลงไปตามลูก หน่วยที่หาแม่ไม่เจอ (ข้อมูลค้าง) ถูกต่อท้ายไว้
+ * เพื่อไม่ให้หายไปจากหน้าจอโดยเงียบ ๆ
+ */
+const orderedUnits = computed(() => {
+  const childrenOf = new Map()
+  orgUnits.value.forEach((unit) => {
+    const key = unit.parent_id ?? null
+    if (!childrenOf.has(key)) childrenOf.set(key, [])
+    childrenOf.get(key).push(unit)
+  })
+
+  const ordered = []
+  const seen = new Set()
+
+  const walk = (parentId, depth) => {
+    ;(childrenOf.get(parentId) || []).forEach((unit) => {
+      if (seen.has(unit.id)) return
+      seen.add(unit.id)
+      ordered.push({ ...unit, depth })
+      walk(unit.id, depth + 1)
+    })
+  }
+
+  walk(null, 0)
+  orgUnits.value.forEach((unit) => {
+    if (!seen.has(unit.id)) ordered.push({ ...unit, depth: 0 })
+  })
+
+  return ordered
+})
+
 // ยอดผังเป็นหน่วยงานแม่ของตัวเองไม่ได้ และหน่วยงานย้ายไปอยู่ใต้ตัวเองไม่ได้
 const parentOptions = computed(
-  () => orgUnits.value.filter(unit => unit.id !== form.value.id),
+  () => orderedUnits.value.filter(unit => unit.id !== form.value.id),
 )
 
 const parentName = (unit) => orgUnits.value.find(u => u.id === unit.parent_id)?.name || '—'
@@ -195,6 +281,7 @@ const openAddModal = () => {
     id: null,
     name: '',
     parent_id: orgUnits.value.find(unit => unit.is_root)?.id ?? null,
+    type: 'section',
     is_active: true,
     is_root: false,
   }
@@ -207,6 +294,7 @@ const openEditModal = (dept) => {
     id: dept.id,
     name: dept.name,
     parent_id: dept.parent_id,
+    type: dept.type || 'section',
     is_active: dept.is_active,
     is_root: dept.is_root,
   }
@@ -243,7 +331,14 @@ const saveOrgUnit = async () => {
 }
 
 const confirmDelete = async (dept) => {
-  if (confirm(`คุณต้องการลบหน่วยงาน "${dept.name}" ใช่หรือไม่?\nการกระทำนี้ไม่สามารถกู้คืนได้`)) {
+  const confirmed = await confirmDanger({
+    title: 'ลบหน่วยงาน',
+    message: `คุณต้องการลบหน่วยงาน "${dept.name}" ใช่หรือไม่?`,
+    detail: 'การกระทำนี้ไม่สามารถกู้คืนได้ — ถ้าเพียงต้องการเลิกใช้ ให้ปิดการใช้งานแทน',
+    confirmText: 'ลบหน่วยงาน',
+  })
+
+  if (confirmed) {
     try {
       await api.delete(`/admin/org-units/${dept.id}`)
       alertStore.success('ลบหน่วยงานเรียบร้อยแล้ว')

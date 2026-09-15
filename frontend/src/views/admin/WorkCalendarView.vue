@@ -9,7 +9,15 @@
     </div>
 
     <section class="mb-4 flex flex-wrap gap-3 rounded-2xl border bg-white p-4">
-      <label class="text-sm">ปี ค.ศ.<input v-model.number="filters.year" type="number" class="ml-2 rounded-lg border px-3 py-2" /></label>
+      <!--
+        ปีแสดงเป็น พ.ศ. เหมือนหน้าจออื่นทั้งระบบ (ค่าที่ส่งให้ API ยังเป็น ค.ศ. เหมือนเดิม)
+        และต้องมี @change เหมือนช่องหน่วยงาน — เดิมเปลี่ยนปีแล้วรายการไม่โหลดใหม่เลย
+      -->
+      <label class="text-sm">ปี (พ.ศ.)
+        <select v-model.number="filters.year" class="ml-2 rounded-lg border px-3 py-2" @change="load">
+          <option v-for="y in yearOptions" :key="y" :value="y">{{ y + 543 }}</option>
+        </select>
+      </label>
       <label class="text-sm">หน่วยงาน
         <select v-model="filters.org_unit_id" class="ml-2 rounded-lg border px-3 py-2" @change="load">
           <option value="">ทั้งหมด</option><option value="global">ส่วนกลาง</option>
@@ -49,16 +57,33 @@
 import { onMounted, reactive, ref } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useConfirm } from '../../composables/useConfirm'
 import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 
 const alerts = useAlertStore(), loading = ref(false), editing = ref(false), items = ref([]), orgUnits = ref([])
-const filters = reactive({ year: new Date().getFullYear(), org_unit_id: '' })
+const { confirmDanger } = useConfirm()
+const currentYear = new Date().getFullYear()
+const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i)
+const filters = reactive({ year: currentYear, org_unit_id: '' })
 const form = reactive({ id: null, date: '', name: '', org_unit_id: null, day_type: 'holiday', is_active: true })
 const load = async () => { loading.value = true; try { const params = { year: filters.year }; if (filters.org_unit_id === 'global') params.org_unit_id = null; else if (filters.org_unit_id) params.org_unit_id = filters.org_unit_id; const { data } = await api.get('/admin/work-calendar', { params }); items.value = data.data || data } finally { loading.value = false } }
 const loadOrgUnits = async () => { try { const { data } = await api.get('/admin/work-calendar/org-units'); orgUnits.value = data.data || data } catch { orgUnits.value = [] } }
 const openForm = (item = null) => { Object.assign(form, item ? { id: item.id, date: String(item.date).slice(0, 10), name: item.name, org_unit_id: item.org_unit_id, day_type: item.day_type, is_active: item.is_active } : { id: null, date: '', name: '', org_unit_id: null, day_type: 'holiday', is_active: true }); editing.value = true }
 const save = async () => { try { const payload = { ...form }; delete payload.id; if (form.id) await api.put(`/admin/work-calendar/${form.id}`, payload); else await api.post('/admin/work-calendar', payload); editing.value = false; alerts.success('บันทึกปฏิทินวันทำการแล้ว'); await load() } catch (error) { alerts.error(error.response?.data?.message || 'บันทึกไม่สำเร็จ') } }
-const remove = async (item) => { if (!confirm(`ลบ “${item.name}” หรือไม่`)) return; await api.delete(`/admin/work-calendar/${item.id}`); alerts.success('ลบรายการแล้ว'); await load() }
+const remove = async (item) => {
+  const confirmed = await confirmDanger({
+    title: 'ลบรายการในปฏิทินวันทำการ',
+    message: `ลบ “${item.name}” หรือไม่`,
+    detail: 'การคิดวันลาและการลงเวลาของวันนั้นจะกลับไปใช้ปฏิทินปกติ',
+    confirmText: 'ลบรายการ',
+  })
+
+  if (!confirmed) return
+
+  await api.delete(`/admin/work-calendar/${item.id}`)
+  alerts.success('ลบรายการแล้ว')
+  await load()
+}
 const formatDate = value => ThaiDateFormatter.toThaiShortText(value)
 onMounted(async () => { await Promise.all([loadOrgUnits(), load()]) })
 </script>

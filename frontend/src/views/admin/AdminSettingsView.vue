@@ -5,9 +5,13 @@
         <h1 class="text-2xl font-bold text-gray-800">ข้อมูลสถานศึกษาและแบบฟอร์ม</h1>
         <p class="text-sm text-gray-500 mt-1">ข้อมูลหน่วยงาน ผู้ลงนาม และรูปแบบเอกสารที่ระบบใช้ออกหนังสือราชการ</p>
       </div>
-      <button @click="saveSettings" :disabled="isSaving" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2 transition-colors disabled:opacity-50">
+      <button v-if="currentTab !== 'preflight'" @click="saveSettings" :disabled="isSaving" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2 transition-colors disabled:opacity-50">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
         {{ isSaving ? 'กำลังบันทึก...' : 'บันทึกข้อมูล' }}
+      </button>
+      <button v-else @click="fetchPreflightCheck" :disabled="isLoadingPreflight" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2 transition-colors disabled:opacity-50">
+        <svg :class="['w-4 h-4', isLoadingPreflight ? 'animate-spin' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        {{ isLoadingPreflight ? 'กำลังตรวจสอบ...' : 'ตรวจสอบอีกครั้ง' }}
       </button>
     </div>
 
@@ -163,6 +167,28 @@
           <h3 class="text-lg leading-6 font-medium text-red-700 border-b pb-2">ผู้บริหารและผู้ลงนาม</h3>
           <p class="text-sm text-gray-500">ชื่อที่เลือกไว้จะถูกนำไปพิมพ์ในช่องลงนามของเอกสารที่ระบบออกให้</p>
 
+          <!--
+            หน้านี้ไม่ใช่ทะเบียนผู้มีอำนาจ — เป็นเพียงค่าสำรองของชื่อบนกระดาษ
+            เดิมผู้ดูแลเข้าใจว่าแก้ที่นี่แล้วผู้อนุมัติเปลี่ยนตาม ทั้งที่ค่าที่บันทึกเป็น
+            "ข้อความชื่อ" ณ วันที่เลือก ไม่ได้ผูกกับบัญชีผู้ใช้ · เมื่อเปลี่ยนตัวผู้รับผิดชอบ
+            แต่ลืมกลับมาแก้ที่นี่ ใบลาเปล่าที่พิมพ์ไปให้เสนอเซ็นจะขึ้นชื่อคนเก่า
+          -->
+          <div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 space-y-1">
+            <p>
+              <strong>ชื่อในหน้านี้เป็นค่าสำรองสำหรับพิมพ์บนกระดาษเท่านั้น</strong>
+              ระบบจะใช้ชื่อ<strong>ผู้มีอำนาจจริง</strong>ของแต่ละขั้นก่อนเสมอ
+              และจะตกมาใช้ชื่อในหน้านี้ต่อเมื่อชี้ตัวผู้มีอำนาจไม่ได้
+            </p>
+            <p>
+              ผู้อนุมัติจริงตั้งที่
+              <router-link :to="{ name: 'admin-workflow' }" class="font-semibold underline underline-offset-2">จัดการลำดับการอนุมัติ</router-link>
+              และ
+              <router-link :to="{ name: 'admin-org-unit-managers' }" class="font-semibold underline underline-offset-2">ผู้รับผิดชอบหน่วยงาน</router-link>
+              — ค่าที่บันทึกในหน้านี้เป็นข้อความชื่อ ณ วันที่เลือก ไม่ได้ผูกกับบัญชีผู้ใช้
+              ถ้าเจ้าตัวเปลี่ยนชื่อหรือย้ายออก ต้องกลับมาเลือกใหม่เอง
+            </p>
+          </div>
+
           <div class="border rounded-md p-4">
             <label class="block text-sm text-gray-700 mb-1">ตำแหน่งผู้อำนวยการ (ข้อความใต้ลายเซ็น)</label>
             <input type="text" v-model="settings.director_position" placeholder="เช่น ผู้อำนวยการวิทยาลัย..." class="block w-full md:w-1/2 border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
@@ -223,25 +249,190 @@
 
         </div>
 
+        <!-- Tab 4: ตรวจความพร้อมระบบ (Pre-flight Dashboard) -->
+        <div v-show="currentTab === 'preflight'" id="settings-panel-preflight" role="tabpanel" class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 gap-2">
+            <div>
+              <h3 class="text-lg leading-6 font-medium text-red-700">ตรวจความพร้อมข้อมูลตั้งต้น (Pre-flight Check)</h3>
+              <p class="text-sm text-gray-500 mt-0.5">ตรวจสอบความสมบูรณ์ของโครงสร้างหน่วยงาน บัญชีผู้ใช้ สิทธิ์ และนโยบายก่อนเปิดใช้งานจริง</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <span v-if="preflightData?.summary?.checked_at" class="text-xs text-gray-400">
+                ตรวจล่าสุด: {{ formatThaiDateTime(preflightData.summary.checked_at) }}
+              </span>
+              <button
+                type="button"
+                @click="fetchPreflightCheck"
+                :disabled="isLoadingPreflight"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 shadow-xs disabled:opacity-50"
+              >
+                <svg :class="['w-3.5 h-3.5', isLoadingPreflight ? 'animate-spin text-red-600' : 'text-gray-500']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {{ isLoadingPreflight ? 'กำลังตรวจสอบ...' : 'ตรวจสอบอีกครั้ง' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Loading State -->
+          <div v-if="isLoadingPreflight && !preflightData" class="py-12 text-center">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-red-500 border-t-transparent"></div>
+            <p class="mt-2 text-sm text-gray-500">กำลังตรวจสอบความพร้อมของระบบ...</p>
+          </div>
+
+          <!-- Error State -->
+          <div v-else-if="preflightError" class="p-4 rounded-md bg-red-50 border border-red-200 text-red-700 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <span>{{ preflightError }}</span>
+            </div>
+            <button type="button" @click="fetchPreflightCheck" class="text-sm underline font-medium hover:text-red-800">ลองใหม่</button>
+          </div>
+
+          <div v-else-if="preflightData" class="space-y-6">
+            <!-- Overall Status Banner -->
+            <div
+              :class="[
+                'p-5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-4',
+                preflightData.summary.status === 'READY'
+                  ? 'bg-green-50 border-green-200 text-green-900'
+                  : preflightData.summary.status === 'WARNING'
+                    ? 'bg-amber-50 border-amber-200 text-amber-900'
+                    : 'bg-red-50 border-red-200 text-red-900'
+              ]"
+            >
+              <div class="flex items-start gap-3">
+                <div class="mt-0.5">
+                  <span v-if="preflightData.summary.status === 'READY'" class="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  </span>
+                  <span v-else-if="preflightData.summary.status === 'WARNING'" class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                  </span>
+                  <span v-else class="flex h-8 w-8 items-center justify-center rounded-full bg-red-100 text-red-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                  </span>
+                </div>
+                <div>
+                  <h4 class="text-base font-bold">
+                    {{
+                      preflightData.summary.status === 'READY'
+                        ? 'ระบบมีความพร้อม 100% สำหรับการเปิดใช้งานจริง (Ready to Go-Live!)'
+                        : preflightData.summary.status === 'WARNING'
+                          ? 'ผ่านเกณฑ์หลัก แต่พบข้อแนะนำปรับปรุง (ระบบพร้อมเปิดใช้งานโดยมีข้อแนะนำ)'
+                          : 'พบจุดที่ต้องแก้ไขก่อนเปิดใช้งานจริง (ยังไม่พร้อมใช้งาน)'
+                    }}
+                  </h4>
+                  <p class="text-sm mt-0.5 opacity-90">
+                    {{
+                      preflightData.summary.status === 'READY'
+                        ? 'ข้อมูลตั้งต้นครบถ้วนทุกหมวด สามารถเริ่มใช้งานระบบได้อย่างสมบูรณ์'
+                        : preflightData.summary.status === 'WARNING'
+                          ? `ผ่านเกณฑ์โครงสร้างพื้นฐาน แต่มีคำแนะนำ ${preflightData.summary.warn_count} รายการเพื่อความสมบูรณ์สูงสุด`
+                          : `มีรายการสำคัญที่ต้องแก้ไข ${preflightData.summary.fail_count} รายการ และข้อแนะนำ ${preflightData.summary.warn_count} รายการ`
+                    }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Stat Badges -->
+              <div class="flex items-center gap-3 shrink-0">
+                <div class="px-3 py-1.5 rounded-md bg-white/80 border text-center shadow-xs">
+                  <div class="text-xs text-gray-500 font-medium">ผ่าน</div>
+                  <div class="text-lg font-bold text-green-600">{{ preflightData.summary.pass_count }}</div>
+                </div>
+                <div class="px-3 py-1.5 rounded-md bg-white/80 border text-center shadow-xs">
+                  <div class="text-xs text-gray-500 font-medium">ข้อแนะนำ</div>
+                  <div class="text-lg font-bold text-amber-600">{{ preflightData.summary.warn_count }}</div>
+                </div>
+                <div class="px-3 py-1.5 rounded-md bg-white/80 border text-center shadow-xs">
+                  <div class="text-xs text-gray-500 font-medium">ต้องแก้ไข</div>
+                  <div class="text-lg font-bold text-red-600">{{ preflightData.summary.fail_count }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Checks Cards List -->
+            <div class="space-y-3">
+              <div
+                v-for="item in preflightData.checks"
+                :key="item.id"
+                class="p-4 rounded-lg border bg-white shadow-xs transition hover:shadow-sm"
+              >
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div class="flex items-start gap-3">
+                    <span
+                      :class="[
+                        'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold shrink-0',
+                        item.status === 'PASS'
+                          ? 'bg-green-100 text-green-800'
+                          : item.status === 'WARN'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-red-100 text-red-800'
+                      ]"
+                    >
+                      {{ item.status === 'PASS' ? 'ผ่าน' : item.status === 'WARN' ? 'แจ้งเตือน' : 'ต้องแก้ไข' }}
+                    </span>
+                    <div>
+                      <h5 class="text-sm font-semibold text-gray-900">{{ item.category }}</h5>
+                      <p class="text-sm text-gray-600 mt-0.5">{{ item.message }}</p>
+                    </div>
+                  </div>
+
+                  <!-- Action Link / Button -->
+                  <div class="shrink-0 flex items-center justify-end gap-2">
+                    <button
+                      v-if="item.id === 'saraban_number_series' && item.status !== 'PASS'"
+                      type="button"
+                      :disabled="isQuickSettingUpSeries"
+                      class="inline-flex items-center gap-1 text-xs font-medium text-white bg-[#800000] hover:bg-[#600000] px-3 py-1.5 rounded transition disabled:opacity-50"
+                      @click="triggerQuickSetupSeries"
+                    >
+                      <svg v-if="isQuickSettingUpSeries" class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                      <span>{{ isQuickSettingUpSeries ? 'กำลังสร้าง...' : 'สร้างชุดเลข 5 หมวดทันที' }}</span>
+                    </button>
+                    <router-link
+                      :to="item.action_url"
+                      class="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800 hover:underline bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition"
+                    >
+                      <span>{{ item.action_text }}</span>
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </router-link>
+                  </div>
+                </div>
+
+                <!-- Advice Box if available -->
+                <div v-if="item.advice" class="mt-3 pl-3 border-l-2 border-amber-400 bg-amber-50/50 p-2 text-xs text-amber-900 rounded-r">
+                  <span class="font-semibold text-amber-800">คำแนะนำ:</span> {{ item.advice }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useConfirm } from '../../composables/useConfirm'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
+import { fetchAllPersonnel } from '../../utils/personnelDirectory'
 
 const alertStore = useAlertStore()
+const { confirmAction, confirmDanger } = useConfirm()
 const route = useRoute()
 
 const tabs = [
   { id: 'basic', name: 'ข้อมูลสถานศึกษา' },
   { id: 'executives', name: 'ผู้บริหารและผู้ลงนาม' },
-  { id: 'export', name: 'แบบฟอร์มและการส่งออก' }
+  { id: 'export', name: 'แบบฟอร์มและการส่งออก' },
+  { id: 'preflight', name: 'ตรวจความพร้อมระบบ' }
 ]
 
 const executiveFields = [
@@ -342,12 +533,16 @@ const fetchSettings = async () => {
   }
 }
 
+/*
+ * ช่องเลือกผู้ลงนามต้องมีบุคลากรครบทุกคน — `/admin/users` แบ่งหน้าละ 25 คน
+ * ถ้าดึงหน้าเดียวจะเลือกผู้ลงนามที่ชื่อเรียงหลังคนที่ 25 ไม่ได้เลย
+ * และถ้าโหลดไม่สำเร็จต้องบอกผู้ใช้ ไม่ใช่ปล่อยให้ช่องว่างเปล่าโดยไม่มีคำอธิบาย
+ */
 const fetchUsers = async () => {
   try {
-    const res = await api.get('/admin/users')
-    users.value = res.data.data || res.data
-  } catch {
-    console.error('Failed to fetch users')
+    users.value = await fetchAllPersonnel()
+  } catch (error) {
+    alertStore.error(validationMessage(error, 'โหลดรายชื่อบุคลากรสำหรับเลือกผู้ลงนามไม่สำเร็จ'))
   }
 }
 
@@ -386,7 +581,14 @@ const handleLogoChange = async (event) => {
 }
 
 const deleteLogo = async () => {
-  if (!window.confirm('ยืนยันการลบโลโก้สถานศึกษา?')) return
+  const confirmed = await confirmDanger({
+    title: 'ลบตราสัญลักษณ์สถานศึกษา',
+    message: 'ยืนยันการลบโลโก้สถานศึกษา?',
+    detail: 'เอกสารที่ออกหลังจากนี้จะไม่มีตราสัญลักษณ์จนกว่าจะอัปโหลดใหม่',
+    confirmText: 'ลบรูปภาพ',
+  })
+
+  if (!confirmed) return
   isDeletingLogo.value = true
   try {
     await api.delete('/admin/settings/logo')
@@ -406,11 +608,73 @@ const handleBeforeUnload = (event) => {
   event.returnValue = ''
 }
 
-onBeforeRouteLeave(() => !isDirty.value || window.confirm('มีการตั้งค่าที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?'))
+const preflightData = ref(null)
+const isLoadingPreflight = ref(false)
+const preflightError = ref(null)
+
+const formatThaiDateTime = (isoString) => {
+  if (!isoString) return ''
+  try {
+    const d = new Date(isoString)
+    const day = d.getDate()
+    const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+    const month = months[d.getMonth()]
+    const year = d.getFullYear() + 543
+    const hours = String(d.getHours()).padStart(2, '0')
+    const mins = String(d.getMinutes()).padStart(2, '0')
+    return `${day} ${month} ${year} ${hours}:${mins} น.`
+  } catch {
+    return isoString
+  }
+}
+
+const isQuickSettingUpSeries = ref(false)
+const triggerQuickSetupSeries = async () => {
+  isQuickSettingUpSeries.value = true
+  try {
+    await api.post('/saraban/number-series/quick-setup')
+    await fetchPreflightCheck()
+  } catch (error) {
+    preflightError.value = validationMessage(error, 'ไม่สามารถสร้างชุดเลขเริ่มต้นได้')
+  } finally {
+    isQuickSettingUpSeries.value = false
+  }
+}
+
+const fetchPreflightCheck = async () => {
+  isLoadingPreflight.value = true
+  preflightError.value = null
+  try {
+    const response = await api.get('/admin/preflight-check')
+    preflightData.value = response.data.data
+  } catch (error) {
+    preflightError.value = validationMessage(error, 'ไม่สามารถดึงข้อมูลผลการตรวจสอบความพร้อมได้')
+  } finally {
+    isLoadingPreflight.value = false
+  }
+}
+
+watch(currentTab, (newTab) => {
+  if (newTab === 'preflight' && !preflightData.value && !isLoadingPreflight.value) {
+    fetchPreflightCheck()
+  }
+})
+
+// navigation guard รับ promise ได้ จึงรอผลจากกล่องยืนยันของระบบได้ตรง ๆ
+onBeforeRouteLeave(async () => !isDirty.value || await confirmAction({
+  title: 'ออกจากหน้าตั้งค่า',
+  message: 'มีการตั้งค่าที่ยังไม่ได้บันทึก ต้องการออกจากหน้านี้หรือไม่?',
+  detail: 'การเปลี่ยนแปลงที่ยังไม่ได้บันทึกจะหายไป',
+  confirmText: 'ออกโดยไม่บันทึก',
+  cancelText: 'อยู่หน้านี้ต่อ',
+}))
 
 onMounted(() => {
   fetchSettings()
   fetchUsers()
+  if (currentTab.value === 'preflight') {
+    fetchPreflightCheck()
+  }
   window.addEventListener('beforeunload', handleBeforeUnload)
 })
 

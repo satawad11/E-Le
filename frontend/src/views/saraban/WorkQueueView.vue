@@ -8,11 +8,25 @@
         </p>
       </div>
 
-      <span
-        v-if="items.length"
-        class="inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full text-xs font-semibold text-white"
-        style="background-color: #800000"
-      >{{ items.length }}</span>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border"
+          :class="urgencyFilter === 'all' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'"
+          @click="urgencyFilter = 'all'"
+        >
+          ทั้งหมด ({{ items.length }})
+        </button>
+        <button
+          type="button"
+          class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors border flex items-center gap-1.5"
+          :class="urgencyFilter === 'urgent' ? 'bg-red-600 text-white border-red-600 shadow-xs' : 'bg-white text-red-600 border-red-200 hover:bg-red-50'"
+          @click="urgencyFilter = 'urgent'"
+        >
+          <span v-if="urgentCount > 0" class="w-2 h-2 rounded-full bg-current animate-ping" />
+          เฉพาะด่วนที่สุด / ด่วนมาก ({{ urgentCount }})
+        </button>
+      </div>
     </div>
 
     <!--
@@ -27,9 +41,9 @@
       <LoadingState v-if="loading" type="skeleton-table" :rows="5" :columns="5" />
       <ErrorState v-else-if="error" :message="error" @retry="load" />
       <EmptyState
-        v-else-if="!items.length"
+        v-else-if="!filteredItems.length"
         title="ไม่มีหนังสือที่รอท่านดำเนินการ"
-        description="เมื่อมีเรื่องเดินมาถึงท่านตามสายงาน รายการจะปรากฏที่นี่"
+        :description="urgencyFilter === 'urgent' ? 'ไม่มีหนังสือด่วนที่สุดหรือด่วนมากในคิวขณะนี้' : 'เมื่อมีเรื่องเดินมาถึงท่านตามสายงาน รายการจะปรากฏที่นี่'"
       />
 
       <div v-else class="overflow-x-auto">
@@ -45,14 +59,27 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
-            <tr v-for="item in items" :key="item.document_id" class="hover:bg-gray-50">
-              <td class="px-5 py-3 whitespace-nowrap">{{ item.document_number || '—' }}</td>
+            <tr
+              v-for="item in filteredItems"
+              :key="item.document_id"
+              :class="item.urgency === 'most_urgent' ? 'bg-red-50/40 border-l-4 border-l-red-500 hover:bg-red-50/70' : 'hover:bg-gray-50'"
+            >
+              <td class="px-5 py-3 whitespace-nowrap font-medium text-gray-900">{{ item.document_number || '—' }}</td>
               <td class="px-5 py-3">
-                {{ item.subject }}
+                <span>{{ item.subject }}</span>
                 <span
-                  v-if="item.urgency && item.urgency !== 'normal'"
-                  class="ms-2 text-xs font-semibold text-red-700"
-                >{{ urgencyLabel(item.urgency) }}</span>
+                  v-if="item.urgency === 'most_urgent'"
+                  class="ms-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-600 text-white animate-pulse shadow-xs"
+                >ด่วนที่สุด</span>
+                <span
+                  v-else-if="item.urgency === 'very_urgent'"
+                  class="ms-2 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200"
+                >ด่วนมาก</span>
+                <span
+                  v-else-if="item.urgency === 'urgent'"
+                  class="ms-2 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200"
+                >ด่วน</span>
+
                 <span
                   v-if="item.confidentiality && item.confidentiality !== 'normal'"
                   class="ms-2 text-xs font-semibold text-amber-800"
@@ -77,7 +104,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../axios'
 import { getErrorMessage } from '../../utils/errorHandler'
@@ -91,8 +118,20 @@ const items = ref([])
 const loading = ref(true)
 const error = ref('')
 const scanLimited = ref(false)
+const urgencyFilter = ref('all')
 
-const urgencyLabel = (v) => ({ urgent: 'ด่วน', very_urgent: 'ด่วนมาก', most_urgent: 'ด่วนที่สุด' }[v] || v)
+const urgentCount = computed(() =>
+  items.value.filter((i) => ['most_urgent', 'very_urgent'].includes(i.urgency)).length
+)
+
+const filteredItems = computed(() => {
+  if (urgencyFilter.value === 'urgent') {
+    return items.value.filter((i) => ['most_urgent', 'very_urgent'].includes(i.urgency))
+  }
+  return items.value
+})
+
+// ป้ายชั้นความเร็วถูกวาดเป็น badge แยกสีในตารางแล้ว (v-if ตาม item.urgency) จึงไม่มี helper ซ้ำอีก
 const confidentialityLabel = (v) => ({ confidential: 'ลับ', secret: 'ลับมาก', top_secret: 'ลับที่สุด' }[v] || v)
 const actionLabel = (v) => ({
   approve: 'อนุมัติ',

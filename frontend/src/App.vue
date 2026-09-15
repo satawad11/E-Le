@@ -9,6 +9,7 @@
     </a>
 
     <AlertList />
+    <ConfirmDialog />
 
     <!-- Sidebar (desktop) -->
     <aside
@@ -285,6 +286,7 @@ import { useLeaveStore } from './stores/leave'
 import { useSettingStore } from './stores/settingStore'
 import { useMenuStore } from './stores/menuStore'
 import AlertList from './components/AlertList.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 import AppMenuNav from './components/AppMenuNav.vue'
 import NotificationBell from './components/NotificationBell.vue'
 

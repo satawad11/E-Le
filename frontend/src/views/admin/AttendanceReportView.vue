@@ -226,9 +226,11 @@
 import { ref, onMounted } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useConfirm } from '../../composables/useConfirm'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
 
 const alertStore = useAlertStore()
+const { confirmAction, promptText } = useConfirm()
 import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 
 const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
@@ -303,7 +305,14 @@ const exportReport = async (type) => {
 const isSyncing = ref(false)
 
 const syncLeaves = async () => {
-  if (!confirm('ต้องการซิงค์ข้อมูลการลาของเดือนนี้หรือไม่?')) return
+  const confirmed = await confirmAction({
+    title: 'ซิงค์ข้อมูลการลา',
+    message: 'ต้องการซิงค์ข้อมูลการลาของเดือนนี้หรือไม่?',
+    detail: 'ใบลาที่อนุมัติแล้วของเดือนนี้จะถูกบันทึกเป็น "ลางาน" ในสรุปการลงเวลา',
+    confirmText: 'เริ่มซิงค์',
+  })
+
+  if (!confirmed) return
   
   isSyncing.value = true
   try {
@@ -401,7 +410,13 @@ const decideCorrection = async (correction, action) => {
   let comment = null
 
   if (action === 'reject') {
-    comment = window.prompt('เหตุผลที่ไม่อนุมัติ')
+    comment = await promptText({
+      title: 'ไม่อนุมัติคำขอแก้ไขเวลา',
+      message: 'ผู้ยื่นจะเห็นเหตุผลนี้ในคำขอของตนเอง',
+      prompt: { label: 'เหตุผลที่ไม่อนุมัติ', placeholder: 'ระบุให้ผู้ยื่นทราบว่าเพราะอะไร', required: true, multiline: true },
+      confirmText: 'บันทึกผลไม่อนุมัติ',
+    })
+
     if (!comment) return
   }
 

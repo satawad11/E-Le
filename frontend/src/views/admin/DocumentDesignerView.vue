@@ -541,12 +541,14 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useConfirm } from '../../composables/useConfirm'
 import {
   snapValue, clampBox, clampSize, alignBoxes, distributeBoxes, nudgeBox, pageSize,
 } from '../../utils/designerGeometry'
 
 const route = useRoute()
 const alertStore = useAlertStore()
+const { confirmAction, confirmDanger } = useConfirm()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -1316,7 +1318,14 @@ const createVersion = async () => {
 }
 
 const removeDraft = async () => {
-  if (!window.confirm('ลบฉบับร่างนี้ทิ้ง? ตำแหน่งฟิลด์ที่วางไว้ในฉบับร่างนี้จะหายไปด้วย (เวอร์ชันที่เผยแพร่แล้วไม่ถูกแตะ)')) return
+  const confirmed = await confirmDanger({
+    title: 'ลบฉบับร่าง',
+    message: 'ลบฉบับร่างนี้ทิ้ง?',
+    detail: 'ตำแหน่งฟิลด์ที่วางไว้ในฉบับร่างนี้จะหายไปด้วย เวอร์ชันที่เผยแพร่แล้วไม่ถูกแตะ',
+    confirmText: 'ลบฉบับร่าง',
+  })
+
+  if (!confirmed) return
 
   saving.value = true
   try {
@@ -1352,7 +1361,14 @@ const publish = async () => {
     ? `\n\nมีข้อควรระวัง ${result.warnings.length} ข้อ:\n- ${result.warnings.join('\n- ')}`
     : ''
 
-  if (!window.confirm(`เผยแพร่เวอร์ชันนี้? เอกสารที่ออกใหม่จะใช้เวอร์ชันนี้ และเวอร์ชันเดิมจะถูกปลดเป็น "เลิกใช้แล้ว" (ไม่ถูกลบ)${warning}`)) return
+  const confirmed = await confirmAction({
+    title: 'เผยแพร่เวอร์ชันแบบฟอร์ม',
+    message: 'เผยแพร่เวอร์ชันนี้?',
+    detail: `เอกสารที่ออกใหม่จะใช้เวอร์ชันนี้ และเวอร์ชันเดิมจะถูกปลดเป็น "เลิกใช้แล้ว" (ไม่ถูกลบ)${warning}`,
+    confirmText: 'เผยแพร่',
+  })
+
+  if (!confirmed) return
 
   saving.value = true
   try {
@@ -1376,7 +1392,14 @@ const publish = async () => {
  * เอกสารที่ออกไปแล้วยังอ้างอิงเวอร์ชันนี้ได้ตามเดิม — การเลิกใช้มีผลกับเอกสารที่ออก "ใหม่" เท่านั้น
  */
 const retire = async () => {
-  if (! window.confirm('เลิกใช้เวอร์ชันนี้? เอกสารที่ออกใหม่จะไม่ใช้เวอร์ชันนี้อีก (เอกสารเก่าที่อ้างอิงไว้ยังพิมพ์ซ้ำได้เหมือนเดิม)')) return
+  const confirmed = await confirmDanger({
+    title: 'เลิกใช้เวอร์ชันแบบฟอร์ม',
+    message: 'เลิกใช้เวอร์ชันนี้?',
+    detail: 'เอกสารที่ออกใหม่จะไม่ใช้เวอร์ชันนี้อีก เอกสารเก่าที่อ้างอิงไว้ยังพิมพ์ซ้ำได้เหมือนเดิม',
+    confirmText: 'เลิกใช้เวอร์ชันนี้',
+  })
+
+  if (! confirmed) return
   saving.value = true
   try {
     const res = await api.post(`/admin/document-engine/versions/${version.value.id}/retire`)
@@ -1393,7 +1416,13 @@ const retire = async () => {
 
 const confirmDiscard = async () => {
   if (!isDirty.value) return true
-  return window.confirm('ยังมีตำแหน่งฟิลด์ที่แก้ไว้แต่ยังไม่ได้บันทึก — ออกจากหน้านี้แล้วงานที่แก้จะหายไป ยืนยันหรือไม่?')
+  return confirmAction({
+    title: 'ออกจากหน้าออกแบบแบบฟอร์ม',
+    message: 'ยังมีตำแหน่งฟิลด์ที่แก้ไว้แต่ยังไม่ได้บันทึก',
+    detail: 'ออกจากหน้านี้แล้วงานที่แก้จะหายไป ยืนยันหรือไม่?',
+    confirmText: 'ออกโดยไม่บันทึก',
+    cancelText: 'อยู่หน้านี้ต่อ',
+  })
 }
 
 const warnOnUnload = (event) => {

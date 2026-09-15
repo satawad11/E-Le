@@ -417,6 +417,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useLeaveStore } from '../stores/leave'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
+import { useConfirm } from '../composables/useConfirm'
 import { compositeStatusLabel, compositeStatusBadgeClass } from '../utils/statusHelper'
 import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
 import { getErrorMessage } from '../utils/errorHandler'
@@ -432,6 +433,7 @@ import api from '../axios'
 const leaveStore = useLeaveStore()
 const authStore  = useAuthStore()
 const alertStore = useAlertStore()
+const { confirmAction, confirmDanger } = useConfirm()
 
 const loading      = ref(true)
 const loadError    = ref('')
@@ -655,7 +657,14 @@ const doCancel = async () => {
  * เพื่อให้ตรวจสอบย้อนหลังได้ ฝั่ง server เป็นผู้บังคับจริง ตรงนี้เพียงไม่แสดงปุ่ม
  */
 const deleteLeave = async (leaveId) => {
-  if (!confirm('ยืนยันการลบร่างใบลานี้?')) return
+  const confirmed = await confirmDanger({
+    title: 'ลบร่างใบลา',
+    message: 'ยืนยันการลบร่างใบลานี้?',
+    detail: 'ร่างที่ลบแล้วกู้คืนไม่ได้',
+    confirmText: 'ลบร่าง',
+  })
+
+  if (!confirmed) return
   try {
     await api.delete(`/leaves/${leaveId}`)
     alertStore.success('ลบร่างใบลาเรียบร้อยแล้ว')
@@ -667,7 +676,14 @@ const deleteLeave = async (leaveId) => {
 
 /** ส่งร่างเข้าสายอนุมัติ — จุดที่ใบลาออกเลขที่หนังสือและกันวันลา */
 const submitDraft = async (leave) => {
-  if (!confirm('ส่งร่างนี้เข้าสายอนุมัติ? เมื่อส่งแล้วจะออกเลขที่หนังสือและลบไม่ได้อีก')) return
+  const confirmed = await confirmAction({
+    title: 'ส่งร่างเข้าสายอนุมัติ',
+    message: 'ส่งร่างนี้เข้าสายอนุมัติ?',
+    detail: 'เมื่อส่งแล้วระบบจะออกเลขที่หนังสือ และลบใบลานี้ไม่ได้อีก',
+    confirmText: 'ส่งเข้าสายอนุมัติ',
+  })
+
+  if (!confirmed) return
   submittingDraft.value = leave.id
   try {
     await leaveStore.submitDraft(leave.id)

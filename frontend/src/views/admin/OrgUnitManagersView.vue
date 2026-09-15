@@ -142,10 +142,13 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useConfirm } from '../../composables/useConfirm'
 import { getErrorMessage } from '../../utils/errorHandler'
+import { fetchAllPersonnel } from '../../utils/personnelDirectory'
 import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 
 const alerts = useAlertStore()
+const { confirmDanger } = useConfirm()
 const loading = ref(true)
 const saving = ref(false)
 const showForm = ref(false)
@@ -193,14 +196,15 @@ const isCurrent = (row) => {
 const load = async () => {
   loading.value = true
   try {
-    const [assignments, unitList, userList] = await Promise.all([
+    // ช่องเลือกผู้รับผิดชอบไม่มีปุ่มเลื่อนหน้า จึงต้องได้รายชื่อครบทุกคน ไม่ใช่หน้าแรก 25 คน
+    const [assignments, unitList, personnel] = await Promise.all([
       api.get('/admin/org-unit-managers'),
       api.get('/admin/org-unit-managers/units'),
-      api.get('/admin/users'),
+      fetchAllPersonnel(),
     ])
     rows.value = assignments.data
     units.value = unitList.data
-    users.value = userList.data.data || userList.data
+    users.value = personnel
   } catch (error) {
     alerts.error(getErrorMessage(error, 'โหลดข้อมูลผู้รับผิดชอบหน่วยงานไม่สำเร็จ'))
   } finally {
@@ -241,7 +245,14 @@ const save = async () => {
  */
 const endAssignment = async (row) => {
   const today = new Date().toISOString().slice(0, 10)
-  if (!confirm(`สิ้นสุดการมอบหมายของ ${row.user_name} ที่ ${row.org_unit_name} ณ วันที่ ${thaiDate(today)} หรือไม่`)) return
+  const confirmed = await confirmDanger({
+    title: 'สิ้นสุดการมอบหมาย',
+    message: `สิ้นสุดการมอบหมายของ ${row.user_name} ที่ ${row.org_unit_name} ณ วันที่ ${thaiDate(today)} หรือไม่`,
+    detail: 'ใบลาของคนในหน่วยงานนี้จะไม่มีผู้อนุมัติจนกว่าจะมอบหมายคนใหม่',
+    confirmText: 'สิ้นสุดการมอบหมาย',
+  })
+
+  if (!confirmed) return
 
   try {
     await api.put(`/admin/org-unit-managers/${row.id}/end`, { effective_to: today })

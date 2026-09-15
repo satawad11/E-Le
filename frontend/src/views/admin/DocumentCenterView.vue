@@ -635,9 +635,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useConfirm } from '../../composables/useConfirm'
 
 const router = useRouter()
 const alertStore = useAlertStore()
+const { confirmAction, confirmDanger } = useConfirm()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -804,7 +806,14 @@ const saveField = async () => {
 }
 
 const deactivateField = async () => {
-  if (!window.confirm('ปิดการใช้งานตัวแปรนี้? จะไม่แสดงให้เลือกในหน้าออกแบบอีก (แบบฟอร์มเดิมที่ใช้อยู่ยังพิมพ์ได้เหมือนเดิม)')) return
+  const confirmed = await confirmAction({
+    title: 'ปิดการใช้งานตัวแปร',
+    message: 'ปิดการใช้งานตัวแปรนี้?',
+    detail: 'จะไม่แสดงให้เลือกในหน้าออกแบบอีก แบบฟอร์มเดิมที่ใช้อยู่ยังพิมพ์ได้เหมือนเดิม',
+    confirmText: 'ปิดการใช้งาน',
+  })
+
+  if (!confirmed) return
   savingField.value = true
   try {
     const res = await api.delete(`/admin/document-engine/fields/${fieldForm.value.id}`)
@@ -956,7 +965,13 @@ const previewContent = async () => {
 }
 
 const deleteTemplate = async (template) => {
-  if (!window.confirm(`ต้องการลบแม่แบบ "${template.name}" ใช่หรือไม่?`)) return
+  const confirmed = await confirmDanger({
+    title: 'ลบแม่แบบเอกสาร',
+    message: `ต้องการลบแม่แบบ "${template.name}" ใช่หรือไม่?`,
+    confirmText: 'ลบแม่แบบ',
+  })
+
+  if (!confirmed) return
   try {
     const { data } = await api.delete(`/admin/document-engine/templates/${template.id}`)
     alertStore.success(data.message)
@@ -980,9 +995,13 @@ const seedDefaults = async (overwrite) => {
 }
 
 const restoreDefaults = async () => {
-  const confirmed = window.confirm(
-    'คืนค่าแบบฟอร์มตั้งต้นทั้งหมด? เนื้อหาที่แก้ไว้จะถูกแทนที่ (เวอร์ชันเดิมยังถูกเก็บไว้ และใบลาเก่ายังพิมพ์ได้เหมือนเดิม)',
-  )
+  const confirmed = await confirmDanger({
+    title: 'คืนค่าแบบฟอร์มตั้งต้น',
+    message: 'คืนค่าแบบฟอร์มตั้งต้นทั้งหมด? เนื้อหาที่แก้ไว้จะถูกแทนที่',
+    detail: 'เวอร์ชันเดิมยังถูกเก็บไว้ และใบลาเก่ายังพิมพ์ได้เหมือนเดิม',
+    confirmText: 'คืนค่าตั้งต้น',
+  })
+
   if (confirmed) await seedDefaults(true)
 }
 
@@ -1015,7 +1034,14 @@ const saveBinding = async () => {
 }
 
 const removeBinding = async (rule) => {
-  if (!window.confirm('ลบกติกาการผูกแบบฟอร์มนี้หรือไม่?')) return
+  const confirmed = await confirmDanger({
+    title: 'ลบกติกาการผูกแบบฟอร์ม',
+    message: 'ลบกติกาการผูกแบบฟอร์มนี้หรือไม่?',
+    detail: 'เอกสารที่เข้าเงื่อนไขนี้จะกลับไปใช้แบบฟอร์มตั้งต้น',
+    confirmText: 'ลบกติกา',
+  })
+
+  if (!confirmed) return
   try {
     await api.delete(`/admin/document-engine/bindings/${rule.id}`)
     alertStore.success('ลบกติกาเรียบร้อยแล้ว')

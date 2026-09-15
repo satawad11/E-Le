@@ -291,6 +291,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useLeaveStore } from '../stores/leave'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
+import { useConfirm } from '../composables/useConfirm'
 import { openSecureFile } from '../utils/secureFile'
 import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
 import { getErrorMessage } from '../utils/errorHandler'
@@ -303,6 +304,7 @@ import WorkflowTimeline from '../components/ui/WorkflowTimeline.vue'
 const leaveStore = useLeaveStore()
 const authStore = useAuthStore()
 const alertStore = useAlertStore()
+const { confirmAction: askToConfirm } = useConfirm()
 const loading = ref(true)
 const loadError = ref('')
 const isProcessingAction = ref(false)
@@ -347,7 +349,14 @@ const toggleSelectAll = (e) => {
 
 const bulkApprove = async () => {
   if (selectedIds.value.length === 0) return
-  if (!confirm(`คุณต้องการอนุมัติใบลาจำนวน ${selectedIds.value.length} รายการที่เลือกใช่หรือไม่?`)) return
+  const confirmed = await askToConfirm({
+    title: 'อนุมัติใบลาหลายรายการ',
+    message: `คุณต้องการอนุมัติใบลาจำนวน ${selectedIds.value.length} รายการที่เลือกใช่หรือไม่?`,
+    detail: 'ใบลาที่อนุมัติแล้วจะเดินต่อไปยังขั้นถัดไปของสายอนุมัติทันที',
+    confirmText: 'อนุมัติทั้งหมด',
+  })
+
+  if (!confirmed) return
   
   loading.value = true
   let successCount = 0

@@ -307,6 +307,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import { useAlertStore } from '../../stores/alert'
+import { useConfirm } from '../../composables/useConfirm'
 import api from '../../axios'
 import UserPermissionModal from '../../components/admin/UserPermissionModal.vue'
 import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
@@ -320,6 +321,7 @@ import UserFormModal from '../../components/admin/UserFormModal.vue'
 
 const authStore = useAuthStore()
 const alertStore = useAlertStore()
+const { confirmAction } = useConfirm()
 
 const loading = ref(true)
 const loadError = ref('')
@@ -527,7 +529,15 @@ const bulkLabels = {
 
 const runBulk = async (action) => {
   const count = selectedIds.value.length
-  if (!count || !confirm(`${bulkLabels[action]} ของบุคลากร ${count} คน ใช่หรือไม่?`)) return
+  if (!count) return
+
+  const confirmed = await confirmAction({
+    title: bulkLabels[action],
+    message: `${bulkLabels[action]} ของบุคลากร ${count} คน ใช่หรือไม่?`,
+    confirmText: bulkLabels[action],
+  })
+
+  if (!confirmed) return
 
   bulkRunning.value = true
   try {
@@ -562,7 +572,14 @@ const goToPage = (page) => {
  * ให้ผู้ดูแลตัดสินใจอีกครั้งก่อนให้เข้าระบบได้จริง
  */
 const restoreUser = async (user) => {
-  if (!confirm(`กู้บัญชี “${user.name}” คืนหรือไม่?\nบัญชีจะกลับมาในสถานะระงับการใช้งาน`)) return
+  const confirmed = await confirmAction({
+    title: 'กู้บัญชีคืน',
+    message: `กู้บัญชี “${user.name}” คืนหรือไม่?`,
+    detail: 'บัญชีจะกลับมาในสถานะระงับการใช้งาน — ต้องเปิดใช้งานอีกครั้งจึงจะเข้าระบบได้',
+    confirmText: 'กู้บัญชีคืน',
+  })
+
+  if (!confirmed) return
 
   try {
     const res = await api.post(`/admin/users/${user.id}/restore`)
@@ -762,7 +779,17 @@ const submitForm = async () => {
 }
 
 const toggleStatus = async (user) => {
-  if (!confirm(`คุณต้องการ ${user.is_active ? 'ระงับ' : 'เปิดใช้งาน'} ผู้ใช้นี้ใช่หรือไม่?`)) return
+  const suspending = user.is_active
+
+  const confirmed = await confirmAction({
+    title: suspending ? 'ระงับการใช้งานบัญชี' : 'เปิดใช้งานบัญชี',
+    message: `คุณต้องการ ${suspending ? 'ระงับ' : 'เปิดใช้งาน'} ผู้ใช้นี้ใช่หรือไม่?`,
+    detail: suspending ? 'ผู้ใช้จะเข้าสู่ระบบไม่ได้จนกว่าจะเปิดใช้งานอีกครั้ง' : '',
+    confirmText: suspending ? 'ระงับการใช้งาน' : 'เปิดใช้งาน',
+    tone: suspending ? 'danger' : 'default',
+  })
+
+  if (!confirmed) return
   
   submitting.value = true
   try {
@@ -782,7 +809,8 @@ const triggerCsvUpload = () => {
 
 const downloadCsvTemplate = () => {
   const headers = ['id_card_number', 'name', 'email', 'role_id', 'org_unit_id', 'personnel_type_id', 'title', 'first_name', 'last_name', 'gender', 'phone', 'position']
-  const sample = ['1234567890123', 'นายสมชาย ใจดี', 'somchai@example.com', '1', '1', 'นาย', 'สมชาย', 'ใจดี', 'ชาย', '0812345678', 'พนักงานทั่วไป']
+  // ตัวอย่างต้องเป็นตำแหน่งที่มีจริงในสถานศึกษา ไม่ใช่คำว่า "พนักงาน" ซึ่งไม่ใช่คำที่ราชการใช้
+  const sample = ['1234567890123', 'นายสมชาย ใจดี', 'somchai@example.com', '1', '1', '1', 'นาย', 'สมชาย', 'ใจดี', 'ชาย', '0812345678', 'ครู']
   
   const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + 
     headers.join(",") + "\n" +

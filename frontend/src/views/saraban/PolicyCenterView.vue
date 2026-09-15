@@ -47,13 +47,142 @@
       size="lg"
       @update:model-value="editing = null"
     >
-      <div class="space-y-3">
-        <p class="text-sm text-gray-500">
-          บันทึกร่างแล้วยังไม่มีผล ต้องกด "ประกาศใช้" จึงจะบังคับใช้จริง
-          และการประกาศต้องยืนยันรหัสผ่านอีกครั้ง
-        </p>
+      <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-3">
+          <p class="text-sm text-gray-500">
+            บันทึกร่างแล้วยังไม่มีผล ต้องกด "ประกาศใช้" จึงจะบังคับใช้จริง
+          </p>
 
-        <AppTextarea v-model="draftJson" label="เนื้อหานโยบาย (JSON)" :rows="12" />
+          <div v-if="hasWizard(editing.key)" class="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50 text-xs">
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-md font-medium transition"
+              :class="editorMode === 'wizard' ? 'bg-[#800000] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+              @click="switchMode('wizard')"
+            >
+              แบบฟอร์มตัวช่วย
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-md font-medium transition"
+              :class="editorMode === 'json' ? 'bg-[#800000] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+              @click="switchMode('json')"
+            >
+              กำหนดค่า JSON (ขั้นสูง)
+            </button>
+          </div>
+        </div>
+
+        <!-- โหมดตัวช่วย (Wizard Form) -->
+        <div v-if="editorMode === 'wizard' && hasWizard(editing.key)" class="space-y-4 py-1">
+          <!-- 1. นโยบายการเวียนหนังสือ -->
+          <template v-if="editing.key === 'distribution'">
+            <div class="space-y-4">
+              <AppInput
+                v-model.number="wizardForm.acknowledgement_due_days"
+                type="number"
+                min="1"
+                max="365"
+                label="ระยะเวลากำหนดรับทราบ (วันทำการ)"
+                hint="ผู้รับที่ยังไม่รับทราบเกินกำหนดนี้จะแสดงเป็นรายการเกินกำหนดและแจ้งเตือน"
+                @input="syncWizardToJson"
+              />
+
+              <div class="flex items-start space-x-3 pt-2">
+                <input
+                  id="allow-all-target"
+                  v-model="wizardForm.allow_all_authorized_target"
+                  type="checkbox"
+                  class="mt-1 w-4 h-4 text-[#800000] border-gray-300 rounded focus:ring-[#800000]"
+                  @change="syncWizardToJson"
+                />
+                <label for="allow-all-target" class="text-sm cursor-pointer select-none">
+                  <span class="font-medium text-gray-800">อนุญาตให้เวียนถึงผู้รับทั้งหมดที่ได้รับอนุญาต</span>
+                  <span class="block text-xs text-gray-500 mt-0.5">เปิดให้ผู้ส่งสามารถเลือกเวียนหนังสือถึงทุกหน่วยงานในสังกัดพร้อมกันได้</span>
+                </label>
+              </div>
+            </div>
+          </template>
+
+          <!-- 2. ผังหน้าเอกสารและตำแหน่ง QR Code -->
+          <template v-else-if="editing.key === 'document_layout'">
+            <div class="space-y-3">
+              <p class="text-xs font-semibold text-gray-700">พิกัดและขนาดของ QR Code ตรวจสอบหนังสือ</p>
+              <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <AppInput
+                  v-model.number="wizardForm.qr_page"
+                  type="number"
+                  min="1"
+                  label="หน้าที่วาง (Page)"
+                  hint="ค่าเริ่มต้น: 1"
+                  @input="syncWizardToJson"
+                />
+                <AppInput
+                  v-model.number="wizardForm.qr_x"
+                  type="number"
+                  label="พิกัด X (จุด)"
+                  hint="มุมซ้ายล่าง ค่าเริ่มต้น: 470"
+                  @input="syncWizardToJson"
+                />
+                <AppInput
+                  v-model.number="wizardForm.qr_y"
+                  type="number"
+                  label="พิกัด Y (จุด)"
+                  hint="มุมซ้ายล่าง ค่าเริ่มต้น: 740"
+                  @input="syncWizardToJson"
+                />
+                <AppInput
+                  v-model.number="wizardForm.qr_size"
+                  type="number"
+                  min="20"
+                  max="300"
+                  label="ขนาด QR (pt)"
+                  hint="ความกว้างxสูง ค่าเริ่มต้น: 72"
+                  @input="syncWizardToJson"
+                />
+              </div>
+            </div>
+          </template>
+
+          <!-- 3. กติกาการออกเลขหนังสือ -->
+          <template v-else-if="editing.key === 'numbering'">
+            <div class="space-y-4 pt-1">
+              <div class="flex items-start space-x-3">
+                <input
+                  id="buddhist-era"
+                  v-model="wizardForm.buddhist_era"
+                  type="checkbox"
+                  class="mt-1 w-4 h-4 text-[#800000] border-gray-300 rounded focus:ring-[#800000]"
+                  @change="syncWizardToJson"
+                />
+                <label for="buddhist-era" class="text-sm cursor-pointer select-none">
+                  <span class="font-medium text-gray-800">ใช้ปีพุทธศักราช (พ.ศ.)</span>
+                  <span class="block text-xs text-gray-500 mt-0.5">ระเบียบสำนักนายกรัฐมนตรีฯ ข้อ ๑๑ กำหนดให้ใช้ปี พ.ศ. ในเลขทะเบียน</span>
+                </label>
+              </div>
+
+              <div class="flex items-start space-x-3">
+                <input
+                  id="annual-reset"
+                  v-model="wizardForm.annual_reset"
+                  type="checkbox"
+                  class="mt-1 w-4 h-4 text-[#800000] border-gray-300 rounded focus:ring-[#800000]"
+                  @change="syncWizardToJson"
+                />
+                <label for="annual-reset" class="text-sm cursor-pointer select-none">
+                  <span class="font-medium text-gray-800">รีเซ็ตลำดับเลขเริ่มต้นใหม่ทุกปี (Annual Reset)</span>
+                  <span class="block text-xs text-gray-500 mt-0.5">เริ่มนับเลข ๑ ใหม่เมื่อขึ้นปีพุทธศักราชใหม่ตามข้อกำหนดงานสารบรรณ</span>
+                </label>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- โหมด JSON ดั้งเดิม -->
+        <div v-show="editorMode === 'json' || !hasWizard(editing.key)">
+          <AppTextarea v-model="draftJson" label="เนื้อหานโยบาย (JSON)" :rows="12" @input="syncJsonToWizard" />
+        </div>
+
         <AppInput v-model="notes" label="บันทึกเหตุผลการเปลี่ยนแปลง" />
 
         <p v-if="modalError" class="text-sm text-red-600">{{ modalError }}</p>
@@ -63,6 +192,68 @@
         <AppButton variant="secondary" @click="editing = null">ปิด</AppButton>
         <AppButton variant="secondary" :disabled="busy" @click="saveDraft">บันทึกร่าง</AppButton>
         <AppButton :loading="busy" :disabled="busy" @click="publish">ประกาศใช้</AppButton>
+      </template>
+    </AppModal>
+
+    <!-- กล่องยืนยันตัวตน Step-Up (MFA / รหัสผ่าน) สำหรับการประกาศใช้นโยบาย -->
+    <AppModal
+      v-if="stepUpModal"
+      :model-value="true"
+      title="ยืนยันตัวตนก่อนประกาศใช้นโยบาย"
+      size="sm"
+      @update:model-value="stepUpModal = false"
+    >
+      <div class="space-y-3">
+        <p class="text-sm text-gray-600">
+          การประกาศใช้นโยบายเป็นมาตรการระดับองค์กร กรุณายืนยันตัวตนของท่าน
+        </p>
+
+        <div class="flex items-center space-x-2 text-xs border-b border-gray-100 pb-2">
+          <button
+            type="button"
+            class="px-2.5 py-1 rounded font-medium transition"
+            :class="stepUpAuthMode === 'password' ? 'bg-[#800000] text-white' : 'text-gray-600 hover:text-gray-900'"
+            @click="stepUpAuthMode = 'password'"
+          >
+            ยืนยันด้วยรหัสผ่าน
+          </button>
+          <button
+            type="button"
+            class="px-2.5 py-1 rounded font-medium transition"
+            :class="stepUpAuthMode === 'totp' ? 'bg-[#800000] text-white' : 'text-gray-600 hover:text-gray-900'"
+            @click="stepUpAuthMode = 'totp'"
+          >
+            ยืนยันด้วยแอป OTP (MFA)
+          </button>
+        </div>
+
+        <AppInput
+          v-if="stepUpAuthMode === 'password'"
+          v-model="stepUpPassword"
+          type="password"
+          autocomplete="current-password"
+          label="รหัสผ่านปัจจุบัน"
+        />
+
+        <AppInput
+          v-else
+          v-model="stepUpTotp"
+          type="text"
+          inputmode="numeric"
+          maxlength="6"
+          placeholder="123456"
+          label="รหัส OTP 6 หลัก"
+          hint="เปิดแอปพลิเคชัน Authenticator แล้วกรอกรหัส 6 หลัก"
+        />
+
+        <p v-if="stepUpError" class="text-sm text-red-600">{{ stepUpError }}</p>
+      </div>
+
+      <template #footer>
+        <AppButton variant="secondary" :disabled="stepUpBusy" @click="stepUpModal = false">ยกเลิก</AppButton>
+        <AppButton :loading="stepUpBusy" :disabled="stepUpBusy || !canSubmitStepUp" @click="confirmStepUp">
+          ยืนยันและประกาศใช้
+        </AppButton>
       </template>
     </AppModal>
 
@@ -118,8 +309,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../../axios'
 import { getErrorMessage } from '../../utils/errorHandler'
 import AppBadge from '../../components/ui/AppBadge.vue'
@@ -134,10 +324,7 @@ import LoadingState from '../../components/ui/LoadingState.vue'
 /**
  * ศูนย์นโยบายงานสารบรรณ (SoT §18 · INT-16)
  *
- * **แก้เป็น JSON โดยตั้งใจในรอบนี้** — โครงสร้างของแต่ละนโยบายต่างกันมาก
- * การทำฟอร์มเฉพาะทางต้องรู้โครงสร้างทุกตัวล่วงหน้า ซึ่งจะกลายเป็นภาระที่ต้อง
- * ตามแก้ทุกครั้งที่เพิ่มคีย์ · หน้าจอนี้จึงแสดงค่าที่ใช้อยู่จริงให้เห็นชัด
- * และบังคับให้ทุกการเปลี่ยนแปลงผ่านร่าง → ประกาศ ซึ่งเป็นส่วนที่สำคัญกว่า
+ * รองรับทั้งโหมด Wizard สำหรับนโยบายทั่วไป (RISK-45) และโหมด JSON ดั้งเดิม
  */
 const STATUS_LABELS = { draft: 'ฉบับร่าง', published: 'ใช้บังคับอยู่', archived: 'เคยใช้' }
 
@@ -151,6 +338,37 @@ const loading = ref(true)
 const error = ref('')
 const modalError = ref('')
 const busy = ref(false)
+
+// โหมดการแก้ไข (Wizard / JSON) (RISK-45)
+const editorMode = ref('wizard')
+const hasWizard = (key) => ['distribution', 'document_layout', 'numbering'].includes(key)
+
+const wizardForm = reactive({
+  // distribution
+  acknowledgement_due_days: 3,
+  allow_all_authorized_target: true,
+  // document_layout
+  qr_page: 1,
+  qr_x: 470,
+  qr_y: 740,
+  qr_size: 72,
+  // numbering
+  buddhist_era: true,
+  annual_reset: true,
+})
+
+// Step-up Auth Modal state (RISK-29)
+const stepUpModal = ref(false)
+const stepUpAuthMode = ref('password')
+const stepUpPassword = ref('')
+const stepUpTotp = ref('')
+const stepUpError = ref('')
+const stepUpBusy = ref(false)
+const canSubmitStepUp = computed(() => {
+  return stepUpAuthMode.value === 'totp'
+    ? stepUpTotp.value.trim().length >= 6
+    : !!stepUpPassword.value
+})
 
 const pretty = (value) => JSON.stringify(value ?? {}, null, 2)
 const statusLabel = (status) => STATUS_LABELS[status] || status
@@ -179,11 +397,83 @@ const load = async () => {
   }
 }
 
+const syncWizardFromJsonPayload = (payload) => {
+  if (!payload || typeof payload !== 'object') return
+
+  if (editing.value?.key === 'distribution') {
+    wizardForm.acknowledgement_due_days = payload.acknowledgement_due_days ?? 3
+    wizardForm.allow_all_authorized_target = payload.allow_all_authorized_target ?? true
+  } else if (editing.value?.key === 'document_layout') {
+    const qr = payload.qr || {}
+    wizardForm.qr_page = qr.page ?? 1
+    wizardForm.qr_x = qr.x ?? 470
+    wizardForm.qr_y = qr.y ?? 740
+    wizardForm.qr_size = qr.size ?? 72
+  } else if (editing.value?.key === 'numbering') {
+    wizardForm.buddhist_era = payload.buddhist_era ?? true
+    wizardForm.annual_reset = payload.annual_reset ?? true
+  }
+}
+
+const syncWizardToJson = () => {
+  if (!editing.value) return
+
+  let current
+  try {
+    current = JSON.parse(draftJson.value || '{}')
+  } catch {
+    current = {}
+  }
+
+  if (editing.value.key === 'distribution') {
+    current.acknowledgement_due_days = Number(wizardForm.acknowledgement_due_days) || 3
+    current.allow_all_authorized_target = Boolean(wizardForm.allow_all_authorized_target)
+  } else if (editing.value.key === 'document_layout') {
+    current.qr = {
+      page: Number(wizardForm.qr_page) || 1,
+      x: Number(wizardForm.qr_x) || 470,
+      y: Number(wizardForm.qr_y) || 740,
+      size: Number(wizardForm.qr_size) || 72,
+    }
+    if (!current.qr_by_document_type) {
+      current.qr_by_document_type = {}
+    }
+  } else if (editing.value.key === 'numbering') {
+    current.buddhist_era = Boolean(wizardForm.buddhist_era)
+    current.annual_reset = Boolean(wizardForm.annual_reset)
+  }
+
+  draftJson.value = pretty(current)
+}
+
+const syncJsonToWizard = () => {
+  try {
+    const parsed = JSON.parse(draftJson.value)
+    syncWizardFromJsonPayload(parsed)
+  } catch {
+    // กำลังพิมพ์ JSON ยังไม่สมบูรณ์
+  }
+}
+
+const switchMode = (mode) => {
+  if (mode === 'wizard') {
+    const parsed = parsedDraft()
+    if (parsed === null) return
+    syncWizardFromJsonPayload(parsed)
+  } else {
+    syncWizardToJson()
+  }
+  editorMode.value = mode
+}
+
 const openEditor = (policy) => {
   editing.value = policy
   modalError.value = ''
   notes.value = ''
-  draftJson.value = pretty(policy.draft_payload ?? policy.effective)
+  const payload = policy.draft_payload ?? policy.effective
+  draftJson.value = pretty(payload)
+  syncWizardFromJsonPayload(payload)
+  editorMode.value = hasWizard(policy.key) ? 'wizard' : 'json'
 }
 
 const openHistory = async (policy) => {
@@ -209,6 +499,10 @@ const parsedDraft = () => {
 }
 
 const saveDraft = async () => {
+  if (editorMode.value === 'wizard' && hasWizard(editing.value?.key)) {
+    syncWizardToJson()
+  }
+
   const payload = parsedDraft()
   if (payload === null) return
 
@@ -229,6 +523,10 @@ const saveDraft = async () => {
 }
 
 const publish = async () => {
+  if (editorMode.value === 'wizard' && hasWizard(editing.value?.key)) {
+    syncWizardToJson()
+  }
+
   const payload = parsedDraft()
   if (payload === null) return
 
@@ -244,9 +542,41 @@ const publish = async () => {
     editing.value = null
     await load()
   } catch (err) {
-    modalError.value = getErrorMessage(err, 'ประกาศใช้นโยบายไม่สำเร็จ')
+    if (err.response?.status === 423) {
+      stepUpModal.value = true
+      stepUpError.value = ''
+      stepUpPassword.value = ''
+      stepUpTotp.value = ''
+    } else {
+      modalError.value = getErrorMessage(err, 'ประกาศใช้นโยบายไม่สำเร็จ')
+    }
   } finally {
     busy.value = false
+  }
+}
+
+const confirmStepUp = async () => {
+  stepUpBusy.value = true
+  stepUpError.value = ''
+
+  try {
+    const payload = stepUpAuthMode.value === 'totp'
+      ? { totp_code: stepUpTotp.value.trim() }
+      : { password: stepUpPassword.value }
+
+    await api.post('/auth/confirm-password', payload)
+    stepUpModal.value = false
+    stepUpPassword.value = ''
+    stepUpTotp.value = ''
+
+    // ทำรายการประกาศใช้ต่อ
+    await api.post(`/saraban/policies/${editing.value.key}/publish`)
+    editing.value = null
+    await load()
+  } catch (err) {
+    stepUpError.value = getErrorMessage(err, 'ยืนยันตัวตนไม่สำเร็จ กรุณาตรวจสอบรหัสผ่านหรือรหัส OTP')
+  } finally {
+    stepUpBusy.value = false
   }
 }
 
