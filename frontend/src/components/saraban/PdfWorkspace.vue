@@ -329,21 +329,33 @@ const load = async () => {
 watch(() => props.source, load, { immediate: true })
 watch([page, zoom], renderPage)
 
+/*
+ * เก็บกวาดตอนออกจากหน้าจอ — ทุกขั้นห่อ try/catch แยกกันโดยเจตนา
+ *
+ * ขั้นที่ล้มต้องไม่ทำให้ขั้นถัดไปไม่ได้ทำงาน มิฉะนั้น pdf.js จะค้างงานเรนเดอร์
+ * และตัวเอกสารไว้ในหน่วยความจำต่อไปทั้งที่ผู้ใช้ออกจากหน้าไปแล้ว
+ *
+ * ความล้มเหลวตรงนี้ไม่มีที่ให้แจ้ง — component กำลังจะหายไปพร้อมกับหน้าจอ
+ */
 onBeforeUnmount(() => {
-  try { endDrag() } catch {}
-  try { window.removeEventListener('keydown', onKeydown) } catch {}
+  try { endDrag() } catch { /* หยุดลากค้างไม่สำเร็จ — หน้าจอกำลังจะหายไปอยู่แล้ว */ }
+  try { window.removeEventListener('keydown', onKeydown) } catch { /* ตัวฟังหายไปพร้อมหน้าต่างอยู่ดี */ }
   try {
     if (renderTask) {
       renderTask.cancel()
       renderTask = null
     }
-  } catch {}
+  } catch {
+    // งานเรนเดอร์ที่ยกเลิกไม่ได้จะจบเองเมื่อ canvas ถูกถอดออก
+  }
   try {
     if (pdfDocument) {
       pdfDocument.destroy().catch(() => {})
       pdfDocument = null
     }
-  } catch {}
+  } catch {
+    // ปิดเอกสารไม่สำเร็จ — ปล่อยให้ตัวเก็บขยะจัดการ ดีกว่าค้างการออกจากหน้าไว้
+  }
 })
 
 defineExpose({ pageCount, page })

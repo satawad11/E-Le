@@ -296,7 +296,9 @@ onBeforeUnmount(() => {
       URL.revokeObjectURL(fileUrl.value)
       fileUrl.value = ''
     }
-  } catch {}
+  } catch {
+    // คืน blob ไม่สำเร็จตอนออกจากหน้าจอ — ไม่มีที่ให้แจ้ง ปล่อยให้ตัวเก็บขยะจัดการ
+  }
 })
 onMounted(boot)
 </script>

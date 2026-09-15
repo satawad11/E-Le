@@ -317,7 +317,8 @@ const back = async () => {
 }
 
 onBeforeUnmount(() => {
-  try { releaseFile() } catch {}
+  // คืนไฟล์ที่โหลดไว้ตอนออกจากหน้าจอ — ล้มแล้วไม่มีที่ให้แจ้ง หน้าจอกำลังจะหายไป
+  try { releaseFile() } catch { /* ปล่อยให้ตัวเก็บขยะจัดการ */ }
 })
 onMounted(() => {
   boot()
