@@ -14,6 +14,7 @@ use App\Models\PersonnelType;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\LeavePolicyService;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -38,9 +39,26 @@ class LeaveDraftAndDeletionTest extends TestCase
 
     private LeaveType $type;
 
+    /**
+     * วันที่ตรึงไว้สำหรับทั้งคลาส — ไม่ใช่วันที่รันเทสต์
+     *
+     * **ปัญหาจริงที่การตรึงนี้เกิดมาเพื่อกัน (พบ 2026-09-16)** — `workday()` นับจาก
+     * "วันนี้" ไปข้างหน้าไม่กี่วัน · ปีงบประมาณขึ้นปีใหม่ทุก 1 ตุลาคม และระบบห้าม
+     * ยื่นใบลาที่คร่อมปีงบประมาณ · ช่วงปลายเดือนกันยายนของทุกปี วันที่ที่เทสต์คำนวณ
+     * จึงข้ามไปปีงบประมาณถัดไปเอง แล้วคำขอถูกปฏิเสธด้วย 422 — CI ล้มสองสัปดาห์ต่อปี
+     * โดยไม่มีใครแก้อะไรผิด
+     *
+     * 15 มกราคม อยู่กลางปีงบประมาณพอดี ห่างจากทั้งวันขึ้นปีงบประมาณและวันขึ้นปีปฏิทิน
+     * `FiscalYearSeeder` และตารางสิทธิ์วันลาใน `setUp()` อ่านจากนาฬิกาเดียวกันนี้
+     * ทั้งหมดจึงยังสอดคล้องกันเหมือนเดิม
+     */
+    private const CLOCK = '2026-01-15 09:00:00';
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        Carbon::setTestNow(self::CLOCK);
 
         Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\FiscalYearSeeder', '--force' => true]);
 
