@@ -7,18 +7,35 @@ use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveBalance;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\DocumentEngine\LeaveDocumentGateway;
 use App\Services\LeaveDocumentTemplateResolver;
 use App\Services\LeaveVerificationService;
 use App\Services\ThaiDateService;
+use App\Services\Workflow\ApproverResolverService;
 use App\Support\DocumentFilename;
 use App\Support\StoredFile;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class LeaveDocumentController extends Controller
 {
+    /**
+     * ช่องข้อความในหน้าตั้งค่าที่ใช้เป็น **ค่าสำรอง** ของชื่อผู้ลงนามแต่ละบทบาท
+     *
+     * ใช้ต่อเมื่อระบบชี้ตัวผู้มีอำนาจจริงไม่ได้เท่านั้น — ดู `pendingApproverName()`
+     */
+    private const ROLE_NAME_SETTINGS = [
+        'HR Head' => 'head_hr_name',
+        'Deputy Director' => 'deputy_admin_name',
+        'Director' => 'director_name',
+    ];
+
+    /** เส้นประในช่องลงนามที่ยังไม่มีชื่อ — ให้เขียนด้วยมือได้ */
+    private const UNSIGNED_NAME_PLACEHOLDER = '........................................................';
+
     /**
      * แบบฟอร์มที่ต้องใช้พิมพ์ใบลาใบนี้
      *
@@ -41,6 +58,132 @@ class LeaveDocumentController extends Controller
             $leave->user?->name,
             $leave->document_number ?? $leave->id,
         ], $extension);
+    }
+
+    /**
+     * ช่องลงนามของแต่ละขั้นในสายอนุมัติ — ใช้ร่วมกันทั้งเส้นทาง PDF และ Word
+     *
+     * เดิมบล็อกนี้ถูกคัดลอกไว้ทั้งใน `exportPdf()` และ `exportWord()` แบบตัวต่อตัว
+     * เอกสารสองแบบของใบเดียวกันจึงเสี่ยงเพี้ยนจากกันทุกครั้งที่แก้ที่เดียว
+     *
+     * @param  Collection<string,mixed>  $settings
+     * @return array<int,array<string,mixed>>
+     */
+    private function approverBlocksFor(Leave $leave, bool $isCancel, $settings): array
+    {
+        $approvalSteps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role');
+
+        $cancelLog = null;
+        if ($isCancel) {
+            $cancelLog = LeaveActionLog::with('user.profile')
+                ->where('leave_id', $leave->id)
+                ->whereIn('action', ['Cancellation Approved', 'Cancellation Rejected'])
+                ->orderBy('id', 'desc')
+                ->first();
+        }
+
+        $blocks = [];
+        foreach ($approvalSteps as $step) {
+            $roleName = $step->role ? $step->role->name : '';
+
+            if ($isCancel && $roleName === 'Director' && $cancelLog) {
+                $status = $cancelLog->action === 'Cancellation Approved' ? 'Approved' : 'Rejected';
+                $blocks[] = [
+                    'name' => $cancelLog->user->full_name_with_title ?? $cancelLog->user->name,
+                    'date' => Carbon::parse($cancelLog->created_at),
+                    'signature' => $cancelLog->user->profile && $cancelLog->user->profile->signature_path ? StoredFile::path($cancelLog->user->profile->signature_path) : null,
+                    'comment' => $cancelLog->details['comment'] ?? null,
+                    'status' => $status,
+                    'position' => $cancelLog->user->profile->position ?? ($step->role->description ?? $step->name),
+                    'role_name' => $roleName,
+                ];
+
+                continue;
+            }
+
+            $approval = $leave->approvals->filter(fn ($a) => $a->approver && $a->approver->role_id === $step->role_id)->first();
+            $positionTitle = $step->role ? ($step->role->description ?? $step->name) : $step->name;
+
+            $blocks[] = [
+                'name' => $approval
+                    ? ($approval->approver_name ?: $approval->approver->name)
+                    : $this->pendingApproverName($leave, $step, $roleName, $settings),
+                'date' => $approval ? Carbon::parse($approval->updated_at) : null,
+                'signature' => $approval && $approval->signature_path ? StoredFile::path($approval->signature_path) : null,
+                'comment' => $approval ? $approval->comment : null,
+                'status' => $approval ? $approval->status : null,
+                'position' => $positionTitle,
+                'role_name' => $roleName,
+            ];
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * ชื่อที่พิมพ์ในช่องลงนามที่ยังไม่มีใครลงนาม
+     *
+     * **ที่มา:** ชื่อนี้เคยมาจากช่องข้อความที่ผู้ดูแลพิมพ์เองในหน้าตั้งค่า
+     * (`head_hr_name`, `deputy_admin_name`, `director_name`) ซึ่งเป็นข้อมูลคนละชุด
+     * กับทะเบียนผู้มีอำนาจจริงของระบบ · เมื่อมีการย้ายหรือเปลี่ยนผู้รับผิดชอบ
+     * แต่ไม่มีใครกลับไปแก้ช่องข้อความ ใบลาเปล่าที่พิมพ์ออกไปให้เสนอเซ็น
+     * ก็จะขึ้นชื่อ **คนที่ไม่ใช่ผู้มีอำนาจลงนามแล้ว** บนเอกสารราชการ
+     *
+     * ตอนนี้ถามระบบก่อนว่าขั้นนี้ใครเป็นผู้มีอำนาจจริงสำหรับผู้ยื่นรายนี้ — ใช้ตัวแก้
+     * ตัวเดียวกับที่สายอนุมัติใช้จริง จึงตรงกับคนที่จะได้รับเรื่องแน่นอน
+     * ใช้ชื่อจากระบบเฉพาะเมื่อผู้มีอำนาจมี **คนเดียว** เท่านั้น เพราะถ้ามีหลายคน
+     * การเดาพิมพ์ไปคนหนึ่งผิดยิ่งกว่าการเว้นว่าง · กรณีอื่นตกไปใช้ค่าที่ตั้งไว้ในหน้าตั้งค่า
+     * แล้วจึงเป็นเส้นประให้เขียนด้วยมือ
+     *
+     * @param  Collection<string,mixed>  $settings
+     */
+    private function pendingApproverName(Leave $leave, ApprovalStep $step, string $roleName, $settings): string
+    {
+        $resolved = $this->soleEligibleApproverName($leave, $step);
+
+        if ($resolved !== null) {
+            return $resolved;
+        }
+
+        $settingKey = self::ROLE_NAME_SETTINGS[$roleName] ?? '';
+        $fallback = $settingKey ? trim((string) ($settings[$settingKey] ?? '')) : '';
+
+        return $fallback !== '' ? $fallback : self::UNSIGNED_NAME_PLACEHOLDER;
+    }
+
+    /**
+     * ชื่อผู้มีอำนาจอนุมัติของขั้นนี้ เมื่อมีอยู่คนเดียวเท่านั้น
+     *
+     * การหาผู้มีอำนาจแตะทั้งผังหน่วยงาน ทะเบียนผู้รับผิดชอบ และการมอบอำนาจ
+     * ถ้าข้อมูลชุดใดไม่พร้อม การพิมพ์เอกสารต้องไม่ล้มตามไปด้วย — หลักเดียวกับ
+     * Document Engine ที่คืน null แล้วให้ใช้เส้นทางเดิม
+     */
+    private function soleEligibleApproverName(Leave $leave, ApprovalStep $step): ?string
+    {
+        if ($leave->user === null) {
+            return null;
+        }
+
+        try {
+            $eligibleIds = app(ApproverResolverService::class)
+                ->resolveEligibleApproverIds($leave->user, $step);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (count($eligibleIds) !== 1) {
+            return null;
+        }
+
+        $approver = User::with('profile')->find($eligibleIds[0]);
+
+        if ($approver === null) {
+            return null;
+        }
+
+        $name = trim((string) ($approver->full_name_with_title ?: $approver->name));
+
+        return $name !== '' ? $name : null;
     }
 
     private function viewFor(Leave $leave, bool $isCancel): string
@@ -122,58 +265,8 @@ class LeaveDocumentController extends Controller
             ->first();
 
         $settings = Setting::pluck('value', 'key');
-
-        $approvalSteps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role');
-        $roleSettingMap = [
-            'HR Head' => 'head_hr_name',
-            'Deputy Director' => 'deputy_admin_name',
-            'Director' => 'director_name',
-        ];
         $isCancel = $request->query('form') === 'cancel';
-        $cancelLog = null;
-        if ($isCancel) {
-            $cancelLog = LeaveActionLog::with('user.profile')
-                ->where('leave_id', $leave->id)
-                ->whereIn('action', ['Cancellation Approved', 'Cancellation Rejected'])
-                ->orderBy('id', 'desc')
-                ->first();
-        }
-
-        $approverBlocks = [];
-        foreach ($approvalSteps as $step) {
-            $roleName = $step->role ? $step->role->name : '';
-
-            if ($isCancel && $roleName === 'Director' && $cancelLog) {
-                $status = $cancelLog->action === 'Cancellation Approved' ? 'Approved' : 'Rejected';
-                $approverBlocks[] = [
-                    'name' => $cancelLog->user->full_name_with_title ?? $cancelLog->user->name,
-                    'date' => Carbon::parse($cancelLog->created_at),
-                    'signature' => $cancelLog->user->profile && $cancelLog->user->profile->signature_path ? StoredFile::path($cancelLog->user->profile->signature_path) : null,
-                    'comment' => $cancelLog->details['comment'] ?? null,
-                    'status' => $status,
-                    'position' => $cancelLog->user->profile->position ?? ($step->role->description ?? $step->name),
-                    'role_name' => $roleName,
-                ];
-
-                continue;
-            }
-
-            $approval = $leave->approvals->filter(fn ($a) => $a->approver && $a->approver->role_id === $step->role_id)->first();
-            $settingKey = $roleSettingMap[$roleName] ?? '';
-            $defaultName = $settingKey && isset($settings[$settingKey]) ? $settings[$settingKey] : '........................................................';
-
-            $positionTitle = $step->role ? ($step->role->description ?? $step->name) : $step->name;
-
-            $approverBlocks[] = [
-                'name' => $approval ? ($approval->approver_name ?: $approval->approver->name) : $defaultName,
-                'date' => $approval ? Carbon::parse($approval->updated_at) : null,
-                'signature' => $approval && $approval->signature_path ? StoredFile::path($approval->signature_path) : null,
-                'comment' => $approval ? $approval->comment : null,
-                'status' => $approval ? $approval->status : null,
-                'position' => $positionTitle,
-                'role_name' => $roleName,
-            ];
-        }
+        $approverBlocks = $this->approverBlocksFor($leave, $isCancel, $settings);
 
         $viewName = $this->viewFor($leave, $isCancel);
 
@@ -243,58 +336,8 @@ class LeaveDocumentController extends Controller
             ->first();
 
         $settings = Setting::pluck('value', 'key');
-
-        $approvalSteps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role');
-        $roleSettingMap = [
-            'HR Head' => 'head_hr_name',
-            'Deputy Director' => 'deputy_admin_name',
-            'Director' => 'director_name',
-        ];
         $isCancel = $request->query('form') === 'cancel';
-        $cancelLog = null;
-        if ($isCancel) {
-            $cancelLog = LeaveActionLog::with('user.profile')
-                ->where('leave_id', $leave->id)
-                ->whereIn('action', ['Cancellation Approved', 'Cancellation Rejected'])
-                ->orderBy('id', 'desc')
-                ->first();
-        }
-
-        $approverBlocks = [];
-        foreach ($approvalSteps as $step) {
-            $roleName = $step->role ? $step->role->name : '';
-
-            if ($isCancel && $roleName === 'Director' && $cancelLog) {
-                $status = $cancelLog->action === 'Cancellation Approved' ? 'Approved' : 'Rejected';
-                $approverBlocks[] = [
-                    'name' => $cancelLog->user->full_name_with_title ?? $cancelLog->user->name,
-                    'date' => Carbon::parse($cancelLog->created_at),
-                    'signature' => $cancelLog->user->profile && $cancelLog->user->profile->signature_path ? StoredFile::path($cancelLog->user->profile->signature_path) : null,
-                    'comment' => $cancelLog->details['comment'] ?? null,
-                    'status' => $status,
-                    'position' => $cancelLog->user->profile->position ?? ($step->role->description ?? $step->name),
-                    'role_name' => $roleName,
-                ];
-
-                continue;
-            }
-
-            $approval = $leave->approvals->filter(fn ($a) => $a->approver && $a->approver->role_id === $step->role_id)->first();
-            $settingKey = $roleSettingMap[$roleName] ?? '';
-            $defaultName = $settingKey && isset($settings[$settingKey]) ? $settings[$settingKey] : '........................................................';
-
-            $positionTitle = $step->role ? ($step->role->description ?? $step->name) : $step->name;
-
-            $approverBlocks[] = [
-                'name' => $approval ? ($approval->approver_name ?: $approval->approver->name) : $defaultName,
-                'date' => $approval ? Carbon::parse($approval->updated_at) : null,
-                'signature' => $approval && $approval->signature_path ? StoredFile::path($approval->signature_path) : null,
-                'comment' => $approval ? $approval->comment : null,
-                'status' => $approval ? $approval->status : null,
-                'position' => $positionTitle,
-                'role_name' => $roleName,
-            ];
-        }
+        $approverBlocks = $this->approverBlocksFor($leave, $isCancel, $settings);
 
         $viewName = $this->viewFor($leave, $isCancel);
 
