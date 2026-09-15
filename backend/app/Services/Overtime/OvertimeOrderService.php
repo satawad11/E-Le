@@ -98,8 +98,8 @@ class OvertimeOrderService
             }
 
             if ($action === WorkflowTransition::APPROVE) {
-                $start = $approvedWindow['approved_start'] ?? $order->scheduled_start;
-                $end = $approvedWindow['approved_end'] ?? $order->scheduled_end;
+                $start = $approvedWindow['approved_start'] ?? $order->approved_start ?? $order->scheduled_start;
+                $end = $approvedWindow['approved_end'] ?? $order->approved_end ?? $order->scheduled_end;
                 $start = CarbonImmutable::parse($start, $order->timezone);
                 $end = CarbonImmutable::parse($end, $order->timezone);
                 if ($end->lte($start)) {

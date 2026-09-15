@@ -605,4 +605,30 @@ class SarabanRetentionAndReportsTest extends TestCase
         $this->getJson('/api/saraban/reports/register')->assertForbidden();
         $this->getJson('/api/saraban/reports/numbers')->assertForbidden();
     }
+
+    public function test_the_register_report_can_be_exported_with_permission(): void
+    {
+        $this->createDocument();
+
+        // ต้องมีทั้ง saraban.report.view และ saraban.report.export
+        $userWithoutExport = $this->userWith(['saraban.report.view']);
+        $this->actAs($userWithoutExport);
+        $this->get('/api/saraban/reports/export?type=register&format=csv')->assertForbidden();
+
+        $userWithExport = $this->userWith(['saraban.report.view', 'saraban.report.export']);
+        $this->actAs($userWithExport);
+
+        $responseCsv = $this->get('/api/saraban/reports/export?type=register&format=csv');
+        $responseCsv->assertOk();
+        $this->assertStringContainsString('text/csv', (string) $responseCsv->headers->get('Content-Type'));
+        $this->assertStringContainsString('เลขที่หนังสือ', $responseCsv->getContent());
+
+        $responseXlsx = $this->get('/api/saraban/reports/export?type=register&format=xlsx');
+        $responseXlsx->assertOk();
+        $this->assertStringContainsString('spreadsheetml', (string) $responseXlsx->headers->get('Content-Type'));
+
+        $responseNumbers = $this->get('/api/saraban/reports/export?type=numbers&format=csv');
+        $responseNumbers->assertOk();
+        $this->assertStringContainsString('filename', (string) $responseNumbers->headers->get('Content-Disposition'));
+    }
 }

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\PermissionEvaluator;
 use App\Services\StepUpAuthentication;
+use App\Services\TotpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -120,15 +122,75 @@ class AuthController extends Controller
      */
     public function confirmPassword(Request $request, StepUpAuthentication $stepUp)
     {
-        $request->validate(['password' => ['required', 'string']]);
+        $request->validate([
+            'password' => ['nullable', 'string', 'required_without:totp_code'],
+            'totp_code' => ['nullable', 'string', 'required_without:password'],
+        ]);
 
-        if (! $stepUp->confirm($request->user(), $request->string('password')->toString())) {
-            return response()->json(['message' => 'รหัสผ่านไม่ถูกต้อง'], 422);
+        $password = $request->filled('password') ? $request->string('password')->toString() : null;
+        $totpCode = $request->filled('totp_code') ? $request->string('totp_code')->toString() : null;
+
+        if (! $stepUp->confirm($request->user(), $password, $totpCode)) {
+            $msg = match (true) {
+                $totpCode !== null && ! $stepUp->totpEnrolled($request->user()) => 'ยังไม่ได้ผูกแอป OTP กับบัญชีนี้ กรุณายืนยันด้วยรหัสผ่านแล้วตั้งค่าแอปก่อน',
+                $totpCode !== null => 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ',
+                default => 'รหัสผ่านไม่ถูกต้อง',
+            };
+
+            return response()->json(['message' => $msg], 422);
         }
 
         return response()->json([
             'message' => 'ยืนยันตัวตนเรียบร้อยแล้ว',
             'valid_for_minutes' => $stepUp->windowMinutes(),
+        ]);
+    }
+
+    /**
+     * ผูกแอป Authenticator เข้ากับบัญชี — ขอความลับ และปิดการลงทะเบียน ในเส้นทางเดียว
+     *
+     * **ต้องกรอกรหัสผ่านทุกครั้ง** ความลับนี้เป็นสิ่งเดียวที่กั้นการยืนยันตัวตนซ้ำ
+     * ด้วย OTP หากปล่อยให้โทเคนที่ล็อกอินค้างไว้ขอได้เอง ผู้ที่ขโมยโทเคนไปจะคำนวณ
+     * รหัสเองแล้วผ่านด่านลงนามได้โดยไม่ต้องรู้รหัสผ่าน ซึ่งเป็นสิ่งที่ด่านนี้มีไว้กัน
+     *
+     * เรียกสองรอบ:
+     *   1. ส่งเฉพาะ `password` → ได้ความลับกับ QR ไปตั้งค่าในแอป (ยังไม่ถือว่าผูกสำเร็จ)
+     *   2. ส่ง `password` + `totp_code` จากแอป → ระบบจึงบันทึกว่าผูกสำเร็จ
+     *
+     * จนกว่ารอบที่สองจะผ่าน ระบบจะไม่รับ `totp_code` เป็นการยืนยันตัวตนซ้ำ
+     */
+    public function totpSetup(Request $request, StepUpAuthentication $stepUp, TotpService $totp)
+    {
+        $request->validate([
+            'password' => ['required', 'string'],
+            'totp_code' => ['nullable', 'string'],
+        ]);
+
+        $user = $request->user();
+
+        if (! $stepUp->confirmWithPassword($user, $request->string('password')->toString())) {
+            return response()->json(['message' => 'รหัสผ่านไม่ถูกต้อง'], 422);
+        }
+
+        if ($request->filled('totp_code')) {
+            if (! $stepUp->totpCodeMatches($user, $request->string('totp_code')->toString())) {
+                return response()->json(['message' => 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ'], 422);
+            }
+
+            $stepUp->markTotpEnrolled($user);
+
+            return response()->json(['message' => 'ผูกแอป OTP เรียบร้อยแล้ว', 'enrolled' => true]);
+        }
+
+        $secret = $totp->secretForUser($user);
+        $issuer = rawurlencode(config('app.name', 'E-La'));
+        $account = rawurlencode($user->email ?? (string) $user->name);
+        $uri = "otpauth://totp/{$issuer}:{$account}?secret={$secret}&issuer={$issuer}&algorithm=SHA1&digits=6&period=30";
+
+        return response()->json([
+            'secret' => $secret,
+            'qr_uri' => $uri,
+            'enrolled' => $stepUp->totpEnrolled($user),
         ]);
     }
 
@@ -146,13 +208,16 @@ class AuthController extends Controller
          * แต่คนที่เพิ่งยืนยันไปก็ไม่ถูกบังคับกรอกซ้ำเพราะโทเคนต่ออายุพอดี
          */
         $previouslyAuthenticatedAt = $accessToken?->last_authenticated_at;
+        $abilities = $accessToken instanceof PersonalAccessToken
+            ? $accessToken->abilities
+            : ['*'];
 
         if ($accessToken && method_exists($accessToken, 'delete')) {
             $accessToken->delete();
         }
 
         $expiration = (int) config('sanctum.expiration', 480);
-        $issued = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration));
+        $issued = $user->createToken('auth_token', $abilities, now()->addMinutes($expiration));
         $issued->accessToken->forceFill(['last_authenticated_at' => $previouslyAuthenticatedAt])->save();
 
         $token = $issued->plainTextToken;

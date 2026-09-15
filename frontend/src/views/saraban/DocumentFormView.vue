@@ -8,44 +8,132 @@
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
+        <!-- เกษียนหนังสือ (สำหรับผู้บริหาร / ผอ. - รอง ผอ. ๔ ฝ่าย / ผู้ตรวจทาน) -->
+        <AppButton
+          v-if="isEdit && !documentRecord?.finalized_at && versions.length"
+          v-can="'saraban.endorse.create'"
+          variant="secondary"
+          @click="openEndorse"
+        >
+          เกษียนหนังสือ
+        </AppButton>
         <!--
           ลงนามเป็นหน้าเต็ม (ปิด RISK-30) — ผู้ลงนามต้องเห็นเอกสารและลากวาง
           ลายเซ็นบนตำแหน่งจริง ซึ่งทำใน modal ไม่ได้
         -->
         <AppButton
-          v-if="isEdit"
+          v-if="isEdit && !documentRecord?.finalized_at && versions.length"
           v-can="'saraban.signature.sign'"
-          variant="secondary"
+          :variant="isSignatureStep ? 'primary' : 'secondary'"
           @click="openSigning"
         >
-          ลงนาม
+          ลงนาม{{ isSignatureStep ? ' (ถึงขั้นตอนแล้ว)' : '' }}
         </AppButton>
         <!-- INT-13 — เวียนหนังสือถึงผู้รับ -->
         <AppButton
-          v-if="isEdit"
+          v-if="isEdit && (documentRecord?.status === 'signed' || documentRecord?.status === 'registered')"
           v-can="'saraban.distribution.send'"
           variant="secondary"
           @click="distributing = true"
         >
           เวียนหนังสือ
         </AppButton>
-        <!-- INT-10 — พื้นที่ประทับตราของหนังสือฉบับนี้ -->
-        <AppButton v-if="isEdit" variant="outline" @click="openWorkspace">ประทับตรา</AppButton>
+        <!-- INT-10 — พื้นที่ประทับตราของหนังสือฉบับนี้ (เฉพาะหนังสือรับเข้า) -->
+        <AppButton
+          v-if="isEdit && (documentRecord?.direction === 'incoming' || documentRecord?.incoming_registration)"
+          variant="outline"
+          @click="openWorkspace"
+        >
+          ประทับตรา
+        </AppButton>
         <AppButton variant="ghost" @click="backToList">กลับสู่ทะเบียน</AppButton>
       </div>
 
       <DistributeDocumentModal
         v-if="isEdit && distributing"
         :document-id="route.params.id"
+        :confidentiality="form.confidentiality"
         @close="distributing = false"
         @sent="onDistributed"
       />
     </div>
 
+    <!-- แผงการเดินเรื่องและอนุมัติด่วน (Workflow Quick Actions ด้านบน) -->
+    <section
+      v-if="workflow.started && workflow.transitions.length"
+      class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 shadow-xs space-y-3"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/70 pb-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
+            <h2 class="font-bold text-amber-900 text-sm">การเดินเรื่อง — ขั้นตอนที่รอท่านดำเนินการ</h2>
+          </div>
+          <p class="text-xs text-amber-800 mt-0.5">
+            ขั้นปัจจุบัน: <strong>{{ workflow.current_step?.name || '—' }}</strong>
+          </p>
+        </div>
+        <AppBadge :variant="workflowVariant">{{ workflowStatusLabel }}</AppBadge>
+      </div>
+
+      <div class="space-y-3">
+        <AppTextarea v-model="workflowComment" label="ความเห็นประกอบการพิจารณา" :rows="2" placeholder="ระบุความเห็นหรือคำสั่งการ..." />
+        <div class="flex flex-wrap gap-2">
+          <AppButton
+            v-for="transition in workflow.transitions"
+            :key="transition.action"
+            :variant="transition.action === 'approve' ? 'primary' : 'outline'"
+            :loading="actingOn === transition.action"
+            @click="performWorkflow(transition)"
+          >
+            {{ transition.name }}
+          </AppButton>
+        </div>
+      </div>
+    </section>
+
     <LoadingState v-if="loading" type="skeleton-form" />
     <ErrorState v-else-if="loadError" :message="loadError" @retry="boot" />
 
     <form v-else class="space-y-6" @submit.prevent="save">
+      <!-- แม่แบบหนังสือราชการมาตรฐานสำหรับสร้างหนังสือใหม่ -->
+      <section v-if="!isEdit" class="bg-gradient-to-r from-primary-50/70 to-blue-50/70 border border-primary-100 rounded-2xl p-5 shadow-xs">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-base">📋</span>
+            <h2 class="font-semibold text-gray-800 text-sm">แม่แบบหนังสือราชการมาตรฐาน (ระเบียบสำนักนายกฯ ๒๕๖๔)</h2>
+          </div>
+          <span class="text-xs text-primary-700 font-medium">คลิกเพื่อใส่โครงสร้างเอกสารอัตโนมัติ</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            class="flex flex-col text-left p-3.5 rounded-xl border transition-all bg-white hover:border-primary-400 hover:shadow-xs"
+            :class="selectedTemplate === 'memo' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'"
+            @click="applyTemplate('memo')"
+          >
+            <span class="font-semibold text-sm text-gray-800 flex items-center justify-between">
+              บันทึกข้อความ (แบบที่ ๒)
+              <span class="text-[11px] px-2 py-0.5 rounded-full bg-primary-100 text-primary-800 font-normal">ครุฑซ้าย ๑.๕ ซม.</span>
+            </span>
+            <span class="text-xs text-gray-500 mt-1">ใช้ติดต่อราชการภายในวิทยาลัย / เสนอ ผอ. - รอง ผอ. ตามสายงาน</span>
+          </button>
+
+          <button
+            type="button"
+            class="flex flex-col text-left p-3.5 rounded-xl border transition-all bg-white hover:border-primary-400 hover:shadow-xs"
+            :class="selectedTemplate === 'external' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'"
+            @click="applyTemplate('external')"
+          >
+            <span class="font-semibold text-sm text-gray-800 flex items-center justify-between">
+              หนังสือภายนอก (แบบที่ ๑)
+              <span class="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-normal">ครุฑกลาง ๓ ซม.</span>
+            </span>
+            <span class="text-xs text-gray-500 mt-1">ใช้ติดต่อราชการภายนอกวิทยาลัย / ติดต่อหน่วยงานอื่น / เอกชน</span>
+          </button>
+        </div>
+      </section>
+
       <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
         <header class="px-5 py-4 border-b border-gray-100">
           <h2 class="font-semibold text-gray-800">รายละเอียดหนังสือ</h2>
@@ -144,6 +232,9 @@
               @change="onFileChange"
             />
             <p v-if="errors.file" class="mt-1 text-xs text-red-600" role="alert">{{ errors.file }}</p>
+            <p class="mt-1.5 text-xs text-gray-400">
+              ข้อแนะนำตามระเบียบงานสารบรรณ (ภาคผนวก ๗ ข้อ ๔.๓): การตั้งชื่อไฟล์ควรใช้รูปแบบ "เลขหนังสือ_ปีพ.ศ._ชื่อเรื่องย่อ.pdf" เช่น ศธ04001-125_2569_เชิญประชุม.pdf เพื่อความเป็นระเบียบและค้นหาง่าย
+            </p>
           </div>
 
           <div v-if="versions.length" class="overflow-x-auto">
@@ -311,6 +402,32 @@ const options = ref({ document_types: [] })
 const orgUnits = ref([])
 const errors = reactive({})
 const selectedFile = ref(null)
+const selectedTemplate = ref('')
+
+const applyTemplate = (type) => {
+  /*
+   * แม่แบบเป็นโครงตั้งต้น ไม่ใช่การล้างของเดิม — ถ้าผู้ใช้พิมพ์เนื้อเรื่องไว้แล้ว
+   * ต้องถามก่อนทับ ไม่งั้นการกดเทียบแม่แบบสองแบบจะทำให้งานที่ร่างไว้หายทันที
+   */
+  if (form.summary && !window.confirm('เนื้อเรื่องที่พิมพ์ไว้จะถูกแทนที่ด้วยแม่แบบ ต้องการดำเนินการต่อหรือไม่?')) {
+    return
+  }
+
+  selectedTemplate.value = type
+  if (type === 'memo') {
+    form.direction = 'internal'
+    if (!form.subject) {
+      form.subject = 'ขออนุมัติ...'
+    }
+    form.summary = 'เรียน  ผู้อำนวยการ\n\nด้วย [ระบุความเป็นมา หรือเหตุผลความจำเป็น]\n\nในการนี้ [ระบุวัตถุประสงค์ หรือรายละเอียดการดำเนินงาน]\n\nจึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ'
+  } else if (type === 'external') {
+    form.direction = 'outgoing'
+    if (!form.subject) {
+      form.subject = 'ขอความอนุเคราะห์...'
+    }
+    form.summary = 'เรียน  [ระบุตำแหน่งผู้รับ]\nอ้างถึง  [ถ้ามี]\nสิ่งที่ส่งมาด้วย  [ถ้ามี]\n\nด้วย [ระบุความเป็นมา หรือข้อเท็จจริง]\n\nในการนี้ [ระบุวัตถุประสงค์ หรือสิ่งที่ขอความร่วมมือ]\n\nจึงเรียนมาเพื่อโปรดพิจารณาให้ความอนุเคราะห์\n\nขอแสดงความนับถือ'
+  }
+}
 
 const form = reactive({
   document_type_id: '',
@@ -534,6 +651,15 @@ const performWorkflow = async (transition) => {
     actingOn.value = null
   }
 }
+
+const isSignatureStep = computed(
+  () =>
+    workflow.value?.current_step?.code === 'signature' ||
+    workflow.value?.current_step?.assignee_permission === 'saraban.signature.sign',
+)
+
+const openEndorse = () =>
+  router.push({ name: 'saraban-document-endorse', params: { id: route.params.id } })
 
 const openWorkspace = () =>
   router.push({ name: 'saraban-document-workspace', params: { id: route.params.id } })

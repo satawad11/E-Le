@@ -41,7 +41,13 @@ class RegisterReportService
     public function register(User $user, array $filters): array
     {
         $query = Document::query()
-            ->with(['documentType:id,name,category', 'ownerOrgUnit:id,name', 'documentNumber:id,formatted,buddhist_year'])
+            ->with([
+                'documentType:id,name,category',
+                'ownerOrgUnit:id,name',
+                'documentNumber:id,formatted,buddhist_year,running_number',
+                'incomingRegistration.registerNumber:id,formatted,buddhist_year,running_number',
+                'incomingRegistration.registrar:id,name',
+            ])
             ->when(isset($filters['direction']), fn ($q) => $q->where('direction', $filters['direction']))
             ->when(
                 isset($filters['category']),
@@ -63,10 +69,18 @@ class RegisterReportService
             'rows' => $rows->map(fn (Document $document) => [
                 ...$document->only(['id', 'uuid', 'subject', 'direction', 'status', 'confidentiality', 'urgency']),
                 'document_number' => $document->documentNumber?->formatted,
+                'running_number' => $document->documentNumber?->running_number,
                 'buddhist_year' => $document->documentNumber?->buddhist_year,
                 'document_type' => $document->documentType?->name,
                 'owner_org_unit' => $document->ownerOrgUnit?->name,
                 'created_at' => $document->created_at?->toIso8601String(),
+                'sender_name' => $document->incomingRegistration?->sender_name,
+                'source_number' => $document->incomingRegistration?->source_number,
+                'source_date' => $document->incomingRegistration?->source_date?->toDateString(),
+                'register_number' => $document->incomingRegistration?->registerNumber?->formatted
+                    ?? ($document->incomingRegistration?->registerNumber?->running_number ? (string) $document->incomingRegistration->registerNumber->running_number : null),
+                'received_at' => $document->incomingRegistration?->received_at?->toIso8601String(),
+                'incoming_note' => $document->incomingRegistration?->note,
             ])->values(),
         ];
     }

@@ -61,6 +61,15 @@ class DashboardService
                     'alert' => $waitingForMe > 0,
                 ],
                 [
+                    'key' => 'urgent_pending',
+                    'label' => 'งานด่วนที่สุด / ด่วนมาก',
+                    'value' => $scoped()->whereIn('urgency', ['most_urgent', 'very_urgent'])
+                        ->whereNotIn('status', ['archived', 'rejected'])
+                        ->count(),
+                    'route' => '/saraban/documents/queue?urgency=urgent',
+                    'alert' => true,
+                ],
+                [
                     'key' => 'my_inbox',
                     'label' => 'หนังสือเวียนที่ยังไม่รับทราบ',
                     'value' => $this->unacknowledgedFor($user),
@@ -74,10 +83,23 @@ class DashboardService
                 ],
                 [
                     'key' => 'this_month',
-                    'label' => 'หนังสือเดือนนี้',
+                    'label' => 'หนังสือทั้งหมดในเดือนนี้',
                     'value' => $scoped()->where('created_at', '>=', $monthStart)->count(),
                     'route' => '/saraban/documents',
                 ],
+            ],
+
+            'direction_stats' => [
+                'internal' => $scoped()->where('direction', 'internal')->where('created_at', '>=', $monthStart)->count(),
+                'outgoing' => $scoped()->where('direction', 'outgoing')->where('created_at', '>=', $monthStart)->count(),
+                'incoming' => $scoped()->where('direction', 'incoming')->where('created_at', '>=', $monthStart)->count(),
+            ],
+
+            'urgency_stats' => [
+                'most_urgent' => $scoped()->where('urgency', 'most_urgent')->where('created_at', '>=', $monthStart)->count(),
+                'very_urgent' => $scoped()->where('urgency', 'very_urgent')->where('created_at', '>=', $monthStart)->count(),
+                'urgent' => $scoped()->where('urgency', 'urgent')->where('created_at', '>=', $monthStart)->count(),
+                'normal' => $scoped()->where('urgency', 'normal')->where('created_at', '>=', $monthStart)->count(),
             ],
 
             /*

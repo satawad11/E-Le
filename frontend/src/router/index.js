@@ -508,6 +508,11 @@ const router = createRouter({
       redirect: { name: 'admin-settings', query: { tab: 'export' } }
     },
     {
+      // ทางลัดตรงไปยังหน้าตรวจความพร้อมระบบ (Pre-flight Check)
+      path: '/admin/preflight-check',
+      redirect: { name: 'admin-settings', query: { tab: 'preflight' } }
+    },
+    {
       path: '/admin/attendance-settings',
       name: 'admin-attendance-settings',
       component: () => import('../views/admin/AttendanceSettingsView.vue'),

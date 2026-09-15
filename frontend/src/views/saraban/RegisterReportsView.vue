@@ -1,10 +1,22 @@
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
-    <div>
-      <h1 class="text-2xl font-bold text-gray-800">รายงานสารบรรณ</h1>
-      <p class="text-sm text-gray-500 mt-1">
-        รายงานแสดงเฉพาะหนังสือในขอบเขตหน่วยงานที่ท่านมีสิทธิ์เข้าถึง
-      </p>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">รายงานสารบรรณ</h1>
+        <p class="text-sm text-gray-500 mt-1">
+          รายงานแสดงเฉพาะหนังสือในขอบเขตหน่วยงานที่ท่านมีสิทธิ์เข้าถึง
+        </p>
+      </div>
+      <div v-can="'saraban.report.export'">
+        <AppButton variant="secondary" @click="openExportModal">
+          <span class="flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            ส่งออกรายงาน (Export)
+          </span>
+        </AppButton>
+      </div>
     </div>
 
     <nav class="flex flex-wrap gap-2" role="tablist">
@@ -161,6 +173,62 @@
         </p>
       </section>
     </template>
+
+    <!-- ส่งออกรายงานเป็นไฟล์ Excel/CSV (RISK-69 & ระเบียบฯ ข้อ ๒๙/๑) -->
+    <AppModal
+      v-if="exportModal"
+      :model-value="true"
+      title="ส่งออกรายงานสารบรรณ"
+      size="md"
+      @update:model-value="exportModal = false"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-gray-600">
+          ดาวน์โหลดข้อมูลรายงานตามแบบพิมพ์ระเบียบสารบรรณในรูปแบบไฟล์อิเล็กทรอนิกส์
+        </p>
+
+        <AppSelect v-model="exportForm.type" label="ประเภทรายงาน">
+          <option value="register">ทะเบียนหนังสือ (รับ / ส่ง / ภายใน)</option>
+          <option value="numbers">ทะเบียนเลขหนังสือ</option>
+          <option value="distribution">การเวียนและการรับทราบ</option>
+        </AppSelect>
+
+        <div v-if="exportForm.type === 'register'" class="grid grid-cols-2 gap-3">
+          <AppSelect v-model="exportForm.direction" label="ทิศทางหนังสือ">
+            <option value="">ทั้งหมด</option>
+            <option value="incoming">หนังสือรับ (แบบที่ ๑๓)</option>
+            <option value="outgoing">หนังสือส่ง (แบบที่ ๑๔)</option>
+            <option value="internal">หนังสือภายใน (แบบที่ ๒)</option>
+          </AppSelect>
+
+          <AppSelect v-model="exportForm.format" label="รูปแบบไฟล์">
+            <option value="xlsx">Excel (.xlsx)</option>
+            <option value="csv">CSV (.csv - UTF-8)</option>
+          </AppSelect>
+        </div>
+
+        <div v-else>
+          <AppSelect v-model="exportForm.format" label="รูปแบบไฟล์">
+            <option value="xlsx">Excel (.xlsx)</option>
+            <option value="csv">CSV (.csv - UTF-8)</option>
+          </AppSelect>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <AppInput v-model="exportForm.from" type="date" label="ตั้งแต่วันที่" />
+          <AppInput v-model="exportForm.to" type="date" label="ถึงวันที่" />
+        </div>
+
+        <p v-if="exportError" class="text-sm text-red-600">{{ exportError }}</p>
+      </div>
+
+      <template #footer>
+        <AppButton variant="secondary" :disabled="exporting" @click="exportModal = false">ยกเลิก</AppButton>
+        <AppButton :loading="exporting" :disabled="exporting" @click="downloadExport">
+          ดาวน์โหลดไฟล์
+        </AppButton>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -170,6 +238,8 @@ import api from '../../axios'
 import { getErrorMessage } from '../../utils/errorHandler'
 import AppBadge from '../../components/ui/AppBadge.vue'
 import AppButton from '../../components/ui/AppButton.vue'
+import AppInput from '../../components/ui/AppInput.vue'
+import AppModal from '../../components/ui/AppModal.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ErrorState from '../../components/ui/ErrorState.vue'
@@ -308,6 +378,82 @@ const select = (key) => {
   active.value = key
   data.value = {}
   load()
+}
+
+const exportModal = ref(false)
+const exporting = ref(false)
+const exportError = ref('')
+const exportForm = reactive({
+  type: 'register',
+  direction: '',
+  format: 'xlsx',
+  from: '',
+  to: '',
+})
+
+const openExportModal = () => {
+  exportForm.type = active.value === 'numbers' ? 'numbers' : (active.value === 'distribution' ? 'distribution' : 'register')
+  exportForm.direction = filters.direction || ''
+  exportError.value = ''
+  exportModal.value = true
+}
+
+const downloadExport = async () => {
+  exporting.value = true
+  exportError.value = ''
+  try {
+    const params = {
+      type: exportForm.type,
+      format: exportForm.format,
+    }
+    if (exportForm.type === 'register' && exportForm.direction) {
+      params.direction = exportForm.direction
+    }
+    if (exportForm.from) {
+      params.from = exportForm.from
+    }
+    if (exportForm.to) {
+      params.to = exportForm.to
+    }
+
+    const response = await api.get('/saraban/reports/export', {
+      params,
+      responseType: 'blob',
+    })
+
+    const blob = new Blob([response.data], {
+      type: exportForm.format === 'xlsx'
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv;charset=utf-8;',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const timestamp = new Date().toISOString().slice(0, 10)
+    link.setAttribute('download', `saraban-${exportForm.type}-${timestamp}.${exportForm.format}`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    exportModal.value = false
+  } catch (err) {
+    /*
+     * คำขอนี้เป็น `responseType: 'blob'` ตัว body ของ error จึงมาเป็น Blob
+     * ซึ่งอ่าน `.message` ตรง ๆ ไม่ได้ — ต้องแปลงกลับเป็นข้อความก่อน ไม่งั้นผู้ใช้
+     * จะเห็นแต่ข้อความกลาง ๆ และไม่รู้ว่าช่องไหนผิด
+     */
+    if (err?.response?.data instanceof Blob) {
+      try {
+        err.response.data = JSON.parse(await err.response.data.text())
+      } catch {
+        err.response.data = null
+      }
+    }
+    exportError.value = getErrorMessage(err, 'ส่งออกรายงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง')
+  } finally {
+    exporting.value = false
+  }
 }
 
 onMounted(load)

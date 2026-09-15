@@ -47,6 +47,14 @@ class DistributionService
         }
 
         /*
+         * ระเบียบสำนักนายกรัฐมนตรีว่าด้วยงานสารบรรณ (ฉบับที่ ๔) พ.ศ. ๒๕๖๔ ข้อ ๒๙
+         * ห้ามส่งหรือเวียนข้อมูลข่าวสารลับชั้นลับที่สุดด้วยระบบสารบรรณอิเล็กทรอนิกส์
+         */
+        if ($document->confidentiality === 'top_secret') {
+            return false;
+        }
+
+        /*
          * หนังสือรับ: เวียนได้ทันทีที่ลงทะเบียนรับแล้ว เพราะการส่งเรื่องต่อให้
          * ผู้เกี่ยวข้องคืองานหลักของงานสารบรรณหลังลงรับ (SoT §10)
          *
@@ -68,6 +76,12 @@ class DistributionService
      */
     public function distribute(Document $document, array $targets, User $sender, ?string $note = null): Distribution
     {
+        if ($document->confidentiality === 'top_secret') {
+            throw new DistributionException(
+                'หนังสือที่มีชั้นความลับชั้นลับที่สุดไม่อาจจัดส่งด้วยวิธีการทางอิเล็กทรอนิกส์ได้ตามระเบียบงานสารบรรณ (ข้อ ๒๙) กรุณาดำเนินการจัดส่งเป็นเอกสารกระดาษ'
+            );
+        }
+
         if (! $this->canDistribute($document)) {
             throw new DistributionException('หนังสือฉบับนี้ยังไม่อยู่ในสถานะที่เวียนได้');
         }
@@ -174,24 +188,40 @@ class DistributionService
 
         $now = $this->clock->now();
 
+        $isDelegated = (int) $actor->id !== (int) $recipient->recipient_id;
+        $notePrefix = $isDelegated ? "รับทราบแทนโดย {$actor->name}" : '';
+
+        /*
+         * บันทึกเดิมของผู้รับเป็นหลักฐานในทะเบียน — การรับทราบแทนต้อง "ต่อท้าย"
+         * ไม่ใช่ทับทิ้ง แม้ผู้ปฏิบัติแทนจะไม่ได้พิมพ์ข้อความใหม่มาก็ตาม
+         */
+        $fullNote = $note ?: $recipient->response_note;
+        if ($notePrefix !== '') {
+            $fullNote = blank($fullNote) ? $notePrefix : "{$notePrefix}: {$fullNote}";
+        }
+
         $recipient->forceFill([
             'acknowledged_at' => $now,
-
-            /*
-             * รับทราบโดยไม่เคยเปิดอ่านเป็นไปไม่ได้ในทางปฏิบัติ แต่ถ้าเกิดขึ้น
-             * ให้บันทึกเวลาเปิดเท่ากับเวลารับทราบ ดีกว่าปล่อยให้ทะเบียนขาดช่วง
-             */
             'opened_at' => $recipient->opened_at ?? $now,
             'status' => DistributionRecipient::STATUS_ACKNOWLEDGED,
-            'response_note' => $note ?? $recipient->response_note,
+            'response_note' => $fullNote,
         ])->save();
+
+        $auditData = [
+            'distribution_recipient_id' => $recipient->id,
+            'acknowledged_at' => $now->toIso8601String(),
+        ];
+        if ($isDelegated) {
+            $auditData['acting_for_user_id'] = $recipient->recipient_id;
+            $auditData['is_delegated'] = true;
+        }
 
         $this->audit->log(
             'saraban.distribution.acknowledged',
             $recipient->distribution->document,
             $recipient->distribution->document_id,
             null,
-            ['distribution_recipient_id' => $recipient->id, 'acknowledged_at' => $now->toIso8601String()],
+            $auditData,
             null,
             $actor->id,
         );

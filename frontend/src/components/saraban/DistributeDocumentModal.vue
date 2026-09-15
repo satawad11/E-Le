@@ -6,7 +6,20 @@
     @update:model-value="$emit('close')"
   >
     <div class="space-y-4">
-      <p class="text-sm text-gray-500">
+      <div
+        v-if="confidentiality === 'top_secret'"
+        class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-3"
+      >
+        <svg class="w-5 h-5 shrink-0 mt-0.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div>
+          <strong class="font-semibold block text-red-800">ชั้นความลับ: ลับที่สุด</strong>
+          ตามระเบียบสำนักนายกรัฐมนตรีว่าด้วยงานสารบรรณ (ฉบับที่ ๔) พ.ศ. ๒๕๖๔ ข้อ ๒๙ หนังสือชั้นลับที่สุดไม่อาจจัดส่งหรือเวียนด้วยระบบสารบรรณอิเล็กทรอนิกส์ได้ ให้ดำเนินการจัดส่งเป็นเอกสารกระดาษตามระเบียบรักษาความปลอดภัยแห่งชาติ
+        </div>
+      </div>
+
+      <p v-if="confidentiality !== 'top_secret'" class="text-sm text-gray-500">
         ผู้รับจะเห็นหนังสือฉบับนี้ในกล่องหนังสือเข้า และต้องกดรับทราบเอง
       </p>
 
@@ -74,7 +87,13 @@
 
     <template #footer>
       <AppButton variant="secondary" @click="$emit('close')">ยกเลิก</AppButton>
-      <AppButton :loading="busy" :disabled="busy" @click="submit">ส่งหนังสือ</AppButton>
+      <AppButton
+        :loading="busy"
+        :disabled="busy || confidentiality === 'top_secret'"
+        @click="submit"
+      >
+        ส่งหนังสือ
+      </AppButton>
     </template>
   </AppModal>
 </template>
@@ -98,6 +117,7 @@ import AppTextarea from '../ui/AppTextarea.vue'
  */
 const props = defineProps({
   documentId: { type: [Number, String], required: true },
+  confidentiality: { type: String, default: 'normal' },
 })
 
 const emit = defineEmits(['close', 'sent'])

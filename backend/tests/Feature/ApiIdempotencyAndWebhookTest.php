@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\DeliverWebhook;
+use App\Models\AccessToken;
 use App\Models\IdempotencyKey;
 use App\Models\User;
 use App\Models\WebhookDelivery;
@@ -11,6 +12,7 @@ use App\Services\Webhooks\WebhookCatalogue;
 use App\Services\Webhooks\WebhookDispatcher;
 use App\Services\Webhooks\WebhookSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
@@ -208,6 +210,43 @@ class ApiIdempotencyAndWebhookTest extends TestCase
     }
 
     // ── webhook (SoT §17) ───────────────────────────────────────────────────
+
+    public function test_refresh_preserves_narrow_empty_and_wildcard_token_scopes(): void
+    {
+        foreach ([['saraban.document.view'], [], ['*']] as $abilities) {
+            $user = User::factory()->create();
+            foreach (['saraban.document.view', 'saraban.document.create'] as $permission) {
+                $user->givePermissionTo(Permission::findOrCreate($permission, 'web'));
+            }
+            $token = $user->createToken('review', $abilities);
+            $this->app['auth']->forgetGuards();
+            $response = $this->withToken($token->plainTextToken)->postJson('/api/refresh-token')->assertOk();
+            $renewed = AccessToken::findToken($response->json('access_token'));
+            $this->assertSame($abilities, $renewed->abilities);
+            $this->assertNull(AccessToken::findToken($token->plainTextToken));
+            if ($abilities !== ['*']) {
+                $this->app['auth']->forgetGuards();
+                $this->withToken($response->json('access_token'))->postJson('/api/v1/saraban/documents', [])->assertForbidden();
+            }
+        }
+    }
+
+    public function test_multipart_replays_ignore_boundary_but_compare_fields_and_file_contents(): void
+    {
+        $this->withIdempotentRoute();
+        $this->actingAs(User::factory()->create())->withHeader('Idempotency-Key', 'multipart-review-key');
+        $payload = fn (string $value, string $bytes) => [
+            'value' => $value,
+            'files' => ['attachment' => UploadedFile::fake()->createWithContent('file.pdf', $bytes)],
+        ];
+        $this->withHeader('Content-Type', 'multipart/form-data; boundary=first')
+            ->post('/api/test-idempotent', $payload('ก', '%PDF first'))->assertCreated();
+        $this->withHeader('Content-Type', 'multipart/form-data; boundary=second')
+            ->post('/api/test-idempotent', $payload('ก', '%PDF first'))->assertCreated()->assertHeader('Idempotent-Replay', 'true');
+        $this->post('/api/test-idempotent', $payload('ข', '%PDF first'))->assertStatus(422);
+        $this->post('/api/test-idempotent', $payload('ก', '%PDF other'))->assertStatus(422);
+        $this->assertSame(1, cache()->get('idempotency-test-counter'));
+    }
 
     public function test_dispatching_writes_to_the_outbox_before_sending(): void
     {

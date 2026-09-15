@@ -10,8 +10,10 @@ use App\Models\Saraban\NumberSeries;
 use App\Models\User;
 use App\Models\Workflow\WorkflowInstance;
 use App\Services\Saraban\AuthorityResolver;
+use App\Services\Saraban\DocumentWorkflowService;
 use App\Services\Workflow\Assignee\AssigneeResolverRegistry;
 use App\Services\Workflow\Assignee\SarabanAssigneeResolver;
+use App\Services\Workflow\WorkflowEngine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -145,6 +147,32 @@ class SarabanWorkflowAndAuthorityTest extends TestCase
     }
 
     // ── อำนาจถูกหรี่ตามหน่วยงาน (SoT §13) ───────────────────────────────────
+
+    public function test_the_current_assignee_can_read_transition_metadata(): void
+    {
+        $author = $this->userIn($this->unitA, ['saraban.document.view', 'saraban.document.create', 'saraban.document.submit']);
+        $document = $this->submittedDocument($author);
+        $officer = $this->userIn($this->unitA, ['saraban.document.view', 'saraban.workflow.review']);
+        $transitions = $this->actingAs($officer)->getJson("/api/saraban/documents/{$document->id}/workflow")
+            ->assertOk()->json('transitions');
+        $this->assertContains('approve', array_column($transitions, 'action'));
+        $reject = collect($transitions)->firstWhere('action', 'reject');
+        $this->assertTrue($reject['requires_comment']);
+        $this->assertNotEmpty($reject['name']);
+    }
+
+    public function test_leave_management_does_not_grant_saraban_approval(): void
+    {
+        $author = $this->userIn($this->unitA, ['saraban.document.view', 'saraban.document.create', 'saraban.document.submit']);
+        $document = $this->submittedDocument($author);
+        $manager = $this->userIn($this->unitA, ['saraban.document.view', 'leave.management.manage']);
+        $this->actingAs($manager)->getJson("/api/saraban/documents/{$document->id}/workflow")
+            ->assertOk()->assertJsonPath('transitions', []);
+        $this->postJson("/api/saraban/documents/{$document->id}/workflow", ['action' => 'approve'])->assertForbidden();
+        $this->assertSame('saraban_review', app(WorkflowEngine::class)->currentStep(
+            app(DocumentWorkflowService::class)->instanceFor($document)
+        )->code);
+    }
 
     /**
      * ข้อที่สำคัญที่สุดของเช็คพอยต์นี้

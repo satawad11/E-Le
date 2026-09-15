@@ -120,6 +120,18 @@ class OvertimeApprovalChainTest extends TestCase
         $this->assertSame('pending', $order->fresh()->status);
     }
 
+    public function test_final_approval_preserves_the_permitted_window_unless_explicitly_changed(): void
+    {
+        $order = $this->issueOrder();
+        $this->actingAs($this->deputy)->postJson("/api/overtime/orders/{$order->uuid}/approve", [
+            'approved_start' => '2026-09-10 18:00:00', 'approved_end' => '2026-09-10 19:00:00',
+        ])->assertOk();
+        $this->actingAs($this->director)->postJson("/api/overtime/orders/{$order->uuid}/approve")->assertOk();
+        $order->refresh();
+        $this->assertSame('18:00', $order->approved_start->format('H:i'));
+        $this->assertSame('19:00', $order->approved_end->format('H:i'));
+    }
+
     /**
      * หัวหน้าบุคลากรตั้งคำสั่งได้ แต่ต้องไม่อนุมัติคำสั่งของตนเอง
      */

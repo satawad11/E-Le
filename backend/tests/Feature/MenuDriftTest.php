@@ -42,10 +42,10 @@ class MenuDriftTest extends TestCase
      *
      * การอัปเดตค่านี้เฉย ๆ โดยไม่ทำข้อ 1 = ปิดปากเทสต์ ไม่ใช่แก้ปัญหา
      */
-    private const TREE_FINGERPRINT = '39d295fefefaa5655ab8a7d413ab364f9f89b5a34f2a9a314999c61592696b9a';
+    private const TREE_FINGERPRINT = '214c54990ab6518609abe54ea45ecd30eb8af1e8e14fa90974659077c58dc9e7';
 
     /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว */
-    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_24_120000_rename_menus_for_readability';
+    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_25_100000_reorganize_menus_structure';
 
     public function test_changing_the_menu_tree_requires_a_migration_for_installed_systems(): void
     {
@@ -102,9 +102,7 @@ class MenuDriftTest extends TestCase
      *
      * ตัวเลขนี้คือสิ่งที่หายไปจริงในเหตุการณ์ข้างต้น (มี 6 จาก 13)
      *
-     * นับรวมสองกลุ่ม เพราะเมนูสารบรรณถูกแยกเป็น "งานสารบรรณ" กับ
-     * "การจัดการงานสารบรรณ" — สิ่งที่ต้องกันคือ **หน้าที่หายไปจากแถบเมนู**
-     * ไม่ใช่ว่าหน้านั้นอยู่กลุ่มไหน
+     * นับรวมสองกลุ่มหลัก ("งานสารบรรณ" กับ "การจัดการงานสารบรรณ") รวม 21 หน้า
      */
     public function test_the_saraban_branch_declares_every_page_the_module_has(): void
     {
@@ -116,7 +114,20 @@ class MenuDriftTest extends TestCase
         $this->assertCount(
             21,
             $groups->flatMap(fn (array $item) => $item['children'] ?? [])->all(),
-            'จำนวนหน้าของงานสารบรรณเปลี่ยนไป — ถ้าตั้งใจ ให้แก้ตัวเลขนี้พร้อม migration sync เมนู',
+            'จำนวนหน้าของงานสารบรรณในสองกลุ่มหลักเปลี่ยนไป — ถ้าตั้งใจ ให้แก้ตัวเลขนี้พร้อม migration sync เมนู',
+        );
+
+        $allSarabanChildren = collect(MenuSeeder::TREE)->flatMap(function (array $item) {
+            $parentModule = $item['module'] ?? null;
+
+            return collect($item['children'] ?? [])
+                ->filter(fn (array $child) => ($child['module'] ?? $parentModule) === 'saraban');
+        });
+
+        $this->assertCount(
+            21,
+            $allSarabanChildren->all(),
+            'จำนวนหน้าทั้งหมดของโมดูลสารบรรณต้องครบ 21 หน้า',
         );
     }
 

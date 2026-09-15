@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Saraban;
 use App\Http\Controllers\Controller;
 use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentType;
+use App\Services\Saraban\RegisterReportExportService;
 use App\Services\Saraban\RegisterReportService;
+use App\Support\DocumentFilename;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +23,10 @@ use Illuminate\Validation\Rule;
  */
 class RegisterReportController extends Controller
 {
-    public function __construct(private readonly RegisterReportService $reports) {}
+    public function __construct(
+        private readonly RegisterReportService $reports,
+        private readonly RegisterReportExportService $exporter,
+    ) {}
 
     /**
      * ตัวเลขสรุปสำหรับกราฟ (NAV §4.11)
@@ -66,5 +71,34 @@ class RegisterReportController extends Controller
         ]);
 
         return response()->json($this->reports->distribution($request->user(), $filters));
+    }
+
+    public function export(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => ['required', 'string', Rule::in(['register', 'numbers', 'distribution'])],
+            'format' => ['nullable', 'string', Rule::in(['csv', 'xlsx'])],
+            'direction' => ['nullable', 'string', Rule::in(Document::directions())],
+            'category' => ['nullable', 'string', Rule::in(DocumentType::categories())],
+            'status' => ['nullable', 'string', 'max:30'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'series_id' => ['nullable', 'integer', 'exists:saraban_number_series,id'],
+            'buddhist_year' => ['nullable', 'integer', 'min:2500', 'max:2700'],
+        ]);
+
+        $format = $validated['format'] ?? 'csv';
+        $user = $request->user();
+
+        $result = match ($validated['type']) {
+            'numbers' => $this->exporter->exportNumbers($user, $validated, $format),
+            'distribution' => $this->exporter->exportDistribution($user, $validated, $format),
+            default => $this->exporter->exportRegister($user, $validated, $format),
+        };
+
+        return response($result['content'], 200, [
+            'Content-Type' => $result['mime'],
+            'Content-Disposition' => DocumentFilename::disposition($result['filename']),
+        ]);
     }
 }

@@ -7,6 +7,7 @@ use App\Services\TrustedClock;
 use Closure;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -50,7 +51,16 @@ class EnsureIdempotentRequest
             ], 422);
         }
 
-        $hash = hash('sha256', $request->method().'|'.$request->path().'|'.$request->getContent());
+        $body = $request->getContent();
+        if (str_starts_with(strtolower((string) $request->header('Content-Type')), 'multipart/form-data')) {
+            // PHP แยก multipart ไปแล้ว raw body จึงว่างได้ และ boundary เปลี่ยนทุกครั้งที่ส่งซ้ำ
+            $body = 'multipart-v1:'.json_encode($this->fingerprint([
+                'fields' => $request->request->all(),
+                'query' => $request->query->all(),
+                'files' => $request->allFiles(),
+            ]), JSON_THROW_ON_ERROR);
+        }
+        $hash = hash('sha256', $request->method().'|'.$request->path().'|'.$body);
         $now = $this->clock->now();
 
         /*
@@ -96,6 +106,28 @@ class EnsureIdempotentRequest
         $claim->delete();
 
         return $response;
+    }
+
+    /** ลำดับชื่อฟิลด์และชื่อไฟล์ชั่วคราวไม่มีผล แต่เนื้อหาไฟล์ต้องตรงกัน */
+    private function fingerprint(mixed $value): mixed
+    {
+        if ($value instanceof UploadedFile) {
+            return [
+                'name' => $value->getClientOriginalName(),
+                'mime' => $value->getClientMimeType(),
+                'error' => $value->getError(),
+                'sha256' => $value->isValid() ? hash_file('sha256', $value->getPathname()) : null,
+            ];
+        }
+        if (is_array($value)) {
+            if (! array_is_list($value)) {
+                ksort($value);
+            }
+
+            return array_map($this->fingerprint(...), $value);
+        }
+
+        return $value;
     }
 
     /** ตอบคำขอที่ใช้กุญแจซึ่งถูกจองไปแล้ว */

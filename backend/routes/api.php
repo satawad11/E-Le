@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ModuleController;
 use App\Http\Controllers\Admin\OrgUnitController;
 use App\Http\Controllers\Admin\OrgUnitManagerController;
 use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Admin\PreflightCheckController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WorkflowController;
 use App\Http\Controllers\Api\ApiDescriptorController;
@@ -43,6 +44,7 @@ use App\Http\Controllers\Saraban\AuthorityMatrixController;
 use App\Http\Controllers\Saraban\CaseController;
 use App\Http\Controllers\Saraban\DistributionController;
 use App\Http\Controllers\Saraban\DocumentController;
+use App\Http\Controllers\Saraban\DocumentTemplateController;
 use App\Http\Controllers\Saraban\DocumentVerificationController;
 use App\Http\Controllers\Saraban\InboxController;
 use App\Http\Controllers\Saraban\IncomingRegistrationController;
@@ -119,6 +121,11 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      * จำกัดอัตราด้วย throttle ชุดเดิมของรหัสผ่าน เพื่อไม่ให้ใช้เดารหัสผ่าน
      */
     Route::post('/auth/confirm-password', [AuthController::class, 'confirmPassword'])->middleware('throttle:password-change');
+    /*
+     * ความลับ TOTP ออกให้เฉพาะผู้ที่กรอกรหัสผ่านซ้ำได้ — จึงเป็น POST และ
+     * จำกัดอัตราด้วย throttle ชุดเดียวกับการเดารหัสผ่าน
+     */
+    Route::post('/auth/totp-setup', [AuthController::class, 'totpSetup'])->middleware('throttle:password-change');
     // สิทธิขอรับสำเนาข้อมูลส่วนบุคคลของตนเอง (ม.30 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล)
     Route::get('/profile/personal-data', [PersonalDataController::class, 'export'])->middleware('throttle:personal-data');
     Route::get('/profile/access-history', [PersonalDataController::class, 'accessHistory']);
@@ -355,6 +362,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      */
     Route::middleware('can:system.setting.manage')->group(function () {
         Route::get('/admin/settings', [SecureSettingController::class, 'adminIndex']);
+        Route::get('/admin/preflight-check', [PreflightCheckController::class, 'index']);
         Route::post('/admin/settings', [SecureSettingController::class, 'update']);
         Route::post('/admin/settings/upload-logo', [SecureSettingController::class, 'uploadLogo']);
         Route::delete('/admin/settings/logo', [SecureSettingController::class, 'deleteLogo']);
@@ -521,6 +529,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     $sarabanRoutes = function () {
         Route::get('/documents', [DocumentController::class, 'index'])->middleware('ability:saraban.document.view');
         Route::get('/documents/options', [DocumentController::class, 'options'])->middleware('ability:saraban.document.view');
+        Route::get('/templates', [DocumentTemplateController::class, 'index'])->middleware('ability:saraban.document.view');
+        Route::get('/templates/disclaimer', [DocumentTemplateController::class, 'disclaimer'])->middleware('ability:saraban.document.view');
         /*
          * คิวงานของผู้เรียก (NAV §4.7)
          *
@@ -533,6 +543,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/dashboard', [DocumentController::class, 'dashboard'])->middleware('ability:saraban.document.view');
         Route::post('/documents', [DocumentController::class, 'store'])->middleware('ability:saraban.document.create');
         Route::get('/documents/{document}', [DocumentController::class, 'show'])->middleware('ability:saraban.document.view');
+        Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->middleware('ability:saraban.document.view');
         Route::post('/documents/{document}', [DocumentController::class, 'update'])->middleware('ability:saraban.document.update');
         Route::post('/documents/{document}/submit', [DocumentController::class, 'submit'])->middleware('ability:saraban.document.submit');
 
@@ -798,6 +809,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
             Route::get('/reports/register', [RegisterReportController::class, 'register']);
             Route::get('/reports/numbers', [RegisterReportController::class, 'numbers']);
             Route::get('/reports/distribution', [RegisterReportController::class, 'distribution']);
+            Route::get('/reports/export', [RegisterReportController::class, 'export'])
+                ->middleware('ability:saraban.report.export');
         });
         /*
          * การจองและคืนเลขหนังสือ (SoT §9 · NAV §4.3)
@@ -825,6 +838,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::middleware('ability:saraban.config.manage')->group(function () {
             Route::get('/number-series', [NumberSeriesController::class, 'index']);
             Route::post('/number-series', [NumberSeriesController::class, 'store']);
+            Route::post('/number-series/quick-setup', [NumberSeriesController::class, 'quickSetup']);
             Route::put('/number-series/{series}', [NumberSeriesController::class, 'update']);
             Route::delete('/number-series/{series}', [NumberSeriesController::class, 'destroy']);
         });

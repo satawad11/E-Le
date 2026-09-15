@@ -9,9 +9,12 @@ use App\Models\LeaveBalance;
 use App\Models\LeaveType;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\UserDelegation;
+use App\Models\Workflow\WorkflowDelegation;
 use App\Models\Workflow\WorkflowVersion;
 use App\Services\Workflow\LeaveWorkflowProvisioner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -100,6 +103,55 @@ class WorkflowAuthorizationTest extends TestCase
     }
 
     // ------------------------------------------------- ใบลาเดิมยังเดินต่อได้
+
+    public static function delegationSources(): array
+    {
+        return ['legacy' => [false], 'workflow' => [true]];
+    }
+
+    #[DataProvider('delegationSources')]
+    public function test_delegation_must_come_from_the_named_assignee_not_a_role_peer(bool $workflow): void
+    {
+        $leave = $this->pendingLeave();
+        $assignee = $this->userWithRole($this->hr);
+        $peer = $this->userWithRole($this->hr);
+        $delegate = User::factory()->create();
+        $leave->approvals()->where('step_order', 1)->update([
+            'approver_type' => ApprovalStep::RESOLVER_SPECIFIC_USER,
+            'specific_user_id' => $assignee->id,
+        ]);
+        $delegation = $workflow ? WorkflowDelegation::create([
+            'delegator_id' => $peer->id, 'delegate_id' => $delegate->id,
+            'effective_from' => today()->subDay(), 'effective_to' => today()->addDay(),
+            'delegation_type' => 'delegate', 'is_active' => true,
+        ]) : UserDelegation::create([
+            'user_id' => $peer->id, 'delegate_id' => $delegate->id,
+            'start_date' => today()->subDay(), 'end_date' => today()->addDay(), 'is_active' => true,
+        ]);
+        $this->actingAs($delegate)->postJson("/api/approvals/{$leave->id}/approve")->assertForbidden();
+        $this->assertSame(1, $leave->fresh()->approval_level);
+        $delegation->update([$workflow ? 'delegator_id' : 'user_id' => $assignee->id]);
+        $this->postJson("/api/approvals/{$leave->id}/approve")->assertOk();
+        $this->assertSame(2, $leave->fresh()->approval_level);
+        $this->assertSame($assignee->id, $leave->approvals()->where('step_order', 1)->first()->delegated_from_user_id);
+    }
+
+    public function test_a_named_assignee_without_the_fallback_role_can_delegate(): void
+    {
+        $leave = $this->pendingLeave();
+        $assignee = User::factory()->create();
+        $delegate = User::factory()->create();
+        $leave->approvals()->where('step_order', 1)->update([
+            'approver_type' => ApprovalStep::RESOLVER_SPECIFIC_USER,
+            'specific_user_id' => $assignee->id, 'required_role_id' => null,
+        ]);
+        UserDelegation::create([
+            'user_id' => $assignee->id, 'delegate_id' => $delegate->id,
+            'start_date' => today()->subDay(), 'end_date' => today()->addDay(), 'is_active' => true,
+        ]);
+        $this->actingAs($delegate)->postJson("/api/approvals/{$leave->id}/approve")->assertOk();
+        $this->assertSame(2, $leave->fresh()->approval_level);
+    }
 
     public function test_a_pending_leave_still_walks_its_chain_exactly_as_before(): void
     {

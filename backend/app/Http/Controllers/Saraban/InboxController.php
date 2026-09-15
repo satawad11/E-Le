@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Saraban;
 
 use App\Http\Controllers\Controller;
 use App\Models\Saraban\DistributionRecipient;
+use App\Models\User;
 use App\Services\Saraban\DistributionException;
 use App\Services\Saraban\DistributionService;
+use App\Services\TrustedClock;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -23,19 +26,40 @@ use Illuminate\Validation\Rule;
  */
 class InboxController extends Controller
 {
-    public function __construct(private readonly DistributionService $distributions) {}
+    public function __construct(
+        private readonly DistributionService $distributions,
+        private readonly TrustedClock $clock,
+    ) {}
 
-    /** รายการหนังสือที่เวียนถึงผู้ใช้คนนี้ */
+    /** รายการหนังสือที่เวียนถึงผู้ใช้คนนี้ หรือผู้ที่มอบอำนาจให้ (SoT §15 · ปิด RISK-35) */
     public function index(Request $request)
     {
         $filters = $request->validate([
             'status' => ['nullable', 'string', Rule::in(DistributionRecipient::progression())],
             'pending' => ['nullable', 'boolean'],
+            'acting_for' => ['nullable', 'integer'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
+        $user = $request->user();
+        $today = $this->clock->today();
+        $delegatorIds = DB::table('user_delegations')
+            ->where('delegate_id', $user->id)
+            ->where('is_active', true)
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->pluck('user_id')
+            ->all();
+
+        $allowedRecipientIds = array_merge([$user->id], $delegatorIds);
+        $actingFor = $filters['acting_for'] ?? null;
+
         $items = DistributionRecipient::query()
-            ->where('recipient_id', $request->user()->id)
+            ->when(
+                $actingFor && in_array((int) $actingFor, $allowedRecipientIds, true),
+                fn ($query) => $query->where('recipient_id', (int) $actingFor),
+                fn ($query) => $query->whereIn('recipient_id', $allowedRecipientIds),
+            )
             ->with([
                 'distribution:id,uuid,document_id,document_version_id,sent_by,sent_at,note',
                 'distribution.sender:id,name',
@@ -57,15 +81,16 @@ class InboxController extends Controller
             ->paginate($filters['per_page'] ?? 20);
 
         return response()->json([
-            'data' => collect($items->items())->map(fn (DistributionRecipient $item) => $this->present($item)),
+            'data' => collect($items->items())->map(fn (DistributionRecipient $item) => $this->present($item, $user)),
             'meta' => [
                 'current_page' => $items->currentPage(),
                 'last_page' => $items->lastPage(),
                 'per_page' => $items->perPage(),
                 'total' => $items->total(),
             ],
+            'delegators' => User::whereIn('id', $delegatorIds)->get(['id', 'name']),
             'unacknowledged' => DistributionRecipient::query()
-                ->where('recipient_id', $request->user()->id)
+                ->whereIn('recipient_id', $allowedRecipientIds)
                 ->whereNull('acknowledged_at')
                 ->count(),
         ]);
@@ -88,7 +113,7 @@ class InboxController extends Controller
             'distribution.document.ownerOrgUnit',
             'distribution.version',
             'distribution.sender',
-        ]))]);
+        ]), $request->user())]);
     }
 
     /** รับทราบหนังสือ */
@@ -104,7 +129,7 @@ class InboxController extends Controller
             return response()->json(['message' => $exception->getMessage()], 422);
         }
 
-        return response()->json(['item' => $this->present($updated)]);
+        return response()->json(['item' => $this->present($updated, $request->user())]);
     }
 
     /** รายงานความคืบหน้าการดำเนินการตามหนังสือ */
@@ -128,24 +153,35 @@ class InboxController extends Controller
             return response()->json(['message' => $exception->getMessage()], 422);
         }
 
-        return response()->json(['item' => $this->present($updated)]);
+        return response()->json(['item' => $this->present($updated, $request->user())]);
     }
 
     /**
-     * กล่องของใครก็ของคนนั้น
-     *
-     * ใช้ 404 ไม่ใช่ 403 เพราะการตอบ 403 บอกผู้ถามว่า "มีรายการนี้อยู่จริง"
-     * ซึ่งเป็นการรั่วข้อมูลว่ามีการเวียนหนังสือถึงใครบ้าง
+     * สิทธิ์ในรายการ: เป็นของตนเอง หรือเป็นผู้ได้รับมอบอำนาจที่มีผลบังคับใช้ (SoT §15 · ปิด RISK-35)
      */
     private function authorizeRecipient(Request $request, DistributionRecipient $recipient): void
     {
-        abort_unless((int) $recipient->recipient_id === (int) $request->user()->id, 404);
+        $user = $request->user();
+        if ((int) $recipient->recipient_id === (int) $user->id) {
+            return;
+        }
+
+        $today = $this->clock->today();
+        $isDelegate = DB::table('user_delegations')
+            ->where('user_id', $recipient->recipient_id)
+            ->where('delegate_id', $user->id)
+            ->where('is_active', true)
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->exists();
+
+        abort_unless($isDelegate, 404);
     }
 
     /**
      * @return array<string,mixed>
      */
-    private function present(DistributionRecipient $recipient): array
+    private function present(DistributionRecipient $recipient, ?User $currentUser = null): array
     {
         $document = $recipient->distribution?->document;
 
@@ -155,6 +191,8 @@ class InboxController extends Controller
                 'delivered_at', 'opened_at', 'acknowledged_at',
                 'accepted_at', 'started_at', 'completed_at',
             ]),
+            'is_delegated' => $currentUser && (int) $recipient->recipient_id !== (int) $currentUser->id,
+            'recipient_name' => $recipient->recipient_name_snapshot,
             'note' => $recipient->distribution?->note,
             'sent_at' => $recipient->distribution?->sent_at,
             'sent_by' => $recipient->distribution?->sender?->name,

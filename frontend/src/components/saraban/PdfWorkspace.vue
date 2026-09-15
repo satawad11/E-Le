@@ -330,10 +330,20 @@ watch(() => props.source, load, { immediate: true })
 watch([page, zoom], renderPage)
 
 onBeforeUnmount(() => {
-  endDrag()
-  window.removeEventListener('keydown', onKeydown)
-  renderTask?.cancel()
-  pdfDocument?.destroy()
+  try { endDrag() } catch {}
+  try { window.removeEventListener('keydown', onKeydown) } catch {}
+  try {
+    if (renderTask) {
+      renderTask.cancel()
+      renderTask = null
+    }
+  } catch {}
+  try {
+    if (pdfDocument) {
+      pdfDocument.destroy().catch(() => {})
+      pdfDocument = null
+    }
+  } catch {}
 })
 
 defineExpose({ pageCount, page })

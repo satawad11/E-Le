@@ -24,6 +24,31 @@
       </label>
     </div>
 
+    <!-- แถบแจ้งเตือนและตัวกรองการมอบอำนาจ (RISK-35) -->
+    <div
+      v-if="delegators.length > 0"
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl text-xs sm:text-sm text-amber-900"
+    >
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-200 text-amber-900">
+          การมอบอำนาจ
+        </span>
+        <span>ท่านได้รับมอบอำนาจปฏิบัติราชการแทน: <strong class="font-semibold">{{ delegatorNames }}</strong></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <label for="acting-filter" class="text-xs text-amber-800 whitespace-nowrap">แสดงหนังสือ:</label>
+        <select
+          id="acting-filter"
+          v-model="actingFor"
+          class="text-xs rounded-lg border-amber-300 bg-white py-1 px-2.5 focus:ring-[#800000] focus:border-[#800000]"
+          @change="applyFilter"
+        >
+          <option value="">ทั้งหมด (ของฉัน + ที่รับมอบ)</option>
+          <option v-for="d in delegators" :key="d.id" :value="d.id">ปฏิบัติการแทน: {{ d.name }}</option>
+        </select>
+      </div>
+    </div>
+
     <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
       <LoadingState v-if="loading" type="skeleton-table" :rows="5" :columns="5" />
       <ErrorState v-else-if="error" :message="error" @retry="load" />
@@ -56,11 +81,32 @@
                 {{ item.document?.document_number || '—' }}
               </td>
               <td class="px-5 py-3 text-gray-900">
-                {{ item.document?.subject }}
-                <span
-                  v-if="item.recipient_role === 'cc'"
-                  class="ml-2 text-xs font-normal text-gray-500"
-                >(สำเนาเรียน)</span>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span>{{ item.document?.subject }}</span>
+                  <span
+                    v-if="item.document?.urgency === 'most_urgent'"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-red-600 text-white animate-pulse shadow-xs"
+                  >ด่วนที่สุด</span>
+                  <span
+                    v-else-if="item.document?.urgency === 'very_urgent'"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-semibold bg-orange-100 text-orange-800 border border-orange-200"
+                  >ด่วนมาก</span>
+                  <span
+                    v-else-if="item.document?.urgency === 'urgent'"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
+                  >ด่วน</span>
+
+                  <span
+                    v-if="item.recipient_role === 'cc'"
+                    class="text-xs font-normal text-gray-500"
+                  >(สำเนาเรียน)</span>
+                  <span
+                    v-if="item.is_delegated"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-normal bg-blue-50 text-blue-700 border border-blue-200"
+                  >
+                    แทน {{ item.recipient_name || 'ผู้มอบอำนาจ' }}
+                  </span>
+                </div>
                 <span v-if="item.note" class="block text-xs font-normal text-gray-500 mt-0.5">
                   {{ item.note }}
                 </span>
@@ -97,6 +143,14 @@
             <dd class="font-medium text-gray-900">{{ row.value || '—' }}</dd>
           </div>
         </dl>
+
+        <!-- กรณีปฏิบัติราชการแทน (RISK-35) -->
+        <div
+          v-if="selected.is_delegated"
+          class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+        >
+          <strong>ปฏิบัติราชการแทน:</strong> ท่านกำลังเปิดอ่านและรับทราบหนังสือแทน {{ selected.recipient_name }} ในฐานะผู้รับมอบอำนาจ
+        </div>
 
         <!-- เปิดอ่านแล้วแต่ยังไม่รับทราบ — ต้องเห็นชัดว่ายังไม่จบ (SoT §15) -->
         <div
@@ -190,6 +244,9 @@ const unacknowledged = ref(0)
 const pendingOnly = ref(false)
 const selected = ref(null)
 const responseNote = ref('')
+const delegators = ref([])
+const actingFor = ref('')
+const delegatorNames = computed(() => delegators.value.map((d) => d.name).join(', '))
 
 const statusLabel = (status) => STATUS_LABELS[status] || status
 
@@ -228,11 +285,16 @@ const load = async () => {
 
   try {
     const { data } = await api.get('/saraban/inbox', {
-      params: { page: page.value, pending: pendingOnly.value ? 1 : undefined },
+      params: {
+        page: page.value,
+        pending: pendingOnly.value ? 1 : undefined,
+        acting_for: actingFor.value || undefined,
+      },
     })
     items.value = data.data
     lastPage.value = data.meta.last_page
     unacknowledged.value = data.unacknowledged
+    delegators.value = data.delegators || []
   } catch (err) {
     error.value = getErrorMessage(err, 'โหลดกล่องหนังสือเข้าไม่สำเร็จ')
   } finally {
@@ -268,6 +330,10 @@ const acknowledge = async () => {
   modalError.value = ''
 
   try {
+    /*
+     * ไม่ต้องส่งว่า "ทำแทนใคร" — ฝั่ง server อ่านเจ้าของรายการจาก
+     * `recipient_id` ของรายการนั้นเอง แล้วเทียบกับผู้เรียกเพื่อบันทึกการปฏิบัติแทน
+     */
     const { data } = await api.post(`/saraban/inbox/${selected.value.id}/acknowledge`, {
       note: responseNote.value || undefined,
     })

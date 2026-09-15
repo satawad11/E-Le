@@ -7,17 +7,39 @@
           ต้องมีชุดเลขของหมวดนั้นก่อน จึงจะออกเลขหนังสือและลงนามได้
         </p>
       </div>
-      <AppButton size="sm" @click="creating = true">+ เพิ่มชุดเลข</AppButton>
+      <div class="flex items-center gap-2">
+        <AppButton
+          v-if="!series.length"
+          variant="secondary"
+          size="sm"
+          :loading="quickSettingUp"
+          :disabled="quickSettingUp"
+          @click="runQuickSetup"
+        >
+          สร้างชุดเลขเริ่มต้น 5 หมวด
+        </AppButton>
+        <AppButton size="sm" @click="creating = true">+ เพิ่มชุดเลข</AppButton>
+      </div>
     </div>
 
     <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
       <LoadingState v-if="loading" type="skeleton-table" :rows="4" :columns="5" />
       <ErrorState v-else-if="error" :message="error" @retry="load" />
-      <EmptyState
-        v-else-if="!series.length"
-        title="ยังไม่มีชุดเลขหนังสือ"
-        description="เพิ่มชุดเลขอย่างน้อยหนึ่งชุดก่อนเริ่มออกหนังสือ"
-      />
+      <div v-else-if="!series.length" class="p-8 text-center space-y-4">
+        <EmptyState
+          title="ยังไม่มีชุดเลขหนังสือ"
+          description="เพิ่มชุดเลขอย่างน้อยหนึ่งชุด หรือคลิกปุ่มด้านล่างเพื่อสร้างชุดเลขเริ่มต้นตามระเบียบสารบรรณ 5 หมวดทันที"
+        />
+        <AppButton
+          variant="primary"
+          size="sm"
+          :loading="quickSettingUp"
+          :disabled="quickSettingUp"
+          @click="runQuickSetup"
+        >
+          สร้างชุดเลขเริ่มต้น 5 หมวดอัตโนมัติ
+        </AppButton>
+      </div>
 
       <div v-else class="overflow-x-auto">
         <table class="w-full text-sm min-w-[720px]">
@@ -124,10 +146,24 @@ const error = ref('')
 const formError = ref('')
 const saving = ref(false)
 const creating = ref(false)
+const quickSettingUp = ref(false)
 
 const form = reactive({ code: '', name: '', category: '', prefix: '' })
 
 const categoryLabel = (category) => CATEGORY_LABELS[category] || category
+
+const runQuickSetup = async () => {
+  quickSettingUp.value = true
+  error.value = ''
+  try {
+    await api.post('/saraban/number-series/quick-setup')
+    await load()
+  } catch (err) {
+    error.value = getErrorMessage(err, 'สร้างชุดเลขเริ่มต้นไม่สำเร็จ')
+  } finally {
+    quickSettingUp.value = false
+  }
+}
 
 const load = async () => {
   loading.value = true

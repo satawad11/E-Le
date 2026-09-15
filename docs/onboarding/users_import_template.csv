@@ -1,0 +1,4 @@
+id_card_number,name,email,role_id,org_unit_id,personnel_type_id,title,first_name,last_name,gender,phone,position
+1100100000001,นายสมชาย ใจดี,somchai@example.com,2,2,1,นาย,สมชาย,ใจดี,ชาย,0812345678,ครูชำนาญการ
+1100100000002,นางสาวสมหญิง รักเรียน,somying@example.com,2,3,1,นางสาว,สมหญิง,รักเรียน,หญิง,0898765432,ครูผู้ช่วย
+1100100000003,นายมานะ อดทน,mana@example.com,2,2,2,นาย,มานะ,อดทน,ชาย,0861112233,พนักงานราชการ (ครูผู้สอน)

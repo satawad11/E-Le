@@ -238,7 +238,7 @@
 
       <!-- Page Content (Independent Scrolling Container) -->
       <main class="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto focus:outline-none" id="main-content" tabindex="-1">
-        <router-view />
+        <router-view :key="$route.fullPath" />
       </main>
     </div>
 

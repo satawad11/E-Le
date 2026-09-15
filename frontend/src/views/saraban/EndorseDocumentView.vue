@@ -59,6 +59,23 @@
 
           <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-3">
             <h2 class="font-semibold text-gray-800">ข้อความและเครื่องหมาย</h2>
+
+            <!-- ข้อความเกษียนด่วน ๔ ฝ่ายอาชีวะสำหรับผู้บริหาร -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-medium text-gray-500">ข้อความเกษียนด่วน (สำหรับ ผอ. / รอง ผอ. ๔ ฝ่าย):</label>
+              <div class="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto p-1 bg-gray-50 rounded-xl border border-gray-100">
+                <button
+                  v-for="(preset, idx) in VOCATIONAL_PRESETS"
+                  :key="idx"
+                  type="button"
+                  class="text-xs px-2.5 py-1.5 rounded-lg border border-primary-200 bg-white text-primary-800 hover:bg-primary-50 hover:border-primary-300 transition-colors text-left shadow-xs"
+                  @click="applyPreset(preset.text)"
+                >
+                  {{ preset.label }}
+                </button>
+              </div>
+            </div>
+
             <AppTextarea v-model="noteText" label="ข้อความเกษียน" :rows="3" />
             <AppButton variant="secondary" :disabled="!noteText.trim()" @click="arm('note')">วางข้อความ</AppButton>
             <AppButton variant="secondary" @click="arm('checkmark')">วางเครื่องหมายถูก</AppButton>
@@ -143,6 +160,17 @@ const SIZES = {
   date: { width: 150, height: 20 },
 }
 
+const VOCATIONAL_PRESETS = [
+  { label: 'ทราบ / ดำเนินการตามระเบียบ', text: 'ทราบ ดำเนินการตามระเบียบ' },
+  { label: 'อนุมัติ ตามเสนอ', text: 'อนุมัติ ตามเสนอ' },
+  { label: 'มอบ รอง ผอ. ฝ่ายบริหารทรัพยากร', text: 'มอบ รองผู้อำนวยการฝ่ายบริหารทรัพยากร ดำเนินการต่อไป' },
+  { label: 'มอบ รอง ผอ. ฝ่ายวิชาการ', text: 'มอบ รองผู้อำนวยการฝ่ายวิชาการ ดำเนินการต่อไป' },
+  { label: 'มอบ รอง ผอ. ฝ่ายพัฒนากิจการนักเรียนฯ', text: 'มอบ รองผู้อำนวยการฝ่ายพัฒนากิจการนักเรียน นักศึกษา ดำเนินการต่อไป' },
+  { label: 'มอบ รอง ผอ. ฝ่ายแผนงานและความร่วมมือ', text: 'มอบ รองผู้อำนวยการฝ่ายแผนงานและความร่วมมือ ดำเนินการต่อไป' },
+  { label: 'แจ้งเวียนบุคลากรเพื่อทราบ', text: 'แจ้งเวียนบุคลากรทุกท่านเพื่อทราบและถือปฏิบัติ' },
+  { label: 'ขอข้อมูลเพิ่มเติม', text: 'ขอข้อมูลและรายละเอียดเพิ่มเติมเพื่อประกอบการพิจารณา' },
+]
+
 const route = useRoute()
 const router = useRouter()
 const alertStore = useAlertStore()
@@ -170,6 +198,11 @@ const confirmationText = computed(
 
 const arm = (type) => {
   placing.value = { type, label: LABELS[type], ...SIZES[type] }
+}
+
+const applyPreset = (text) => {
+  noteText.value = text
+  arm('note')
 }
 
 const payloadFor = (type) => {

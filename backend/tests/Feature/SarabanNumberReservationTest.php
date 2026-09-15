@@ -368,4 +368,27 @@ class SarabanNumberReservationTest extends TestCase
             'created_by' => $officer->id,
         ]);
     }
+
+    public function test_quick_setup_creates_default_school_number_series(): void
+    {
+        $officer = $this->officer(['saraban.config.manage']);
+        $this->actAs($officer);
+
+        $res = $this->postJson('/api/saraban/number-series/quick-setup');
+        $res->assertOk();
+        $this->assertGreaterThan(0, $res->json('created_count'));
+
+        $this->assertDatabaseHas('saraban_number_series', [
+            'code' => 'school-internal',
+            'category' => 'internal',
+        ]);
+        $this->assertDatabaseHas('saraban_number_series', [
+            'code' => 'school-outgoing',
+            'category' => 'outgoing',
+        ]);
+        $this->assertDatabaseHas('saraban_number_series', [
+            'code' => 'school-order',
+            'category' => 'order',
+        ]);
+    }
 }

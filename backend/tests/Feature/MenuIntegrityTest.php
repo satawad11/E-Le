@@ -174,7 +174,16 @@ class MenuIntegrityTest extends TestCase
 
         $this->assertNotContains('attendance', $codes);
         $this->assertNotContains('attendance.checkin', $codes);
+        $this->assertNotContains('attendance.history', $codes);
         $this->assertContains('leave', $codes);
+        $this->assertContains('leave.request', $codes);
+
+        config(['modules.saraban.enabled' => false]);
+        $codesWithoutSaraban = $this->menuCodesFor($admin);
+
+        $this->assertNotContains('saraban', $codesWithoutSaraban);
+        $this->assertNotContains('saraban_admin', $codesWithoutSaraban);
+        $this->assertNotContains('saraban.inbox', $codesWithoutSaraban);
     }
 
     /*

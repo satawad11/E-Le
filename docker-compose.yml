@@ -1,8 +1,15 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "20m"
+    max-file: "5"
+
 services:
   db:
     image: mysql:8.0
     container_name: eleave_db
     restart: unless-stopped
+    logging: *default-logging
     environment:
       MYSQL_DATABASE: eleave
       # รหัสผ่านมาจาก .env ที่ root ของโปรเจกต์ (gitignore) — ห้าม hardcode ที่นี่
@@ -45,6 +52,7 @@ services:
     image: clamav/clamav:1.5-debian13-slim
     container_name: eleave_clamav
     restart: unless-stopped
+    logging: *default-logging
     expose:
       - "3310"
     volumes:
@@ -63,6 +71,7 @@ services:
       dockerfile: Dockerfile
     container_name: eleave_backend
     restart: unless-stopped
+    logging: *default-logging
     working_dir: /var/www/html
     volumes:
       - ./backend:/var/www/html
@@ -121,6 +130,7 @@ services:
     image: nginx:1.27-alpine
     container_name: eleave_nginx
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - ./backend:/var/www/html:ro
       - ./frontend/dist:/var/www/frontend:ro
@@ -141,6 +151,7 @@ services:
     image: e-le-backend
     container_name: eleave_worker
     restart: unless-stopped
+    logging: *default-logging
     working_dir: /var/www/html
     volumes:
       - ./backend:/var/www/html
@@ -181,6 +192,7 @@ services:
     image: e-le-backend
     container_name: eleave_scheduler
     restart: unless-stopped
+    logging: *default-logging
     working_dir: /var/www/html
     volumes:
       - ./backend:/var/www/html

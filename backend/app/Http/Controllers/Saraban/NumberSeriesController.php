@@ -116,4 +116,64 @@ class NumberSeriesController extends Controller
 
         return response()->json(['message' => 'ลบชุดเลขแล้ว']);
     }
+
+    /**
+     * ตั้งค่าชุดเลขหนังสือเริ่มต้นสำหรับสถานศึกษา (Quick Setup)
+     */
+    public function quickSetup(Request $request)
+    {
+        $defaults = [
+            [
+                'code' => 'school-internal',
+                'name' => 'หนังสือภายในสถานศึกษา',
+                'category' => DocumentType::CATEGORY_INTERNAL,
+                'prefix' => 'ศธ ๐๔๐๐๑/',
+            ],
+            [
+                'code' => 'school-outgoing',
+                'name' => 'หนังสือภายนอกสถานศึกษา',
+                'category' => DocumentType::CATEGORY_OUTGOING,
+                'prefix' => 'ศธ ๐๔๐๐๑/',
+            ],
+            [
+                'code' => 'school-order',
+                'name' => 'คำสั่งสถานศึกษา',
+                'category' => DocumentType::CATEGORY_ORDER,
+                'prefix' => 'คำสั่งสถานศึกษา ที่ ',
+            ],
+            [
+                'code' => 'school-announcement',
+                'name' => 'ประกาศสถานศึกษา',
+                'category' => DocumentType::CATEGORY_ANNOUNCEMENT,
+                'prefix' => 'ประกาศสถานศึกษา เรื่อง ',
+            ],
+            [
+                'code' => 'school-incoming',
+                'name' => 'ทะเบียนรับหนังสือราชการ',
+                'category' => DocumentType::CATEGORY_INCOMING,
+                'prefix' => 'รับ ',
+            ],
+        ];
+
+        $created = 0;
+        foreach ($defaults as $def) {
+            $exists = NumberSeries::query()->where('code', $def['code'])->exists();
+            if (! $exists) {
+                NumberSeries::create([
+                    ...$def,
+                    'is_active' => true,
+                ]);
+                $created++;
+            }
+        }
+
+        $this->audit->log('saraban.number_series.quick_setup', 'NumberSeries', 0, null, [
+            'created_count' => $created,
+        ], null, $request->user()->id);
+
+        return response()->json([
+            'message' => "สร้างชุดเลขหนังสือเริ่มต้นเรียบร้อยแล้ว ({$created} ชุดใหม่)",
+            'created_count' => $created,
+        ]);
+    }
 }

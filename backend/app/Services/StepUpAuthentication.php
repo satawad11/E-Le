@@ -25,7 +25,10 @@ use Laravel\Sanctum\PersonalAccessToken;
  */
 class StepUpAuthentication
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly TotpService $totp = new TotpService,
+    ) {}
 
     public function enabled(): bool
     {
@@ -70,16 +73,33 @@ class StepUpAuthentication
     }
 
     /**
-     * ยืนยันตัวตนซ้ำด้วยรหัสผ่านของผู้ใช้เอง
+     * ยืนยันตัวตนซ้ำด้วยรหัสผ่านหรือ TOTP 6 หลักของผู้ใช้
      *
-     * คืน `false` เมื่อรหัสผ่านไม่ถูกต้อง — ผู้เรียกเป็นผู้ตัดสินใจเรื่องการจำกัด
+     * คืน `false` เมื่อการยืนยันไม่ถูกต้อง — ผู้เรียกเป็นผู้ตัดสินใจเรื่องการจำกัด
      * จำนวนครั้ง (ทำที่ route ด้วย throttle เดิมของระบบ)
      */
-    public function confirm(User $user, string $password): bool
+    public function confirm(User $user, ?string $password = null, ?string $totpCode = null): bool
+    {
+        if ($totpCode !== null && trim($totpCode) !== '') {
+            return $this->confirmWithTotp($user, $totpCode);
+        }
+
+        if ($password !== null && trim($password) !== '') {
+            return $this->confirmWithPassword($user, $password);
+        }
+
+        return false;
+    }
+
+    /**
+     * ยืนยันตัวตนซ้ำด้วยรหัสผ่าน
+     */
+    public function confirmWithPassword(User $user, string $password): bool
     {
         if (! Hash::check($password, $user->password)) {
             $this->audit->log('auth.step_up.failed', $user, $user->id, null, [
                 'reason' => 'invalid_password',
+                'method' => 'password',
             ], null, $user->id);
 
             return false;
@@ -89,6 +109,74 @@ class StepUpAuthentication
 
         $this->audit->log('auth.step_up.confirmed', $user, $user->id, null, [
             'window_minutes' => $this->windowMinutes(),
+            'method' => 'password',
+        ], null, $user->id);
+
+        return true;
+    }
+
+    /**
+     * ผู้ใช้คนนี้ลงทะเบียนแอป TOTP และยืนยันสำเร็จแล้วหรือยัง
+     *
+     * ความลับ TOTP คำนวณจาก APP_KEY กับ UUID ของผู้ใช้ จึง "มีอยู่" เสมอแม้ไม่เคย
+     * ตั้งค่าแอป — ถ้าไม่ตรวจธงนี้ ผู้ที่ขโมยโทเคนไปจะขอความลับแล้วคำนวณรหัสเอง
+     * เพื่อผ่านด่านยืนยันตัวตนซ้ำได้โดยไม่ต้องรู้รหัสผ่าน
+     */
+    public function totpEnrolled(?User $user): bool
+    {
+        return $user !== null && filled($user->totp_confirmed_at);
+    }
+
+    /**
+     * ปิดการลงทะเบียนแอป TOTP — เรียกได้หลังผู้ใช้ยืนยันรหัสจากแอปได้จริงแล้ว
+     */
+    public function markTotpEnrolled(User $user): void
+    {
+        $user->forceFill(['totp_confirmed_at' => now()])->save();
+    }
+
+    /**
+     * รหัส TOTP ของผู้ใช้คนนี้ถูกต้องหรือไม่ (ไม่เปิดช่วงยืนยันตัวตน)
+     *
+     * ใช้ตอนลงทะเบียนแอป ซึ่งยังไม่ควรถือเป็นการยืนยันตัวตนซ้ำในตัวเอง
+     */
+    public function totpCodeMatches(User $user, string $totpCode): bool
+    {
+        return $this->totp->verify($this->totp->secretForUser($user), $totpCode);
+    }
+
+    /**
+     * ยืนยันตัวตนซ้ำด้วยรหัส TOTP (RFC 6238)
+     *
+     * รับเฉพาะผู้ที่ลงทะเบียนแอปและยืนยันไว้แล้วเท่านั้น
+     */
+    public function confirmWithTotp(User $user, string $totpCode): bool
+    {
+        if (! $this->totpEnrolled($user)) {
+            $this->audit->log('auth.step_up.failed', $user, $user->id, null, [
+                'reason' => 'totp_not_enrolled',
+                'method' => 'totp',
+            ], null, $user->id);
+
+            return false;
+        }
+
+        $secret = $this->totp->secretForUser($user);
+
+        if (! $this->totp->verify($secret, $totpCode)) {
+            $this->audit->log('auth.step_up.failed', $user, $user->id, null, [
+                'reason' => 'invalid_totp',
+                'method' => 'totp',
+            ], null, $user->id);
+
+            return false;
+        }
+
+        $this->markConfirmed($user);
+
+        $this->audit->log('auth.step_up.confirmed', $user, $user->id, null, [
+            'window_minutes' => $this->windowMinutes(),
+            'method' => 'totp',
         ], null, $user->id);
 
         return true;

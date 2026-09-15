@@ -176,7 +176,8 @@ class WorkflowEngine
         $step = $task->step;
 
         // ผู้ดูแลสายอนุมัติข้ามลำดับได้ตามพฤติกรรมเดิมของระบบ
-        if ($user->can('leave.management.manage')) {
+        if (($instance->subject_type === 'leave' || str_ends_with((string) $instance->subject_type, 'Leave'))
+            && $user->can('leave.management.manage')) {
             return ['allowed' => true, 'effective_actor_id' => $user->getKey(), 'delegated_by_id' => null, 'reason' => 'workflow_manager'];
         }
 
@@ -189,6 +190,7 @@ class WorkflowEngine
             $task->assignee_role_id ?? $step?->assignee_role_id,
             $on,
             $instance->version?->workflow_definition_id,
+            $this->candidatesFor($instance, $task),
         );
 
         if ($delegator !== null) {

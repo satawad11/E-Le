@@ -48,6 +48,12 @@
               label="พื้นที่เขียนลายเซ็น"
               @change="strokes = $event"
             />
+            <p v-if="!strokes.length && !hasSignature" class="text-xs text-amber-700 bg-amber-50 rounded-lg p-2 border border-amber-200">
+              ✍️ กรุณาใช้เมาส์หรือปากกาวาดลายเซ็นในกรอบด้านบนก่อน จึงจะสามารถกดปุ่มวางลายเซ็นได้
+            </p>
+            <p v-else-if="strokes.length && !hasSignature && !placing" class="text-xs text-emerald-700 bg-emerald-50 rounded-lg p-2 border border-emerald-200">
+              ✓ ลายเซ็นพร้อมแล้ว คลิกปุ่มด้านล่างเพื่อเลือกตำแหน่งวางบนเอกสาร
+            </p>
             <AppButton :disabled="!strokes.length || hasSignature" @click="armSignature">
               วางลายเซ็นบนเอกสาร
             </AppButton>
@@ -276,8 +282,21 @@ const onSigned = () => {
   router.push({ name: 'saraban-document-detail', params: { id: route.params.id } })
 }
 
-const back = () => router.push({ name: 'saraban-document-detail', params: { id: route.params.id } })
+const back = async () => {
+  try {
+    await router.push({ name: 'saraban-document-detail', params: { id: route.params.id } })
+  } catch {
+    await router.push(`/saraban/documents/${route.params.id}`)
+  }
+}
 
-onBeforeUnmount(() => { if (fileUrl.value) URL.revokeObjectURL(fileUrl.value) })
+onBeforeUnmount(() => {
+  try {
+    if (fileUrl.value) {
+      URL.revokeObjectURL(fileUrl.value)
+      fileUrl.value = ''
+    }
+  } catch {}
+})
 onMounted(boot)
 </script>

@@ -33,22 +33,23 @@ class DelegationResolver
      *
      * @param  int|null  $requiredRoleId  บทบาทที่ขั้นตอนต้องการ
      * @param  string|null  $on  วันที่ที่ใช้ตรวจ (ค่าเริ่มต้น = วันนี้)
+     * @param  array<int,int>|null  $eligibleDelegatorIds  ผู้มีสิทธิ์กับเรื่องและขั้นนี้จริง; [] คือไม่มีผู้มอบที่ใช้ได้
      */
-    public function delegatorFor(User $actor, ?int $requiredRoleId, ?string $on = null, ?int $workflowDefinitionId = null): ?int
+    public function delegatorFor(User $actor, ?int $requiredRoleId, ?string $on = null, ?int $workflowDefinitionId = null, ?array $eligibleDelegatorIds = null): ?int
     {
-        if ($requiredRoleId === null) {
+        if ($eligibleDelegatorIds === [] || ($requiredRoleId === null && $eligibleDelegatorIds === null)) {
             return null;
         }
 
         $date = $on ?? now()->toDateString();
 
-        $fromEngine = $this->fromWorkflowDelegations($actor, $requiredRoleId, $date, $workflowDefinitionId);
+        $fromEngine = $this->fromWorkflowDelegations($actor, $requiredRoleId, $date, $workflowDefinitionId, $eligibleDelegatorIds);
 
         if ($fromEngine !== null) {
             return $fromEngine;
         }
 
-        return $this->fromLegacyDelegations($actor, $requiredRoleId, $date);
+        return $this->fromLegacyDelegations($actor, $requiredRoleId, $date, $eligibleDelegatorIds);
     }
 
     /**
@@ -76,7 +77,7 @@ class DelegationResolver
         return $result;
     }
 
-    private function fromWorkflowDelegations(User $actor, int $requiredRoleId, string $date, ?int $workflowDefinitionId): ?int
+    private function fromWorkflowDelegations(User $actor, ?int $requiredRoleId, string $date, ?int $workflowDefinitionId, ?array $eligibleDelegatorIds): ?int
     {
         if (! Schema::hasTable('workflow_delegations')) {
             return null;
@@ -84,6 +85,7 @@ class DelegationResolver
 
         $delegations = WorkflowDelegation::query()
             ->where('delegate_id', $actor->getKey())
+            ->when($eligibleDelegatorIds !== null, fn ($query) => $query->whereIn('delegator_id', $eligibleDelegatorIds))
             ->effectiveOn($date)
             ->when(
                 $workflowDefinitionId !== null,
@@ -95,7 +97,7 @@ class DelegationResolver
             ->get();
 
         foreach ($delegations as $delegation) {
-            if ($this->holdsRole($delegation->delegator_id, $requiredRoleId)) {
+            if ($eligibleDelegatorIds !== null || $requiredRoleId === null || $this->holdsRole($delegation->delegator_id, $requiredRoleId)) {
                 return (int) $delegation->delegator_id;
             }
         }
@@ -106,7 +108,7 @@ class DelegationResolver
     /**
      * ทางเดิมของระบบ — คงไว้เพื่อให้ผลตรงกันแม้ยังไม่ได้ mirror ข้อมูลครบ
      */
-    private function fromLegacyDelegations(User $actor, int $requiredRoleId, string $date): ?int
+    private function fromLegacyDelegations(User $actor, ?int $requiredRoleId, string $date, ?array $eligibleDelegatorIds): ?int
     {
         if (! Schema::hasTable('user_delegations')) {
             return null;
@@ -114,10 +116,11 @@ class DelegationResolver
 
         $delegation = UserDelegation::query()
             ->where('delegate_id', $actor->getKey())
+            ->when($eligibleDelegatorIds !== null, fn ($query) => $query->whereIn('user_id', $eligibleDelegatorIds))
             ->where('is_active', true)
             ->whereDate('start_date', '<=', $date)
             ->whereDate('end_date', '>=', $date)
-            ->whereHas('user.roles', fn ($query) => $query->where('roles.id', $requiredRoleId))
+            ->when($eligibleDelegatorIds === null && $requiredRoleId !== null, fn ($query) => $query->whereHas('user.roles', fn ($roles) => $roles->where('roles.id', $requiredRoleId)))
             ->first();
 
         return $delegation === null ? null : (int) $delegation->user_id;

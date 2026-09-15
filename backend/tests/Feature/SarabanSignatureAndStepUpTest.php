@@ -9,6 +9,7 @@ use App\Models\Saraban\DocumentType;
 use App\Models\Saraban\SignatureEvidence;
 use App\Models\User;
 use App\Services\Saraban\SignatureService;
+use App\Services\TotpService;
 use App\Support\ProductionEnvironmentGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -218,6 +219,79 @@ class SarabanSignatureAndStepUpTest extends TestCase
             ->assertCreated();
 
         $this->assertSame(1, SignatureEvidence::query()->count());
+    }
+
+    public function test_confirming_with_totp_opens_the_window_and_signing_succeeds(): void
+    {
+        $author = $this->userWith(['saraban.document.view', 'saraban.document.create']);
+        $document = $this->documentFor($author);
+
+        $signer = $this->userWith(['saraban.document.view', 'saraban.signature.sign']);
+        $signer->forceFill(['totp_confirmed_at' => now()->subDay()])->save();
+        $this->actAs($signer, now()->subHour()->toDateTimeString());
+
+        $totp = app(TotpService::class);
+        $secret = $totp->secretForUser($signer);
+        $validCode = $totp->generateCode($secret);
+
+        $this->postJson('/api/auth/confirm-password', ['totp_code' => $validCode])
+            ->assertOk()
+            ->assertJsonPath('valid_for_minutes', 10);
+
+        $this->postJson("/api/saraban/documents/{$document->id}/sign", $this->signaturePayload())
+            ->assertCreated();
+    }
+
+    /**
+     * ความลับ TOTP คำนวณจาก APP_KEY ได้เสมอ — ถ้าไม่บังคับให้ลงทะเบียนก่อน
+     * ผู้ที่ขโมยโทเคนไปจะคำนวณรหัสเองแล้วผ่านด่านยืนยันตัวตนซ้ำได้ทันที
+     */
+    public function test_totp_is_rejected_until_the_user_has_enrolled_the_authenticator(): void
+    {
+        $signer = $this->userWith(['saraban.document.view', 'saraban.signature.sign']);
+        $this->actAs($signer, now()->subHour()->toDateTimeString());
+
+        $totp = app(TotpService::class);
+        $validCode = $totp->generateCode($totp->secretForUser($signer));
+
+        $this->postJson('/api/auth/confirm-password', ['totp_code' => $validCode])
+            ->assertStatus(422);
+    }
+
+    /** ความลับ TOTP ต้องไม่ออกให้โทเคนที่ล็อกอินค้างไว้โดยไม่กรอกรหัสผ่าน */
+    public function test_totp_secret_is_not_handed_out_without_the_password(): void
+    {
+        $signer = $this->userWith(['saraban.signature.sign']);
+        $this->actAs($signer, now()->subHour()->toDateTimeString());
+
+        $this->postJson('/api/auth/totp-setup', [])->assertStatus(422);
+        $this->postJson('/api/auth/totp-setup', ['password' => 'ไม่ใช่รหัสผ่าน'])
+            ->assertStatus(422)
+            ->assertJsonMissingPath('secret');
+    }
+
+    /** ผูกแอปสำเร็จแล้วจึงใช้ OTP ยืนยันตัวตนซ้ำได้ — ทั้งสองรอบอยู่ที่เส้นทางเดียว */
+    public function test_enrolling_the_authenticator_unlocks_totp_step_up(): void
+    {
+        $signer = $this->userWith(['saraban.signature.sign']);
+        $this->actAs($signer, now()->subHour()->toDateTimeString());
+
+        // รอบที่ 1 — ขอความลับไปตั้งค่าในแอป ยังไม่ถือว่าผูกสำเร็จ
+        $secret = $this->postJson('/api/auth/totp-setup', ['password' => self::PASSWORD])
+            ->assertOk()
+            ->assertJsonPath('enrolled', false)
+            ->json('secret');
+
+        $code = app(TotpService::class)->generateCode($secret);
+
+        // รอบที่ 2 — ยืนยันด้วยรหัสจากแอปจริง
+        $this->postJson('/api/auth/totp-setup', ['password' => self::PASSWORD, 'totp_code' => $code])
+            ->assertOk()
+            ->assertJsonPath('enrolled', true);
+
+        $this->assertNotNull($signer->fresh()->totp_confirmed_at);
+
+        $this->postJson('/api/auth/confirm-password', ['totp_code' => $code])->assertOk();
     }
 
     public function test_a_wrong_password_does_not_open_the_window(): void

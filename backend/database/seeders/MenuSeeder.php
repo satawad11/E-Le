@@ -42,10 +42,13 @@ class MenuSeeder extends Seeder
             'route_path' => '/',
             'permissions' => [],
         ],
+        /*
+         * ระบบลางาน (Leave System) — เรียงลำดับ: งานตนเอง ➔ งานอนุมัติ ➔ กำกับดูแล/รายงาน
+         */
         [
             'code' => 'leave',
             'title_th' => 'ระบบลางาน',
-            'title_en' => 'Leave',
+            'title_en' => 'Leave Management',
             'module' => 'leave',
             'icon' => 'calendar',
             'permissions' => [],
@@ -82,19 +85,6 @@ class MenuSeeder extends Seeder
                     'route_path' => '/team-calendar',
                     'permissions' => [],
                 ],
-                /*
-                 * ทะเบียนคุมการลาอ่านข้อมูลของทั้งหน่วยงาน ฝั่ง server ปฏิเสธผู้ที่ไม่ถือ
-                 * สิทธิ์รายงานอยู่แล้ว เมนูจึงต้องใช้เงื่อนไขเดียวกัน ไม่งั้นบุคลากรทั่วไป
-                 * จะเห็นเมนูที่กดแล้วเด้ง 403 ทุกครั้ง
-                 */
-                [
-                    'code' => 'leave.government_reports',
-                    'title_th' => 'รายงานการลาราชการ',
-                    'title_en' => 'Government Leave Reports',
-                    'route_name' => 'reports',
-                    'route_path' => '/reports',
-                    'permissions' => ['leave.report.view', 'leave.management.manage'],
-                ],
                 [
                     'code' => 'leave.approvals',
                     'title_th' => 'อนุมัติใบลา',
@@ -112,6 +102,22 @@ class MenuSeeder extends Seeder
                     'permissions' => ['leave.approve', 'leave.approval.dept', 'leave.approval.hr'],
                 ],
                 [
+                    'code' => 'leave.government_reports',
+                    'title_th' => 'รายงานการลาราชการ',
+                    'title_en' => 'Government Leave Reports',
+                    'route_name' => 'reports',
+                    'route_path' => '/reports',
+                    'permissions' => ['leave.report.view', 'leave.management.manage'],
+                ],
+                [
+                    'code' => 'leave.governance',
+                    'title_th' => 'ตรวจหลักฐานการลา',
+                    'title_en' => 'Leave Evidence Review',
+                    'route_name' => 'admin-leave-governance',
+                    'route_path' => '/admin/leave-governance',
+                    'permissions' => ['leave.approval.hr', 'leave.management.manage'],
+                ],
+                [
                     'code' => 'leave.management',
                     'title_th' => 'จัดการข้อมูลการลา',
                     'title_en' => 'Leave Management',
@@ -127,23 +133,26 @@ class MenuSeeder extends Seeder
                     'route_path' => '/admin/promotion-screening',
                     'permissions' => ['leave.report.view', 'leave.management.manage'],
                 ],
-                [
-                    'code' => 'leave.governance',
-                    'title_th' => 'ตรวจหลักฐานการลา',
-                    'title_en' => 'Leave Evidence Review',
-                    'route_name' => 'admin-leave-governance',
-                    'route_path' => '/admin/leave-governance',
-                    'permissions' => ['leave.approval.hr', 'leave.management.manage'],
-                ],
             ],
         ],
+        /*
+         * ระบบลงเวลาออนไลน์ (Attendance & Overtime) — เรียงลำดับ: ลงเวลาตนเอง ➔ บันทึกรวม ➔ ล่วงเวลา OT
+         */
         [
             'code' => 'attendance',
             'title_th' => 'ระบบลงเวลาออนไลน์',
-            'title_en' => 'Attendance',
+            'title_en' => 'Attendance System',
             'module' => 'attendance',
             'icon' => 'clock',
-            'permissions' => [],
+            'permissions' => [
+                'attendance.checkin',
+                'attendance.view_self',
+                'attendance.view_all',
+                'overtime.operation.execute',
+                'overtime.management.review',
+                'attendance.ot_summary',
+                'attendance.ot',
+            ],
             'children' => [
                 [
                     'code' => 'attendance.checkin',
@@ -197,47 +206,8 @@ class MenuSeeder extends Seeder
                 ],
             ],
         ],
-        [
-            'code' => 'reporting',
-            'title_th' => 'รายงาน',
-            'title_en' => 'Reports',
-            'module' => 'reporting',
-            'icon' => 'chart',
-            'permissions' => [],
-            'children' => [
-                [
-                    'code' => 'reporting.center',
-                    'title_th' => 'ศูนย์รายงานกลาง',
-                    'title_en' => 'Report Center',
-                    'route_name' => 'report-center',
-                    'route_path' => '/report-center',
-                    'permissions' => [
-                        'leave.report.view', 'system.user.view',
-                        'attendance.view_all', 'overtime.management.review',
-                    ],
-                ],
-                [
-                    /*
-                     * รายงานที่ผู้ดูแลออกแบบเอง — ย้ายออกจากแท็บในศูนย์จัดการเอกสาร
-                     *
-                     * การเรียกดูรายงานเป็นงานประจำวัน คนละเรื่องกับการตั้งค่าเอกสาร
-                     * จึงย้ายมาอยู่หมวด "รายงาน" คู่กับศูนย์รายงานกลาง
-                     */
-                    'code' => 'reporting.custom',
-                    'title_th' => 'รายงานที่ออกแบบเอง',
-                    'title_en' => 'Custom Reports',
-                    'route_name' => 'custom-reports',
-                    'route_path' => '/reports/custom',
-                    'permissions' => ['document.report.view', 'document.report.manage', 'system.setting.manage'],
-                ],
-            ],
-        ],
         /*
-         * งานสารบรรณ (INT-05)
-         *
-         * `module` = `saraban` — เมนูทั้งกิ่งหายเองเมื่อโมดูลถูกปิด โดย `MenuService`
-         * ไม่ต้องเขียนเงื่อนไขเพิ่ม · สิทธิ์ที่ผูกไว้คือ "เห็นเมนูนี้ถ้ามีอย่างน้อยหนึ่งข้อ"
-         * ส่วนการเข้าถึงจริงยังถูกตรวจซ้ำที่ฝั่ง server ทุกครั้ง (เมนูไม่ใช่ด่านความปลอดภัย)
+         * งานสารบรรณ (INT-05) — เรียงลำดับตาม Flow หนังสือราชการ
          */
         [
             'code' => 'saraban',
@@ -245,15 +215,6 @@ class MenuSeeder extends Seeder
             'title_en' => 'Saraban',
             'module' => 'saraban',
             'icon' => 'document',
-
-            /*
-             * INT-13 — หัวข้อนี้เปิดให้ผู้ถือสิทธิ์ใดสิทธิ์หนึ่งในสองข้อ
-             *
-             * ข้าราชการทั่วไปที่ได้รับหนังสือเวียนไม่มี `saraban.document.view`
-             * (และไม่ควรมี เพราะนั่นคือสิทธิ์ค้นทะเบียนหนังสือของหน่วยงาน)
-             * ถ้าหัวข้อผูกไว้กับข้อนั้นข้อเดียว กิ่งทั้งกิ่งจะหายไปจากเมนูของเขา
-             * และหนังสือที่เวียนถึงเขาก็ไม่มีทางเปิดเจอ
-             */
             'permissions' => [
                 'saraban.document.view',
                 'saraban.inbox.view',
@@ -263,19 +224,8 @@ class MenuSeeder extends Seeder
                 'saraban.distribution.track',
                 'saraban.report.view',
             ],
-
-            /*
-             * ลำดับของลูกเรียงตาม NAV §2 — ตามเส้นทางเดินของหนังสือจริง
-             * (แดชบอร์ด → หนังสือรับ → หนังสือส่ง → หนังสือภายใน → งานที่รอเรา
-             * → การกระจาย → กล่องของฉัน → คลังเอกสาร → รายงาน)
-             *
-             * เอกสารต้นทางจัดสามชั้น (สารบรรณ → หนังสือรับ → กล่องรอลงทะเบียน)
-             * แต่ระบบเมนูรองรับสองชั้น — จึงยุบชั้นกลางที่เป็นเพียงหัวข้อจัดกลุ่ม
-             * ทิ้ง แล้วคงปลายทางไว้ครบทุกรายการ พร้อมเรียงให้อยู่ติดกันเป็นกลุ่ม
-             */
             'children' => [
                 [
-                    // หน้าแรกของโมดูล (NAV §4.1) — ตัวเลขสรุปและงานของฉัน
                     'code' => 'saraban.dashboard',
                     'title_th' => 'แดชบอร์ด',
                     'title_en' => 'Dashboard',
@@ -283,14 +233,22 @@ class MenuSeeder extends Seeder
                     'route_path' => '/saraban',
                     'permissions' => ['saraban.document.view'],
                 ],
-                /*
-                 * กล่องรอลงทะเบียน (NAV §2 · §4.2)
-                 *
-                 * หนังสือรับที่เข้ามาแล้วแต่ยังไม่มีเลขรับ — เป็น **คิวงาน**
-                 * ของเจ้าหน้าที่ธุรการ ไม่ใช่การค้นทะเบียน จึงต้องมีทางเข้าของ
-                 * ตัวเอง · ผูกกับสิทธิ์ลงทะเบียนรับ เพราะผู้ที่ลงทะเบียนไม่ได้
-                 * ก็ไม่มีอะไรทำกับคิวนี้
-                 */
+                [
+                    'code' => 'saraban.inbox',
+                    'title_th' => 'กล่องหนังสือของฉัน',
+                    'title_en' => 'My Inbox',
+                    'route_name' => 'saraban-inbox',
+                    'route_path' => '/saraban/inbox',
+                    'permissions' => ['saraban.inbox.view'],
+                ],
+                [
+                    'code' => 'saraban.queue',
+                    'title_th' => 'รอพิจารณา / รอลงนาม',
+                    'title_en' => 'Pending Review / Signature',
+                    'route_name' => 'saraban-work-queue',
+                    'route_path' => '/saraban/documents/queue',
+                    'permissions' => ['saraban.document.view'],
+                ],
                 [
                     'code' => 'saraban.incoming.pending',
                     'title_th' => 'กล่องรอลงทะเบียน',
@@ -298,14 +256,6 @@ class MenuSeeder extends Seeder
                     'route_name' => 'saraban-incoming-pending',
                     'route_path' => '/saraban/incoming/pending',
                     'permissions' => ['saraban.incoming.register'],
-                ],
-                [
-                    'code' => 'saraban.incoming',
-                    'title_th' => 'ทะเบียนหนังสือรับ',
-                    'title_en' => 'Incoming Register',
-                    'route_name' => 'saraban-incoming',
-                    'route_path' => '/saraban/incoming',
-                    'permissions' => ['saraban.document.view'],
                 ],
                 [
                     'code' => 'saraban.incoming.register',
@@ -323,13 +273,6 @@ class MenuSeeder extends Seeder
                     'route_path' => '/saraban/documents/new',
                     'permissions' => ['saraban.document.create'],
                 ],
-                /*
-                 * จองเลขหนังสือ (SoT §9 · NAV §4.3)
-                 *
-                 * แยกจาก "ชุดเลขหนังสือ" ในกลุ่มการจัดการโดยเจตนา — ชุดเลขคือ
-                 * **การตั้งค่า** ที่ทำปีละครั้ง ส่วนการจองเลขคือ **งานประจำวัน**
-                 * ของเจ้าหน้าที่ธุรการ · สองอย่างนี้คนละคนทำและคนละความถี่
-                 */
                 [
                     'code' => 'saraban.numbers',
                     'title_th' => 'จองและออกเลขหนังสือ',
@@ -338,15 +281,14 @@ class MenuSeeder extends Seeder
                     'route_path' => '/saraban/numbers',
                     'permissions' => ['saraban.number.reserve'],
                 ],
-                /*
-                 * ทะเบียนแยกตามทิศทาง (NAV §2 — หนังสือส่ง / หนังสือภายใน)
-                 *
-                 * เป็นหน้าเดียวกับทะเบียนหนังสือ ต่างกันที่ทิศทางที่ตั้งไว้ให้แล้ว
-                 * — งานสารบรรณไทยแยกทะเบียนรับ ทะเบียนส่ง และทะเบียนภายในออกจากกัน
-                 * ตามระเบียบ ผู้ใช้จึงคาดหวังทางเข้าแยก ไม่ใช่ต้องมาเลือกตัวกรองเอง
-                 *
-                 * ใช้ component เดิม ไม่ทำหน้าจอใหม่ — ต่างกันแค่ค่าตั้งต้น
-                 */
+                [
+                    'code' => 'saraban.incoming',
+                    'title_th' => 'ทะเบียนหนังสือรับ',
+                    'title_en' => 'Incoming Register',
+                    'route_name' => 'saraban-incoming',
+                    'route_path' => '/saraban/incoming',
+                    'permissions' => ['saraban.document.view'],
+                ],
                 [
                     'code' => 'saraban.documents.outgoing',
                     'title_th' => 'ทะเบียนหนังสือส่ง',
@@ -363,27 +305,6 @@ class MenuSeeder extends Seeder
                     'route_path' => '/saraban/documents/internal',
                     'permissions' => ['saraban.document.view'],
                 ],
-                /*
-                 * คิวงานของผู้ใช้ (NAV §2 · §4.7 — รอพิจารณา / รอลงนาม)
-                 *
-                 * ใช้สิทธิ์เดียวกับทะเบียนหนังสือ — ตัวที่กรองว่าใครเห็นอะไรจริง ๆ
-                 * คือสายงานและ policy รายฉบับ ไม่ใช่สิทธิ์ระดับเมนู · ผู้ที่ไม่มี
-                 * เรื่องรออยู่จะเห็นหน้าว่าง ซึ่งเป็นคำตอบที่ถูกต้อง
-                 */
-                [
-                    'code' => 'saraban.queue',
-                    'title_th' => 'รอพิจารณา / รอลงนาม',
-                    'title_en' => 'Pending Review / Signature',
-                    'route_name' => 'saraban-work-queue',
-                    'route_path' => '/saraban/documents/queue',
-                    'permissions' => ['saraban.document.view'],
-                ],
-                /*
-                 * กระจายเอกสาร (NAV §2 · §4.8)
-                 *
-                 * การส่งทำจากหน้าหนังสือแต่ละฉบับ ส่วนหน้านี้ตอบคำถาม
-                 * "ที่เวียนไปแล้ว ใครยังไม่รับทราบ" ซึ่งเดิมต้องเปิดดูทีละฉบับ
-                 */
                 [
                     'code' => 'saraban.distribution',
                     'title_th' => 'กระจายเอกสาร',
@@ -393,16 +314,6 @@ class MenuSeeder extends Seeder
                     'permissions' => ['saraban.distribution.track'],
                 ],
                 [
-                    // NAV §2 · §4.9 — กล่องหนังสือของฉัน
-                    'code' => 'saraban.inbox',
-                    'title_th' => 'กล่องหนังสือของฉัน',
-                    'title_en' => 'My Inbox',
-                    'route_name' => 'saraban-inbox',
-                    'route_path' => '/saraban/inbox',
-                    'permissions' => ['saraban.inbox.view'],
-                ],
-                [
-                    // NAV §2 · §4.10 — ค้นหา / คลังเอกสาร
                     'code' => 'saraban.documents',
                     'title_th' => 'คลังหนังสือ',
                     'title_en' => 'Document Archive',
@@ -411,7 +322,6 @@ class MenuSeeder extends Seeder
                     'permissions' => ['saraban.document.view'],
                 ],
                 [
-                    // INT-18 — สารบบเรื่อง (SoT §22)
                     'code' => 'saraban.cases',
                     'title_th' => 'สารบบเรื่อง',
                     'title_en' => 'Cases',
@@ -420,7 +330,6 @@ class MenuSeeder extends Seeder
                     'permissions' => ['saraban.document.view'],
                 ],
                 [
-                    // INT-19 — รายงานทะเบียน (SoT §28)
                     'code' => 'saraban.reports',
                     'title_th' => 'รายงานสารบรรณ',
                     'title_en' => 'Saraban Reports',
@@ -431,25 +340,7 @@ class MenuSeeder extends Seeder
             ],
         ],
         /*
-         * การจัดการงานสารบรรณ — แยกจากงานประจำวันโดยเจตนา
-         * (NAVIGATION-ACTION-PERMISSION-MATRIX §2, §5)
-         *
-         * **ทำไมเป็นกลุ่มระดับบนสุดแยก ไม่ใช่เมนูย่อยชั้นที่สาม**
-         *
-         * เอกสารต้นทางวาดผังไว้สามชั้น (สารบรรณ → การจัดการ → รายการย่อย) แต่
-         * ระบบเมนูของโครงการนี้รองรับสองชั้น — `MenuSeeder::run()` วนแค่
-         * `children` ชั้นเดียว · `MenuService` โหลด `children.permissions` ชั้นเดียว
-         * · และ `AppMenuNav.vue` เรนเดอร์แค่ `item.children`
-         *
-         * การเพิ่มชั้นที่สามต้องแก้แกนกลางของระบบเมนู ซึ่งกระทบโมดูลการลา
-         * การลงเวลา และการบริหารระบบทั้งหมด — เกินขอบเขตของการปรับเมนูโมดูลเดียว
-         *
-         * เอกสารต้นทางเองระบุไว้ใน §2 ว่า "อย่าสร้าง Sidebar ยาวเกินจำเป็น
-         * ให้ใช้ Tabs/Secondary Navigation ในแต่ละหน้า" — การแยกเป็นสองกลุ่ม
-         * ระดับบนสุดจึงตรงตามเจตนา และได้ผลเดียวกันคือ **แยกงานประจำวันออกจาก
-         * งานตั้งค่า** โดยไม่แตะแกนกลาง
-         *
-         * `module` = `saraban` เหมือนกลุ่มแรก — ปิดโมดูลแล้วหายทั้งสองกลุ่ม
+         * การจัดการงานสารบรรณ — สำหรับเจ้าหน้าที่สารบรรณ/ผู้ดูแล
          */
         [
             'code' => 'saraban_admin',
@@ -457,13 +348,6 @@ class MenuSeeder extends Seeder
             'title_en' => 'Saraban Administration',
             'module' => 'saraban',
             'icon' => 'cog',
-
-            /*
-             * สิทธิ์ของกลุ่มคือ **ผลรวมของสิทธิ์ลูกทุกตัว**
-             *
-             * เมนูแม่กรองก่อนเมนูลูกเสมอ — ถ้าใส่ไม่ครบ ผู้ที่มีสิทธิ์เพียงข้อเดียว
-             * เช่นดูตารางอำนาจอย่างเดียว จะไม่เห็นกลุ่มนี้เลยทั้งที่มีสิทธิ์เข้าหน้านั้น
-             */
             'permissions' => [
                 'saraban.authority.view',
                 'saraban.workflow.manage',
@@ -475,7 +359,6 @@ class MenuSeeder extends Seeder
             ],
             'children' => [
                 [
-                    // INT-16 — SoT §6, §9, §18
                     'code' => 'saraban.authority',
                     'title_th' => 'ตารางอำนาจหน้าที่',
                     'title_en' => 'Authority Matrix',
@@ -483,11 +366,6 @@ class MenuSeeder extends Seeder
                     'route_path' => '/saraban/authority',
                     'permissions' => ['saraban.authority.view'],
                 ],
-                /*
-                 * NAV §5.2 — Workflow · ปิด RISK-26
-                 *
-                 * วางไว้ก่อนหน้าจำลองเส้นทาง เพราะการตั้งสายมาก่อนการทดลองเดินสาย
-                 */
                 [
                     'code' => 'saraban.workflow.design',
                     'title_th' => 'สายการเดินหนังสือ',
@@ -505,7 +383,6 @@ class MenuSeeder extends Seeder
                     'permissions' => ['saraban.workflow.simulate'],
                 ],
                 [
-                    // INT-16 — ศูนย์นโยบาย (SoT §18)
                     'code' => 'saraban.policies',
                     'title_th' => 'ศูนย์นโยบายงานสารบรรณ',
                     'title_en' => 'Policy Center',
@@ -514,7 +391,6 @@ class MenuSeeder extends Seeder
                     'permissions' => ['saraban.policy.manage'],
                 ],
                 [
-                    // INT-16 — ตั้งค่าชุดเลขหนังสือ (SoT §9)
                     'code' => 'saraban.number_series',
                     'title_th' => 'ชุดเลขหนังสือ',
                     'title_en' => 'Number Series',
@@ -523,7 +399,6 @@ class MenuSeeder extends Seeder
                     'permissions' => ['saraban.config.manage'],
                 ],
                 [
-                    // INT-17 — SoT §19, §20, §21
                     'code' => 'saraban.operations',
                     'title_th' => 'รายการที่ต้องตามแก้',
                     'title_en' => 'Issues to Follow Up',
@@ -531,28 +406,55 @@ class MenuSeeder extends Seeder
                     'route_path' => '/saraban/operations',
                     'permissions' => ['saraban.operations.view'],
                 ],
-                /*
-                 * NAV §2 · §5 ระบุ Feature Flags และ Integration ไว้ในกลุ่มนี้ด้วย
-                 * แต่ **ไม่เพิ่มเป็นเมนูสารบรรณโดยเจตนา**
-                 *
-                 * ทั้งสองเป็นการตั้งค่าระดับระบบที่มีหน้าอยู่แล้วที่ "ตั้งค่าระบบ"
-                 * (โมดูลระบบ / การเชื่อมต่อระบบภายนอก) และคุมด้วย
-                 * `system.setting.manage` ซึ่งอยู่นอก namespace ของสารบรรณ ·
-                 * `SarabanModuleRegistrationTest` บังคับไว้ว่าเมนูสารบรรณทุกตัว
-                 * ต้องคุมด้วยสิทธิ์สารบรรณเท่านั้น — ขอบเขตของโมดูลต้องไม่รั่ว
-                 * ผ่านสิทธิ์ของระบบ
-                 *
-                 * ถ้าผูกด้วยสิทธิ์สารบรรณแทน จะได้เมนูที่ผู้ถือสิทธิ์สารบรรณเห็น
-                 * แล้วกดไปเจอหน้าปฏิเสธสิทธิ์ ซึ่งแย่กว่าการไม่มีเมนู
-                 */
                 [
-                    // INT-20 — ทะเบียนหลักฐาน (SoT §23)
                     'code' => 'saraban.compliance',
                     'title_th' => 'หลักฐานตามระเบียบ',
                     'title_en' => 'Compliance Evidence',
                     'route_name' => 'saraban-compliance',
                     'route_path' => '/saraban/compliance',
                     'permissions' => ['saraban.operations.view', 'saraban.report.view'],
+                ],
+            ],
+        ],
+        /*
+         * ศูนย์รายงานและสถิติ (Reports & Analytics)
+         */
+        [
+            'code' => 'reporting',
+            'title_th' => 'รายงาน',
+            'title_en' => 'Reports',
+            'module' => 'reporting',
+            'icon' => 'chart',
+            'permissions' => [
+                'leave.report.view',
+                'system.user.view',
+                'attendance.view_all',
+                'overtime.management.review',
+                'document.report.view',
+                'document.report.manage',
+                'system.setting.manage',
+            ],
+            'children' => [
+                [
+                    'code' => 'reporting.center',
+                    'title_th' => 'ศูนย์รายงานกลาง',
+                    'title_en' => 'Report Center',
+                    'route_name' => 'report-center',
+                    'route_path' => '/report-center',
+                    'permissions' => [
+                        'leave.report.view',
+                        'system.user.view',
+                        'attendance.view_all',
+                        'overtime.management.review',
+                    ],
+                ],
+                [
+                    'code' => 'reporting.custom',
+                    'title_th' => 'รายงานที่ออกแบบเอง',
+                    'title_en' => 'Custom Reports',
+                    'route_name' => 'custom-reports',
+                    'route_path' => '/reports/custom',
+                    'permissions' => ['document.report.view', 'document.report.manage', 'system.setting.manage'],
                 ],
             ],
         ],
@@ -566,16 +468,16 @@ class MenuSeeder extends Seeder
             'children' => [
                 [
                     'code' => 'users.list',
-                    'title_th' => 'รายชื่อผู้ใช้งาน',
-                    'title_en' => 'Users',
+                    'title_th' => 'รายชื่อบุคลากร',
+                    'title_en' => 'Staff Directory',
                     'route_name' => 'admin-users',
                     'route_path' => '/admin/users',
                     'permissions' => ['system.user.view'],
                 ],
                 [
                     'code' => 'users.personnel_assignments',
-                    'title_th' => 'กำหนดประเภทบุคลากร',
-                    'title_en' => 'Personnel Assignments',
+                    'title_th' => 'ประเภทบุคลากร',
+                    'title_en' => 'Personnel Types',
                     'route_name' => 'admin-personnel-assignments',
                     'route_path' => '/admin/personnel-assignments',
                     'permissions' => ['system.user.manage'],
@@ -587,14 +489,6 @@ class MenuSeeder extends Seeder
                     'route_name' => 'admin-roles',
                     'route_path' => '/admin/roles',
                     'permissions' => ['system.menu.manage', 'system.role.manage'],
-                ],
-                [
-                    'code' => 'users.menus',
-                    'title_th' => 'สิทธิ์การเข้าถึงเมนู',
-                    'title_en' => 'Menu Access',
-                    'route_name' => 'admin-menus',
-                    'route_path' => '/admin/menus',
-                    'permissions' => ['system.menu.manage'],
                 ],
             ],
         ],
@@ -615,22 +509,6 @@ class MenuSeeder extends Seeder
                     'permissions' => ['system.setting.manage'],
                 ],
                 [
-                    'code' => 'settings.fiscal_years',
-                    'title_th' => 'ปีงบประมาณ',
-                    'title_en' => 'Fiscal Years',
-                    'route_name' => 'admin-fiscal-years',
-                    'route_path' => '/admin/fiscal-years',
-                    'permissions' => ['system.setting.manage'],
-                ],
-                [
-                    'code' => 'settings.work_calendar',
-                    'title_th' => 'ปฏิทินวันทำการ',
-                    'title_en' => 'Work Calendar',
-                    'route_name' => 'admin-work-calendar',
-                    'route_path' => '/admin/work-calendar',
-                    'permissions' => ['system.setting.manage', 'leave.calendar.manage'],
-                ],
-                [
                     // ผังองค์กรเหลือชุดเดียว — หน้านี้จัดการ `org_units` โดยตรง
                     'code' => 'settings.departments',
                     'title_th' => 'โครงสร้างหน่วยงาน',
@@ -646,6 +524,22 @@ class MenuSeeder extends Seeder
                     'route_name' => 'admin-org-unit-managers',
                     'route_path' => '/admin/org-unit-managers',
                     'permissions' => ['manage_departments'],
+                ],
+                [
+                    'code' => 'settings.fiscal_years',
+                    'title_th' => 'ปีงบประมาณ',
+                    'title_en' => 'Fiscal Years',
+                    'route_name' => 'admin-fiscal-years',
+                    'route_path' => '/admin/fiscal-years',
+                    'permissions' => ['system.setting.manage'],
+                ],
+                [
+                    'code' => 'settings.work_calendar',
+                    'title_th' => 'ปฏิทินวันทำการ',
+                    'title_en' => 'Work Calendar',
+                    'route_name' => 'admin-work-calendar',
+                    'route_path' => '/admin/work-calendar',
+                    'permissions' => ['system.setting.manage', 'leave.calendar.manage'],
                 ],
                 [
                     'code' => 'settings.leave_policies',
@@ -701,6 +595,14 @@ class MenuSeeder extends Seeder
                     'permissions' => [
                         'document.template.view', 'document.template.manage', 'system.setting.manage',
                     ],
+                ],
+                [
+                    'code' => 'users.menus',
+                    'title_th' => 'สิทธิ์การเข้าถึงเมนู',
+                    'title_en' => 'Menu Access',
+                    'route_name' => 'admin-menus',
+                    'route_path' => '/admin/menus',
+                    'permissions' => ['system.menu.manage'],
                 ],
                 [
                     'code' => 'settings.modules',

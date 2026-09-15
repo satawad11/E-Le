@@ -75,7 +75,12 @@ class DocumentWorkflowService
                     'name' => $transition->name,
                     'requires_comment' => (bool) $transition->requires_comment,
                 ],
-                $this->engine->availableTransitions($instance, $viewer),
+                WorkflowTransition::query()
+                    ->where('workflow_version_id', $instance->workflow_version_id)
+                    ->where('from_step_id', $step?->id)
+                    ->whereIn('action', $this->engine->availableTransitions($instance, $viewer))
+                    ->orderBy('sort_order')
+                    ->get()->all(),
             ),
             'history' => $instance->actions()
                 ->with('actor:id,name')

@@ -21,10 +21,14 @@ use App\Services\Saraban\DocumentComparisonException;
 use App\Services\Saraban\DocumentService;
 use App\Services\Saraban\DocumentWorkflowService;
 use App\Services\Saraban\NumberingException;
+use App\Services\Saraban\OfficialSarabanFilenameService;
 use App\Services\Saraban\WorkQueueService;
 use App\Services\Workflow\WorkflowAuthorizationException;
 use App\Services\Workflow\WorkflowTransitionException;
+use App\Support\DocumentFilename;
+use App\Support\StoredFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -365,5 +369,34 @@ class DocumentController extends Controller
         }
 
         return response()->json($workflow->stateFor($document->fresh(), $request->user()));
+    }
+
+    /**
+     * ดาวน์โหลดไฟล์หนังสือราชการพร้อมชื่อไฟล์ทางการตามระเบียบสำนักนายกฯ ๒๕๖๔
+     */
+    public function download(Request $request, Document $document, OfficialSarabanFilenameService $filenameService)
+    {
+        $this->authorize('view', $document);
+
+        $version = $document->currentVersion;
+        abort_if($version === null || blank($version->pdf_file_path), 404, 'ไม่พบไฟล์ของหนังสือฉบับนี้');
+
+        $disk = Storage::disk(StoredFile::DISK);
+        abort_unless($disk->exists($version->pdf_file_path), 404, 'ไม่พบไฟล์ในระบบ');
+
+        /*
+         * ปลายทางนี้ส่งได้เฉพาะตัวหนังสือ ยังไม่มีการค้น "สิ่งที่ส่งมาด้วย" รายไฟล์
+         * จึงต้องปฏิเสธดัชนีที่ไม่ใช่ศูนย์ ไม่ใช่ตั้งชื่อไฟล์ตามดัชนีแล้วส่งตัวหนังสือ
+         * เดิมออกไป — ผู้รับจะเก็บสำเนาหนังสือซ้ำโดยเข้าใจว่าเป็นเอกสารแนบ
+         */
+        abort_if($request->integer('attachment', 0) !== 0, 404, 'ยังไม่รองรับการดาวน์โหลดสิ่งที่ส่งมาด้วยแยกไฟล์');
+
+        $filename = $filenameService->generate($document);
+
+        return $disk->response($version->pdf_file_path, $filename, [
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Disposition' => DocumentFilename::disposition($filename),
+        ]);
     }
 }

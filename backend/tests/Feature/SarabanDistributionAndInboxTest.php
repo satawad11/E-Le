@@ -638,6 +638,73 @@ class SarabanDistributionAndInboxTest extends TestCase
         $this->getJson('/api/saraban/distributions')->assertForbidden();
     }
 
+    /** ปิด RISK-35 — ผู้รักษาการแทน/ผู้รับมอบอำนาจ สามารถเปิดอ่านและรับทราบแทนได้ */
+    public function test_active_delegate_can_view_and_acknowledge_delegators_inbox_item(): void
+    {
+        [$document, $recipientRow, $delegator] = $this->distributedDocument();
+
+        $delegate = $this->userWith(['saraban.inbox.view']);
+
+        // ตั้งการมอบอำนาจ active วันนี้
+        DB::table('user_delegations')->insert([
+            'user_id' => $delegator->id,
+            'delegate_id' => $delegate->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDays(5)->toDateString(),
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // ผู้รักษาการเปิดกล่องหนังสือ เห็นรายการของผู้มอบอำนาจ
+        $this->actAs($delegate);
+        $inbox = $this->getJson('/api/saraban/inbox')->assertOk()->json();
+        $this->assertCount(1, $inbox['data']);
+        $this->assertTrue($inbox['data'][0]['is_delegated']);
+        $this->assertCount(1, $inbox['delegators']);
+
+        // ผู้รักษาการกดรับทราบแทน
+        $ack = $this->postJson("/api/saraban/inbox/{$recipientRow->id}/acknowledge", [
+            'note' => 'รับทราบแทนผู้อำนวยการ',
+        ])->assertOk()->json();
+
+        $this->assertSame(DistributionRecipient::STATUS_ACKNOWLEDGED, $ack['item']['status']);
+        $this->assertStringContainsString('รับทราบแทน', $ack['item']['response_note']);
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'saraban.distribution.acknowledged',
+            'actor_id' => $delegate->id,
+        ]);
+    }
+
+    /** การรับทราบแทนโดยไม่พิมพ์ข้อความใหม่ ต้องไม่ลบบันทึกเดิมของผู้รับออกจากทะเบียน */
+    public function test_delegated_acknowledgement_keeps_the_recipients_existing_note(): void
+    {
+        [, $recipientRow, $delegator] = $this->distributedDocument();
+
+        $delegate = $this->userWith(['saraban.inbox.view']);
+
+        DB::table('user_delegations')->insert([
+            'user_id' => $delegator->id,
+            'delegate_id' => $delegate->id,
+            'start_date' => now()->subDay()->toDateString(),
+            'end_date' => now()->addDays(5)->toDateString(),
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $recipientRow->forceFill(['response_note' => 'ส่งเรื่องให้งานพัสดุแล้ว'])->save();
+
+        $this->actAs($delegate);
+        $note = $this->postJson("/api/saraban/inbox/{$recipientRow->id}/acknowledge", [])
+            ->assertOk()
+            ->json('item.response_note');
+
+        $this->assertStringContainsString('ส่งเรื่องให้งานพัสดุแล้ว', $note);
+        $this->assertStringContainsString('รับทราบแทนโดย', $note);
+    }
+
     /** กำหนดขอบเขตให้ผู้ใช้ผ่านทะเบียนขอบเขตกลาง ไม่ใช่กติกาของสารบรรณ */
     private function grantScope(User $user, string $ability, string $scope, ?int $orgUnitId): void
     {

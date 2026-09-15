@@ -626,8 +626,8 @@ const submitCreate = async () => {
 
 const openApprove = (order) => {
   approveForm.value = {
-    approved_start: toLocalInput(order.scheduled_start),
-    approved_end: toLocalInput(order.scheduled_end),
+    approved_start: toLocalInput(order.approved_start ?? order.scheduled_start),
+    approved_end: toLocalInput(order.approved_end ?? order.scheduled_end),
     comment: '',
   }
   approveModal.value = { show: true, order }
