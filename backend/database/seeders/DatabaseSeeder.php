@@ -57,9 +57,20 @@ class DatabaseSeeder extends Seeder
             CancelSettingSeeder::class,
         ]);
 
-        // หน่วยงานอยู่ในผังจริงชุดเดียว (`org_units`) — โครง `departments` ถูกถอดออกแล้ว
-        $itDept = $this->seedOrgUnit('ฝ่ายสารสนเทศ');
-        $hrDept = $this->seedOrgUnit('ฝ่ายทรัพยากรบุคคล');
+        /*
+         * ผังหน่วยงาน — ยอดผังก่อน แล้วจึงเป็นโครง ๔ ฝ่ายของสถานศึกษาอาชีวศึกษา
+         *
+         * เดิมการติดตั้งใหม่ได้ผังแบนราบชั้นเดียว: ยอดผัง กับหน่วยงานชื่อกลาง ๆ สองหน่วย
+         * (`ฝ่ายสารสนเทศ`, `ฝ่ายทรัพยากรบุคคล`) ซึ่งไม่ใช่โครงของวิทยาลัยจริง
+         * และไม่มีชั้น "ฝ่าย" ให้สายอนุมัติไต่หรือให้รายงานกรอง
+         *
+         * ทั้งสอง seeder เป็น idempotent — ระบบที่ติดตั้งไปแล้วรันซ้ำได้ ของเดิมไม่ถูกทับ
+         */
+        $this->call([OrgUnitBackfillSeeder::class, VocationalOrgStructureSeeder::class]);
+
+        // หน่วยงานตั้งต้นของบัญชีระบบ — ใช้ "งาน" จริงในผัง แทนหน่วยงานสมมติแบบเดิม
+        $itDept = OrgUnit::where('code', 'ORG-SEC-DATACENTER')->firstOrFail();
+        $hrDept = OrgUnit::where('code', 'ORG-SEC-HR')->firstOrFail();
 
         $employeeRole = Role::firstOrCreate(['name' => 'Employee'], ['description' => 'ผู้ใช้งานทั่วไป']);
         $hrHeadRole = Role::firstOrCreate(['name' => 'HR Head'], ['description' => 'หัวหน้าบุคลากร']);
@@ -160,11 +171,6 @@ class DatabaseSeeder extends Seeder
             ['role_id' => $directorRole->id, 'name' => 'อนุมัติรอบสุดท้ายโดยผู้อำนวยการ']
         );
 
-        // LEGACY-03: เติม org_units/department_org_unit_map/users.org_unit_id
-        // migration ทำ backfill นี้ไว้แล้วแต่รันก่อน seeder จึงไม่เจอ departments
-        // ต้องอยู่หลังทั้ง department และ user ถูกสร้างครบ
-        $this->call([OrgUnitBackfillSeeder::class]);
-
         // LEGACY-06: ตารางเวลาทำงานเริ่มต้น — ต้องอยู่หลังผู้ใช้ถูกสร้างแล้ว
         // เพราะอ่าน users.work_start_time เพื่อแยกคนที่มีเวลาเฉพาะตัว
         $this->call([WorkScheduleSeeder::class]);
@@ -185,26 +191,6 @@ class DatabaseSeeder extends Seeder
      *   local/testing  ใช้รหัสเดิมเพื่อให้ชุดทดสอบและเครื่องพัฒนาทำงานได้เหมือนเดิม
      *   นอกจากนั้น    ใช้ `ADMIN_PASSWORD` ถ้ามี ไม่มีก็สุ่มให้แล้วพิมพ์ครั้งเดียวตอนติดตั้ง
      */
-    /**
-     * หน่วยงานในผังองค์กร แขวนใต้ยอดผัง
-     *
-     * เดิมหน่วยงานถูกสร้างเป็น `Department` แล้วให้ observer มิเรอร์เข้าผังให้เอง
-     * ผังเหลือชุดเดียวแล้ว จึงสร้างตรงเข้า `org_units`
-     */
-    private function seedOrgUnit(string $name): OrgUnit
-    {
-        $root = OrgUnit::whereNull('parent_id')->first();
-
-        return OrgUnit::firstOrCreate(['name' => $name], [
-            'uuid' => (string) Str::uuid(),
-            'parent_id' => $root?->id,
-            'code' => 'ORG-'.Str::upper(Str::random(6)),
-            'type' => 'department',
-            'effective_from' => now()->toDateString(),
-            'is_active' => true,
-        ]);
-    }
-
     private function seedAdministrator($superAdminRole, $department, $faker, bool $withDemoAccounts): User
     {
         $email = env('ADMIN_EMAIL', 'superadmin@example.com');

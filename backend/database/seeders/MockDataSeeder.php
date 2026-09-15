@@ -14,6 +14,9 @@ class MockDataSeeder extends Seeder
      */
     public function run(): void
     {
+        // ผัง ๔ ฝ่ายต้องมีก่อน เพราะแผนกวิชาสังกัด "ฝ่ายวิชาการ" — idempotent รันซ้ำได้
+        $this->call(VocationalOrgStructureSeeder::class);
+
         // 1. จำลองข้อมูลแผนกวิชา
         $departments = [
             'สมรรถนะแกนกลาง',
@@ -74,14 +77,21 @@ class MockDataSeeder extends Seeder
         }
     }
 
-    /** แผนกวิชาเป็นหน่วยงานในผังจริง แขวนใต้ยอดผัง */
+    /**
+     * แผนกวิชาเป็นหน่วยงานในผังจริง สังกัด "ฝ่ายวิชาการ" ตามโครงของวิทยาลัย
+     *
+     * เดิมแขวนใต้ยอดผังตรง ๆ ผังจึงแบนราบชั้นเดียว และไม่มีชั้นฝ่ายให้สายอนุมัติ
+     * ไต่หาหัวหน้า หรือให้รายงานกรองตามฝ่าย · ถ้ายังไม่มีฝ่ายวิชาการในผัง
+     * (เช่นผู้ดูแลลบทิ้ง) จะตกไปแขวนใต้ยอดผังเหมือนเดิมแทนที่จะล้มทั้ง seeder
+     */
     private function seedOrgUnit(string $name): OrgUnit
     {
-        $root = OrgUnit::whereNull('parent_id')->first();
+        $parent = OrgUnit::where('code', 'ORG-DIV-ACADEMIC')->first()
+            ?? OrgUnit::whereNull('parent_id')->first();
 
         return OrgUnit::firstOrCreate(['name' => $name], [
             'uuid' => (string) Str::uuid(),
-            'parent_id' => $root?->id,
+            'parent_id' => $parent?->id,
             'code' => 'ORG-'.Str::upper(Str::random(6)),
             'type' => 'department',
             'effective_from' => now()->toDateString(),
