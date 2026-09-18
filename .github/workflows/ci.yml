@@ -46,7 +46,8 @@ jobs:
         with:
           php-version: '8.4'
           extensions: mbstring, pdo_mysql, zip
-          coverage: none
+          # เปิด pcov เพื่อวัด coverage (เร็วกว่า xdebug) — ดูขั้น "Tests" ด้านล่าง
+          coverage: pcov
           # ตั้ง memory_limit ให้ตรงกับที่ image ใช้ (backend/Dockerfile, docker/php/php.ini)
           # เทสต์อัปโหลดรูปเพดาน 5 MB (base64) กินหน่วยความจำเกิน default 128M จน OOM
           ini-values: memory_limit=256M
@@ -67,14 +68,21 @@ jobs:
         run: composer audit
       - name: Pint
         run: vendor/bin/pint --test
+      # Static analysis — Pint ตรวจแค่ style ส่วน PHPStan/Larastan จับ type/null/
+      # เมธอดที่ไม่มีจริง · หนี้เดิม freeze ไว้ใน phpstan-baseline.neon โค้ดใหม่ต้องสะอาด
+      - name: PHPStan (Larastan)
+        run: php -d memory_limit=1G vendor/bin/phpstan analyse --no-progress
       - name: Migrate from empty MySQL 8 database
         run: php artisan migrate --force
       # Document Engine เรนเดอร์แบบฟอร์ม PDF ด้วยฟอนต์ไทยที่สร้างจาก TTF ในโครงการ
       # ถ้าไม่ติดตั้ง เทสต์ที่เรนเดอร์เอกสารจะล้มด้วยข้อความ "ยังไม่ได้ติดตั้งฟอนต์ไทย"
       - name: Install document engine Thai fonts
         run: php artisan document:install-fonts
+      # --coverage พิมพ์สรุป coverage ของ app/ (ยังไม่ตั้ง --min เป็นด่านบังคับ
+      # เพราะ baseline ปัจจุบันยังไม่ถูกวัด · เมื่อทีมเห็นตัวเลขแล้วค่อยเพิ่ม
+      # `--min=NN` เพื่อ ratchet ขึ้นทีละขั้น)
       - name: Tests
-        run: php artisan test
+        run: php artisan test --coverage
       # INT-20 — พิสูจน์ว่าการออกเลขหนังสือไม่ให้เลขซ้ำเมื่อมีผู้ขอพร้อมกัน (RISK-22)
       #
       # ชุดทดสอบปกติรันบน SQLite ซึ่งไม่มี row-level lock จริง จึงพิสูจน์เรื่องนี้

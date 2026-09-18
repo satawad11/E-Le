@@ -1,0 +1,40 @@
+#!/bin/sh
+# ================================================================
+# Pre-push quality gate — รันชุดตรวจให้ "ตรงกับ CI" ก่อนโค้ดขึ้นไป
+#
+# เปิดใช้: git config core.hooksPath .githooks
+#   (ทำอัตโนมัติผ่าน `npm install` ใน frontend และ `composer install` ใน backend)
+#
+# ข้ามชั่วคราวกรณีฉุกเฉิน: git push --no-verify
+#
+# เหตุผล: CI เคยล้มเพราะการรันในเครื่องไม่ครบเท่า CI (lint/typecheck ไม่ได้รัน,
+# memory_limit ไม่ตรง) hook นี้ปิดช่องนั้นโดยรันด่านเดียวกับที่ ci.yml ใช้
+# ================================================================
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+FAILED_BACKEND_SKIP=0
+
+echo "▶ pre-push [1/2] frontend: lint + typecheck + test + build"
+if command -v npm >/dev/null 2>&1; then
+    (cd "$ROOT/frontend" && npm run verify)
+else
+    echo "  ⚠ ไม่พบ npm ในเครื่องนี้ — ข้าม frontend"
+    echo "    โปรดรันเองก่อน push:  (cd frontend && npm run verify)"
+fi
+
+echo "▶ pre-push [2/2] backend: pint + phpstan + test"
+if command -v composer >/dev/null 2>&1 && command -v php >/dev/null 2>&1; then
+    (cd "$ROOT/backend" && composer verify)
+else
+    FAILED_BACKEND_SKIP=1
+    echo "  ⚠ ไม่พบ php/composer ในเครื่องนี้ — ข้าม backend"
+    echo "    รันผ่าน Docker แทนได้:"
+    echo "    docker run --rm -v \"$ROOT/backend\":/var/www/html e-le-backend sh -lc \"composer verify\""
+fi
+
+if [ "$FAILED_BACKEND_SKIP" = "1" ]; then
+    echo "✔ frontend ผ่าน · ⚠ backend ยังไม่ได้ตรวจในเครื่อง (CI จะเป็นด่านสุดท้าย)"
+else
+    echo "✔ pre-push ผ่านทั้งหมด"
+fi

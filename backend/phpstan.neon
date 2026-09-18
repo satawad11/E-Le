@@ -1,0 +1,12 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - app
+
+    # ระดับ 5 = ตรวจชนิด/เมธอด/พร็อพเพอร์ตี้ที่ไม่มีจริง, argument ผิดชนิด ฯลฯ
+    # หนี้เดิมทั้งหมดถูก freeze ไว้ใน phpstan-baseline.neon แล้ว โค้ดใหม่ต้องสะอาด
+    # เมื่อทีมพร้อม ค่อยยกระดับทีละขั้นและลด baseline ลง
+    level: 5

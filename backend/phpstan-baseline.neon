@@ -1,0 +1,4249 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Relation ''versions'' is not found in App\\Models\\DocumentTemplate model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/BackfillDocumentTemplateVersions.php
+
+		-
+			message: '#^Relation ''leaveType'' is not found in App\\Models\\LeavePolicy model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/CarryForwardLeaves.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Console/Commands/CarryForwardLeaves.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/CheckScheduledTaskHeartbeatsCommand.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DocumentTemplate\:\:\$versions\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Console/Commands/ConsolidateDocumentTemplates.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Document\\DocumentBindingRule\:\:\$template\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/ConsolidateDocumentTemplates.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\Document\\DocumentBindingRule model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Console/Commands/ConsolidateDocumentTemplates.php
+
+		-
+			message: '#^Relation ''versions'' is not found in App\\Models\\DocumentTemplate model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Console/Commands/ConsolidateDocumentTemplates.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>code" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Console/Commands/ConsolidateDocumentTemplates.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/FixLeaveDocumentNumbers.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>version" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Console/Commands/ImportDocumentFormTemplates.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/ProcessLeaveGovernanceCommand.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\LeaveEvidence\>\:\:onlyTrashed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Console/Commands/ProcessLeaveGovernanceCommand.php
+
+		-
+			message: '#^Function tomorrow not found\.$#'
+			identifier: function.notFound
+			count: 1
+			path: app/Console/Commands/ProcessLeaveGovernanceCommand.php
+
+		-
+			message: '#^Relation ''leave'' is not found in App\\Models\\LeaveEvidence model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/ProcessLeaveGovernanceCommand.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/ProcessLeaveGovernanceCommand.php
+
+		-
+			message: '#^Undefined variable\: \$notifications$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Console/Commands/ProcessLeaveGovernanceCommand.php
+
+		-
+			message: '#^Relation ''policy'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/ReconcileLeaveBalances.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\LeaveBalance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/ReconcileLeaveBalances.php
+
+		-
+			message: '#^Relation ''versions'' is not found in App\\Models\\DocumentTemplate model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/ScaffoldDocumentFieldMappings.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''CHECKBOX''\|''DATE''\|''NUMBER''\|''SIGNATURE''\|''TEXT'' and ''MULTILINE_TEXT'' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Console/Commands/ScaffoldDocumentFieldMappings.php
+
+		-
+			message: '#^Relation ''leaveType'' is not found in App\\Models\\LeavePolicy model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/SyncLeaveQuotas.php
+
+		-
+			message: '#^Relation ''personnelType'' is not found in App\\Models\\LeavePolicy model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/SyncLeaveQuotas.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Console/Commands/SyncLeaveQuotas.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Console/Commands/VerifyBackupRestoreCommand.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DocumentTemplate\:\:\$currentVersion\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DocumentTemplate\:\:\$versions_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DocumentTemplateVersion\:\:\$fieldMappings\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DocumentTemplateVersion\:\:\$template\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DocumentTemplateVersion\|Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), App\\Models\\DocumentTemplateVersion\>\:\:\$fieldMappings\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Document\\DocumentGeneratedFile\:\:\$template\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\DocumentTemplate\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Relation ''currentVersion'' is not found in App\\Models\\DocumentTemplate model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Relation ''generatedBy'' is not found in App\\Models\\Document\\DocumentGeneratedFile model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\Document\\DocumentBindingRule model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\Document\\DocumentGeneratedFile model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Relation ''version'' is not found in App\\Models\\Document\\DocumentGeneratedFile model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Relation ''versions'' is not found in App\\Models\\DocumentTemplate model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>content_html" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>fieldMappings" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>margin_bottom" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>margin_left" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>margin_right" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>margin_top" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>orientation" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>paper_size" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>render_mode" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Admin/DocumentEngineController.php
+
+		-
+			message: '#^Offset ''columns'' does not exist on array\{definition\: App\\Models\\Document\\DocumentReportDefinition, dataset\: App\\Services\\Reporting\\ReportDataset, groups\: array\<int, array\<string, mixed\>\>, totals\: array\<string, float\>\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/DocumentReportController.php
+
+		-
+			message: '#^Relation ''leaveType'' is not found in App\\Models\\LeavePolicy model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/Admin/LeavePolicyController.php
+
+		-
+			message: '#^Relation ''personnelType'' is not found in App\\Models\\LeavePolicy model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/Admin/LeavePolicyController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/OrgUnitController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: mixed$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Relation ''personnel'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Relation ''profile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between non\-empty\-list\<string\|null\> and array\{\} will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>annual_quota" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Admin/UserController.php
+
+		-
+			message: '#^Relation ''orgUnit'' is not found in App\\Models\\WorkCalendarException model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Admin/WorkCalendarController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/WorkflowController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\WorkflowController\:\:normalizedSteps\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{step_order\: int, name\: string, approver_type\: mixed, role_id\: int\|null, specific_user_id\: int\|null, permission_name\: mixed\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/Admin/WorkflowController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\WorkflowController\:\:normalizedSteps\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{step_order\: mixed, name\: mixed, approver_type\: mixed, role_id\: mixed, specific_user_id\: mixed, permission_name\: mixed\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/Admin/WorkflowController.php
+
+		-
+			message: '#^Relation ''profile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Admin/WorkflowController.php
+
+		-
+			message: '#^Relation ''role'' is not found in App\\Models\\ApprovalStep model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/WorkflowController.php
+
+		-
+			message: '#^Relation ''specificUser'' is not found in App\\Models\\ApprovalStep model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/WorkflowController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Menu\:\:\$permissions\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/MenuController.php
+
+		-
+			message: '#^Relation ''children'' is not found in App\\Models\\Menu model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Api/MenuController.php
+
+		-
+			message: '#^Relation ''permissions'' is not found in App\\Models\\Menu model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Api/MenuController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Role\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/RoleController.php
+
+		-
+			message: '#^Property App\\Models\\Role\:\:\$users_count is not writable\.$#'
+			identifier: assign.propertyReadOnly
+			count: 1
+			path: app/Http/Controllers/Api/RoleController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$orgUnit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/VocationalReportController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$personnelType\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/VocationalReportController.php
+
+		-
+			message: '#^Relation ''orgUnit'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Api/VocationalReportController.php
+
+		-
+			message: '#^Relation ''personnelType'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Api/VocationalReportController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$approvals\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ApprovalController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$cancellationApprovals\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ApprovalController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ApprovalController.php
+
+		-
+			message: '#^Relation ''approvals'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/ApprovalController.php
+
+		-
+			message: '#^Relation ''cancellationApprovals'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/ApprovalController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/ApprovalController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/ApprovalController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$attendances\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$leaves\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$overtimeTimeRecords\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), App\\Models\\User\>\:\:\$last_name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), App\\Models\\User\>\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Cannot call method setTimezone\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Relation ''attendances'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Relation ''department'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Relation ''leaves'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Relation ''overtimeTimeRecords'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Relation ''policy'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Relation ''profile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/AttendanceController.php
+
+		-
+			message: '#^Relation ''attendance'' is not found in App\\Models\\AttendanceCorrection model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/AttendanceCorrectionController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\AttendanceCorrection model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/AttendanceCorrectionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$direct_permissions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$permission_names\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$role_names\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\UserProfile\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Laravel\\Sanctum\\PersonalAccessToken and ''delete'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Instanceof between Laravel\\Sanctum\\PersonalAccessToken and Laravel\\Sanctum\\PersonalAccessToken will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type Laravel\\Sanctum\\PersonalAccessToken\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$days\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Leave\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/DashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/GovernmentApprovalController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/GovernmentApprovalController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/GovernmentApprovalController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/GovernmentApprovalController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/GovernmentLeaveReportController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/GovernmentLeaveReportController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveAdjustmentController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/LeaveAdjustmentController.php
+
+		-
+			message: '#^Instanceof between Carbon\\Carbon and DateTimeInterface will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 2
+			path: app/Http/Controllers/LeaveAdjustmentController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>exclude_holidays" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/LeaveAdjustmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/LeaveCancellationController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/LeaveCancellationController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveCancellationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$policy\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Leave\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Relation ''department'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Relation ''personnelType'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Relation ''policy'' is not found in App\\Models\\LeaveBalance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Relation ''profile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\LeaveBalance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>first_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>last_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>personnel_code" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>position" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/LeaveCardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ApprovalStep\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$approvals\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveActionLog\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Relation ''approvals'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Relation ''profile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Relation ''role'' is not found in App\\Models\\ApprovalStep model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\LeaveBalance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\LeaveActionLog model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveDocumentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveEvidence\:\:\$leave\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveEvidenceController.php
+
+		-
+			message: '#^Relation ''actor'' is not found in App\\Models\\AuditLog model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveGovernanceController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveGovernanceController.php
+
+		-
+			message: '#^Relation ''adjustments'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveGovernanceWorklistController.php
+
+		-
+			message: '#^Relation ''evidences'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/LeaveGovernanceWorklistController.php
+
+		-
+			message: '#^Relation ''leave'' is not found in App\\Models\\LeaveAdjustment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveGovernanceWorklistController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveGovernanceWorklistController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveGovernanceWorklistController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$leaves_pending_days\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$leaves_used_days\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$paid_quota\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$paid_remaining\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$pending\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$policy\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$unlimited\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Relation ''actionLogs'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Relation ''approvals'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Relation ''policy'' is not found in App\\Models\\LeaveBalance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\LeaveBalance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 4
+			path: app/Http/Controllers/LeaveQueryController.php
+
+		-
+			message: '#^Property App\\Http\\Controllers\\LeaveRequestController\:\:\$attendanceSync is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Http/Controllers/LeaveRequestController.php
+
+		-
+			message: '#^Relation ''evidences'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveRequestController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 7
+			path: app/Http/Controllers/LeaveRequestController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$approvals\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\Leave\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Relation ''approvals'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>first_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>last_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/LeaveVerificationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\NotificationCenter\\NotificationDelivery\:\:\$recipient\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/NotificationCenter/NotificationOperationsController.php
+
+		-
+			message: '#^Relation ''recipient'' is not found in App\\Models\\NotificationCenter\\NotificationDelivery model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/NotificationCenter/NotificationOperationsController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\NotificationCenter\\NotificationRecipient\:\:\$deliveries\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/NotificationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\NotificationCenter\\NotificationRecipient\:\:\$event\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Http/Controllers/NotificationController.php
+
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/NotificationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\NotificationCenter\\NotificationRecipient\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/NotificationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),array\<string, mixed\>\>\:\:sortByDesc\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/NotificationController.php
+
+		-
+			message: '#^Relation ''deliveries'' is not found in App\\Models\\NotificationCenter\\NotificationRecipient model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/NotificationController.php
+
+		-
+			message: '#^Relation ''event'' is not found in App\\Models\\NotificationCenter\\NotificationRecipient model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/NotificationController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\NotificationCenter\\NotificationPreference model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/NotificationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>body" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/NotificationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>subject" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/NotificationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\SystemException\:\:\$assignee\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Operations/ExceptionQueueController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 4
+			path: app/Http/Controllers/Operations/ExceptionQueueController.php
+
+		-
+			message: '#^Relation ''assignee'' is not found in App\\Models\\SystemException model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Operations/ExceptionQueueController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Operations/ExceptionQueueController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Workflow\\WorkflowInstance\:\:\$currentStep\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Overtime/OvertimeOrderController.php
+
+		-
+			message: '#^Relation ''assignments'' is not found in App\\Models\\Overtime\\OvertimeOrder model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Overtime/OvertimeOrderController.php
+
+		-
+			message: '#^Relation ''currentStep'' is not found in App\\Models\\Workflow\\WorkflowInstance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Overtime/OvertimeOrderController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Overtime\\OvertimeTimeRecord\:\:\$assignment\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Overtime/OvertimeReportController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Overtime\\OvertimeTimeRecord\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Overtime/OvertimeReportController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),App\\Models\\Overtime\\OvertimeTimeRecord\>\:\:transform\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Overtime/OvertimeReportController.php
+
+		-
+			message: '#^Relation ''assignment'' is not found in App\\Models\\Overtime\\OvertimeTimeRecord model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Overtime/OvertimeReportController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Overtime\\OvertimeTimeRecord model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Overtime/OvertimeReportController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Overtime\\OvertimeAssignment\:\:\$order\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Overtime/OvertimeTimeController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Overtime\\OvertimeTimeRecord\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Overtime/OvertimeTimeController.php
+
+		-
+			message: '#^Relation ''assignment'' is not found in App\\Models\\Overtime\\OvertimeTimeRecord model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Overtime/OvertimeTimeController.php
+
+		-
+			message: '#^Relation ''order'' is not found in App\\Models\\Overtime\\OvertimeAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Overtime/OvertimeTimeController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/PersonalDataController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$department\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/PersonalDataController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$personnelType\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/PersonalDataController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/PersonalDataController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/PersonalDataController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/PersonalDataController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Leave\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/PersonalDataController.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/PersonalDataController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/PersonalDataController.php
+
+		-
+			message: '#^Relation ''delegate'' is not found in App\\Models\\UserDelegation model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/ProfileController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/PromotionScreeningController.php
+
+		-
+			message: '#^Relation ''department'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/PromotionScreeningController.php
+
+		-
+			message: '#^Relation ''personnelType'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/PromotionScreeningController.php
+
+		-
+			message: '#^Relation ''profile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/PromotionScreeningController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/PromotionScreeningController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>position" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/PromotionScreeningController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$currentVersion\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Controllers/Saraban/AnnotationController.php
+
+		-
+			message: '#^Called ''Model\:\:make\(\)'' which performs unnecessary work, use ''new Model\(\)''\.$#'
+			identifier: larastan.noModelMake
+			count: 1
+			path: app/Http/Controllers/Saraban/AnnotationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$orgUnit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/AuthorityMatrixController.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Http/Controllers/Saraban/AuthorityMatrixController.php
+
+		-
+			message: '#^Relation ''orgUnit'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/AuthorityMatrixController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Services\\Modules\\ModuleDefinition\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Saraban/AuthorityMatrixController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentNumber\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/CaseController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$pivot\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/CaseController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\DocumentCase\:\:\$documents\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Saraban/CaseController.php
+
+		-
+			message: '#^Relation ''documents'' is not found in App\\Models\\Saraban\\DocumentCase model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Saraban/CaseController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Distribution\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/DistributionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Distribution\:\:\$recipients\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Saraban/DistributionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Distribution\:\:\$sender\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Saraban/DistributionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Distribution\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/DistributionController.php
+
+		-
+			message: '#^Relation ''document'' is not found in App\\Models\\Saraban\\Distribution model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Saraban/DistributionController.php
+
+		-
+			message: '#^Relation ''recipients'' is not found in App\\Models\\Saraban\\Distribution model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Saraban/DistributionController.php
+
+		-
+			message: '#^Relation ''sender'' is not found in App\\Models\\Saraban\\Distribution model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Saraban/DistributionController.php
+
+		-
+			message: '#^Relation ''version'' is not found in App\\Models\\Saraban\\Distribution model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/DistributionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$currentVersion\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Saraban/DocumentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentNumber\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentController.php
+
+		-
+			message: '#^Relation ''creator'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentController.php
+
+		-
+			message: '#^Relation ''currentVersion'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Saraban/DocumentController.php
+
+		-
+			message: '#^Relation ''documentNumber'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Saraban/DocumentController.php
+
+		-
+			message: '#^Relation ''documentType'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Saraban/DocumentController.php
+
+		-
+			message: '#^Relation ''incomingRegistration'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentController.php
+
+		-
+			message: '#^Relation ''legalHolds'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/Saraban/DocumentController.php
+
+		-
+			message: '#^Relation ''ownerOrgUnit'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Saraban/DocumentController.php
+
+		-
+			message: '#^Relation ''retentionSchedule'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 4
+			path: app/Http/Controllers/Saraban/DocumentController.php
+
+		-
+			message: '#^Relation ''versions'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/Saraban/DocumentController.php
+
+		-
+			message: '#^Relation ''leaveType'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentTemplateController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentTemplateController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentNumber\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentVerificationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentType\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentVerificationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$ownerOrgUnit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentVerificationController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Http/Controllers/Saraban/DocumentVerificationController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\Saraban\\Document\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentVerificationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Saraban\\SignatureEvidence\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentVerificationController.php
+
+		-
+			message: '#^Relation ''documentNumber'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentVerificationController.php
+
+		-
+			message: '#^Relation ''documentType'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentVerificationController.php
+
+		-
+			message: '#^Relation ''ownerOrgUnit'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentVerificationController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Saraban/DocumentVerificationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\DistributionRecipient\:\:\$distribution\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Controllers/Saraban/InboxController.php
+
+		-
+			message: '#^Relation ''distribution'' is not found in App\\Models\\Saraban\\DistributionRecipient model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/InboxController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\IncomingRegistration\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/IncomingRegistrationController.php
+
+		-
+			message: '#^Relation ''document'' is not found in App\\Models\\Saraban\\IncomingRegistration model\.$#'
+			identifier: larastan.relationExistence
+			count: 5
+			path: app/Http/Controllers/Saraban/IncomingRegistrationController.php
+
+		-
+			message: '#^Relation ''registerNumber'' is not found in App\\Models\\Saraban\\IncomingRegistration model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Saraban/IncomingRegistrationController.php
+
+		-
+			message: '#^Relation ''registrar'' is not found in App\\Models\\Saraban\\IncomingRegistration model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Saraban/IncomingRegistrationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\DocumentNumber\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/NumberReservationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\DocumentNumber\:\:\$series\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Saraban/NumberReservationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\|Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), App\\Models\\Saraban\\Document\>\:\:\$documentType\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/NumberReservationController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Saraban/NumberReservationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Saraban\\DocumentNumber\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Saraban/NumberReservationController.php
+
+		-
+			message: '#^Property App\\Http\\Controllers\\Saraban\\NumberReservationController\:\:\$scopes is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Http/Controllers/Saraban/NumberReservationController.php
+
+		-
+			message: '#^Relation ''document'' is not found in App\\Models\\Saraban\\DocumentNumber model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/NumberReservationController.php
+
+		-
+			message: '#^Relation ''series'' is not found in App\\Models\\Saraban\\DocumentNumber model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/NumberReservationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\NumberSeries\:\:\$issued_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/NumberSeriesController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\NumberSeries\:\:\$orgUnit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/NumberSeriesController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Saraban\\NumberSeries\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Saraban/NumberSeriesController.php
+
+		-
+			message: '#^Relation ''numbers'' is not found in App\\Models\\Saraban\\NumberSeries model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/NumberSeriesController.php
+
+		-
+			message: '#^Relation ''orgUnit'' is not found in App\\Models\\Saraban\\NumberSeries model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/NumberSeriesController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Saraban/PolicyController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Redaction\:\:\$creator\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/RedactionController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Saraban\\Redaction\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Saraban/RedactionController.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Saraban/RedactionController.php
+
+		-
+			message: '#^Relation ''creator'' is not found in App\\Models\\Saraban\\Redaction model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/RedactionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\LegalHold\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/RetentionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\LegalHold\:\:\$placer\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/RetentionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\RetentionSchedule\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/RetentionController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Saraban/RetentionController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Saraban/RetentionController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Saraban\\LegalHold\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Saraban/RetentionController.php
+
+		-
+			message: '#^Relation ''placer'' is not found in App\\Models\\Saraban\\LegalHold model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/RetentionController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Saraban/RetentionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SavedView\:\:\$owner\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/SavedViewController.php
+
+		-
+			message: '#^Relation ''owner'' is not found in App\\Models\\Saraban\\SavedView model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/SavedViewController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SignatureEvidence\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/SignatureController.php
+
+		-
+			message: '#^Relation ''version'' is not found in App\\Models\\Saraban\\SignatureEvidence model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/SignatureController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SignatureEvidence\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SignatureRevocation\:\:\$decider\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SignatureRevocation\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SignatureRevocation\:\:\$requester\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 7
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Saraban\\SignatureEvidence\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Saraban\\SignatureRevocation\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Relation ''decider'' is not found in App\\Models\\Saraban\\SignatureRevocation model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Relation ''document'' is not found in App\\Models\\Saraban\\SignatureRevocation model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Relation ''requester'' is not found in App\\Models\\Saraban\\SignatureRevocation model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Relation ''version'' is not found in App\\Models\\Saraban\\SignatureEvidence model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Saraban/SignatureVerificationController.php
+
+		-
+			message: '#^Relation ''deliveries'' is not found in App\\Models\\WebhookEndpoint model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Webhooks/WebhookEndpointController.php
+
+		-
+			message: '#^Call to function method_exists\(\) with Laravel\\Sanctum\\PersonalAccessToken and ''can'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Middleware/EnsureAnyAbility.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\StoreLeaveRequest\:\:validateExtraFieldType\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Http/Requests/StoreLeaveRequest.php
+
+		-
+			message: '#^Offset ''key'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Requests/StoreLeaveRequest.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between null and null will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: app/Http/Requests/StoreLeaveRequest.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Http/Requests/StoreLeaveRequest.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>extra_fields" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Requests/StoreLeaveRequest.php
+
+		-
+			message: '#^Method App\\Models\\ApprovalStep\:\:stepsFor\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\ApprovalStep\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, static\(App\\Models\\ApprovalStep\)\>\.$#'
+			identifier: return.type
+			count: 2
+			path: app/Models/ApprovalStep.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DocumentTemplate\:\:\$currentVersion\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/DocumentTemplate.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\DocumentTemplateVersion model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Models/Leave.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/Leave.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Role\:\:\$is_system\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Role.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Role\:\:\$system_key\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/Role.php
+
+		-
+			message: '#^Cannot call method addMinutes\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/ScheduledTaskHeartbeat.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Time\\WorkSchedule\:\:\$days\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Time/WorkSchedule.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$personnel\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Models/User.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>personnel_code" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>position" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Policies/LeavePolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\AttendanceCorrection\:\:\$attendance\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Attendance/AttendanceCorrectionService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\AttendanceCorrection\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Attendance/AttendanceCorrectionService.php
+
+		-
+			message: '#^Parameter \#1 \$array of function array_keys expects array, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendance/AttendanceCorrectionService.php
+
+		-
+			message: '#^Parameter \#1 \$attributes of method Illuminate\\Database\\Eloquent\\Model\:\:fill\(\) expects array\<string, mixed\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendance/AttendanceCorrectionService.php
+
+		-
+			message: '#^Parameter \#2 \$subject of method App\\Services\\Attendance\\AttendanceScopeService\:\:canSee\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Attendance/AttendanceCorrectionService.php
+
+		-
+			message: '#^Parameter \#5 \$after of method App\\Services\\AuditLogger\:\:log\(\) expects array\|null, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Attendance/AttendanceCorrectionService.php
+
+		-
+			message: '#^Offset ''distance'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Attendance/AttendanceReconciliationService.php
+
+		-
+			message: '#^Offset ''image_path'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Attendance/AttendanceReconciliationService.php
+
+		-
+			message: '#^Offset ''location'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Attendance/AttendanceReconciliationService.php
+
+		-
+			message: '#^Offset ''notes'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 2
+			path: app/Services/Attendance/AttendanceReconciliationService.php
+
+		-
+			message: '#^Property App\\Models\\Attendance\:\:\$check_in_time \(Carbon\\Carbon\|null\) does not accept Carbon\\CarbonImmutable\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Attendance/AttendanceReconciliationService.php
+
+		-
+			message: '#^Property App\\Models\\Attendance\:\:\$check_out_time \(Carbon\\Carbon\|null\) does not accept Carbon\\CarbonImmutable\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Attendance/AttendanceReconciliationService.php
+
+		-
+			message: '#^Method App\\Services\\Attendance\\BiometricFileParserService\:\:parseLine\(\) should return array\{enroll_id\: string, timestamp\: Carbon\\CarbonImmutable, event_type\: string, raw\: string\} but returns null\.$#'
+			identifier: return.type
+			count: 2
+			path: app/Services/Attendance/BiometricFileParserService.php
+
+		-
+			message: '#^PHPDoc tag @return with type array\<string, Carbon\\CarbonImmutable\|string\>\|null is not subtype of native type array\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: app/Services/Attendance/BiometricFileParserService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between array\{enroll_id\: string, timestamp\: Carbon\\CarbonImmutable, event_type\: string, raw\: string\} and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Attendance/BiometricFileParserService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Attendance/LeaveAttendanceSync.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>exclude_holidays" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Attendance/LeaveDayClassifier.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DocumentTemplateVersion\:\:\$fieldMappings\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DocumentEngine/DocumentEngine.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>document_type" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/DocumentEngine/DocumentEngine.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>revision" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/DocumentEngine/DocumentEngine.php
+
+		-
+			message: '#^Call to function is_string\(\) with null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/DocumentEngine/FieldDictionarySynchronizer.php
+
+		-
+			message: '#^Cannot call method module\(\) on class\-string\|object\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/DocumentEngine/FieldDictionarySynchronizer.php
+
+		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: app/Services/DocumentEngine/FieldDictionarySynchronizer.php
+
+		-
+			message: '#^Offset ''key'' on string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/FieldDictionarySynchronizer.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: app/Services/DocumentEngine/FieldDictionarySynchronizer.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between \*NEVER\* and '''' will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/DocumentEngine/FieldDictionarySynchronizer.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/DocumentEngine/FieldDictionarySynchronizer.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\<int, array\{x\: float\|int, y\: float\|int\}\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/DocumentEngine/PdfVectorDrawer.php
+
+		-
+			message: '#^Offset ''x'' on array\{x\: float\|int, y\: float\|int\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Services/DocumentEngine/PdfVectorDrawer.php
+
+		-
+			message: '#^Offset ''y'' on array\{x\: float\|int, y\: float\|int\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Services/DocumentEngine/PdfVectorDrawer.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between non\-empty\-string and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/DocumentEngine/PdfVectorDrawer.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$allApprovals\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DocumentEngine/Providers/LeaveRequestDataProvider.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>year" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/DocumentEngine/Providers/LeaveRequestDataProvider.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$employee\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DocumentEngine/Providers/LeaveStatisticsDataProvider.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Leave\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/DocumentEngine/Providers/LeaveStatisticsDataProvider.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentNumber\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$ownerOrgUnit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''confidentiality'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''direction'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''doc_no'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''document_date'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} in isset\(\) does not exist\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''document_number'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''org_unit_code'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''org_unit_name'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''owner_org_unit_code'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''owner_org_unit_name'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''secret'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''speed'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''status'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''subject'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''summary'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''title'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''urgency'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Offset ''verification_hash'' on array\{document\?\: App\\Models\\Saraban\\Document, stage\?\: string\} on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Setting\>\:\:get\(\) invoked with 2 parameters, 0\-1 required\.$#'
+			identifier: arguments.count
+			count: 4
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>registration_number" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/DocumentEngine/Providers/OfficialSarabanDataProvider.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$currentAssignment\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DocumentEngine/Providers/PersonnelProfileDataProvider.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$department\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DocumentEngine/Providers/PersonnelProfileDataProvider.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$personnel\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DocumentEngine/Providers/PersonnelProfileDataProvider.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DocumentEngine/Providers/PersonnelProfileDataProvider.php
+
+		-
+			message: '#^Static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Setting\>\:\:get\(\) invoked with 2 parameters, 0\-1 required\.$#'
+			identifier: arguments.count
+			count: 4
+			path: app/Services/DocumentEngine/Providers/PersonnelProfileDataProvider.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>academic_standing" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/DocumentEngine/Providers/PersonnelProfileDataProvider.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>currentAssignment" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/DocumentEngine/Providers/PersonnelProfileDataProvider.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>orgUnit" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/DocumentEngine/Providers/PersonnelProfileDataProvider.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DocumentTemplateVersion\:\:\$template\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DocumentEngine/TemplatePackage.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 2
+			path: app/Services/DocumentEngine/TemplatePreflight.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Document\\DocumentBindingRule\:\:\$template\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DocumentEngine/TemplateResolver.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\Document\\DocumentBindingRule model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/DocumentEngine/TemplateResolver.php
+
+		-
+			message: '#^Match arm comparison between ''lower'' and ''lower'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: app/Services/DocumentEngine/ValueFormatter.php
+
+		-
+			message: '#^Parameter \#1 \$search of function str_replace expects array\<string\>\|string, array\<int, int\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/DocumentEngine/ValueFormatter.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Access to constant CENTER on an unknown class PhpOffice\\PhpWord\\SimpleType\\Jc\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Access to constant RIGHT on an unknown class PhpOffice\\PhpWord\\SimpleType\\Jc\.$#'
+			identifier: class.notFound
+			count: 3
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Call to an undefined method App\\Services\\ThaiDateService\:\:toThaiFullDate\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Call to method addSection\(\) on an unknown class PhpOffice\\PhpWord\\PhpWord\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Call to method addTableStyle\(\) on an unknown class PhpOffice\\PhpWord\\PhpWord\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Call to method setDefaultFontName\(\) on an unknown class PhpOffice\\PhpWord\\PhpWord\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Call to method setDefaultFontSize\(\) on an unknown class PhpOffice\\PhpWord\\PhpWord\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Call to static method cmToTwip\(\) on an unknown class PhpOffice\\PhpWord\\Shared\\Converter\.$#'
+			identifier: class.notFound
+			count: 4
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Call to static method createWriter\(\) on an unknown class PhpOffice\\PhpWord\\IOFactory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Call to static method pointToTwip\(\) on an unknown class PhpOffice\\PhpWord\\Shared\\Converter\.$#'
+			identifier: class.notFound
+			count: 5
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Instantiated class PhpOffice\\PhpWord\\PhpWord not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Services/Export/LeaveWordService.php
+
+		-
+			message: '#^Offset ''timed_out'' on array\{timed_out\: bool, blocked\: bool, eof\: bool, unread_bytes\: int, stream_type\: string, wrapper_type\: string, wrapper_data\: mixed, mode\: string, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Files/ClamAvScanner.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/LeaveDocumentFields.php
+
+		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/LeaveDocumentFields.php
+
+		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: app/Services/LeaveDocumentFields.php
+
+		-
+			message: '#^Method App\\Services\\LeaveDocumentFields\:\:number\(\) never returns string so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Services/LeaveDocumentFields.php
+
+		-
+			message: '#^Relation ''policy'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/LeaveDocumentFields.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/LeaveDocumentFields.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/LeaveDocumentFields.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/LeaveDocumentFields.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>phone" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/LeaveDocumentFields.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\DocumentTemplateVersion\:\:\$template\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/LeaveDocumentTemplateResolver.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\DocumentTemplateVersion model\.$#'
+			identifier: larastan.relationExistence
+			count: 4
+			path: app/Services/LeaveDocumentTemplateResolver.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/LeaveEligibilityRuleService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$policy\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/LeavePolicyService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$currentAssignment\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/LeavePolicyService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$personnel\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/LeavePolicyService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/LeavePolicyService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/LeaveRequestNotificationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$policy\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/LeaveService.php
+
+		-
+			message: '#^Relation ''currentAssignment'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/LeaveService.php
+
+		-
+			message: '#^Relation ''personnel'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/LeaveService.php
+
+		-
+			message: '#^Relation ''personnelType'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/LeaveService.php
+
+		-
+			message: '#^Relation ''policy'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/LeaveService.php
+
+		-
+			message: '#^Relation ''profile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/LeaveService.php
+
+		-
+			message: '#^Relation ''role'' is not found in App\\Models\\ApprovalStep model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/LeaveService.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/LeaveService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/LeaveService.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 1
+			path: app/Services/LeaveService.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Services/LeaveVerificationService.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/LeaveVerificationService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/LeaveVerificationService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/LeaveVisibility.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Menu\:\:\$children\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/MenuService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Menu\:\:\$permissions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/MenuService.php
+
+		-
+			message: '#^Relation ''children'' is not found in App\\Models\\Menu model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/MenuService.php
+
+		-
+			message: '#^Relation ''permissions'' is not found in App\\Models\\Menu model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/MenuService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/NotificationCenter/NotificationCenter.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\NotificationCenter\\NotificationDelivery\:\:\$recipient\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/NotificationCenter/NotificationDeliveryService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\NotificationCenter\\NotificationDelivery\:\:\$template\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/NotificationCenter/NotificationDeliveryService.php
+
+		-
+			message: '#^Relation ''recipient'' is not found in App\\Models\\NotificationCenter\\NotificationDelivery model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/NotificationCenter/NotificationDeliveryService.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\NotificationCenter\\NotificationDelivery model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/NotificationCenter/NotificationDeliveryService.php
+
+		-
+			message: '#^Call to function is_scalar\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/NotificationCenter/TemplateRenderer.php
+
+		-
+			message: '#^Cannot call method addDays\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Operations/ComplianceEvidence.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Operations/ComplianceEvidence.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Services/Operations/ComplianceEvidence.php
+
+		-
+			message: '#^Offset ''archive'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Operations/ComplianceEvidence.php
+
+		-
+			message: '#^Offset ''restore_seconds'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Operations/ComplianceEvidence.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Services\\Modules\\ModuleDefinition\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Operations/ComplianceEvidence.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\NotificationCenter\\NotificationDelivery\:\:\$recipient\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Operations/ExceptionQueue.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WebhookDelivery\:\:\$endpoint\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Operations/ExceptionQueue.php
+
+		-
+			message: '#^Relation ''endpoint'' is not found in App\\Models\\WebhookDelivery model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Operations/ExceptionQueue.php
+
+		-
+			message: '#^Relation ''recipient'' is not found in App\\Models\\NotificationCenter\\NotificationDelivery model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Operations/ExceptionQueue.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Symfony\\Component\\HttpFoundation\\ParameterBag\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Operations/ExceptionQueue.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type Illuminate\\Http\\Request\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Operations/ExceptionQueue.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\FeatureFlag\:\:\$editor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Operations/FeatureFlags.php
+
+		-
+			message: '#^Relation ''editor'' is not found in App\\Models\\FeatureFlag model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Operations/FeatureFlags.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Operations/SchedulerHeartbeat.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\ScheduledTaskHeartbeat\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Operations/SchedulerHeartbeat.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\OrgUnit\:\:\$parent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/OrgScopeResolver.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$currentAssignment\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/OrgScopeResolver.php
+
+		-
+			message: '#^Relation ''parent'' is not found in App\\Models\\OrgUnit model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/OrgScopeResolver.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-array\<int, int\> and array\{\} will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/OrgScopeResolver.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Overtime\\OvertimeTimeRecord\:\:\$assignment\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Overtime/OvertimeAttendanceReconciliationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Overtime\\OvertimeOrder\:\:\$creator\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Overtime/OvertimeOrderService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Workflow\\WorkflowTask\:\:\$step\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Overtime/OvertimeOrderService.php
+
+		-
+			message: '#^Relation ''assignments'' is not found in App\\Models\\Overtime\\OvertimeOrder model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Overtime/OvertimeOrderService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Overtime\\OvertimeTimeRecord\:\:\$assignment\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Overtime/OvertimeTimeService.php
+
+		-
+			message: '#^Cannot call method diffInMinutes\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Overtime/OvertimeTimeService.php
+
+		-
+			message: '#^Relation ''assignment'' is not found in App\\Models\\Overtime\\OvertimeTimeRecord model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Overtime/OvertimeTimeService.php
+
+		-
+			message: '#^Relation ''order'' is not found in App\\Models\\Overtime\\OvertimeAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Overtime/OvertimeTimeService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/PersonnelSyncService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>first_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/PersonnelSyncService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>last_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/PersonnelSyncService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$department\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/EvaluationMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$personnelType\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/EvaluationMetricsService.php
+
+		-
+			message: '#^Relation ''department'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Reporting/EvaluationMetricsService.php
+
+		-
+			message: '#^Relation ''orgUnit'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Reporting/EvaluationMetricsService.php
+
+		-
+			message: '#^Relation ''personnelType'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Reporting/EvaluationMetricsService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reporting/EvaluationMetricsService.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<mixed\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Services/Reporting/ReportExportService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>end_date" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reporting/ReportFilter.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>start_date" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reporting/ReportFilter.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>year" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reporting/ReportFilter.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$leave_days\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$leave_times\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$leave_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$organization\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$personnel_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$leave_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveBalance\:\:\$organization\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Overtime\\OvertimeTimeRecord\:\:\$approved_minutes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Overtime\\OvertimeTimeRecord\:\:\$assignments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Overtime\\OvertimeTimeRecord\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Overtime\\OvertimeTimeRecord\:\:\$organization\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$department\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$personnel\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$personnelType\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$absence_days\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$early_leave_minutes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$late_days\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$late_minutes\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$late_times\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$organization\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$present_days\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$recorded_days\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Offset ''attendance''\|''leave''\|''overtime''\|''system'' on array\{system\: ''ข้อมูลบุคลากร'', leave\: ''ระบบการลา'', attendance\: ''ระบบลงเวลา'', overtime\: ''การปฏิบัติงานล่วงเว…''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Leave\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\LeaveBalance\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Overtime\\OvertimeTimeRecord\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 3
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Relation ''currentAssignment'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Relation ''department'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Relation ''orgUnit'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Relation ''personnel'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Relation ''personnelType'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Relation ''profile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>position" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Reporting/ReportingDataService.php
+
+		-
+			message: '#^Relation ''orgUnit'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Reporting/VocationalLeaveEvaluationService.php
+
+		-
+			message: '#^Relation ''personnelType'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Reporting/VocationalLeaveEvaluationService.php
+
+		-
+			message: '#^Relation ''type'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Reporting/VocationalLeaveEvaluationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>attendance_bucket" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Reporting/VocationalLeaveEvaluationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>code_prefix" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Reporting/VocationalLeaveEvaluationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 4
+			path: app/Services/Reporting/VocationalLeaveEvaluationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$incomingRegistration\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/AnnotationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\DocumentVersion\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/AnnotationService.php
+
+		-
+			message: '#^Property App\\Services\\Saraban\\AnnotationService\:\:\$clock is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/Saraban/AnnotationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>formatted" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/AnnotationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\DistributionRecipient\:\:\$distribution\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Services/Saraban/DistributionService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$currentVersion\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/DistributionService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$currentAssignment\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/DistributionService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$orgUnit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/DistributionService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/DistributionService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\DocumentVersion\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Saraban/DocumentComparator.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 1
+			path: app/Services/Saraban/DocumentVerificationService.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Saraban/DocumentVerificationService.php
+
+		-
+			message: '#^Method chillerlan\\QRCode\\QRCode\:\:getQRMatrix\(\) invoked with 1 parameter, 0 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Services/Saraban/DocumentVerificationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>formatted" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/DocumentVerificationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>category" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/DocumentWorkflowService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$currentVersion\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Saraban/FinalizationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentNumber\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/FinalizationService.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Saraban/FinalizationService.php
+
+		-
+			message: '#^Relation ''document'' is not found in App\\Models\\Saraban\\IncomingRegistration model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/IncomingRegistrationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SignatureEvidence\:\:\$signature_hash\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/InterAgencyDispatchService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SignatureEvidence\:\:\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/InterAgencyDispatchService.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/Saraban/InterAgencyDispatchService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Services/Saraban/InterAgencyDispatchService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>number_full" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/InterAgencyDispatchService.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 4
+			path: app/Services/Saraban/OfficialDocumentTemplateService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Saraban/OfficialDocumentTemplateService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name_th" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/OfficialDocumentTemplateService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentNumber\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Saraban/OfficialSarabanFilenameService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$incomingRegistration\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/OfficialSarabanFilenameService.php
+
+		-
+			message: '#^Cannot access property \$year on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Saraban/OfficialSarabanFilenameService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>code" in empty\(\) is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/OfficialSarabanFilenameService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Policy\:\:\$publishedVersion\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Saraban/PolicyCenter.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Policy\:\:\$versions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/PolicyCenter.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\PolicyVersion\:\:\$author\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/PolicyCenter.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\PolicyVersion\:\:\$publisher\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/PolicyCenter.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Saraban/PolicyCenter.php
+
+		-
+			message: '#^Parameter \#2 \$payload of method App\\Services\\Saraban\\PolicyCenter\:\:draft\(\) expects array\<string, mixed\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Saraban/PolicyCenter.php
+
+		-
+			message: '#^Relation ''publishedVersion'' is not found in App\\Models\\Saraban\\Policy model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/PolicyCenter.php
+
+		-
+			message: '#^Relation ''versions'' is not found in App\\Models\\Saraban\\Policy model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/PolicyCenter.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/PolicyCenter.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>payload" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/PolicyCenter.php
+
+		-
+			message: '#^Relation ''currentAssignment'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/RecipientResolver.php
+
+		-
+			message: '#^Relation ''orgUnit'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/RecipientResolver.php
+
+		-
+			message: '#^Offset ''page'' on array\{page\: int, x\: float, y\: float, width\: float, height\: float\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Saraban/RedactionService.php
+
+		-
+			message: '#^Property App\\Services\\Saraban\\RegisterReportExportService\:\:\$scopes is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/Saraban/RegisterReportExportService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentNumber\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Saraban/RegisterReportService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentType\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/RegisterReportService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$incomingRegistration\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Services/Saraban/RegisterReportService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$ownerOrgUnit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/RegisterReportService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\DocumentNumber\:\:\$series\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/RegisterReportService.php
+
+		-
+			message: '#^Relation ''documentNumber'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/RegisterReportService.php
+
+		-
+			message: '#^Relation ''documentType'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/RegisterReportService.php
+
+		-
+			message: '#^Relation ''incomingRegistration'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/RegisterReportService.php
+
+		-
+			message: '#^Relation ''ownerOrgUnit'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/RegisterReportService.php
+
+		-
+			message: '#^Relation ''series'' is not found in App\\Models\\Saraban\\DocumentNumber model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/RegisterReportService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>formatted" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/RegisterReportService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\LegalHold\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/RetentionService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\RetentionSchedule\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Services/Saraban/RetentionService.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Saraban/RetentionService.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 4
+			path: app/Services/Saraban/RetentionService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Saraban\\RetentionSchedule\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Saraban/RetentionService.php
+
+		-
+			message: '#^Relation ''document'' is not found in App\\Models\\Saraban\\RetentionSchedule model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/RetentionService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array\{\} will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Offset ''font_size'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Offset ''hash'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Offset ''received_date'' does not exist on array\{\}\|string\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Offset ''received_date'' on array\{\}\|string in empty\(\) does not exist\.$#'
+			identifier: empty.offset
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Offset ''received_time'' does not exist on array\{\}\|string\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Offset ''received_time'' on array\{\}\|string in empty\(\) does not exist\.$#'
+			identifier: empty.offset
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Offset ''register_number'' does not exist on array\{\}\|string\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Offset ''register_number'' on array\{\}\|string in empty\(\) does not exist\.$#'
+			identifier: empty.offset
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Offset ''strokes'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Offset ''text'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Offset ''title'' on array\{\}\|string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Result of \|\| is always true\.$#'
+			identifier: booleanOr.alwaysTrue
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between array\{\} and array\{\} will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Services/Saraban/SarabanPdfRenderer.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SignatureRevocation\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Saraban/SignatureRevocationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$currentVersion\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Saraban/SignatureService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SignatureEvidence\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/SignatureService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$currentAssignment\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/SignatureService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$orgUnit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/SignatureService.php
+
+		-
+			message: '#^Property App\\Services\\Saraban\\SignatureService\:\:\$annotations is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/Saraban/SignatureService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/SignatureService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentNumber\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SignatureEvidence\:\:\$signer\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\SignatureEvidence\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Cannot call method gt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Cannot call method lte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 4
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Relation ''signer'' is not found in App\\Models\\Saraban\\SignatureEvidence model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Relation ''version'' is not found in App\\Models\\Saraban\\SignatureEvidence model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between int\<0, max\> and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Saraban/SignatureVerificationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentNumber\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/WorkQueueService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$documentType\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/WorkQueueService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\Document\:\:\$ownerOrgUnit\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/WorkQueueService.php
+
+		-
+			message: '#^Property App\\Services\\Saraban\\WorkQueueService\:\:\$scopes is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/Saraban/WorkQueueService.php
+
+		-
+			message: '#^Relation ''documentNumber'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/WorkQueueService.php
+
+		-
+			message: '#^Relation ''documentType'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/WorkQueueService.php
+
+		-
+			message: '#^Relation ''ownerOrgUnit'' is not found in App\\Models\\Saraban\\Document model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Saraban/WorkQueueService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Workflow\\WorkflowTransition\:\:\$fromStep\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/WorkflowDesignService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Workflow\\WorkflowTransition\:\:\$toStep\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/WorkflowDesignService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Workflow\\WorkflowVersion\:\:\$definition\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/WorkflowDesignService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Workflow\\WorkflowVersion\:\:\$steps_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/WorkflowDesignService.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Services/Saraban/WorkflowDesignService.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Saraban/WorkflowDesignService.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Saraban/WorkflowDesignService.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type App\\Models\\Workflow\\WorkflowVersion\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Saraban/WorkflowDesignService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Workflow\\WorkflowVersion\:\:\$definition\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Saraban/WorkflowSimulationService.php
+
+		-
+			message: '#^Relation ''definition'' is not found in App\\Models\\Workflow\\WorkflowVersion model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Saraban/WorkflowSimulationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LeaveApproval\:\:\$leave\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/SecureFileAccessService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Saraban\\DocumentVersion\:\:\$document\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/SecureFileAccessService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Setting\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/SystemSettingService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of static method Illuminate\\Database\\Connection\:\:transaction\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/SystemSettingService.php
+
+		-
+			message: '#^Parameter \#2 \$month of static method Carbon\\Carbon\:\:createFromDate\(\) expects int\|null, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/ThaiDateService.php
+
+		-
+			message: '#^Parameter \#3 \$day of static method Carbon\\Carbon\:\:createFromDate\(\) expects int\|null, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/ThaiDateService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>early_leave_grace_minutes" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Time/TimeService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>grace_minutes" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Time/TimeService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>timezone" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Time/TimeService.php
+
+		-
+			message: '#^Relation ''days'' is not found in App\\Models\\Time\\WorkSchedule model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Time/WorkScheduleResolver.php
+
+		-
+			message: '#^Property App\\Services\\Webhooks\\WebhookDispatcher\:\:\$clock is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/Webhooks/WebhookDispatcher.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Symfony\\Component\\HttpFoundation\\ParameterBag\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Webhooks/WebhookDispatcher.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type Illuminate\\Http\\Request\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Webhooks/WebhookDispatcher.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WebhookDelivery\:\:\$endpoint\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Webhooks/WebhookSender.php
+
+		-
+			message: '#^Relation ''endpoint'' is not found in App\\Models\\WebhookDelivery model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Webhooks/WebhookSender.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$profile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Workflow/ApprovalChainReadiness.php
+
+		-
+			message: '#^Relation ''profile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Workflow/ApprovalChainReadiness.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Workflow/ApprovalChainReadiness.php
+
+		-
+			message: '#^Property App\\Services\\Workflow\\ApproverResolverService\:\:\$delegationResolver is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/Workflow/ApproverResolverService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Workflow/Assignee/LeaveAssigneeResolver.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Workflow\\WorkflowInstance\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Workflow/Assignee/LeaveAssigneeResolver.php
+
+		-
+			message: '#^Call to function is_string\(\) with null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/Workflow/Assignee/LeaveAssigneeResolver.php
+
+		-
+			message: '#^Offset ''stage'' on string\|null on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Workflow/Assignee/LeaveAssigneeResolver.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Leave model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Workflow/Assignee/LeaveAssigneeResolver.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between \*NEVER\* and '''' will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Workflow/Assignee/LeaveAssigneeResolver.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/Workflow/DelegationResolver.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\UserDelegation model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Workflow/DelegationResolver.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type string\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Workflow/DelegationResolver.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Leave\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Workflow/LeaveApprovalCoordinator.php
+
+		-
+			message: '#^Method App\\Services\\Workflow\\LeaveApprovalCoordinator\:\:levelFor\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Services/Workflow/LeaveApprovalCoordinator.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\ApprovalStep\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Workflow/LeaveApprovalCoordinator.php
+
+		-
+			message: '#^Parameter \#1 \$array \(array\{array\{code\: ''overtime_permit'', name\: ''อนุญาตโดยรองผู้อำนว…'', role\: ''Deputy Director''\}, array\{code\: ''overtime_approval'', name\: ''อนุมัติโดยผู้อำนวยก…'', role\: ''Director''\}\}\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Services/Workflow/OvertimeOrderWorkflowProvisioner.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Workflow\\WorkflowInstance\:\:\$version\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Workflow/WorkflowEngine.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Workflow\\WorkflowTask\:\:\$step\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Services/Workflow/WorkflowEngine.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Workflow\\WorkflowTransition\:\:\$toStep\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Workflow/WorkflowEngine.php
+
+		-
+			message: '#^Parameter \#1 \$callback of static method Illuminate\\Database\\Connection\:\:transaction\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Workflow/WorkflowEngine.php
+
+		-
+			message: '#^Relation ''version'' is not found in App\\Models\\Workflow\\WorkflowInstance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Workflow/WorkflowEngine.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Request\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Services/Workflow/WorkflowEngine.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Symfony\\Component\\HttpFoundation\\ParameterBag\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Workflow/WorkflowEngine.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>run_no" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Workflow/WorkflowEngine.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type Illuminate\\Http\\Request\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Workflow/WorkflowEngine.php
