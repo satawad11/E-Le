@@ -311,4 +311,58 @@ class OrgScopeResolver
 
         return $collected;
     }
+
+    /**
+     * หา id ของหน่วยงานระดับ "ฝ่ายหลัก" (Division) ที่หน่วยงานนี้สังกัดอยู่
+     *
+     * ในสถานศึกษาอาชีวศึกษา (สอศ.) คือ ๑ ใน ๔ ฝ่ายหลัก:
+     * - ฝ่ายบริหารทรัพยากร
+     * - ฝ่ายแผนงานและความร่วมมือ
+     * - ฝ่ายพัฒนากิจการนักเรียน นักศึกษา
+     * - ฝ่ายวิชาการ
+     *
+     * หน่วยงานระดับฝ่ายคือหน่วยงานที่มี parent_id ชี้ไปยัง ORG-ROOT (สถานศึกษา)
+     */
+    public function divisionOrgUnitId(int $unitId): ?int
+    {
+        $ancestors = $this->ancestorIds($unitId);
+
+        // หา root unit (ยอดผังที่ไม่มี parent_id)
+        $rootId = DB::table('org_units')->whereNull('parent_id')->value('id');
+
+        if ($rootId === null) {
+            return null;
+        }
+
+        /*
+         * ในสายบรรพบุรุษ [$unitId, ..., $parent, $division, $rootId]
+         * หน่วยงานระดับฝ่ายคือตัวที่อยู่ก่อนหน้า $rootId พอดี
+         */
+        $rootIndex = array_search((int) $rootId, $ancestors, true);
+
+        if ($rootIndex !== false && $rootIndex > 0) {
+            return (int) $ancestors[$rootIndex - 1];
+        }
+
+        // หากตัว $unitId เองเป็นฝ่าย หรือเป็น root
+        return $unitId === (int) $rootId ? null : $unitId;
+    }
+
+    /**
+     * ตรวจสอบว่าบุคลากรหรือหน่วยงานสองแห่งสังกัดอยู่ภายใต้ "ฝ่ายเดียวกัน" หรือไม่
+     */
+    public function isSameDivision(User|int $userOrUnitA, User|int $userOrUnitB): bool
+    {
+        $unitIdA = $userOrUnitA instanceof User ? $this->homeOrgUnitId($userOrUnitA) : (int) $userOrUnitA;
+        $unitIdB = $userOrUnitB instanceof User ? $this->homeOrgUnitId($userOrUnitB) : (int) $userOrUnitB;
+
+        if ($unitIdA === null || $unitIdB === null) {
+            return false;
+        }
+
+        $divA = $this->divisionOrgUnitId($unitIdA);
+        $divB = $this->divisionOrgUnitId($unitIdB);
+
+        return $divA !== null && $divA === $divB;
+    }
 }

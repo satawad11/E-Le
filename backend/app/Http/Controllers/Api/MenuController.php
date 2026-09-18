@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Menu;
+use App\Models\Role;
+use App\Services\AuditLogger;
 use App\Services\MenuService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,12 +41,14 @@ class MenuController extends Controller
     {
         $menus = Menu::with(['permissions', 'children'])->orderBy('sort_order', 'asc')->get();
         $allPermissions = Permission::orderBy('name', 'asc')->get();
+        $roles = Role::with(['permissions'])->orderBy('id', 'asc')->get();
 
         return response()->json([
             'success' => true,
             'data' => [
                 'menus' => $menus,
                 'available_permissions' => $allPermissions,
+                'roles' => $roles,
             ],
         ]);
     }
@@ -54,6 +58,11 @@ class MenuController extends Controller
      */
     public function updatePermissions(Request $request, Menu $menu): JsonResponse
     {
+        $before = [
+            'is_active' => $menu->is_active,
+            'permissions' => $menu->permissions->pluck('name')->toArray(),
+        ];
+
         $request->validate([
             'permission_ids' => 'nullable|array',
             'permission_ids.*' => 'exists:permissions,id',
@@ -68,6 +77,13 @@ class MenuController extends Controller
             $menu->is_active = $request->boolean('is_active');
             $menu->save();
         }
+
+        $after = [
+            'is_active' => $menu->is_active,
+            'permissions' => $menu->fresh()->permissions->pluck('name')->toArray(),
+        ];
+
+        app(AuditLogger::class)->log('menu.permissions_updated', 'menu', $menu->id, $before, $after);
 
         // Flush menu cache so changes take effect immediately
         Cache::flush();

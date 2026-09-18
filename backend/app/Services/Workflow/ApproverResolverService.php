@@ -135,10 +135,16 @@ class ApproverResolverService
         $orgUnitId = $this->orgScope->homeOrgUnitId($requester);
 
         if ($orgUnitId !== null && Schema::hasTable('org_unit_managers')) {
-            $parentUnitId = DB::table('org_units')->where('id', $orgUnitId)->value('parent_id');
-            if ($parentUnitId) {
+            // ค้นหาหน่วยงานระดับ ๔ ฝ่ายหลัก ผ่าน divisionOrgUnitId
+            $divisionUnitId = $this->orgScope->divisionOrgUnitId($orgUnitId);
+            $targetUnitIds = array_filter(array_unique([
+                $divisionUnitId,
+                DB::table('org_units')->where('id', $orgUnitId)->value('parent_id'),
+            ]));
+
+            foreach ($targetUnitIds as $targetId) {
                 $managers = DB::table('org_unit_managers')
-                    ->where('org_unit_id', $parentUnitId)
+                    ->where('org_unit_id', $targetId)
                     ->whereDate('effective_from', '<=', $date)
                     ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date))
                     ->pluck('user_id')

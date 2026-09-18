@@ -1,5 +1,6 @@
 <template>
   <div class="max-w-7xl mx-auto space-y-6">
+    <AppBreadcrumb />
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">{{ preset.title || 'ทะเบียนหนังสือ' }}</h1>
@@ -34,6 +35,8 @@
             <option value="">ทุกสถานะ</option>
             <option value="draft">ฉบับร่าง</option>
             <option value="submitted">เสนอแล้ว</option>
+            <option value="registered">ลงทะเบียนรับแล้ว</option>
+            <option value="signed">ลงนามแล้ว</option>
           </AppSelect>
           <AppButton variant="secondary" size="sm" @click="advanced = !advanced">
             {{ advanced ? 'ซ่อนค้นหาขั้นสูง' : 'ค้นหาขั้นสูง' }}
@@ -57,6 +60,13 @@
           <option value="secret">ลับมาก</option>
           <option value="top_secret">ลับที่สุด</option>
         </AppSelect>
+        <AppSelect v-model="filters.retention_status" label="สถานะการเก็บรักษา/อายัด">
+          <option value="">ทุกสถานะการเก็บรักษา</option>
+          <option value="scheduled">อยู่ระหว่างเก็บรักษา</option>
+          <option value="due">ครบกำหนดทำลาย</option>
+          <option value="on_hold">ถูกอายัด (Legal Hold)</option>
+          <option value="disposed">ทำลายไฟล์แล้ว (คงทะเบียน)</option>
+        </AppSelect>
         <AppInput v-model="filters.from" type="date" label="ตั้งแต่วันที่" />
         <AppInput v-model="filters.to" type="date" label="ถึงวันที่" />
         <div class="sm:col-span-2 lg:col-span-4 flex gap-2">
@@ -73,37 +83,81 @@
         description="เริ่มต้นด้วยการสร้างหนังสือฉบับแรก"
       />
 
-      <div v-else class="overflow-x-auto">
-        <table class="w-full text-sm min-w-[720px]">
-          <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
-            <tr>
-              <th class="text-left px-5 py-3 font-semibold">เรื่อง</th>
-              <th class="text-left px-5 py-3 font-semibold">ประเภท</th>
-              <th class="text-left px-5 py-3 font-semibold">ทิศทาง</th>
-              <th class="text-center px-5 py-3 font-semibold">ชั้นความเร็ว</th>
-              <th class="text-center px-5 py-3 font-semibold">สถานะ</th>
-              <th class="text-right px-5 py-3 font-semibold">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-50">
-            <tr v-for="doc in documents" :key="doc.id" class="hover:bg-gray-50/60">
-              <td class="px-5 py-3 font-medium text-gray-900">{{ doc.subject }}</td>
-              <td class="px-5 py-3 text-gray-600">{{ doc.document_type?.name || '—' }}</td>
-              <td class="px-5 py-3 text-gray-600">{{ directionLabel(doc.direction) }}</td>
-              <td class="px-5 py-3 text-center">
+      <div v-else>
+        <!-- Desktop Table -->
+        <div class="hidden md:block overflow-x-auto">
+          <table class="w-full text-sm min-w-[720px]">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+              <tr>
+                <th class="text-left px-5 py-3 font-semibold">เรื่อง</th>
+                <th class="text-left px-5 py-3 font-semibold">ประเภท</th>
+                <th class="text-left px-5 py-3 font-semibold">ทิศทาง</th>
+                <th class="text-center px-5 py-3 font-semibold">ชั้นความเร็ว</th>
+                <th class="text-center px-5 py-3 font-semibold">สถานะ/การเก็บรักษา</th>
+                <th class="text-right px-5 py-3 font-semibold">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              <tr v-for="doc in documents" :key="doc.id" class="hover:bg-gray-50/60">
+                <td class="px-5 py-3 font-medium text-gray-900">
+                  <div>{{ doc.subject }}</div>
+                  <div v-if="doc.document_number?.formatted" class="text-xs text-gray-500 font-mono mt-0.5">
+                    {{ doc.document_number.formatted }}
+                  </div>
+                </td>
+                <td class="px-5 py-3 text-gray-600">{{ doc.document_type?.name || '—' }}</td>
+                <td class="px-5 py-3 text-gray-600">{{ directionLabel(doc.direction) }}</td>
+                <td class="px-5 py-3 text-center">
+                  <AppBadge :variant="urgencyVariant(doc.urgency)">{{ urgencyLabel(doc.urgency) }}</AppBadge>
+                </td>
+                <td class="px-5 py-3 text-center">
+                  <div class="flex flex-col items-center gap-1">
+                    <AppBadge :variant="statusBadgeVariant(doc.status)">
+                      {{ statusDisplayLabel(doc.status) }}
+                    </AppBadge>
+                    <AppBadge v-if="doc.legal_holds && doc.legal_holds.length" variant="warning" size="sm">
+                      🔒 ถูกอายัด
+                    </AppBadge>
+                    <AppBadge v-else-if="doc.retention_schedule?.status === 'disposed'" variant="danger" size="sm">
+                      🗑️ ทำลายไฟล์แล้ว
+                    </AppBadge>
+                    <AppBadge v-else-if="doc.retention_schedule?.status === 'approved'" variant="warning" size="sm">
+                      ⚠️ อนุมัติทำลาย
+                    </AppBadge>
+                  </div>
+                </td>
+                <td class="px-5 py-3 text-right">
+                  <AppButton size="sm" variant="ghost" @click="open(doc)">เปิดดู</AppButton>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile Cards -->
+        <div class="block md:hidden divide-y divide-gray-100">
+          <div v-for="doc in documents" :key="doc.id" class="p-4 space-y-2 hover:bg-gray-50">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-mono text-xs font-semibold text-primary bg-primary/5 px-2 py-0.5 rounded">
+                {{ doc.document_number?.formatted || 'ยังไม่มีเลขที่' }}
+              </span>
+              <div class="flex items-center gap-1">
                 <AppBadge :variant="urgencyVariant(doc.urgency)">{{ urgencyLabel(doc.urgency) }}</AppBadge>
-              </td>
-              <td class="px-5 py-3 text-center">
-                <AppBadge :variant="doc.status === 'draft' ? 'gray' : 'info'">
-                  {{ doc.status === 'draft' ? 'ฉบับร่าง' : 'เสนอแล้ว' }}
-                </AppBadge>
-              </td>
-              <td class="px-5 py-3 text-right">
-                <AppButton size="sm" variant="ghost" @click="open(doc)">เปิดดู</AppButton>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                <AppBadge :variant="statusBadgeVariant(doc.status)">{{ statusDisplayLabel(doc.status) }}</AppBadge>
+              </div>
+            </div>
+
+            <p class="font-medium text-gray-900 text-sm leading-snug">{{ doc.subject }}</p>
+
+            <div class="flex items-center justify-between pt-2 border-t border-gray-100 text-xs text-gray-500">
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>{{ doc.document_type?.name || '—' }}</span>
+                <span>{{ directionLabel(doc.direction) }}</span>
+              </div>
+              <AppButton size="sm" variant="ghost" @click="open(doc)">เปิดดู</AppButton>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-if="lastPage > 1" class="px-5 py-4 border-t border-gray-100">
@@ -120,6 +174,7 @@ import api from '../../axios'
 import SavedViews from '../../components/saraban/SavedViews.vue'
 import { getErrorMessage } from '../../utils/errorHandler'
 import AppBadge from '../../components/ui/AppBadge.vue'
+import AppBreadcrumb from '../../components/ui/AppBreadcrumb.vue'
 import AppButton from '../../components/ui/AppButton.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppPagination from '../../components/ui/AppPagination.vue'
@@ -153,13 +208,32 @@ const route = useRoute()
  */
 const preset = computed(() => route.meta?.saraban || {})
 
+const STATUS_MAP = {
+  draft: { label: 'ฉบับร่าง', variant: 'gray' },
+  submitted: { label: 'เสนอแล้ว', variant: 'info' },
+  registered: { label: 'ลงทะเบียนแล้ว', variant: 'info' },
+  signed: { label: 'ลงนามแล้ว', variant: 'success' },
+  rejected: { label: 'ส่งกลับ/ปฏิเสธ', variant: 'warning' },
+  cancelled: { label: 'ยกเลิก', variant: 'danger' },
+}
+
+const statusDisplayLabel = (status) => STATUS_MAP[status]?.label || status || '—'
+const statusBadgeVariant = (status) => STATUS_MAP[status]?.variant || 'gray'
+
 const documents = ref([])
 const loading = ref(true)
 const error = ref('')
 const page = ref(1)
 const lastPage = ref(1)
 const filters = reactive({
-  direction: '', status: '', q: '', document_type_id: '', confidentiality: '', from: '', to: '',
+  direction: '',
+  status: '',
+  q: '',
+  document_type_id: '',
+  confidentiality: '',
+  retention_status: '',
+  from: '',
+  to: '',
 })
 const advanced = ref(false)
 const documentTypes = ref([])

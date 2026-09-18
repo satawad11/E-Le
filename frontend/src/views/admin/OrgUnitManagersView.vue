@@ -73,8 +73,8 @@
       </div>
     </section>
 
-    <div v-if="showForm" class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" @click.self="showForm = false">
-      <form class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-xl" @submit.prevent="save">
+    <div v-if="showForm" class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 overflow-y-auto" @click.self="showForm = false">
+      <form class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto my-auto" @submit.prevent="save">
         <h2 class="text-xl font-bold text-gray-900">มอบหมายผู้รับผิดชอบหน่วยงาน</h2>
 
         <label class="block text-sm">หน่วยงาน

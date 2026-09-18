@@ -97,7 +97,7 @@
       <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
         <header class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 class="font-semibold">งานของฉัน</h2>
-          <RouterLink to="/saraban/documents/queue" class="text-sm text-[#800000] hover:underline">
+          <RouterLink to="/saraban/inbox?tab=queue" class="text-sm text-[#800000] hover:underline">
             ดูทั้งหมด
           </RouterLink>
         </header>
@@ -161,8 +161,8 @@ const fatal = ref('')
 const actions = [
   { label: 'สร้างหนังสือ', to: '/saraban/documents/new', permission: 'saraban.document.create' },
   { label: 'ลงทะเบียนรับ', to: '/saraban/incoming/new', permission: 'saraban.incoming.register' },
-  { label: 'จองเลขหนังสือ', to: '/saraban/numbers', permission: 'saraban.number.reserve' },
-  { label: 'ทะเบียนหนังสือ', to: '/saraban/documents', permission: 'saraban.document.view' },
+  { label: 'จองเลขหนังสือ', to: '/saraban/registers?tab=reservations', permission: 'saraban.number.reserve' },
+  { label: 'สมุดทะเบียน', to: '/saraban/registers', permission: 'saraban.document.view' },
 ]
 
 const open = (item) => router.push({ name: 'saraban-document-detail', params: { id: item.document_id } })

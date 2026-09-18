@@ -72,14 +72,39 @@
             </svg>
             <div>
               <strong class="font-bold">คำแนะนำ:</strong>
-              สิทธิ์ที่เป็นแถบสีเทาพร้อมตรา <span class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded text-[10px]">สิทธิ์จากบทบาท</span> คือสิทธิ์ที่ได้จาก Role หลักอัตโนมัติ สิทธิ์ที่ติ๊กถูกได้ด้านล่างจะเป็น <strong>สิทธิ์พิเศษเฉพาะบุคคล (Direct Permission)</strong>
+              สิทธิ์ที่เป็นแถบสีเทาพร้อมตรา <span class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded text-[10px]">จากบทบาท</span> คือสิทธิ์ที่ได้รับจากบทบาทหลักอัตโนมัติ สิทธิ์ที่สามารถคลิกเลือก/ถอนออกได้จะเป็น <strong>สิทธิ์พิเศษเฉพาะบุคคล (Direct Permission)</strong>
+            </div>
+          </div>
+
+          <!-- Search & Filter Direct Permissions -->
+          <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200">
+            <div class="w-full sm:w-72 relative">
+              <input
+                v-model="searchQuery"
+                type="search"
+                placeholder="ค้นหาสิทธิ์ตามชื่อหรือรหัส..."
+                class="w-full pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              />
+              <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                v-if="directPermissions.length > 0"
+                type="button"
+                @click="clearAllDirectPermissions"
+                class="text-xs font-semibold text-red-600 hover:text-red-800 hover:bg-red-50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+              >
+                ล้างสิทธิ์เฉพาะบุคคลทั้งหมด
+              </button>
             </div>
           </div>
 
           <!-- Modules List -->
           <div class="space-y-4">
             <div 
-              v-for="(module, moduleId) in modules" 
+              v-for="(module, moduleId) in filteredModules" 
               :key="moduleId"
               class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
             >
@@ -226,6 +251,7 @@ const rolePermissions = ref([]);
 const directPermissions = ref([]);
 const toastMsg = ref('');
 const toastType = ref('success'); // 'success' | 'error'
+const searchQuery = ref('');
 
 function showToast(msg, type = 'success', duration = 3500) {
   toastMsg.value = msg;
@@ -236,6 +262,41 @@ function showToast(msg, type = 'success', duration = 3500) {
 const effectivePermissions = computed(() => {
   return Array.from(new Set([...rolePermissions.value, ...directPermissions.value]));
 });
+
+const filteredModules = computed(() => {
+  if (!searchQuery.value) return modules.value;
+  const q = searchQuery.value.toLowerCase().trim();
+  const res = {};
+
+  Object.entries(modules.value).forEach(([modId, mod]) => {
+    const matchedPerms = {};
+    Object.entries(mod.permissions || {}).forEach(([permKey, desc]) => {
+      if (
+        permKey.toLowerCase().includes(q) ||
+        (desc && desc.toLowerCase().includes(q))
+      ) {
+        matchedPerms[permKey] = desc;
+      }
+    });
+
+    if (
+      mod.name.toLowerCase().includes(q) ||
+      (mod.description && mod.description.toLowerCase().includes(q)) ||
+      Object.keys(matchedPerms).length > 0
+    ) {
+      res[modId] = {
+        ...mod,
+        permissions: Object.keys(matchedPerms).length > 0 ? matchedPerms : mod.permissions,
+      };
+    }
+  });
+
+  return res;
+});
+
+function clearAllDirectPermissions() {
+  directPermissions.value = [];
+}
 
 function isRolePermission(permKey) {
   return rolePermissions.value.includes(permKey);

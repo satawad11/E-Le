@@ -39,6 +39,13 @@ class ApiSurfaceContractTest extends TestCase
         'api/user' => 'เรียกจาก auth store',
         'api/leaves/verify/{hash}/qrcode' => 'ฝัง QR ลงในเอกสารจากฝั่ง server',
         'api/files/{path}' => 'เรียกผ่าน directive secure-src',
+        'api/v1/reports/vocational/evaluation-summary' => 'รายงานสรุปวันลาและเวลาปฏิบัติราชการรอบเลื่อนขั้นเงินเดือน ก.ค.ศ. (เฟส 2)',
+        'api/v1/reports/vocational/teacher-pa-evidence' => 'แฟ้มหลักฐานผลการปฏิบัติงานรายบุคคลสำหรับ ว PA (เฟส 2)',
+        'api/v1/attendance/biometric/import-file' => 'ระบบนำเข้าไฟล์จากเครื่องสแกน Biometric Hub (เฟส 2)',
+        'api/saraban/incoming/import-package' => 'จุดรับเข้า Webhook สำหรับหนังสือราชการข้ามสถานศึกษา/หน่วยงานภายนอก (เฟส 8: SoT §17, §27)',
+        'api/v1/saraban/incoming/import-package' => 'จุดรับเข้า Webhook สำหรับหนังสือราชการข้ามสถานศึกษา/หน่วยงานภายนอก (เฟส 8: SoT §17, §27)',
+        'api/saraban/documents/{document}/dispatch-package' => 'จุดสร้าง/ดาวน์โหลดแพ็กเกจส่งหนังสือราชการอิเล็กทรอนิกส์ข้ามสถานศึกษา (เฟส 8: SoT §17, §27)',
+        'api/v1/saraban/documents/{document}/dispatch-package' => 'จุดสร้าง/ดาวน์โหลดแพ็กเกจส่งหนังสือราชการอิเล็กทรอนิกส์ข้ามสถานศึกษา (เฟส 8: SoT §17, §27)',
     ];
 
     public function test_every_api_endpoint_is_reachable_from_the_web_application(): void

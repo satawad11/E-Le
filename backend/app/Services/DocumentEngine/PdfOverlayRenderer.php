@@ -112,7 +112,7 @@ class PdfOverlayRenderer
         try {
             match ($mapping->field_type) {
                 'CHECKBOX' => $this->drawCheckbox($pdf, $mapping, $raw, $x, $y),
-                'SIGNATURE', 'IMAGE' => $this->drawImage($pdf, $mapping, $raw, $x, $y),
+                'SIGNATURE', 'IMAGE', 'GARUDA' => $this->drawImage($pdf, $mapping, $raw, $x, $y),
                 'QR_CODE' => $this->drawQrCode($pdf, $mapping, $raw, $x, $y, $temporary),
                 'MULTILINE_TEXT' => $this->drawMultiline($pdf, $mapping, $raw, $x, $y),
                 default => $this->drawText($pdf, $mapping, $raw, $x, $y),
@@ -181,49 +181,47 @@ class PdfOverlayRenderer
 
     private function drawText(OverlayPdf $pdf, DocumentFieldMapping $mapping, mixed $raw, float $x, float $y): void
     {
-        $text = $this->text($raw, $mapping);
+        $text = $this->formatter->format($raw, $mapping->format);
 
         if ($text === '') {
             return;
         }
 
-        $size = (float) $mapping->font_size;
-        $spacing = (float) ($this->option($mapping, 'letter_spacing') ?? 0);
-        $pdf->SetFont($this->font($mapping), $this->style($mapping), $size);
-
-        // ข้อความยาวเกินช่อง: ย่อขนาดลงจนพอดี (ไม่ต่ำกว่า 6pt) เพื่อไม่ให้ทับช่องข้าง ๆ
-        if ($mapping->overflow === 'shrink') {
-            $extra = $spacing * max(0, mb_strlen($text) - 1);
-
-            while ($size > 6 && ($pdf->GetStringWidth($text) + $extra) > (float) $mapping->width) {
-                $size -= 0.5;
-                $pdf->SetFont($this->font($mapping), $this->style($mapping), $size);
-            }
-        }
-
-        if ($spacing > 0) {
-            $pdf->setCharSpacing($spacing);
-        }
-
-        $pdf->SetXY($x, $y);
-        $pdf->Cell((float) $mapping->width, (float) $mapping->height, $text, 0, 0, $this->align($mapping->align));
-
-        if ($spacing > 0) {
-            $pdf->setCharSpacing(0);
-        }
+        PdfVectorDrawer::drawText(
+            $pdf,
+            $x,
+            $y,
+            (float) $mapping->width,
+            (float) $mapping->height,
+            $text,
+            (float) $mapping->font_size,
+            $this->font($mapping),
+            $this->style($mapping),
+            $this->align($mapping->align),
+            $mapping->overflow === 'shrink',
+            (float) ($this->option($mapping, 'letter_spacing') ?? 0),
+        );
     }
 
     private function drawMultiline(OverlayPdf $pdf, DocumentFieldMapping $mapping, mixed $raw, float $x, float $y): void
     {
-        $text = $this->text($raw, $mapping);
+        $text = $this->formatter->format($raw, $mapping->format);
 
         if ($text === '') {
             return;
         }
 
-        $pdf->SetFont($this->font($mapping), $this->style($mapping), (float) $mapping->font_size);
-        $pdf->SetXY($x, $y);
-        $pdf->MultiCell((float) $mapping->width, (float) $mapping->font_size * 1.2, $text, 0, $this->align($mapping->align));
+        PdfVectorDrawer::drawMultiline(
+            $pdf,
+            $x,
+            $y,
+            (float) $mapping->width,
+            $text,
+            (float) $mapping->font_size,
+            $this->font($mapping),
+            $this->style($mapping),
+            $this->align($mapping->align),
+        );
     }
 
     private function drawCheckbox(OverlayPdf $pdf, DocumentFieldMapping $mapping, mixed $raw, float $x, float $y): void
@@ -232,23 +230,24 @@ class PdfOverlayRenderer
             return;
         }
 
-        $mark = $this->encode(trim((string) ($this->option($mapping, 'mark') ?? '/')));
+        $mark = trim((string) ($this->option($mapping, 'mark') ?? '/'));
 
         if ($mark === '') {
             return;
         }
 
-        /*
-         * ใช้ฟอนต์ไทยของระบบวาดเครื่องหมาย ไม่ใช่ฟอนต์แกนของ FPDF
-         *
-         * FPDF อ่านนิยามฟอนต์แกน (เช่น helveticab.json) จาก `FPDF_FONTPATH` เช่นกัน
-         * ซึ่งโครงการชี้ไปที่โฟลเดอร์ฟอนต์ไทยของตัวเอง การเรียกฟอนต์แกนจึงล้มทั้งการพิมพ์
-         * ทันทีที่มีช่องติ๊กถูกติ๊กจริง — THSarabunNew ครอบคลุม ASCII อยู่แล้ว
-         * ส่วนอักขระนอก cp874 (เช่น ✓) ถูกแปลงด้วย iconv ตามเส้นทางเดียวกับข้อความอื่น
-         */
-        $pdf->SetFont($this->font($mapping), '', (float) $mapping->font_size);
-        $pdf->SetXY($x, $y);
-        $pdf->Cell((float) $mapping->width, (float) $mapping->height, $mark, 0, 0, 'C');
+        PdfVectorDrawer::drawText(
+            $pdf,
+            $x,
+            $y,
+            (float) $mapping->width,
+            (float) $mapping->height,
+            $mark,
+            (float) $mapping->font_size,
+            $this->font($mapping),
+            '',
+            'C',
+        );
     }
 
     /**
@@ -274,7 +273,8 @@ class PdfOverlayRenderer
 
     private function drawImage(OverlayPdf $pdf, DocumentFieldMapping $mapping, mixed $raw, float $x, float $y): void
     {
-        $path = $this->imagePath(is_string($raw) ? $raw : '');
+        $stored = is_string($raw) && $raw !== '' ? $raw : ($mapping->field_type === 'GARUDA' || $mapping->field_code === 'garuda' ? 'garuda' : '');
+        $path = $this->imagePath($stored);
 
         if ($path === null) {
             return;
@@ -319,6 +319,17 @@ class PdfOverlayRenderer
     /** แปลง path ลายเซ็น/รูปในระบบให้เป็น path จริงบนดิสก์ (กันการอ่านไฟล์นอกที่เก็บ) */
     private function imagePath(string $stored): ?string
     {
+        if (in_array(strtolower($stored), ['garuda', 'garuda.png', 'assets/garuda.png', 'images/garuda.png'], true)) {
+            $publicGaruda = public_path('images/garuda.png');
+            if (file_exists($publicGaruda)) {
+                return $publicGaruda;
+            }
+            $resourceGaruda = resource_path('images/garuda.png');
+            if (file_exists($resourceGaruda)) {
+                return $resourceGaruda;
+            }
+        }
+
         if ($stored === '') {
             return null;
         }
@@ -332,7 +343,15 @@ class PdfOverlayRenderer
 
         $disk = Storage::disk('private_uploads');
 
-        return $disk->exists($relative) ? $disk->path($relative) : null;
+        if ($disk->exists($relative)) {
+            return $disk->path($relative);
+        }
+
+        if (file_exists(public_path($relative))) {
+            return public_path($relative);
+        }
+
+        return null;
     }
 
     private function font(DocumentFieldMapping $mapping): string
@@ -367,19 +386,8 @@ class PdfOverlayRenderer
      *
      * FPDF ทำงานบนหน้ารหัส cp874 สำหรับภาษาไทย จึงต้องแปลงจาก UTF-8 ก่อนเขียน
      */
-    private function text(mixed $raw, DocumentFieldMapping $mapping): string
-    {
-        return $this->encode($this->formatter->format($raw, $mapping->format));
-    }
-
     private function encode(string $text): string
     {
-        if ($text === '') {
-            return '';
-        }
-
-        $converted = @iconv('UTF-8', 'CP874//TRANSLIT', $text);
-
-        return $converted === false ? $text : $converted;
+        return OverlayFonts::encode($text);
     }
 }

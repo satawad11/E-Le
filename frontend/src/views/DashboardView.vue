@@ -30,6 +30,103 @@
 
 
     <div v-else>
+      <!-- Executive Unified Task Inbox Widget (ภารกิจรอดำเนินการของท่าน) -->
+      <div v-if="stats.executive_tasks && (stats.executive_tasks.total_actionable > 0 || isManager)" class="mb-8 bg-gradient-to-r from-amber-500/10 via-[#800000]/10 to-orange-500/10 rounded-2xl border border-amber-200/60 p-5 sm:p-6 shadow-xs">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-[#800000] text-white rounded-xl shadow-xs flex-shrink-0">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <span>ภารกิจรอดำเนินการของท่าน</span>
+                <span v-if="stats.executive_tasks.total_actionable > 0" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#800000] text-white">
+                  {{ stats.executive_tasks.total_actionable }} รายการ
+                </span>
+                <span v-else class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                  ดำเนินการครบถ้วนแล้ว
+                </span>
+              </h2>
+              <p class="text-xs sm:text-sm text-gray-600">ศูนย์รวมงานรอการพิจารณา อนุมัติ ลงนามเกษียน และหนังสือเวียนราชการ</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <router-link to="/approvals" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-xs font-bold text-[#800000] rounded-xl shadow-xs transition-colors">
+              <span>เปิดคิวงานอนุมัติ</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </router-link>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <!-- 1. Leaves Pending Approval -->
+          <router-link to="/approvals" class="p-4 bg-white/90 hover:bg-white rounded-xl border border-amber-100 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-red-100 text-[#800000] flex items-center justify-center font-bold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 font-medium">ใบลาที่รออนุมัติ</p>
+                <p class="text-lg font-bold text-gray-900 group-hover:text-[#800000] transition-colors">
+                  {{ stats.executive_tasks.pending_leaves_count }} <span class="text-xs font-normal text-gray-500">ฉบับ</span>
+                </p>
+              </div>
+            </div>
+            <span class="text-gray-400 group-hover:text-[#800000] transition-colors">&rarr;</span>
+          </router-link>
+
+          <!-- 2. Overtime Pending Approval -->
+          <router-link to="/overtime/orders" class="p-4 bg-white/90 hover:bg-white rounded-xl border border-amber-100 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 font-medium">คำสั่ง OT รออนุมัติ</p>
+                <p class="text-lg font-bold text-gray-900 group-hover:text-orange-600 transition-colors">
+                  {{ stats.executive_tasks.pending_ot_orders_count }} <span class="text-xs font-normal text-gray-500">คำสั่ง</span>
+                </p>
+              </div>
+            </div>
+            <span class="text-gray-400 group-hover:text-orange-600 transition-colors">&rarr;</span>
+          </router-link>
+
+          <!-- 3. Saraban Tasks Queue -->
+          <router-link to="/saraban/documents/queue" class="p-4 bg-white/90 hover:bg-white rounded-xl border border-amber-100 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 font-medium">งานเกษียน/ลงนาม</p>
+                <p class="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                  {{ stats.executive_tasks.pending_saraban_tasks_count }} <span class="text-xs font-normal text-gray-500">เรื่อง</span>
+                </p>
+              </div>
+            </div>
+            <span class="text-gray-400 group-hover:text-blue-600 transition-colors">&rarr;</span>
+          </router-link>
+
+          <!-- 4. Saraban Unread Circulars -->
+          <router-link to="/saraban/inbox" class="p-4 bg-white/90 hover:bg-white rounded-xl border border-amber-100 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 font-medium">หนังสือเวียนเข้า</p>
+                <p class="text-lg font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
+                  {{ stats.executive_tasks.unacknowledged_inbox_count }} <span class="text-xs font-normal text-gray-500">เรื่อง</span>
+                </p>
+              </div>
+            </div>
+            <span class="text-gray-400 group-hover:text-purple-600 transition-colors">&rarr;</span>
+          </router-link>
+        </div>
+      </div>
+
       <!-- Today's Attendance Card -->
       <div class="mb-8 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col md:flex-row items-center justify-between p-4 sm:p-6 bg-gradient-to-r from-gray-50 to-white gap-4">
         <div class="flex items-center gap-4">
@@ -81,6 +178,49 @@
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">ทั้งหมด</p>
           <p class="text-3xl font-extrabold text-[#800000]">{{ stats.total }}</p>
+        </div>
+      </div>
+
+      <!-- Vocational 23-Day Evaluation Progress Widget -->
+      <div v-if="vocationalEvaluation" class="mb-8 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 md:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            <div class="p-3 rounded-xl flex-shrink-0"
+              :class="vocationalEvaluation.statusColor === 'red' ? 'bg-red-100 text-red-600' :
+                      vocationalEvaluation.statusColor === 'orange' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-base sm:text-lg font-bold text-gray-800">เกณฑ์วันลาประเมินผลการปฏิบัติราชการ (ก.ค.ศ.)</h2>
+              <p class="text-xs sm:text-sm text-gray-500">{{ vocationalEvaluation.cycleName }} · เพดานวันลาป่วยและลากิจไม่เกิน ๒๓ วันทำการ</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold px-3 py-1 rounded-full"
+              :class="vocationalEvaluation.statusColor === 'red' ? 'bg-red-100 text-red-700' :
+                      vocationalEvaluation.statusColor === 'orange' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'">
+              {{ vocationalEvaluation.statusLabel }}
+            </span>
+            <router-link to="/reports/vocational-evaluation" class="text-xs text-[#800000] hover:underline font-semibold ml-2">
+              ดูรายงานละเอียด &rarr;
+            </router-link>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <div class="flex justify-between text-xs sm:text-sm font-medium">
+            <span class="text-gray-600">วันลาป่วย + ลากิจสะสมในรอบนี้: <strong class="text-gray-900 font-bold">{{ vocationalEvaluation.totalUsed }} วัน</strong></span>
+            <span :class="vocationalEvaluation.statusColor === 'red' ? 'text-red-600 font-bold' : 'text-gray-500'">
+              {{ vocationalEvaluation.totalUsed >= 23 ? 'เกินเกณฑ์เพดานแล้ว' : `เหลืออีก ${vocationalEvaluation.remainingThreshold} วันก่อนแตะเกณฑ์` }}
+            </span>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+            <div class="h-3 rounded-full transition-all duration-500"
+              :class="vocationalEvaluation.statusColor === 'red' ? 'bg-red-500' :
+                      vocationalEvaluation.statusColor === 'orange' ? 'bg-amber-500' : 'bg-emerald-500'"
+              :style="{ width: `${Math.min(100, (vocationalEvaluation.totalUsed / 23) * 100)}%` }"></div>
+          </div>
         </div>
       </div>
 
@@ -303,6 +443,46 @@ const filters = [
 
 const isManager = computed(() => {
   return authStore.isManager || authStore.isHRHead || authStore.isSuperAdmin
+})
+
+const vocationalEvaluation = computed(() => {
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
+  const thaiYear = year + 543
+
+  let cycleName = ''
+  if (month >= 4 && month <= 9) {
+    cycleName = `รอบที่ ๒ (๑ เม.ย. – ๓๐ ก.ย. ${thaiYear})`
+  } else if (month >= 10) {
+    cycleName = `รอบที่ ๑ (๑ ต.ค. ${thaiYear} – ๓๑ มี.ค. ${thaiYear + 1})`
+  } else {
+    cycleName = `รอบที่ ๑ (๑ ต.ค. ${thaiYear - 1} – ๓๑ มี.ค. ${thaiYear})`
+  }
+
+  const sickBalance = leaveStore.balances.find(b => (b.type?.name || '').includes('ป่วย'))
+  const personalBalance = leaveStore.balances.find(b => (b.type?.name || '').includes('กิจส่วนตัว'))
+
+  const totalUsed = Number(sickBalance?.used || 0) + Number(personalBalance?.used || 0)
+  const remainingThreshold = Math.max(0, 23 - totalUsed)
+
+  let statusColor = 'green'
+  let statusLabel = 'ปกติ'
+  if (totalUsed >= 23) {
+    statusColor = 'red'
+    statusLabel = 'แตะหรือเกินเกณฑ์ ๒๓ วัน'
+  } else if (totalUsed >= 16) {
+    statusColor = 'orange'
+    statusLabel = 'ใกล้แตะเพดาน ๒๓ วัน'
+  }
+
+  return {
+    cycleName,
+    totalUsed,
+    remainingThreshold,
+    statusColor,
+    statusLabel,
+  }
 })
 
 const fiscalYearsList = ref([])

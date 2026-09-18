@@ -1,5 +1,6 @@
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
+    <AppBreadcrumb />
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">รายงานสารบรรณ</h1>
@@ -51,20 +52,52 @@
           description="เมื่อมีหนังสือเข้าสู่ระบบ กราฟสรุปจะปรากฏที่นี่"
         />
 
-        <div v-else class="grid lg:grid-cols-3 gap-4">
-          <section class="lg:col-span-2 bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
-            <h2 class="font-semibold mb-4">หนังสือเข้า-ออก รายเดือน</h2>
-            <div class="h-72">
-              <Bar :data="monthlyChart" :options="barOptions" />
-            </div>
-          </section>
+        <div v-else class="space-y-4">
+          <div class="grid lg:grid-cols-3 gap-4">
+            <section class="lg:col-span-2 bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+              <h2 class="font-semibold mb-4">หนังสือเข้า-ออก รายเดือน</h2>
+              <div class="h-72">
+                <Bar :data="monthlyChart" :options="barOptions" />
+              </div>
+            </section>
 
-          <section class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
-            <h2 class="font-semibold mb-4">สถานะการดำเนินการ</h2>
-            <div class="h-72">
-              <Doughnut :data="statusChart" :options="doughnutOptions" />
+            <section class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+              <h2 class="font-semibold mb-4">สถานะการดำเนินการ</h2>
+              <div class="h-72">
+                <Doughnut :data="statusChart" :options="doughnutOptions" />
+              </div>
+              <p class="text-sm text-gray-500 mt-3">ทั้งหมด {{ data.total }} ฉบับ</p>
+            </section>
+          </div>
+
+          <!-- สถิติแยกตาม ๔ ฝ่ายหลัก สอศ. -->
+          <section v-if="data.by_division?.length" class="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="font-semibold text-gray-800">สัดส่วนหนังสือแยกตาม ๔ ฝ่ายหลัก (สอศ.)</h2>
+                <p class="text-xs text-gray-500 mt-0.5">จำแนกตามฝ่ายต้นสังกัดของหน่วยงานเจ้าของเรื่อง</p>
+              </div>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-medium">โครงสร้าง ๔ ฝ่าย สอศ.</span>
             </div>
-            <p class="text-sm text-gray-500 mt-3">ทั้งหมด {{ data.total }} ฉบับ</p>
+
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div
+                v-for="div in data.by_division"
+                :key="div.division_id"
+                class="rounded-xl border border-gray-100 bg-gray-50/60 p-4 transition-all hover:bg-white hover:shadow-sm"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold px-2 py-0.5 rounded bg-white text-gray-700 border border-gray-200">{{ div.code || 'ฝ่าย' }}</span>
+                  <span class="text-xs font-semibold text-gray-500">{{ calculatePercent(div.count, data.total) }}%</span>
+                </div>
+                <p class="text-sm font-medium text-gray-800 mt-2 truncate" :title="div.name">{{ div.name }}</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ div.count }} <span class="text-xs font-normal text-gray-500">ฉบับ</span></p>
+
+                <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3 overflow-hidden">
+                  <div class="bg-[#800000] h-1.5 rounded-full" :style="{ width: `${calculatePercent(div.count, data.total)}%` }"></div>
+                </div>
+              </div>
+            </div>
           </section>
         </div>
       </template>
@@ -76,41 +109,73 @@
             <h2 class="font-semibold text-gray-800">ทะเบียนหนังสือ</h2>
             <p class="text-sm text-gray-500 mt-0.5">พบ {{ data.total || 0 }} ฉบับ</p>
           </div>
-          <div class="w-full sm:w-48">
-            <AppSelect v-model="filters.direction" label="ทิศทาง" @change="load">
-              <option value="">ทั้งหมด</option>
-              <option value="incoming">หนังสือรับ</option>
-              <option value="outgoing">หนังสือส่ง</option>
-              <option value="internal">หนังสือภายใน</option>
-            </AppSelect>
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="w-36">
+              <AppSelect v-model="filters.direction" label="ทิศทาง" @change="load">
+                <option value="">ทุกทิศทาง</option>
+                <option value="incoming">หนังสือรับ</option>
+                <option value="outgoing">หนังสือส่ง</option>
+                <option value="internal">หนังสือภายใน</option>
+              </AppSelect>
+            </div>
+            <div class="w-48">
+              <AppSelect v-model="filters.division_id" label="ฝ่ายงาน (สอศ.)" @change="load">
+                <option value="">ทุกฝ่ายงาน</option>
+                <option v-for="d in divisionsList" :key="d.id" :value="d.id">{{ d.name }}</option>
+              </AppSelect>
+            </div>
           </div>
         </header>
 
         <EmptyState v-if="!data.rows?.length" title="ไม่พบหนังสือ" description="ลองปรับเงื่อนไขการค้นหา" />
 
-        <div v-else class="overflow-x-auto">
-          <table class="w-full text-sm min-w-[860px]">
-            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
-              <tr>
-                <th class="text-left px-5 py-3 font-semibold">เลขที่หนังสือ</th>
-                <th class="text-left px-5 py-3 font-semibold">เรื่อง</th>
-                <th class="text-left px-5 py-3 font-semibold">ประเภท</th>
-                <th class="text-left px-5 py-3 font-semibold">หน่วยงาน</th>
-                <th class="text-left px-5 py-3 font-semibold">สถานะ</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-              <tr v-for="row in data.rows" :key="row.id" class="hover:bg-gray-50/60">
-                <td class="px-5 py-3 font-mono text-xs text-gray-900">{{ row.document_number || '—' }}</td>
-                <td class="px-5 py-3 font-medium text-gray-900">{{ row.subject }}</td>
-                <td class="px-5 py-3 text-gray-600">{{ row.document_type }}</td>
-                <td class="px-5 py-3 text-gray-600">{{ row.owner_org_unit }}</td>
-                <td class="px-5 py-3">
-                  <AppBadge variant="gray">{{ statusLabel(row.status) }}</AppBadge>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-else>
+          <!-- Desktop Table -->
+          <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-sm min-w-[860px]">
+              <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <tr>
+                  <th class="text-left px-5 py-3 font-semibold">เลขที่หนังสือ</th>
+                  <th class="text-left px-5 py-3 font-semibold">เรื่อง</th>
+                  <th class="text-left px-5 py-3 font-semibold">ประเภท</th>
+                  <th class="text-left px-5 py-3 font-semibold">หน่วยงาน</th>
+                  <th class="text-left px-5 py-3 font-semibold">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+                <tr v-for="row in data.rows" :key="row.id" class="hover:bg-gray-50/60">
+                  <td class="px-5 py-3 font-mono text-xs text-gray-900">{{ row.document_number || '—' }}</td>
+                  <td class="px-5 py-3 font-medium text-gray-900">{{ row.subject }}</td>
+                  <td class="px-5 py-3 text-gray-600">{{ row.document_type }}</td>
+                  <td class="px-5 py-3 text-gray-600">{{ row.owner_org_unit }}</td>
+                  <td class="px-5 py-3">
+                    <AppBadge variant="gray">{{ statusLabel(row.status) }}</AppBadge>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Mobile Cards -->
+          <div class="block md:hidden divide-y divide-gray-100">
+            <div v-for="row in data.rows" :key="row.id" class="p-4 space-y-2 hover:bg-gray-50">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-mono text-xs font-semibold text-primary bg-primary/5 px-2 py-0.5 rounded">
+                  {{ row.document_number || 'ยังไม่มีเลขที่' }}
+                </span>
+                <AppBadge variant="gray">{{ statusLabel(row.status) }}</AppBadge>
+              </div>
+              <p class="font-medium text-gray-900 text-sm leading-snug">{{ row.subject }}</p>
+              <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                <span class="flex items-center gap-1">
+                  <span class="text-gray-400">ประเภท:</span> {{ row.document_type }}
+                </span>
+                <span class="flex items-center gap-1">
+                  <span class="text-gray-400">หน่วยงาน:</span> {{ row.owner_org_unit }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -126,29 +191,49 @@
         <div class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
           <EmptyState v-if="!data.rows?.length" title="ยังไม่มีเลขหนังสือ" description="เลขจะปรากฏเมื่อมีการจองหรือออกเลข" />
 
-          <div v-else class="overflow-x-auto">
-            <table class="w-full text-sm min-w-[640px]">
-              <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
-                <tr>
-                  <th class="text-left px-5 py-3 font-semibold">เลขที่</th>
-                  <th class="text-left px-5 py-3 font-semibold">ปี พ.ศ.</th>
-                  <th class="text-left px-5 py-3 font-semibold">ชุดเลข</th>
-                  <th class="text-left px-5 py-3 font-semibold">สถานะ</th>
-                  <th class="text-left px-5 py-3 font-semibold">เหตุผล</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-50">
-                <tr v-for="row in data.rows" :key="row.id" class="hover:bg-gray-50/60">
-                  <td class="px-5 py-3 font-mono text-xs text-gray-900">{{ row.formatted }}</td>
-                  <td class="px-5 py-3 text-gray-600">{{ row.buddhist_year }}</td>
-                  <td class="px-5 py-3 text-gray-600">{{ row.series }}</td>
-                  <td class="px-5 py-3">
-                    <AppBadge :variant="numberStatusVariant(row.status)">{{ numberStatusLabel(row.status) }}</AppBadge>
-                  </td>
-                  <td class="px-5 py-3 text-gray-500">{{ row.reason || '—' }}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div v-else>
+            <!-- Desktop Table -->
+            <div class="hidden md:block overflow-x-auto">
+              <table class="w-full text-sm min-w-[640px]">
+                <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                  <tr>
+                    <th class="text-left px-5 py-3 font-semibold">เลขที่</th>
+                    <th class="text-left px-5 py-3 font-semibold">ปี พ.ศ.</th>
+                    <th class="text-left px-5 py-3 font-semibold">ชุดเลข</th>
+                    <th class="text-left px-5 py-3 font-semibold">สถานะ</th>
+                    <th class="text-left px-5 py-3 font-semibold">เหตุผล</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                  <tr v-for="row in data.rows" :key="row.id" class="hover:bg-gray-50/60">
+                    <td class="px-5 py-3 font-mono text-xs text-gray-900">{{ row.formatted }}</td>
+                    <td class="px-5 py-3 text-gray-600">{{ row.buddhist_year }}</td>
+                    <td class="px-5 py-3 text-gray-600">{{ row.series }}</td>
+                    <td class="px-5 py-3">
+                      <AppBadge :variant="numberStatusVariant(row.status)">{{ numberStatusLabel(row.status) }}</AppBadge>
+                    </td>
+                    <td class="px-5 py-3 text-gray-500">{{ row.reason || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Mobile Cards -->
+            <div class="block md:hidden divide-y divide-gray-100">
+              <div v-for="row in data.rows" :key="row.id" class="p-4 space-y-2 hover:bg-gray-50">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-mono text-sm font-bold text-gray-900">{{ row.formatted }}</span>
+                  <AppBadge :variant="numberStatusVariant(row.status)">{{ numberStatusLabel(row.status) }}</AppBadge>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                  <div><span class="text-gray-400">ปี พ.ศ.:</span> {{ row.buddhist_year }}</div>
+                  <div><span class="text-gray-400">ชุดเลข:</span> {{ row.series }}</div>
+                </div>
+                <div v-if="row.reason" class="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                  <span class="text-gray-400">เหตุผล:</span> {{ row.reason }}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -193,13 +278,20 @@
           <option value="distribution">การเวียนและการรับทราบ</option>
         </AppSelect>
 
-        <div v-if="exportForm.type === 'register'" class="grid grid-cols-2 gap-3">
-          <AppSelect v-model="exportForm.direction" label="ทิศทางหนังสือ">
-            <option value="">ทั้งหมด</option>
-            <option value="incoming">หนังสือรับ (แบบที่ ๑๓)</option>
-            <option value="outgoing">หนังสือส่ง (แบบที่ ๑๔)</option>
-            <option value="internal">หนังสือภายใน (แบบที่ ๒)</option>
-          </AppSelect>
+        <div v-if="exportForm.type === 'register'" class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <AppSelect v-model="exportForm.direction" label="ทิศทางหนังสือ">
+              <option value="">ทั้งหมด</option>
+              <option value="incoming">หนังสือรับ (แบบที่ ๑๓)</option>
+              <option value="outgoing">หนังสือส่ง (แบบที่ ๑๔)</option>
+              <option value="internal">หนังสือภายใน (แบบที่ ๒)</option>
+            </AppSelect>
+
+            <AppSelect v-model="exportForm.division_id" label="ฝ่ายงาน (สอศ.)">
+              <option value="">ทุกฝ่ายงาน</option>
+              <option v-for="d in divisionsList" :key="d.id" :value="d.id">{{ d.name }}</option>
+            </AppSelect>
+          </div>
 
           <AppSelect v-model="exportForm.format" label="รูปแบบไฟล์">
             <option value="xlsx">Excel (.xlsx)</option>
@@ -237,6 +329,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../../axios'
 import { getErrorMessage } from '../../utils/errorHandler'
 import AppBadge from '../../components/ui/AppBadge.vue'
+import AppBreadcrumb from '../../components/ui/AppBreadcrumb.vue'
 import AppButton from '../../components/ui/AppButton.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppModal from '../../components/ui/AppModal.vue'
@@ -298,7 +391,13 @@ const active = ref('summary')
 const data = ref({})
 const loading = ref(true)
 const error = ref('')
-const filters = reactive({ direction: '' })
+const filters = reactive({ direction: '', division_id: '' })
+const divisionsList = ref([])
+
+const calculatePercent = (count, total) => {
+  if (!total || !count) return 0
+  return Math.round((count / total) * 100)
+}
 
 /*
  * สีของกราฟ — **เฉดที่ไล่จากสีแบรนด์ของระบบ ไม่ใช่ชุดสีใหม่**
@@ -363,10 +462,20 @@ const load = async () => {
   error.value = ''
 
   try {
+    const params = {}
+    if (active.value === 'register') {
+      if (filters.direction) params.direction = filters.direction
+      if (filters.division_id) params.division_id = filters.division_id
+    }
+
     const { data: body } = await api.get(`/saraban/reports/${active.value}`, {
-      params: active.value === 'register' ? { direction: filters.direction || undefined } : {},
+      params,
     })
     data.value = body
+
+    if (body.by_division?.length && !divisionsList.value.length) {
+      divisionsList.value = body.by_division.map((d) => ({ id: d.division_id, name: d.name }))
+    }
   } catch (err) {
     error.value = getErrorMessage(err, 'โหลดรายงานไม่สำเร็จ')
   } finally {
@@ -386,6 +495,7 @@ const exportError = ref('')
 const exportForm = reactive({
   type: 'register',
   direction: '',
+  division_id: '',
   format: 'xlsx',
   from: '',
   to: '',
@@ -394,6 +504,7 @@ const exportForm = reactive({
 const openExportModal = () => {
   exportForm.type = active.value === 'numbers' ? 'numbers' : (active.value === 'distribution' ? 'distribution' : 'register')
   exportForm.direction = filters.direction || ''
+  exportForm.division_id = filters.division_id || ''
   exportError.value = ''
   exportModal.value = true
 }
@@ -406,8 +517,9 @@ const downloadExport = async () => {
       type: exportForm.type,
       format: exportForm.format,
     }
-    if (exportForm.type === 'register' && exportForm.direction) {
-      params.direction = exportForm.direction
+    if (exportForm.type === 'register') {
+      if (exportForm.direction) params.direction = exportForm.direction
+      if (exportForm.division_id) params.division_id = exportForm.division_id
     }
     if (exportForm.from) {
       params.from = exportForm.from

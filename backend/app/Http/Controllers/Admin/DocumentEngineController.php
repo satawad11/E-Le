@@ -104,6 +104,12 @@ class DocumentEngineController extends Controller
         $templates = DocumentTemplate::query()
             ->when($request->filled('module'), fn ($query) => $query->where('module', $request->string('module')))
             ->when($request->filled('document_type'), fn ($query) => $query->where('document_type', $request->string('document_type')))
+            ->when($request->filled('search'), fn ($query) => $query->where(function ($q) use ($request) {
+                $search = $request->string('search');
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            }))
             ->withCount('versions')
             /*
              * โหลดทั้งแถว ไม่ระบุรายชื่อคอลัมน์

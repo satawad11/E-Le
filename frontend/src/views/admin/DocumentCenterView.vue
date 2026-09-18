@@ -118,8 +118,34 @@
           </button>
         </div>
 
-        <div v-if="templates.length === 0" class="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-500">
-          ยังไม่มีแม่แบบเอกสารในระบบ
+        <!-- แถบหมวดหมู่และการค้นหาแม่แบบเอกสาร -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-gray-100 shadow-xs">
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="cat in templateCategories"
+              :key="cat.value"
+              type="button"
+              class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors"
+              :class="templateCategoryFilter === cat.value ? 'bg-[#800000] text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+              @click="templateCategoryFilter = cat.value"
+            >
+              {{ cat.label }}
+            </button>
+          </div>
+          <div class="relative w-full sm:w-64">
+            <input
+              v-model="templateSearchQuery"
+              type="text"
+              placeholder="ค้นหาชื่อ, รหัสแม่แบบ..."
+              aria-label="ค้นหาแม่แบบเอกสาร"
+              class="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#800000]/20 focus:border-[#800000]"
+            />
+            <span class="absolute left-3 top-2.5 text-gray-400 text-xs">🔍</span>
+          </div>
+        </div>
+
+        <div v-if="filteredTemplates.length === 0" class="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-500">
+          {{ templates.length === 0 ? 'ยังไม่มีแม่แบบเอกสารในระบบ' : 'ไม่พบแม่แบบเอกสารที่ตรงกับเงื่อนไขการค้นหา' }}
         </div>
 
         <div v-else class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
@@ -137,7 +163,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="template in templates" :key="template.id" class="border-t border-gray-50 hover:bg-gray-50/60">
+              <tr v-for="template in filteredTemplates" :key="template.id" class="border-t border-gray-50 hover:bg-gray-50/60">
                 <td class="px-5 py-3 font-semibold text-gray-900">{{ template.name }}</td>
                 <td class="px-5 py-3 font-mono text-xs text-gray-500">{{ template.code }}</td>
                 <td class="px-5 py-3">{{ template.module }}</td>
@@ -486,8 +512,8 @@
     </template>
 
     <!-- Modal สร้างแม่แบบ -->
-    <div v-if="showCreate" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="showCreate = false">
-      <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+    <div v-if="showCreate" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" @click.self="showCreate = false">
+      <div class="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto my-auto">
         <h3 class="text-lg font-bold text-gray-900">สร้างแม่แบบเอกสารใหม่</h3>
         <div class="space-y-3">
           <div>
@@ -681,6 +707,37 @@ const documentTypes = [
   { value: 'LABEL', label: 'ป้าย/สลาก' },
   { value: 'OTHER', label: 'อื่น ๆ' },
 ]
+
+const templateCategoryFilter = ref('ALL')
+const templateSearchQuery = ref('')
+
+const templateCategories = [
+  { value: 'ALL', label: 'ทั้งหมด' },
+  { value: 'LEAVE_FORM', label: 'แบบฟอร์มการลา' },
+  { value: 'SARABAN_OFFICIAL', label: 'หนังสือราชการสารบรรณ' },
+  { value: 'ADMIN_CUSTOM', label: 'แบบฟอร์มทั่วไป / อื่น ๆ' },
+]
+
+const filteredTemplates = computed(() => {
+  let list = templates.value || []
+  if (templateCategoryFilter.value === 'LEAVE_FORM') {
+    list = list.filter(t => t.module === 'leave' || t.document_type === 'FORM')
+  } else if (templateCategoryFilter.value === 'SARABAN_OFFICIAL') {
+    list = list.filter(t => t.module === 'saraban' || t.document_type === 'LETTER')
+  } else if (templateCategoryFilter.value === 'ADMIN_CUSTOM') {
+    list = list.filter(t => t.module !== 'leave' && t.module !== 'saraban' && t.document_type !== 'LETTER' && t.document_type !== 'FORM')
+  }
+
+  if (templateSearchQuery.value.trim()) {
+    const q = templateSearchQuery.value.trim().toLowerCase()
+    list = list.filter(t =>
+      (t.name && t.name.toLowerCase().includes(q)) ||
+      (t.code && t.code.toLowerCase().includes(q)) ||
+      (t.description && t.description.toLowerCase().includes(q))
+    )
+  }
+  return list
+})
 
 const createForm = ref({ name: '', code: '', module: 'leave', document_type: 'FORM', render_mode: 'pdf_overlay' })
 const calibrationForm = ref({ scope: 'GLOBAL', document_template_id: null, x_offset: 0, y_offset: 0, scale: 1 })

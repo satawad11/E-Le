@@ -1,5 +1,16 @@
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
+    <!-- Breadcrumb Navigation -->
+    <AppBreadcrumb
+      :items="[
+        { title: 'งานสารบรรณ', to: '/saraban' },
+        { title: 'คิวงานสารบรรณ', to: '/saraban/queue' },
+        { title: documentRecord?.subject || 'รายละเอียดหนังสือ', to: `/saraban/documents/${route.params.id}` },
+        { title: 'ลงนามในหนังสือ' }
+      ]"
+      :backTo="`/saraban/documents/${route.params.id}`"
+    />
+
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">ลงนามในหนังสือ</h1>
@@ -67,7 +78,12 @@
             <p class="text-xs text-gray-500">
               หนังสือราชการที่ลงนามประกอบด้วยลายเซ็น ชื่อ-ตำแหน่ง และวันที่ ซึ่งเป็นบล็อกเดียวกัน
             </p>
-            <AppButton variant="secondary" :disabled="hasDate" @click="armDate">วางวันที่ที่ลงนาม</AppButton>
+            <div class="flex flex-wrap gap-2">
+              <AppButton variant="secondary" :disabled="hasDate" @click="armDate">วางวันที่ที่ลงนาม</AppButton>
+              <AppButton v-if="signerAutoText" variant="outline" size="sm" type="button" @click="applySignerNote">
+                👤 ใช้ชื่อ-ตำแหน่งตนเอง
+              </AppButton>
+            </div>
             <AppInput v-model="noteText" label="ข้อความกำกับ (เช่น ชื่อและตำแหน่ง)" />
             <AppButton variant="secondary" :disabled="!noteText.trim()" @click="armNote">วางข้อความ</AppButton>
           </div>
@@ -125,12 +141,15 @@
 </template>
 
 <script setup>
+import { getActivePinia } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useAuthStore } from '../../stores/auth'
 import { getErrorMessage } from '../../utils/errorHandler'
 import { fetchObjectUrl } from '../../utils/secureFile'
+import AppBreadcrumb from '../../components/ui/AppBreadcrumb.vue'
 import AppButton from '../../components/ui/AppButton.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
@@ -144,7 +163,24 @@ import SigningContextPanel from '../../components/saraban/SigningContextPanel.vu
 
 const route = useRoute()
 const router = useRouter()
-const alertStore = useAlertStore()
+const alertStore = getActivePinia() ? useAlertStore() : null
+const authStore = getActivePinia() ? useAuthStore() : null
+
+const signerAutoText = computed(() => {
+  if (!authStore) return ''
+  const name = authStore.displayName || ''
+  const pos = authStore.positionName || ''
+  if (!name && !pos) return ''
+  if (name && pos) return `(${name}) ${pos}`
+  return name ? `(${name})` : pos
+})
+
+const applySignerNote = () => {
+  if (signerAutoText.value) {
+    noteText.value = signerAutoText.value
+    armNote()
+  }
+}
 
 const documentRecord = ref(null)
 const existing = ref([])

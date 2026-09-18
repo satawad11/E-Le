@@ -127,8 +127,8 @@
     </section>
 
     <!-- ฟอร์มประเภทบุคลากร -->
-    <div v-if="typeForm" class="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4" @click.self="typeForm = null">
-      <form role="dialog" aria-modal="true" aria-labelledby="type-form-title" class="w-full max-w-md space-y-4 rounded-2xl bg-white p-6" @submit.prevent="saveType">
+    <div v-if="typeForm" class="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" @click.self="typeForm = null">
+      <form role="dialog" aria-modal="true" aria-labelledby="type-form-title" class="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 max-h-[90vh] overflow-y-auto my-auto" @submit.prevent="saveType">
         <h2 id="type-form-title" class="text-xl font-bold text-gray-900">
           {{ typeForm.id ? 'แก้ไขประเภทบุคลากร' : 'เพิ่มประเภทบุคลากร' }}
         </h2>

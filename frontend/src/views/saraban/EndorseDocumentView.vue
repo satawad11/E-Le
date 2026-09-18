@@ -1,5 +1,16 @@
 <template>
   <div class="max-w-6xl mx-auto space-y-6">
+    <!-- Breadcrumb Navigation -->
+    <AppBreadcrumb
+      :items="[
+        { title: 'งานสารบรรณ', to: '/saraban' },
+        { title: 'คิวงานสารบรรณ', to: '/saraban/queue' },
+        { title: version?.subject || 'รายละเอียดหนังสือ', to: `/saraban/documents/${route.params.id}` },
+        { title: 'เกษียนหนังสือ' }
+      ]"
+      :backTo="`/saraban/documents/${route.params.id}`"
+    />
+
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">เกษียนหนังสือ</h1>
@@ -127,6 +138,7 @@ import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 import { getErrorMessage } from '../../utils/errorHandler'
 import { fetchObjectUrl } from '../../utils/secureFile'
+import AppBreadcrumb from '../../components/ui/AppBreadcrumb.vue'
 import AppButton from '../../components/ui/AppButton.vue'
 import AppTextarea from '../../components/ui/AppTextarea.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'

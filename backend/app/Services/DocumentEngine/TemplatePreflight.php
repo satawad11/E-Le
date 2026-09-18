@@ -68,7 +68,7 @@ class TemplatePreflight
         $problems = [];
 
         foreach ($mappings as $mapping) {
-            if (filled($mapping->static_text)) {
+            if (filled($mapping->static_text) || in_array($mapping->field_type, ['GARUDA'], true) || $mapping->field_code === 'garuda') {
                 continue;
             }
 
@@ -94,7 +94,7 @@ class TemplatePreflight
         $warnings = [];
 
         foreach ($mappings as $mapping) {
-            if (in_array($mapping->field_type, ['SIGNATURE', 'IMAGE', 'QR_CODE', 'CHECKBOX'], true)) {
+            if (in_array($mapping->field_type, ['SIGNATURE', 'IMAGE', 'GARUDA', 'QR_CODE', 'CHECKBOX'], true)) {
                 continue;
             }
 

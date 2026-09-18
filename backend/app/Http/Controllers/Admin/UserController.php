@@ -302,6 +302,22 @@ class UserController extends Controller
             }
             $user->profile()->create($profileData);
 
+            if ($request->boolean('is_org_unit_head') && $user->org_unit_id) {
+                DB::table('org_unit_managers')->insert([
+                    'uuid' => (string) Str::uuid(),
+                    'org_unit_id' => $user->org_unit_id,
+                    'user_id' => $user->id,
+                    'assignment_type' => 'MANAGER',
+                    'scope' => 'UNIT',
+                    'effective_from' => now()->toDateString(),
+                    'effective_to' => null,
+                    'note' => 'แต่งตั้งผ่านหน้าจัดการบุคลากร',
+                    'created_by' => $request->user()?->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             $this->provisionLeaveBalances($user);
 
             return $user;
@@ -538,6 +554,37 @@ class UserController extends Controller
                 ['user_id' => $user->id],
                 ['profile_photo_path' => $path]
             );
+        }
+
+        if ($request->has('is_org_unit_head')) {
+            $isHead = $request->boolean('is_org_unit_head');
+            $today = now()->toDateString();
+            $currentManagerRow = DB::table('org_unit_managers')
+                ->where('user_id', $user->id)
+                ->where('org_unit_id', $user->org_unit_id)
+                ->whereDate('effective_from', '<=', $today)
+                ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $today))
+                ->first();
+
+            if ($isHead && ! $currentManagerRow && $user->org_unit_id) {
+                DB::table('org_unit_managers')->insert([
+                    'uuid' => (string) Str::uuid(),
+                    'org_unit_id' => $user->org_unit_id,
+                    'user_id' => $user->id,
+                    'assignment_type' => 'MANAGER',
+                    'scope' => 'UNIT',
+                    'effective_from' => $today,
+                    'effective_to' => null,
+                    'note' => 'แต่งตั้งผ่านหน้าจัดการบุคลากร',
+                    'created_by' => $request->user()?->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } elseif (! $isHead && $currentManagerRow) {
+                DB::table('org_unit_managers')
+                    ->where('id', $currentManagerRow->id)
+                    ->update(['effective_to' => $today, 'updated_at' => now()]);
+            }
         }
 
         return response()->json([

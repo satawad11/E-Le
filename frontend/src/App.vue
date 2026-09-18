@@ -11,83 +11,145 @@
     <AlertList />
     <ConfirmDialog />
 
-    <!-- Sidebar (desktop) -->
+    <!-- Dual-Rail Navigation (desktop) -->
     <aside
       v-if="!isBareLayout"
-      class="hidden md:flex md:flex-col bg-[#800000] text-white shadow-2xl flex-shrink-0 transition-all duration-300 relative z-20 h-screen"
-      :class="isSidebarCollapsed ? 'w-20' : 'w-64'"
-      aria-label="แถบเมนูหลักของระบบ"
+      class="hidden md:flex flex-row bg-[#800000] text-white shadow-2xl flex-shrink-0 z-20 h-screen select-none"
+      aria-label="แถบนำทางแบบโมดูลและเมนูระบบ"
     >
-      <!-- Collapse Button -->
-      <button 
-        @click="isSidebarCollapsed = !isSidebarCollapsed" 
-        class="absolute -right-3 top-8 w-6 h-6 bg-white text-[#800000] rounded-full shadow-md flex items-center justify-center hover:bg-gray-100 z-30 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-[#800000]"
-        :class="{'rotate-180': isSidebarCollapsed}"
-        :title="isSidebarCollapsed ? 'ขยายแถบเมนู' : 'ย่อแถบเมนู'"
-        :aria-label="isSidebarCollapsed ? 'ขยายแถบเมนู' : 'ย่อแถบเมนู'"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-        </svg>
-      </button>
-      <!-- Logo -->
-      <div class="flex items-center gap-3 py-6 border-b border-white/10 transition-all duration-300" :class="isSidebarCollapsed ? 'justify-center px-2' : 'px-6'">
-        <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-          </svg>
+      <!-- Rail 1: Primary Module Rail (72px) -->
+      <div class="w-[72px] bg-[#750000] flex flex-col justify-between items-center py-4 border-r border-white/10 z-30 h-full flex-shrink-0">
+        <!-- Top: Logo & Brand Emblem -->
+        <div class="flex flex-col items-center gap-1">
+          <router-link
+            to="/"
+            class="w-11 h-11 bg-white/15 hover:bg-white/25 rounded-2xl flex items-center justify-center transition-all duration-200 border border-white/20 shadow-sm group"
+            title="ระบบบริหารสถานศึกษา E-la"
+            aria-label="หน้าหลัก E-la"
+          >
+            <span class="font-bold text-white text-base tracking-tight font-sans group-hover:scale-110 transition-transform">E</span>
+          </router-link>
         </div>
-        <div v-show="!isSidebarCollapsed" class="whitespace-nowrap overflow-hidden">
-          <h1 class="font-bold text-lg leading-tight">E-Leave</h1>
-          <p class="text-white/60 text-xs">ระบบลางานออนไลน์</p>
-        </div>
-      </div>
 
-      <!-- User info -->
-      <router-link to="/profile" class="block py-4 border-b border-white/10 hover:bg-white/5 transition-all duration-300 cursor-pointer" :class="isSidebarCollapsed ? 'px-2' : 'px-6'" aria-label="ดูข้อมูลโปรไฟล์ส่วนตัว">
-        <div class="flex items-center gap-3" :class="isSidebarCollapsed ? 'justify-center' : ''">
-          <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0" :title="authStore.user?.name">
-            {{ authStore.user?.name?.charAt(0)?.toUpperCase() }}
-          </div>
-          <div class="min-w-0 flex-1 whitespace-nowrap overflow-hidden" v-show="!isSidebarCollapsed">
-            <p class="font-semibold text-sm truncate group-hover:text-white">{{ authStore.user?.name }}</p>
-            <span class="inline-block text-xs px-2 py-0.5 rounded-full mt-0.5 truncate max-w-full" :class="roleBadgeClass">
-              {{ roleLabel }}
+        <!-- Middle: Primary Module Tabs -->
+        <nav class="flex-1 w-full px-1.5 py-4 space-y-1.5 overflow-y-auto no-scrollbar flex flex-col items-center" aria-label="แถบเลือกโมดูลหลัก">
+          <button
+            v-for="mod in availableModules"
+            :key="mod.key"
+            type="button"
+            @click="selectModule(mod.key)"
+            class="w-full flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all duration-200 relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            :class="activeModuleKey === mod.key
+              ? 'bg-white/20 text-white font-semibold shadow-sm'
+              : 'text-white/70 hover:bg-white/10 hover:text-white'"
+            :title="mod.full_title"
+            :aria-label="mod.full_title"
+          >
+            <!-- Active indicator pill on left edge -->
+            <span
+              v-if="activeModuleKey === mod.key"
+              class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full"
+              aria-hidden="true"
+            ></span>
+
+            <!-- Module Icon -->
+            <div class="relative">
+              <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPath(mod.icon)"/>
+              </svg>
+              <!-- Module badge pill -->
+              <span
+                v-if="moduleBadges[mod.key]"
+                class="absolute -top-1.5 -right-2 bg-red-500 text-white text-[9px] font-bold px-1 py-0.2 rounded-full ring-2 ring-[#750000]"
+              >
+                {{ moduleBadges[mod.key] > 99 ? '99+' : moduleBadges[mod.key] }}
+              </span>
+            </div>
+
+            <!-- Short Thai caption -->
+            <span class="text-[10px] mt-1 text-center whitespace-nowrap leading-none tracking-tight">
+              {{ mod.short_title }}
             </span>
-          </div>
-          <svg v-show="!isSidebarCollapsed" class="w-4 h-4 text-white/50 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-        </div>
-      </router-link>
+          </button>
+        </nav>
 
-      <!-- Navigation -->
-      <div class="flex-1 px-4 py-4 overflow-y-auto">
-        <AppMenuNav
-          :menus="menuStore.menus"
-          :collapsed="isSidebarCollapsed"
-          :badges="menuBadges"
-          aria-label="เมนูหลัก"
-          @navigate="isSidebarCollapsed = false"
-        />
+        <!-- Bottom: Actions & Collapse Toggle -->
+        <div class="w-full px-1.5 pt-2 border-t border-white/10 flex flex-col items-center gap-2">
+          <!-- Toggle Subpanel Button -->
+          <button
+            @click="toggleSubPanel"
+            class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            :title="isSubPanelCollapsed ? 'ขยายแผงเมนูย่อย' : 'ย่อแผงเมนูย่อย'"
+            :aria-label="isSubPanelCollapsed ? 'ขยายแผงเมนูย่อย' : 'ย่อแผงเมนูย่อย'"
+          >
+            <svg class="w-4 h-4 transition-transform duration-200" :class="{'rotate-180': isSubPanelCollapsed}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+            </svg>
+          </button>
+
+          <!-- User Profile Icon -->
+          <router-link
+            to="/profile"
+            class="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center font-bold text-xs text-white transition-colors"
+            :title="authStore.user?.name || 'โปรไฟล์ส่วนตัว'"
+            aria-label="โปรไฟล์ส่วนตัว"
+          >
+            {{ authStore.user?.name?.charAt(0)?.toUpperCase() }}
+          </router-link>
+
+          <!-- Logout Button -->
+          <button
+            @click="confirmLogout"
+            class="w-10 h-10 rounded-xl hover:bg-red-800/80 text-white/70 hover:text-white flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            title="ออกจากระบบ"
+            aria-label="ออกจากระบบ"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <!-- Desktop Sidebar Footer / Logout -->
-      <div class="px-4 py-4 border-t border-white/10 flex-shrink-0">
-        <div v-show="!isSidebarCollapsed" class="text-xs text-center text-white/50 mb-2 truncate">
+      <!-- Rail 2: Sub-Navigation Panel (240px) -->
+      <div
+        class="bg-[#820707] flex flex-col h-full border-r border-white/10 transition-all duration-300 ease-in-out overflow-hidden z-20"
+        :class="isSubPanelCollapsed ? 'w-0 opacity-0 border-r-0' : 'w-60 opacity-100'"
+      >
+        <!-- Sub-panel Header -->
+        <div class="px-4 py-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+          <div class="min-w-0 flex-1">
+            <h2 class="font-bold text-sm text-white truncate flex items-center gap-1.5">
+              <span>{{ activeModuleInfo.full_title }}</span>
+            </h2>
+            <p class="text-white/60 text-[11px] truncate">E-la สถานศึกษาอาชีวศึกษา</p>
+          </div>
+          <button
+            @click="toggleSubPanel"
+            class="p-1 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors focus:outline-none"
+            title="ย่อแผงเมนูย่อย"
+            aria-label="ย่อแผงเมนูย่อย"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Sub-panel Menu Items -->
+        <div class="flex-1 px-3 py-3 overflow-y-auto">
+          <AppMenuNav
+            :menus="activeModuleGroups"
+            :badges="menuBadges"
+            :aria-label="`เมนูย่อยของ${activeModuleInfo.full_title}`"
+          />
+        </div>
+
+        <!-- Sub-panel Footer -->
+        <div class="px-4 py-3 border-t border-white/10 text-xs text-white/50 text-center truncate flex-shrink-0">
           ออกอัตโนมัติใน: {{ formattedIdleTime }}
         </div>
-        <button
-          @click="confirmLogout"
-          class="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-white/70 hover:bg-red-800/60 hover:text-white transition-all duration-150 group"
-          :class="isSidebarCollapsed ? 'justify-center px-0' : ''"
-          :title="isSidebarCollapsed ? 'ออกจากระบบ' : ''"
-        >
-          <svg class="w-5 h-5 group-hover:translate-x-0.5 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-          </svg>
-          <span v-show="!isSidebarCollapsed" class="whitespace-nowrap">ออกจากระบบ</span>
-        </button>
       </div>
     </aside>
 
@@ -108,12 +170,12 @@
         aria-label="เมนูนำทางบนอุปกรณ์มือถือ"
         @keydown.escape="mobileMenu = false"
         tabindex="-1"
-        class="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-[#800000] text-white shadow-2xl z-50 md:hidden flex flex-col h-full overflow-hidden focus:outline-none"
+        class="fixed inset-y-0 left-0 w-80 max-w-[90vw] bg-[#800000] text-white shadow-2xl z-50 md:hidden flex flex-col h-full overflow-hidden focus:outline-none"
       >
         <!-- Mobile Drawer Header -->
-        <div class="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
-          <div class="flex items-center gap-3">
-            <div class="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+        <div class="flex items-center justify-between px-4 py-3.5 border-b border-white/10 flex-shrink-0">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -121,7 +183,7 @@
             </div>
             <div>
               <h1 class="font-bold text-base leading-tight">E-Leave</h1>
-              <p class="text-white/60 text-xs">ระบบลางานออนไลน์</p>
+              <p class="text-white/60 text-xs">ระบบบริหารสถานศึกษา</p>
             </div>
           </div>
           <button @click="mobileMenu = false" class="p-1.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-white focus:outline-none" aria-label="ปิดเมนู">
@@ -132,7 +194,7 @@
         </div>
 
         <!-- Mobile Drawer User Profile -->
-        <router-link to="/profile" @click="mobileMenu = false" class="block px-5 py-3.5 border-b border-white/10 hover:bg-white/5 transition-colors cursor-pointer flex-shrink-0" aria-label="ดูข้อมูลโปรไฟล์ส่วนตัว">
+        <router-link to="/profile" @click="mobileMenu = false" class="block px-4 py-3 border-b border-white/10 hover:bg-white/5 transition-colors cursor-pointer flex-shrink-0" aria-label="ดูข้อมูลโปรไฟล์ส่วนตัว">
           <div class="flex items-center gap-3">
             <div class="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
               {{ authStore.user?.name?.charAt(0)?.toUpperCase() }}
@@ -146,10 +208,30 @@
           </div>
         </router-link>
 
-        <!-- Mobile Drawer Scrollable Nav -->
+        <!-- Mobile Drawer Horizontal Module Selector -->
+        <div class="px-3 py-2 border-b border-white/10 flex gap-1.5 overflow-x-auto no-scrollbar flex-shrink-0 bg-[#720000]" aria-label="เลือกโมดูลบนมือถือ">
+          <button
+            v-for="mod in availableModules"
+            :key="mod.key"
+            type="button"
+            @click="selectModule(mod.key)"
+            class="px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap flex items-center gap-1.5 transition-colors"
+            :class="activeModuleKey === mod.key ? 'bg-white text-[#800000] font-bold shadow-sm' : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPath(mod.icon)"/>
+            </svg>
+            <span>{{ mod.short_title }}</span>
+          </button>
+        </div>
+
+        <!-- Mobile Drawer Scrollable Nav for Active Module -->
         <div class="flex-1 px-3 py-3 overflow-y-auto">
+          <div class="mb-2 pb-1 border-b border-white/10 text-xs font-semibold text-white/70 flex items-center gap-1.5">
+            <span>{{ activeModuleInfo.full_title }}</span>
+          </div>
           <AppMenuNav
-            :menus="menuStore.menus"
+            :menus="activeModuleGroups"
             :badges="menuBadges"
             aria-label="เมนูหลักบนมือถือ"
             @navigate="mobileMenu = false"
@@ -197,7 +279,7 @@
           <div class="bg-white/10 rounded-full">
             <NotificationBell />
           </div>
-          <router-link to="/profile" class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center font-bold text-xs">
+          <router-link to="/profile" class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center font-bold text-xs" aria-label="โปรไฟล์ส่วนตัว">
             {{ authStore.user?.name?.charAt(0)?.toUpperCase() }}
           </router-link>
         </div>
@@ -218,8 +300,8 @@
           </router-link>
           <template v-if="route.path !== '/'">
             <span class="text-gray-300">/</span>
-            <span v-if="route.meta?.parent" class="text-gray-500">{{ route.meta.parent }}</span>
-            <span v-if="route.meta?.parent" class="text-gray-300">/</span>
+            <span class="text-[#800000] font-medium">{{ activeModuleInfo.short_title }}</span>
+            <span class="text-gray-300">/</span>
             <span class="text-gray-900 font-semibold truncate max-w-[300px]">{{ currentRouteTitle }}</span>
           </template>
         </nav>
@@ -227,7 +309,7 @@
         <div class="flex items-center gap-4">
           <NotificationBell />
           <div class="h-5 w-px bg-gray-200"></div>
-          <router-link to="/profile" class="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900">
+          <router-link to="/profile" class="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900" aria-label="ดูข้อมูลโปรไฟล์ส่วนตัว">
             <div class="w-8 h-8 bg-[#800000]/10 text-[#800000] font-bold rounded-full flex items-center justify-center text-xs">
               {{ authStore.user?.name?.charAt(0)?.toUpperCase() }}
             </div>
@@ -285,13 +367,14 @@ import { useAuthStore } from './stores/auth'
 import { useLeaveStore } from './stores/leave'
 import { useSettingStore } from './stores/settingStore'
 import { useMenuStore } from './stores/menuStore'
+import { ICONS } from './utils/icons'
 import AlertList from './components/AlertList.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import AppMenuNav from './components/AppMenuNav.vue'
 import NotificationBell from './components/NotificationBell.vue'
 
 const router = useRouter()
-const route  = useRoute()
+const route = useRoute()
 // หน้าที่ไม่ต้องมีเมนู/แถบบน และไม่ต้องนับเวลาหมดอายุการใช้งาน (หน้าล็อกอิน, กู้รหัสผ่าน, และหน้าตรวจสอบเอกสารสาธารณะ)
 const isBareLayout = computed(() => {
   if (route.meta?.requiresGuest || route.meta?.bare) return true
@@ -301,11 +384,21 @@ const isBareLayout = computed(() => {
 const authStore = useAuthStore()
 const leaveStore = useLeaveStore()
 const settingStore = useSettingStore()
+const menuStore = useMenuStore()
+
 const mobileMenu = ref(false)
 const showLogoutModal = ref(false)
-const isSidebarCollapsed = ref(false)
 
-const menuStore = useMenuStore()
+// Dual-Rail State
+const activeModuleKey = ref('dashboard')
+const isSubPanelCollapsed = ref(localStorage.getItem('e_leave_subpanel_collapsed') === 'true')
+
+const toggleSubPanel = () => {
+  isSubPanelCollapsed.value = !isSubPanelCollapsed.value
+  localStorage.setItem('e_leave_subpanel_collapsed', isSubPanelCollapsed.value ? 'true' : 'false')
+}
+
+const iconPath = (icon) => ICONS[icon] || (icon === 'settings' ? ICONS.cog : null) || ICONS.document
 
 const currentRouteTitle = computed(() => {
   if (route.meta?.title) return route.meta.title
@@ -313,86 +406,273 @@ const currentRouteTitle = computed(() => {
 })
 
 /*
- * ป้ายตัวเลขบนเมนู — เป็นสถานะ runtime ไม่ใช่การตั้งค่าเมนู จึงอยู่ที่นี่
- * ไม่ได้เก็บในตาราง `menus` อ้างอิงด้วยชื่อ route ของแต่ละเมนู
+ * ข้อมูล Meta ของแต่ละโมดูลหลัก
+ */
+const KNOWN_MODULE_METAS = {
+  dashboard: {
+    key: 'dashboard',
+    short_title: 'หน้าหลัก',
+    full_title: 'หน้าหลักและภาพรวม',
+    icon: 'home',
+    order: 10,
+    route_path: '/',
+  },
+  leave: {
+    key: 'leave',
+    short_title: 'ลางาน',
+    full_title: 'ระบบลางาน',
+    icon: 'calendar',
+    order: 20,
+  },
+  attendance: {
+    key: 'attendance',
+    short_title: 'ลงเวลา/OT',
+    full_title: 'ระบบลงเวลาและ OT',
+    icon: 'clock',
+    order: 30,
+  },
+  saraban: {
+    key: 'saraban',
+    short_title: 'สารบรรณ',
+    full_title: 'งานสารบรรณอิเล็กทรอนิกส์',
+    icon: 'document',
+    order: 40,
+  },
+  reporting: {
+    key: 'reporting',
+    short_title: 'รายงาน',
+    full_title: 'ศูนย์รายงานและสถิติ',
+    icon: 'chart',
+    order: 50,
+  },
+  users: {
+    key: 'users',
+    short_title: 'บุคลากร',
+    full_title: 'ผู้ใช้งานและบุคลากร',
+    icon: 'users',
+    order: 60,
+  },
+  system: {
+    key: 'system',
+    short_title: 'ตั้งค่า',
+    full_title: 'การตั้งค่าระบบ',
+    icon: 'cog',
+    order: 70,
+  },
+}
+
+/*
+ * แยกเมนูจาก backend เข้าสู่โมดูลหลักอย่างเป็นระเบียบ (Dynamic Module Partitioning)
+ */
+const availableModules = computed(() => {
+  const menus = menuStore.menus || []
+  const moduleMap = new Map()
+
+  // Always include dashboard
+  moduleMap.set('dashboard', {
+    ...KNOWN_MODULE_METAS.dashboard,
+    groups: [],
+  })
+
+  for (const item of menus) {
+    if (item.code === 'dashboard' || item.route_path === '/') {
+      continue
+    }
+
+    let modKey = item.module || 'system'
+    if (modKey === 'overtime') {
+      modKey = 'attendance'
+    }
+
+    if (!moduleMap.has(modKey)) {
+      const known = KNOWN_MODULE_METAS[modKey]
+      moduleMap.set(modKey, {
+        key: modKey,
+        short_title: known?.short_title || item.title_th || modKey,
+        full_title: known?.full_title || item.title_th || modKey,
+        icon: known?.icon || item.icon || 'document',
+        order: known?.order || 99,
+        groups: [],
+      })
+    }
+
+    const currentMod = moduleMap.get(modKey)
+    currentMod.groups.push(item)
+  }
+
+  return Array.from(moduleMap.values()).sort((a, b) => a.order - b.order)
+})
+
+/*
+ * ป้ายตัวเลขบนเมนู — runtime badges
  */
 const menuBadges = computed(() => ({
   approvals: leaveStore.approvals?.filter((l) => l.cancellation_status !== 'Pending').length || 0,
   'cancel-approvals': leaveStore.approvals?.filter((l) => l.cancellation_status === 'Pending').length || 0,
 }))
 
-// ปิดลิ้นชักเมนูบนมือถือเมื่อเปลี่ยนหน้า
-watch(() => route.path, () => {
-  mobileMenu.value = false
+// คำนวณ badge รวมของแต่ละโมดูล
+const moduleBadges = computed(() => {
+  const badges = {}
+  for (const mod of availableModules.value) {
+    let sum = 0
+    for (const group of mod.groups) {
+      if (group.route_name && menuBadges.value[group.route_name]) {
+        sum += menuBadges.value[group.route_name]
+      }
+      for (const child of group.children || []) {
+        if (child.route_name && menuBadges.value[child.route_name]) {
+          sum += menuBadges.value[child.route_name]
+        }
+      }
+    }
+    badges[mod.key] = sum
+  }
+  return badges
 })
 
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-const idleTimeLeft = ref(IDLE_TIMEOUT_MS);
-let idleTimer = null;
-let countdownInterval = null;
+// ข้อมูลโมดูลที่เลือกอยู่
+const activeModuleInfo = computed(() => {
+  const mod = availableModules.value.find((m) => m.key === activeModuleKey.value)
+  return mod || KNOWN_MODULE_METAS[activeModuleKey.value] || KNOWN_MODULE_METAS.dashboard
+})
+
+// กลุ่มเมนูของโมดูลที่เลือกอยู่
+const activeModuleGroups = computed(() => {
+  if (activeModuleKey.value === 'dashboard') {
+    return [
+      {
+        code: 'dashboard_overview',
+        title_th: 'หน้าหลักและภาพรวม',
+        icon: 'home',
+        children: [
+          {
+            code: 'dashboard_home',
+            title_th: 'หน้าหลัก (Dashboard)',
+            route_path: '/',
+            icon: 'home',
+          },
+          {
+            code: 'dashboard_profile',
+            title_th: 'ข้อมูลโปรไฟล์ของฉัน',
+            route_path: '/profile',
+            icon: 'user',
+          },
+          {
+            code: 'dashboard_access_history',
+            title_th: 'ประวัติการเข้าถึงข้อมูลของฉัน',
+            route_path: '/my-access-history',
+            icon: 'shieldCheck',
+          },
+        ],
+      },
+    ]
+  }
+
+  const mod = availableModules.value.find((m) => m.key === activeModuleKey.value)
+  return mod?.groups || []
+})
+
+const selectModule = (key) => {
+  activeModuleKey.value = key
+  if (isSubPanelCollapsed.value) {
+    isSubPanelCollapsed.value = false
+    localStorage.setItem('e_leave_subpanel_collapsed', 'false')
+  }
+  if (key === 'dashboard') {
+    router.push('/')
+  }
+}
+
+// ตรวจหาโมดูลอัตโนมัติจากเส้นทาง URL ปัจจุบัน
+const detectModuleFromRoute = (path) => {
+  if (path === '/' || path === '') return 'dashboard'
+
+  for (const group of menuStore.menus || []) {
+    let modKey = group.module || 'system'
+    if (modKey === 'overtime') modKey = 'attendance'
+
+    if (group.route_path === path) return modKey
+    for (const child of group.children || []) {
+      if (child.route_path === path || path.startsWith(child.route_path + '/')) {
+        return modKey
+      }
+    }
+  }
+
+  if (path.startsWith('/saraban')) return 'saraban'
+  if (path.startsWith('/attendance') || path.startsWith('/admin/ot') || path.startsWith('/admin/overtime') || path.startsWith('/admin/attendances')) return 'attendance'
+  if (path.startsWith('/request') || path.startsWith('/leaves') || path.startsWith('/leave-card') || path.startsWith('/team-calendar') || path.startsWith('/approvals') || path.startsWith('/cancel-approvals') || path.startsWith('/reports/vocational') || path.startsWith('/admin/leave') || path.startsWith('/admin/promotion-screening')) return 'leave'
+  if (path.startsWith('/reports') || path.startsWith('/admin/reports')) return 'reporting'
+  if (path.startsWith('/admin/users') || path.startsWith('/admin/roles') || path.startsWith('/admin/org') || path.startsWith('/admin/personnel') || path.startsWith('/my-access-history')) return 'users'
+  if (path.startsWith('/admin/settings') || path.startsWith('/admin/modules') || path.startsWith('/admin/fiscal') || path.startsWith('/admin/calendar') || path.startsWith('/admin/workflow') || path.startsWith('/admin/leave-types') || path.startsWith('/admin/document-templates')) return 'system'
+
+  return 'dashboard'
+}
+
+watch(
+  () => [route.path, menuStore.menus],
+  ([newPath]) => {
+    mobileMenu.value = false
+    const matched = detectModuleFromRoute(newPath)
+    if (matched) {
+      activeModuleKey.value = matched
+    }
+  },
+  { immediate: true },
+)
+
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
+const idleTimeLeft = ref(IDLE_TIMEOUT_MS)
+let idleTimer = null
+let countdownInterval = null
 
 const resetIdleTimer = () => {
-  if (isBareLayout.value) return;
-  idleTimeLeft.value = IDLE_TIMEOUT_MS;
-  if (idleTimer) clearTimeout(idleTimer);
+  if (isBareLayout.value) return
+  idleTimeLeft.value = IDLE_TIMEOUT_MS
+  if (idleTimer) clearTimeout(idleTimer)
   idleTimer = setTimeout(() => {
-    doLogout();
-  }, IDLE_TIMEOUT_MS);
-};
+    doLogout()
+  }, IDLE_TIMEOUT_MS)
+}
 
 const updateCountdown = () => {
-  if (isBareLayout.value) return;
-  idleTimeLeft.value = Math.max(0, idleTimeLeft.value - 1000);
-};
+  if (isBareLayout.value) return
+  idleTimeLeft.value = Math.max(0, idleTimeLeft.value - 1000)
+}
 
 const formattedIdleTime = computed(() => {
-  const totalSeconds = Math.floor(idleTimeLeft.value / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-});
+  const totalSeconds = Math.floor(idleTimeLeft.value / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+})
 
-/*
- * โหลดเมนูของผู้ใช้จาก `/api/user/menus` — กรองตามสิทธิ์และโมดูลที่เปิดใช้งานมาแล้ว
- * ต้องโหลดใหม่ทุกครั้งที่มีการเข้าสู่ระบบ ไม่ใช่แค่ตอน mount ครั้งแรก
- * เพราะหน้าเข้าสู่ระบบไม่ได้ unmount แอปทั้งตัว
- */
 watch(() => authStore.isAuthenticated, (signedIn) => {
-  if (signedIn && !menuStore.loaded) menuStore.fetchUserMenus();
+  if (signedIn && !menuStore.loaded) menuStore.fetchUserMenus()
 }, { immediate: true })
 
 onMounted(async () => {
-  await settingStore.fetchSettings();
+  await settingStore.fetchSettings()
 
-  window.addEventListener('mousemove', resetIdleTimer);
-  window.addEventListener('keydown', resetIdleTimer);
-  window.addEventListener('mousedown', resetIdleTimer);
-  window.addEventListener('touchstart', resetIdleTimer);
+  window.addEventListener('mousemove', resetIdleTimer)
+  window.addEventListener('keydown', resetIdleTimer)
+  window.addEventListener('mousedown', resetIdleTimer)
+  window.addEventListener('touchstart', resetIdleTimer)
 
-  resetIdleTimer();
-  countdownInterval = setInterval(updateCountdown, 1000);
+  resetIdleTimer()
+  countdownInterval = setInterval(updateCountdown, 1000)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', resetIdleTimer);
-  window.removeEventListener('keydown', resetIdleTimer);
-  window.removeEventListener('mousedown', resetIdleTimer);
-  window.removeEventListener('touchstart', resetIdleTimer);
-  if (idleTimer) clearTimeout(idleTimer);
-  if (countdownInterval) clearInterval(countdownInterval);
+  window.removeEventListener('mousemove', resetIdleTimer)
+  window.removeEventListener('keydown', resetIdleTimer)
+  window.removeEventListener('mousedown', resetIdleTimer)
+  window.removeEventListener('touchstart', resetIdleTimer)
+  if (idleTimer) clearTimeout(idleTimer)
+  if (countdownInterval) clearInterval(countdownInterval)
 })
 
-
-/*
- * ป้ายบทบาทที่แสดงบนหน้าจอ
- *
- * UI-THAI — `roles.name` ในฐานข้อมูลเป็น "ตัวระบุ" ภาษาอังกฤษที่โค้ดฝั่ง server
- * ใช้ตัดสินสิทธิ์ (Super Admin, Document Officer, …) เปลี่ยนไม่ได้
- * เดิมหน้าจอเอาค่านั้นมาแสดงตรง ๆ ผู้ใช้จึงเห็นคำว่า "Document Officer"
- * บนแถบด้านข้าง ทั้งที่ UI ต้องเป็นภาษาไทยทั้งหมด
- *
- * แปลงเป็นชื่อไทยตรงนี้ที่เดียว ค่าที่ไม่รู้จักยังแสดงตามเดิมเพื่อไม่ให้ป้ายหาย
- */
 const ROLE_LABELS_TH = {
   'Super Admin': 'ผู้ดูแลระบบสูงสุด',
   SuperAdmin: 'ผู้ดูแลระบบสูงสุด',
@@ -412,7 +692,6 @@ const roleLabel = computed(() => {
   return 'บุคลากร'
 })
 
-// Role badge color
 const roleBadgeClass = computed(() => {
   const map = {
     'ผู้ดูแลระบบสูงสุด': 'bg-yellow-400/30 text-yellow-200',
@@ -448,36 +727,13 @@ const doLogout = () => {
 </script>
 
 <style scoped>
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.75rem;
-  color: rgba(255,255,255,0.7);
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background 0.15s, color 0.15s;
-  text-decoration: none;
-  cursor: pointer;
+/* ซ่อน Scrollbar แถบโมดูล แต่ยังเลื่อนได้ */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
-.nav-link:hover {
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-}
-.nav-link-active {
-  background: rgba(255,255,255,0.2) !important;
-  color: #fff !important;
-  font-weight: 600;
-}
-
-/* หัวข้อคั่นกลุ่มย่อยในเมนูตั้งค่าระบบ */
-.settings-group-label {
-  padding: 0.5rem 0.75rem 0.125rem;
-  font-size: 0.625rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.4);
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Drawer transitions */
@@ -509,5 +765,6 @@ const doLogout = () => {
   opacity: 0;
 }
 </style>
+
 
 

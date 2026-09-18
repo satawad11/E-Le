@@ -44,6 +44,7 @@ class RegisterReportController extends Controller
         $filters = $request->validate([
             'direction' => ['nullable', 'string', Rule::in(Document::directions())],
             'category' => ['nullable', 'string', Rule::in(DocumentType::categories())],
+            'division_id' => ['nullable', 'integer', 'exists:org_units,id'],
             'status' => ['nullable', 'string', 'max:30'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
@@ -80,6 +81,7 @@ class RegisterReportController extends Controller
             'format' => ['nullable', 'string', Rule::in(['csv', 'xlsx'])],
             'direction' => ['nullable', 'string', Rule::in(Document::directions())],
             'category' => ['nullable', 'string', Rule::in(DocumentType::categories())],
+            'division_id' => ['nullable', 'integer', 'exists:org_units,id'],
             'status' => ['nullable', 'string', 'max:30'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],

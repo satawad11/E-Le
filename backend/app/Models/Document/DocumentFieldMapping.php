@@ -20,7 +20,7 @@ class DocumentFieldMapping extends Model
      * ธรรมดาโดยไม่มีอะไรเตือน — หน้าออกแบบและ validation จึงยึดรายการนี้แทน
      * จนกว่าจะมีตัววาดบาร์โค้ดจริง (ดู docs/KNOWN-LIMITATIONS.md)
      */
-    public const RENDERABLE_TYPES = ['TEXT', 'MULTILINE_TEXT', 'DATE', 'NUMBER', 'CHECKBOX', 'SIGNATURE', 'IMAGE', 'QR_CODE'];
+    public const RENDERABLE_TYPES = ['TEXT', 'MULTILINE_TEXT', 'DATE', 'NUMBER', 'CHECKBOX', 'SIGNATURE', 'IMAGE', 'GARUDA', 'QR_CODE'];
 
     /** คีย์ที่อนุญาตใน `options` — กันค่าที่ไม่มีใครอ่านหลุดเข้ามาสะสมในฐานข้อมูล */
     public const OPTION_KEYS = ['mark', 'checked_values', 'underline', 'letter_spacing', 'rotate', 'visible_when'];

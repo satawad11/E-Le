@@ -88,61 +88,64 @@
     </div>
 
     <!-- Add/Edit Modal -->
-    <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 class="text-lg font-medium text-gray-900">{{ isEditing ? 'แก้ไขหน่วยงาน' : 'เพิ่มหน่วยงาน' }}</h3>
-          <button @click="closeModal" class="text-gray-400 hover:text-gray-500">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" @click.self="closeModal">
+      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md my-auto max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0 bg-white">
+          <h3 class="text-lg font-bold text-gray-900">{{ isEditing ? 'แก้ไขหน่วยงาน' : 'เพิ่มหน่วยงาน' }}</h3>
+          <button @click="closeModal" class="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg transition-colors" aria-label="ปิด">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
-        <form @submit.prevent="saveOrgUnit" class="p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700">ชื่อหน่วยงาน <span class="text-red-500">*</span></label>
-            <input type="text" v-model="form.name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        <form @submit.prevent="saveOrgUnit" class="flex flex-col flex-1 overflow-hidden min-h-0">
+          <div class="overflow-y-auto flex-1 p-6 space-y-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1">ชื่อหน่วยงาน <span class="text-red-500">*</span></label>
+              <input type="text" v-model="form.name" required class="block w-full border border-gray-300 rounded-xl shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-[#800000]/30 focus:border-[#800000] sm:text-sm">
+            </div>
+            <!--
+              หน่วยงานแม่ — สิ่งที่โครงเดิมทำไม่ได้
+              ผังลึกได้หลายชั้น เช่น ฝ่าย > กลุ่มงาน > งาน ซึ่งเป็นโครงจริงของสถานศึกษา
+              และเป็นสิ่งที่สายอนุมัติกับขอบเขตการมองเห็นใช้ไต่หาผู้รับผิดชอบ
+            -->
+            <div v-if="!form.is_root">
+              <label class="block text-sm font-semibold text-gray-700 mb-1">สังกัดใต้หน่วยงาน</label>
+              <select v-model="form.parent_id" class="block w-full border border-gray-300 rounded-xl shadow-sm py-2 px-3 sm:text-sm bg-white focus:ring-2 focus:ring-[#800000]/30 focus:border-[#800000]">
+                <option v-for="unit in parentOptions" :key="unit.id" :value="unit.id">
+                  {{ indent(unit.depth) }}{{ unit.name }}
+                </option>
+              </select>
+            </div>
+            <!--
+              ระดับของหน่วยงาน — เดิมหน้าจอไม่มีช่องนี้ ทุกหน่วยที่สร้างจากหน้าเว็บ
+              จึงถูกบันทึกเป็น `department` หมด แม้จะเป็นฝ่ายหรืองานก็ตาม
+            -->
+            <div v-if="!form.is_root">
+              <label class="block text-sm font-semibold text-gray-700 mb-1">ระดับ</label>
+              <select v-model="form.type" class="block w-full border border-gray-300 rounded-xl shadow-sm py-2 px-3 sm:text-sm bg-white focus:ring-2 focus:ring-[#800000]/30 focus:border-[#800000]">
+                <option v-for="option in TYPE_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
+              </select>
+            </div>
+            <!--
+              ช่อง "หัวหน้าแผนก" เดิมอยู่ตรงนี้ ตั้งค่าได้แต่ไม่มีตรรกะใดอ่านค่าเลย
+              ผู้ดูแลที่ตั้งไว้แล้วรอให้ใบลาวิ่งไปหาเขา จะไม่มีวันเกิดขึ้นและไม่มีอะไรบอก
+              ของจริงคือการมอบหมายที่มีวันมีผลใน "ผู้รับผิดชอบหน่วยงาน"
+            -->
+            <p class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900">
+              กำหนด<strong>หัวหน้าหน่วยงาน</strong>ได้ที่หน้า
+              <router-link :to="{ name: 'admin-org-unit-managers' }" class="font-semibold underline underline-offset-2">
+                ผู้รับผิดชอบหน่วยงาน
+              </router-link>
+              — เป็นข้อมูลที่ระบบใช้หาผู้อนุมัติใบลาจริง และเก็บวันที่เริ่มมีผลไว้เป็นประวัติ
+            </p>
+            <div class="flex items-center">
+              <input type="checkbox" id="is_active" v-model="form.is_active" class="h-4 w-4 text-[#800000] focus:ring-[#800000] border-gray-300 rounded">
+              <label for="is_active" class="ml-2 block text-sm text-gray-900 font-medium">เปิดใช้งาน</label>
+            </div>
           </div>
-          <!--
-            หน่วยงานแม่ — สิ่งที่โครงเดิมทำไม่ได้
-            ผังลึกได้หลายชั้น เช่น ฝ่าย > กลุ่มงาน > งาน ซึ่งเป็นโครงจริงของสถานศึกษา
-            และเป็นสิ่งที่สายอนุมัติกับขอบเขตการมองเห็นใช้ไต่หาผู้รับผิดชอบ
-          -->
-          <div v-if="!form.is_root">
-            <label class="block text-sm font-medium text-gray-700">สังกัดใต้หน่วยงาน</label>
-            <select v-model="form.parent_id" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm">
-              <option v-for="unit in parentOptions" :key="unit.id" :value="unit.id">
-                {{ indent(unit.depth) }}{{ unit.name }}
-              </option>
-            </select>
-          </div>
-          <!--
-            ระดับของหน่วยงาน — เดิมหน้าจอไม่มีช่องนี้ ทุกหน่วยที่สร้างจากหน้าเว็บ
-            จึงถูกบันทึกเป็น `department` หมด แม้จะเป็นฝ่ายหรืองานก็ตาม
-          -->
-          <div v-if="!form.is_root">
-            <label class="block text-sm font-medium text-gray-700">ระดับ</label>
-            <select v-model="form.type" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm">
-              <option v-for="option in TYPE_OPTIONS" :key="option.value" :value="option.value">{{ option.label }}</option>
-            </select>
-          </div>
-          <!--
-            ช่อง "หัวหน้าแผนก" เดิมอยู่ตรงนี้ ตั้งค่าได้แต่ไม่มีตรรกะใดอ่านค่าเลย
-            ผู้ดูแลที่ตั้งไว้แล้วรอให้ใบลาวิ่งไปหาเขา จะไม่มีวันเกิดขึ้นและไม่มีอะไรบอก
-            ของจริงคือการมอบหมายที่มีวันมีผลใน "ผู้รับผิดชอบหน่วยงาน"
-          -->
-          <p class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900">
-            กำหนด<strong>หัวหน้าหน่วยงาน</strong>ได้ที่หน้า
-            <router-link :to="{ name: 'admin-org-unit-managers' }" class="font-semibold underline underline-offset-2">
-              ผู้รับผิดชอบหน่วยงาน
-            </router-link>
-            — เป็นข้อมูลที่ระบบใช้หาผู้อนุมัติใบลาจริง และเก็บวันที่เริ่มมีผลไว้เป็นประวัติ
-          </p>
-          <div class="flex items-center mt-4">
-            <input type="checkbox" id="is_active" v-model="form.is_active" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-            <label for="is_active" class="ml-2 block text-sm text-gray-900">เปิดใช้งาน</label>
-          </div>
-          <div class="pt-4 flex gap-3 justify-end">
-            <button type="button" @click="closeModal" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium transition-colors">ยกเลิก</button>
-            <button type="submit" :disabled="isSaving" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50">
+
+          <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex gap-3 justify-end flex-shrink-0">
+            <button type="button" @click="closeModal" class="flex-1 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm transition-colors shadow-sm">ยกเลิก</button>
+            <button type="submit" :disabled="isSaving" class="flex-1 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm transition-colors shadow-sm disabled:opacity-50">
               {{ isSaving ? 'กำลังบันทึก...' : 'บันทึก' }}
             </button>
           </div>

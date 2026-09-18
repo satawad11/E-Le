@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\WorkflowController;
 use App\Http\Controllers\Api\ApiDescriptorController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\VocationalReportController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AttendanceCorrectionController;
@@ -48,6 +49,7 @@ use App\Http\Controllers\Saraban\DocumentTemplateController;
 use App\Http\Controllers\Saraban\DocumentVerificationController;
 use App\Http\Controllers\Saraban\InboxController;
 use App\Http\Controllers\Saraban\IncomingRegistrationController;
+use App\Http\Controllers\Saraban\InterAgencyDispatchController;
 use App\Http\Controllers\Saraban\NumberReservationController;
 use App\Http\Controllers\Saraban\NumberSeriesController;
 use App\Http\Controllers\Saraban\PolicyController;
@@ -531,6 +533,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/documents/options', [DocumentController::class, 'options'])->middleware('ability:saraban.document.view');
         Route::get('/templates', [DocumentTemplateController::class, 'index'])->middleware('ability:saraban.document.view');
         Route::get('/templates/disclaimer', [DocumentTemplateController::class, 'disclaimer'])->middleware('ability:saraban.document.view');
+        Route::get('/templates/cross-module-draft', [DocumentTemplateController::class, 'crossModuleDraft'])->middleware('ability:saraban.document.create');
         /*
          * คิวงานของผู้เรียก (NAV §4.7)
          *
@@ -668,6 +671,16 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         // หน้ารวมการกระจายเอกสาร (NAV §2 · §4.8) — สิทธิ์เดียวกับการติดตามรายฉบับ
         Route::get('/distributions', [DistributionController::class, 'overview'])
             ->middleware('ability:saraban.distribution.track');
+
+        /*
+         * การส่งและรับหนังสือราชการอิเล็กทรอนิกส์ข้ามสถานศึกษา / หน่วยงาน (Inter-Agency Exchange · SoT §17, §27)
+         */
+        Route::get('/documents/{document}/dispatch-package', [InterAgencyDispatchController::class, 'downloadPackage'])
+            ->middleware('ability:saraban.document.view|saraban.distribution.track');
+        Route::post('/documents/{document}/dispatch-webhook', [InterAgencyDispatchController::class, 'dispatchWebhook'])
+            ->middleware('ability:saraban.distribution.track');
+        Route::post('/incoming/import-package', [InterAgencyDispatchController::class, 'importPackage'])
+            ->middleware('ability:saraban.incoming.register');
 
         /*
          * กล่องหนังสือเข้า (INT-13 · SoT §15)
@@ -858,6 +871,13 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      */
     Route::prefix('saraban')->group($sarabanRoutes);
     Route::prefix('v1/saraban')->middleware('idempotent')->group($sarabanRoutes);
+
+    /*
+     * VOCATIONAL-PHASE-02 — รายงานการประเมิน ก.ค.ศ. และระบบนำเข้าเครื่องสแกน Biometric
+     */
+    Route::get('/v1/reports/vocational/evaluation-summary', [VocationalReportController::class, 'evaluationSummary']);
+    Route::get('/v1/reports/vocational/teacher-pa-evidence', [VocationalReportController::class, 'teacherPaEvidence']);
+    Route::post('/v1/attendance/biometric/import-file', [VocationalReportController::class, 'importBiometricFile']);
 
     /*
      * คำอธิบายพื้นผิว API แบบอ่านด้วยเครื่องได้ (SoT §17 · MCP-ready)

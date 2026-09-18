@@ -79,6 +79,17 @@ const router = createRouter({
       meta: { requiresAuth: true, title: 'รายงานการลาราชการ', parent: 'ระบบลางาน' }
     },
     {
+      path: '/reports/vocational-evaluation',
+      name: 'vocational-evaluation-report',
+      component: () => import('../views/admin/VocationalEvaluationReportView.vue'),
+      meta: {
+        requiresAuth: true,
+        permissions: ['leave.report.view', 'leave.management.manage', 'system.manage'],
+        title: 'รายงานประเมินวันลา ก.ค.ศ.',
+        parent: 'รายงาน',
+      }
+    },
+    {
       /*
        * CLEANUP-01 (D3) — หน้าจอของชั้นรายงานกลาง
        *
@@ -125,76 +136,9 @@ const router = createRouter({
       path: '/admin/document-center/reports',
       redirect: { name: 'report-designer' }
     },
-    /*
-     * งานสารบรรณ (INT-05)
-     *
-     * ไม่ผูก permission ที่ router ตามแนวทางเดิมของโครงการ — สารบัญเมนูคัดตามสิทธิ์
-     * ให้แล้ว และทุก endpoint ตรวจสิทธิ์ซ้ำที่ฝั่ง server ทุกครั้ง
-     * (หน้าเว็บไม่ใช่ด่านความปลอดภัย ตาม SoT §6)
-     */
-    {
-      path: '/saraban/documents',
-      name: 'saraban-documents',
-      component: () => import('../views/saraban/DocumentsView.vue'),
-      meta: {
-        requiresAuth: true,
-        title: 'คลังหนังสือ',
-        parent: 'งานสารบรรณ',
-        saraban: {
-          title: 'คลังหนังสือ',
-          description: 'หนังสือรับ หนังสือส่ง และหนังสือภายในที่อยู่ในขอบเขตของท่าน',
-        },
-      }
-    },
-    /*
-     * ทะเบียนแยกตามทิศทาง (NAV §2)
-     *
-     * ต้องอยู่ **ก่อน** `/saraban/documents/:id` ด้วยเหตุผลเดียวกับคิวงาน
-     * มิฉะนั้น `outgoing` จะถูกจับเป็นรหัสหนังสือ · ใช้ component เดียวกับ
-     * ทะเบียนรวม ต่างกันเฉพาะค่าตั้งต้นใน `meta.saraban`
-     */
-    {
-      path: '/saraban/documents/outgoing',
-      name: 'saraban-documents-outgoing',
-      component: () => import('../views/saraban/DocumentsView.vue'),
-      meta: {
-        requiresAuth: true,
-        title: 'ทะเบียนหนังสือส่ง',
-        parent: 'งานสารบรรณ',
-        saraban: {
-          direction: 'outgoing',
-          title: 'ทะเบียนหนังสือส่ง',
-          description: 'หนังสือที่ออกจากหน่วยงานของท่าน',
-        },
-      }
-    },
-    {
-      path: '/saraban/documents/internal',
-      name: 'saraban-documents-internal',
-      component: () => import('../views/saraban/DocumentsView.vue'),
-      meta: {
-        requiresAuth: true,
-        title: 'ทะเบียนหนังสือภายใน',
-        parent: 'งานสารบรรณ',
-        saraban: {
-          direction: 'internal',
-          title: 'ทะเบียนหนังสือภายใน',
-          description: 'หนังสือที่เวียนภายในหน่วยงาน',
-        },
-      }
-    },
-    /*
-     * คิวงานของผู้ใช้ (NAV §2 · §4.7)
-     *
-     * ต้องอยู่ **ก่อน** `/saraban/documents/:id` มิฉะนั้น `queue` จะถูกจับเป็นรหัสหนังสือ
-     * — ข้อผิดพลาดเดียวกับที่ต้องระวังฝั่ง route ของ API
-     */
-    {
-      path: '/saraban/documents/queue',
-      name: 'saraban-work-queue',
-      component: () => import('../views/saraban/WorkQueueView.vue'),
-      meta: { requiresAuth: true, title: 'รอพิจารณา / รอลงนาม', parent: 'งานสารบรรณ' }
-    },
+    // ==========================================
+    // === งานสารบรรณ (CONSOLIDATED HUBS) ===
+    // ==========================================
     {
       path: '/saraban',
       name: 'saraban-dashboard',
@@ -202,16 +146,54 @@ const router = createRouter({
       meta: { requiresAuth: true, title: 'แดชบอร์ด', parent: 'งานสารบรรณ' }
     },
     {
-      path: '/saraban/numbers',
-      name: 'saraban-numbers',
-      component: () => import('../views/saraban/NumberReservationView.vue'),
-      meta: { requiresAuth: true, title: 'จองและออกเลขหนังสือ', parent: 'งานสารบรรณ' }
+      path: '/saraban/inbox',
+      name: 'saraban-inbox',
+      component: () => import('../views/saraban/InboxView.vue'),
+      meta: { requiresAuth: true, title: 'กล่องงานและหนังสือของฉัน', parent: 'งานสารบรรณ' }
+    },
+    {
+      path: '/saraban/registers',
+      name: 'saraban-registers',
+      component: () => import('../views/saraban/RegistersHubView.vue'),
+      meta: { requiresAuth: true, title: 'สมุดทะเบียนสารบรรณ', parent: 'งานสารบรรณ' }
     },
     {
       path: '/saraban/documents/new',
       name: 'saraban-document-create',
       component: () => import('../views/saraban/DocumentFormView.vue'),
-      meta: { requiresAuth: true, title: 'สร้างหนังสือ', parent: 'งานสารบรรณ' }
+      meta: { requiresAuth: true, title: 'สร้างหนังสือราชการ', parent: 'งานสารบรรณ' }
+    },
+    {
+      path: '/saraban/archive',
+      name: 'saraban-archive',
+      component: () => import('../views/saraban/ArchiveCasesHubView.vue'),
+      meta: { requiresAuth: true, title: 'คลังเอกสารและสารบบเรื่อง', parent: 'งานสารบรรณ' }
+    },
+    {
+      path: '/saraban/distributions',
+      name: 'saraban-distributions',
+      component: () => import('../views/saraban/DistributionTrackingView.vue'),
+      meta: { requiresAuth: true, title: 'กระจายหนังสือและหนังสือเวียน', parent: 'งานสารบรรณ' }
+    },
+    {
+      path: '/saraban/reports',
+      name: 'saraban-reports',
+      component: () => import('../views/saraban/RegisterReportsView.vue'),
+      meta: { requiresAuth: true, title: 'รายงานและสถิติสารบรรณ', parent: 'งานสารบรรณ' }
+    },
+    {
+      path: '/saraban/admin',
+      name: 'saraban-admin-hub',
+      component: () => import('../views/saraban/SarabanAdminHubView.vue'),
+      meta: { requiresAuth: true, title: 'ศูนย์จัดการและตั้งค่าระบบสารบรรณ', parent: 'งานสารบรรณ' }
+    },
+
+    // --- หน้ารายฉบับและพื้นที่ทำงาน (Document Workspaces) ---
+    {
+      path: '/saraban/incoming/new',
+      name: 'saraban-incoming-register',
+      component: () => import('../views/saraban/IncomingRegisterView.vue'),
+      meta: { requiresAuth: true, title: 'ลงทะเบียนรับ', parent: 'งานสารบรรณ' }
     },
     {
       path: '/saraban/documents/:id',
@@ -219,24 +201,12 @@ const router = createRouter({
       component: () => import('../views/saraban/DocumentFormView.vue'),
       meta: { requiresAuth: true, title: 'รายละเอียดหนังสือ', parent: 'งานสารบรรณ' }
     },
-    /*
-     * หน้าลงนาม (NAV §4.7 · ปิด RISK-30)
-     *
-     * เป็นหน้าเต็มไม่ใช่ modal โดยเจตนา — ผู้ลงนามต้องเห็นเอกสารทั้งหน้าและ
-     * ลากวางลายเซ็นบนตำแหน่งจริง ซึ่งทำใน modal ไม่ได้
-     */
     {
       path: '/saraban/documents/:id/sign',
       name: 'saraban-document-sign',
       component: () => import('../views/saraban/SignDocumentView.vue'),
       meta: { requiresAuth: true, title: 'ลงนามในหนังสือ', parent: 'งานสารบรรณ' }
     },
-    /*
-     * หน้าเกษียน — ใช้พื้นที่ทำงานเดียวกับหน้าลงนาม
-     *
-     * เดิมเกษียนด้วยการกรอกเลขหน้าและพิกัดเป็นตัวเลขโดยไม่เห็นเอกสาร
-     * ซึ่งไม่มีทางวางตรงที่ตั้งใจได้
-     */
     {
       path: '/saraban/documents/:id/endorse',
       name: 'saraban-document-endorse',
@@ -249,58 +219,11 @@ const router = createRouter({
       component: () => import('../views/saraban/DocumentWorkspaceView.vue'),
       meta: { requiresAuth: true, title: 'ประทับตราหนังสือ', parent: 'งานสารบรรณ' }
     },
-    /*
-     * จัดการสายการเดินหนังสือ (RISK-26 · NAV §5.2)
-     *
-     * แยกจาก `/admin/workflow` ของโมดูลการลาโดยเจตนา — คนละสายงาน คนละผู้ดูแล
-     * และ endpoint ฝั่ง server ตรวจซ้ำว่าเวอร์ชันเป็นของสารบรรณจริง
-     */
     {
       path: '/saraban/workflow',
       name: 'saraban-workflow-design',
       component: () => import('../views/saraban/WorkflowDesignView.vue'),
       meta: { requiresAuth: true, title: 'สายการเดินหนังสือ', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/workflow/simulate',
-      name: 'saraban-workflow-simulate',
-      component: () => import('../views/saraban/WorkflowSimulationView.vue'),
-      meta: { requiresAuth: true, title: 'จำลองเส้นทางเดินหนังสือ', parent: 'งานสารบรรณ' }
-    },
-    {
-      // INT-20 — ทะเบียนหลักฐานการปฏิบัติตามข้อกำหนด (SoT §23)
-      path: '/saraban/compliance',
-      name: 'saraban-compliance',
-      component: () => import('../views/saraban/ComplianceEvidenceView.vue'),
-      meta: { requiresAuth: true, title: 'หลักฐานตามระเบียบ', parent: 'งานสารบรรณ' }
-    },
-    {
-      // INT-19 — รายงานทะเบียน (SoT §28)
-      path: '/saraban/reports',
-      name: 'saraban-reports',
-      component: () => import('../views/saraban/RegisterReportsView.vue'),
-      meta: { requiresAuth: true, title: 'รายงานสารบรรณ', parent: 'งานสารบรรณ' }
-    },
-    {
-      // INT-18 — สารบบเรื่อง (SoT §22)
-      path: '/saraban/cases',
-      name: 'saraban-cases',
-      component: () => import('../views/saraban/CasesView.vue'),
-      meta: { requiresAuth: true, title: 'สารบบเรื่อง', parent: 'งานสารบรรณ' }
-    },
-    {
-      // INT-17 — ศูนย์เฝ้าระวังการปฏิบัติการ (SoT §19, §20, §21)
-      path: '/saraban/operations',
-      name: 'saraban-command-center',
-      component: () => import('../views/saraban/CommandCenterView.vue'),
-      meta: { requiresAuth: true, title: 'รายการที่ต้องตามแก้', parent: 'งานสารบรรณ' }
-    },
-    {
-      // INT-16 — ศูนย์นโยบายและตารางอำนาจ (SoT §6, §18)
-      path: '/saraban/policies',
-      name: 'saraban-policies',
-      component: () => import('../views/saraban/PolicyCenterView.vue'),
-      meta: { requiresAuth: true, title: 'ศูนย์นโยบายงานสารบรรณ', parent: 'งานสารบรรณ' }
     },
     {
       path: '/saraban/authority',
@@ -309,57 +232,36 @@ const router = createRouter({
       meta: { requiresAuth: true, title: 'ตารางอำนาจหน้าที่', parent: 'งานสารบรรณ' }
     },
     {
-      path: '/saraban/number-series',
-      name: 'saraban-number-series',
-      component: () => import('../views/saraban/NumberSeriesView.vue'),
-      meta: { requiresAuth: true, title: 'ชุดเลขหนังสือ', parent: 'งานสารบรรณ' }
+      path: '/saraban/policies',
+      name: 'saraban-policies',
+      component: () => import('../views/saraban/PolicyCenterView.vue'),
+      meta: { requiresAuth: true, title: 'ศูนย์นโยบายงานสารบรรณ', parent: 'งานสารบรรณ' }
     },
     {
-      path: '/saraban/inbox',
-      name: 'saraban-inbox',
-      component: () => import('../views/saraban/InboxView.vue'),
-      meta: { requiresAuth: true, title: 'กล่องหนังสือของฉัน', parent: 'งานสารบรรณ' }
+      path: '/saraban/operations',
+      name: 'saraban-command-center',
+      component: () => import('../views/saraban/CommandCenterView.vue'),
+      meta: { requiresAuth: true, title: 'รายการที่ต้องตามแก้', parent: 'งานสารบรรณ' }
     },
     {
-      path: '/saraban/incoming',
-      name: 'saraban-incoming',
-      component: () => import('../views/saraban/IncomingView.vue'),
-      meta: { requiresAuth: true, title: 'ทะเบียนหนังสือรับ', parent: 'งานสารบรรณ' }
+      path: '/saraban/compliance',
+      name: 'saraban-compliance',
+      component: () => import('../views/saraban/ComplianceEvidenceView.vue'),
+      meta: { requiresAuth: true, title: 'หลักฐานตามระเบียบ', parent: 'งานสารบรรณ' }
     },
-    {
-      path: '/saraban/incoming/new',
-      name: 'saraban-incoming-register',
-      component: () => import('../views/saraban/IncomingRegisterView.vue'),
-      meta: { requiresAuth: true, title: 'ลงทะเบียนรับ', parent: 'งานสารบรรณ' }
-    },
-    /*
-     * กล่องรอลงทะเบียน (NAV §2 · §4.2) — หนังสือรับที่ยังไม่มีเลขรับ
-     *
-     * ใช้ทะเบียนหนังสือเป็นหน้าจอ เพราะเป็นรายการหนังสือชุดเดียวกัน
-     * ต่างกันแค่เงื่อนไข ไม่ใช่คนละเรื่อง
-     */
-    {
-      path: '/saraban/incoming/pending',
-      name: 'saraban-incoming-pending',
-      component: () => import('../views/saraban/DocumentsView.vue'),
-      meta: {
-        requiresAuth: true,
-        title: 'กล่องรอลงทะเบียน',
-        parent: 'งานสารบรรณ',
-        saraban: {
-          pendingRegistration: true,
-          title: 'กล่องรอลงทะเบียน',
-          description: 'หนังสือรับที่เข้ามาแล้วแต่ยังไม่ได้ออกเลขรับ',
-        },
-      }
-    },
-    {
-      // NAV §2 · §4.8 — ติดตามการกระจายเอกสารข้ามฉบับ
-      path: '/saraban/distributions',
-      name: 'saraban-distributions',
-      component: () => import('../views/saraban/DistributionTrackingView.vue'),
-      meta: { requiresAuth: true, title: 'กระจายเอกสาร', parent: 'งานสารบรรณ' }
-    },
+
+    // --- ทางลัดและ Redirect เพื่อความเข้ากันได้ย้อนหลัง (Backward Compatibility) ---
+    { path: '/saraban/documents/queue', redirect: { name: 'saraban-inbox', query: { tab: 'queue' } } },
+    { path: '/saraban/incoming', redirect: { name: 'saraban-registers', query: { tab: 'incoming' } } },
+    { path: '/saraban/incoming/pending', redirect: { name: 'saraban-registers', query: { tab: 'incoming' } } },
+    { path: '/saraban/numbers', redirect: { name: 'saraban-registers', query: { tab: 'reservations' } } },
+    { path: '/saraban/documents/outgoing', redirect: { name: 'saraban-registers', query: { tab: 'outgoing' } } },
+    { path: '/saraban/documents/internal', redirect: { name: 'saraban-registers', query: { tab: 'internal' } } },
+    { path: '/saraban/documents', redirect: { name: 'saraban-archive', query: { tab: 'archive' } } },
+    { path: '/saraban/cases', redirect: { name: 'saraban-archive', query: { tab: 'cases' } } },
+    { path: '/saraban/number-series', redirect: { name: 'saraban-admin-hub', query: { tab: 'number_series' } } },
+    { path: '/saraban/workflow/simulate', redirect: { name: 'saraban-admin-hub', query: { tab: 'workflow' } } },
+    { path: '/saraban/distribution', redirect: { name: 'saraban-distributions' } },
     {
       path: '/leave-card',
       name: 'leave-card',
@@ -454,6 +356,12 @@ const router = createRouter({
       name: 'admin-attendances-summary',
       component: () => import('../views/admin/AttendanceSummaryView.vue'),
       meta: { requiresAuth: true, permission: 'attendance.view_all', title: 'สรุปเวลาปฏิบัติงาน', parent: 'ระบบลงเวลาออนไลน์' }
+    },
+    {
+      path: '/admin/attendance/biometric-hub',
+      name: 'admin-biometric-hub',
+      component: () => import('../views/admin/BiometricHubView.vue'),
+      meta: { requiresAuth: true, permission: 'attendance.view_all', title: 'นำเข้าไฟล์สแกนนิ้ว/ใบหน้า (Biometric Hub)', parent: 'ระบบลงเวลาออนไลน์' }
     },
     {
       path: '/admin/ot-summary',

@@ -296,8 +296,8 @@
 
     <!-- Cancel Confirmation Modal -->
     <transition name="fade">
-      <div v-if="showCancelModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+      <div v-if="showCancelModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" @click.self="showCancelModal = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 max-h-[90vh] overflow-y-auto my-auto">
           <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
             :class="cancelTarget?.status === 'Approved' ? 'bg-yellow-100' : 'bg-red-100'">
             <!-- ไอคอนสำหรับ Approved = ส่งคำขอยกเลิก -->
@@ -361,8 +361,8 @@
     </transition>
 
     <!-- ประวัติการดำเนินการ (CLEANUP-01 · D10 — ย้ายมาจากหน้า /leave-services) -->
-    <div v-if="auditTarget" class="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4" @click.self="auditTarget = null">
-      <section role="dialog" aria-modal="true" aria-labelledby="audit-title" class="max-h-[85vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-6">
+    <div v-if="auditTarget" class="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" @click.self="auditTarget = null">
+      <section role="dialog" aria-modal="true" aria-labelledby="audit-title" class="max-h-[85vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-6 my-auto">
         <div class="flex items-start justify-between gap-4">
           <div>
             <h2 id="audit-title" class="text-xl font-bold text-gray-900">ประวัติการดำเนินการ</h2>
@@ -388,8 +388,8 @@
     </div>
 
     <!-- ขอยกเลิกวันลาบางช่วง (CLEANUP-01 · D10 — ย้ายมาจากหน้า /leave-services) -->
-    <div v-if="partialTarget" class="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4" @click.self="partialTarget = null">
-      <form role="dialog" aria-modal="true" aria-labelledby="partial-title" class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6" @submit.prevent="submitPartialCancel">
+    <div v-if="partialTarget" class="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" @click.self="partialTarget = null">
+      <form role="dialog" aria-modal="true" aria-labelledby="partial-title" class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 max-h-[90vh] overflow-y-auto my-auto" @submit.prevent="submitPartialCancel">
         <h2 id="partial-title" class="text-xl font-bold text-gray-900">ขอยกเลิกวันลาบางช่วง</h2>
         <label class="block text-sm font-medium text-gray-700">
           ตั้งแต่วันที่

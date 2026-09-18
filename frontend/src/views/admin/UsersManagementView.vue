@@ -1,5 +1,14 @@
 <template>
   <div>
+    <!-- Breadcrumb Navigation -->
+    <AppBreadcrumb
+      :items="[
+        { title: 'ตั้งค่าระบบ', to: '/admin' },
+        { title: 'จัดการผู้ใช้งาน (บุคลากร)' }
+      ]"
+      :backTo="'/admin'"
+    />
+
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
       <div>
@@ -142,7 +151,8 @@
           @action="openAddModal"
         />
 
-        <div v-else class="overflow-x-auto">
+        <!-- Desktop Table (md:block) -->
+        <div v-else class="hidden md:block overflow-x-auto">
           <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-200">
               <tr>
@@ -231,6 +241,70 @@
           </table>
         </div>
 
+        <!-- Mobile Cards View (< md) -->
+        <div v-if="filteredUsers.length" class="block md:hidden divide-y divide-gray-100">
+          <div
+            v-for="user in filteredUsers"
+            :key="`mob-${user.id}`"
+            class="p-4 space-y-3 bg-white hover:bg-gray-50/70 transition-colors"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  :aria-label="`เลือก ${user.name}`"
+                  class="h-4 w-4 rounded border-gray-300 text-[#800000] focus:ring-[#800000]"
+                  :value="user.id"
+                  v-model="selectedIds"
+                >
+                <div>
+                  <h4 class="font-bold text-gray-900 text-sm">{{ user.personnel?.full_name || user.name }}</h4>
+                  <p class="text-xs text-blue-600 font-mono">{{ user.profile?.id_card_number || '-' }}</p>
+                </div>
+              </div>
+              <span
+                class="inline-block px-2 py-0.5 text-xs font-semibold rounded-full"
+                :class="(user.personnel?.status || user.personnel_status || user.profile?.status) === 'active' || (user.personnel?.status || user.personnel_status || user.profile?.status) === 'ปฏิบัติหน้าที่' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
+              >
+                {{ user.personnel?.status === 'active' ? 'ปฏิบัติหน้าที่' : (user.personnel?.status || user.profile?.status || 'ปฏิบัติหน้าที่') }}
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-gray-50 p-2.5 rounded-xl">
+              <div>
+                <span class="text-gray-400 block text-[11px]">ตำแหน่ง:</span>
+                <span class="font-medium text-gray-800">{{ user.current_assignment?.position || user.position || user.profile?.position || (user.role ? roleLabel(user.role.name) : '-') }}</span>
+              </div>
+              <div>
+                <span class="text-gray-400 block text-[11px]">เริ่มงาน:</span>
+                <span class="font-medium text-gray-800">{{ formatDate(user.personnel?.effective_from || user.profile?.start_date) || '-' }}</span>
+              </div>
+            </div>
+
+            <!-- Mobile Action Buttons -->
+            <div v-if="showTrashed" class="flex justify-end pt-1">
+              <button @click="restoreUser(user)" class="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9"/></svg>
+                กู้คืน
+              </button>
+            </div>
+            <div v-else class="flex flex-wrap items-center justify-end gap-1.5 pt-1">
+              <button @click="toggleStatus(user)" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition" :class="user.is_active ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'" :disabled="submitting">
+                {{ user.is_active ? 'ระงับ' : 'เปิดใช้งาน' }}
+              </button>
+              <button @click="openPermissionModal(user)" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
+                สิทธิ์
+              </button>
+              <button @click="openEditModal(user)" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition">
+                แก้ไข
+              </button>
+              <button v-if="user.id !== authStore.user?.id" @click="confirmDelete(user)" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition">
+                ลบ
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- แถบแบ่งหน้า — รายชื่อโหลดทีละหน้าจากเซิร์ฟเวอร์ -->
         <div v-if="pagination.total > 0" class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 text-sm">
           <p class="text-gray-500">
@@ -314,6 +388,7 @@ import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
 import { getErrorMessage } from '../../utils/errorHandler'
 import { ICONS } from '../../utils/icons'
 import { roleLabel } from '../../utils/roleLabel'
+import AppBreadcrumb from '../../components/ui/AppBreadcrumb.vue'
 import LoadingState from '../../components/ui/LoadingState.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ErrorState from '../../components/ui/ErrorState.vue'

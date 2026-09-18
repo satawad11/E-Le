@@ -9,6 +9,7 @@ use App\Models\OrgUnit;
 use App\Models\Saraban\Document;
 use App\Models\Saraban\DocumentType;
 use App\Models\Saraban\DocumentVersion;
+use App\Models\Saraban\RetentionSchedule;
 use App\Models\User;
 use App\Models\Workflow\WorkflowTransition;
 use App\Policies\Saraban\DocumentPolicy;
@@ -23,6 +24,7 @@ use App\Services\Saraban\DocumentWorkflowService;
 use App\Services\Saraban\NumberingException;
 use App\Services\Saraban\OfficialSarabanFilenameService;
 use App\Services\Saraban\WorkQueueService;
+use App\Services\TrustedClock;
 use App\Services\Workflow\WorkflowAuthorizationException;
 use App\Services\Workflow\WorkflowTransitionException;
 use App\Support\DocumentFilename;
@@ -49,6 +51,7 @@ class DocumentController extends Controller
         private readonly OrgScopeResolver $scopes,
         private readonly AuthorityResolver $authority,
         private readonly AuditLogger $audit,
+        private readonly TrustedClock $clock,
     ) {}
 
     public function index(Request $request)
@@ -58,7 +61,14 @@ class DocumentController extends Controller
         $user = $request->user();
 
         $query = Document::query()
-            ->with(['documentType', 'currentVersion', 'ownerOrgUnit'])
+            ->with([
+                'documentType',
+                'currentVersion',
+                'ownerOrgUnit',
+                'documentNumber',
+                'retentionSchedule',
+                'legalHolds' => fn ($q) => $q->whereNull('released_at'),
+            ])
             ->latest('id');
 
         /*
@@ -80,6 +90,26 @@ class DocumentController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status')->toString());
+        }
+
+        /*
+         * กรองตามสถานะการเก็บรักษาและอายุเอกสาร (SoT §25)
+         */
+        if ($request->filled('retention_status')) {
+            $rStatus = $request->string('retention_status')->toString();
+            if ($rStatus === 'on_hold') {
+                $query->whereHas('legalHolds', fn ($h) => $h->whereNull('released_at'));
+            } elseif ($rStatus === 'due') {
+                $today = $this->clock->today();
+                $query->whereHas('retentionSchedule', fn ($s) => $s
+                    ->where('status', '!=', RetentionSchedule::STATUS_DISPOSED)
+                    ->whereDate('retain_until', '<=', $today)
+                )->whereDoesntHave('legalHolds', fn ($h) => $h->whereNull('released_at'));
+            } elseif ($rStatus === 'disposed') {
+                $query->whereHas('retentionSchedule', fn ($s) => $s->where('status', RetentionSchedule::STATUS_DISPOSED));
+            } elseif ($rStatus === 'scheduled') {
+                $query->whereHas('retentionSchedule', fn ($s) => $s->where('status', '!=', RetentionSchedule::STATUS_DISPOSED));
+            }
         }
 
         /*

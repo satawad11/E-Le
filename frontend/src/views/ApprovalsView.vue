@@ -1,8 +1,78 @@
 <template>
   <div>
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900">{{ isCancel ? 'อนุมัติยกเลิกใบลา' : 'อนุมัติใบลา' }}</h1>
-      <p class="text-gray-500 mt-1">รายการใบลาที่รอการอนุมัติ{{ isCancel ? 'ยกเลิก' : '' }}จากหน่วยงานของท่าน</p>
+    <!-- Breadcrumb Navigation -->
+    <AppBreadcrumb
+      :items="[
+        { title: 'ระบบการลา', to: '/leaves' },
+        { title: isCancel ? 'อนุมัติยกเลิกใบลา' : 'อนุมัติใบลา' }
+      ]"
+      :backTo="'/leaves'"
+    />
+
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ isCancel ? 'อนุมัติยกเลิกใบลา' : 'อนุมัติใบลา' }}</h1>
+        <p class="text-gray-500 mt-1">รายการใบลาที่รอการอนุมัติ{{ isCancel ? 'ยกเลิก' : '' }}จากหน่วยงานของท่าน</p>
+      </div>
+
+      <!-- View Mode Switcher (Cards vs Split-View) -->
+      <div class="inline-flex p-1 bg-gray-200/80 rounded-xl">
+        <button
+          type="button"
+          @click="viewMode = 'cards'"
+          class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 focus:outline-none"
+          :class="viewMode === 'cards' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+          </svg>
+          มุมมองการ์ด
+        </button>
+        <button
+          type="button"
+          @click="viewMode = 'split'"
+          class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 focus:outline-none"
+          :class="viewMode === 'split' ? 'bg-white text-[#800000] shadow-xs' : 'text-gray-600 hover:text-gray-900'"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+          </svg>
+          มุมมองแผงคู่ (Split-View)
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Navigation to other Executive Inboxes -->
+    <div class="mb-5 flex flex-wrap gap-2 text-xs font-semibold">
+      <router-link
+        to="/approvals"
+        class="px-3.5 py-2 rounded-xl transition-colors inline-flex items-center gap-1.5"
+        :class="!isCancel ? 'bg-[#800000] text-white shadow-xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'"
+      >
+        <span>อนุมัติใบลา</span>
+        <span v-if="!isCancel && filteredApprovals.length > 0" class="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
+          {{ filteredApprovals.length }}
+        </span>
+      </router-link>
+      <router-link
+        to="/approvals/cancel"
+        class="px-3.5 py-2 rounded-xl transition-colors inline-flex items-center gap-1.5"
+        :class="isCancel ? 'bg-[#800000] text-white shadow-xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'"
+      >
+        <span>อนุมัติยกเลิกใบลา</span>
+      </router-link>
+      <router-link
+        to="/overtime/orders"
+        class="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors inline-flex items-center gap-1.5"
+      >
+        <span>คำสั่ง OT รออนุมัติ ↗</span>
+      </router-link>
+      <router-link
+        to="/saraban/documents/queue"
+        class="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors inline-flex items-center gap-1.5"
+      >
+        <span>งานสารบรรณรอลงนาม/เกษียน ↗</span>
+      </router-link>
     </div>
 
     <div v-if="loading" class="py-8">
@@ -57,7 +127,8 @@
         :icon="ICONS.clipboardCheck"
       />
 
-      <div v-else class="space-y-4">
+      <!-- Mode 1: Cards View -->
+      <div v-else-if="viewMode === 'cards'" class="space-y-4">
         <div v-for="leave in paginatedApprovals" :key="leave.id"
           class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow">
           <div class="flex flex-col md:flex-row md:items-start gap-4">
@@ -74,6 +145,12 @@
                 <div class="flex flex-wrap items-center gap-2 mb-1">
                   <h3 class="font-bold text-gray-900 text-base">{{ leave.user?.name }}</h3>
                   <span class="text-xs bg-[#800000]/10 text-[#800000] font-semibold px-2 py-0.5 rounded-full">{{ leave.type?.name }}</span>
+                  <span v-if="leave.user?.org_unit?.name || leave.user?.department" class="text-xs bg-gray-100 text-gray-700 font-medium px-2 py-0.5 rounded-full">
+                    {{ leave.user?.org_unit?.name || leave.user?.department }}
+                  </span>
+                  <span v-if="leave.evaluation_warning" class="text-xs bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    ⚠️ วันลาสะสมรอบนี้แตะเกณฑ์ ๒๓ วัน
+                  </span>
                 </div>
                 <div class="flex flex-wrap gap-3 text-sm text-gray-500">
                   <span class="flex items-center gap-1">
@@ -179,21 +256,145 @@
             </transition>
           </div>
         </div>
-        
-        <!-- Pagination -->
-        <div v-if="totalPages > 1" class="flex justify-center items-center gap-2 mt-8 pb-4" role="navigation" aria-label="แถบเปลี่ยนหน้า">
-          <button @click="prevPage" :disabled="currentPage === 1" class="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[#800000]" aria-label="ไปยังหน้าก่อนหน้า">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-          </button>
-          <div class="flex items-center gap-1">
-            <button v-for="p in totalPages" :key="p" @click="currentPage = p" :class="['w-10 h-10 rounded-lg text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#800000]', currentPage === p ? 'bg-[#800000] text-white' : 'text-gray-600 hover:bg-gray-100']" :aria-label="`ไปยังหน้าที่ ${p}`" :aria-current="currentPage === p ? 'page' : undefined">
-              {{ p }}
-            </button>
+      </div>
+
+      <!-- Mode 2: Split-View (List on Left, Sticky Inspector on Right) -->
+      <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <!-- Left Column: Compact Request List -->
+        <div class="lg:col-span-5 space-y-3 max-h-[78vh] overflow-y-auto pr-1">
+          <div
+            v-for="leave in filteredApprovals"
+            :key="leave.id"
+            @click="activeLeaveId = leave.id"
+            class="p-4 rounded-2xl border transition-all cursor-pointer bg-white"
+            :class="activeLeave?.id === leave.id
+              ? 'border-[#800000] shadow-md ring-2 ring-[#800000]/10'
+              : 'border-gray-200 hover:border-gray-300 hover:shadow-xs'"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-[#800000] text-white flex items-center justify-center font-bold text-sm flex-shrink-0">
+                  {{ leave.user?.name?.charAt(0) }}
+                </div>
+                <div>
+                  <h4 class="font-bold text-gray-900 text-sm leading-tight">{{ leave.user?.name }}</h4>
+                  <p class="text-xs text-gray-500 mt-0.5">{{ leave.type?.name }} · {{ leave.total_days }} วัน</p>
+                </div>
+              </div>
+              <span v-if="leave.evaluation_warning" class="text-[11px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
+                ⚠️ ๒๓ วัน
+              </span>
+            </div>
+
+            <div class="mt-2.5 flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
+              <span>{{ ThaiDateFormatter.toThaiSlash(leave.start_date) }} - {{ ThaiDateFormatter.toThaiSlash(leave.end_date) }}</span>
+              <span class="text-[#800000] font-semibold">ดูรายละเอียด →</span>
+            </div>
           </div>
-          <button @click="nextPage" :disabled="currentPage === totalPages" class="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[#800000]" aria-label="ไปยังหน้าถัดไป">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </div>
+
+        <!-- Right Column: Detailed Sticky Inspector & Fast Action Panel -->
+        <div class="lg:col-span-7 sticky top-4">
+          <div v-if="activeLeave" class="bg-white rounded-2xl border border-gray-200 shadow-lg p-6 space-y-5">
+            <!-- Inspector Header -->
+            <div class="flex items-start justify-between gap-3 border-b border-gray-100 pb-4">
+              <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 bg-[#800000] text-white rounded-2xl flex items-center justify-center font-bold text-xl shadow-xs">
+                  {{ activeLeave.user?.name?.charAt(0) }}
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold text-gray-900">{{ activeLeave.user?.name }}</h3>
+                  <p class="text-xs text-gray-500">
+                    {{ activeLeave.user?.position || 'บุคลากร' }} · {{ activeLeave.user?.org_unit?.name || activeLeave.user?.department || 'สถานศึกษา' }}
+                  </p>
+                </div>
+              </div>
+              <span class="px-3 py-1 bg-[#800000]/10 text-[#800000] font-bold text-xs rounded-full">
+                {{ activeLeave.type?.name }}
+              </span>
+            </div>
+
+            <!-- 23-Day Warning if applicable -->
+            <div v-if="activeLeave.evaluation_warning" class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
+              <span class="text-base">⚠️</span>
+              <div>
+                <strong>เตือนเกณฑ์ ก.ค.ศ.:</strong> บุคลากรท่านนี้มีวันลาสะสมแตะเกณฑ์ ๒๓ วันทำการในรอบการประเมินนี้
+              </div>
+            </div>
+
+            <!-- Details Grid -->
+            <div class="grid grid-cols-2 gap-3 text-xs sm:text-sm">
+              <div class="bg-gray-50 p-3 rounded-xl">
+                <span class="text-gray-500 block text-xs">ระยะเวลาที่ขอลา:</span>
+                <span class="font-bold text-gray-900">
+                  {{ ThaiDateFormatter.toThaiSlash(activeLeave.start_date) }} — {{ ThaiDateFormatter.toThaiSlash(activeLeave.end_date) }}
+                </span>
+              </div>
+              <div class="bg-gray-50 p-3 rounded-xl">
+                <span class="text-gray-500 block text-xs">จำนวนวันลา:</span>
+                <span class="font-bold text-[#800000] text-base">{{ activeLeave.total_days }} วันทำการ</span>
+              </div>
+            </div>
+
+            <!-- Reason Box -->
+            <div class="bg-gray-50 p-4 rounded-xl space-y-1">
+              <span class="text-xs font-semibold text-gray-500 block">เหตุผลการขอลา:</span>
+              <p class="text-sm text-gray-800 leading-relaxed">{{ activeLeave.reason }}</p>
+              <div v-if="activeLeave.contact_address" class="pt-2 mt-2 border-t border-gray-200/60 text-xs text-gray-600">
+                <span class="font-semibold">สถานที่ติดต่อ:</span> {{ activeLeave.contact_address }}
+              </div>
+            </div>
+
+            <!-- Attachment File -->
+            <div v-if="activeLeave.attachment" class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+              <div class="flex items-center gap-2 text-xs text-slate-700">
+                <svg class="w-4 h-4 text-[#800000]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                <span>เอกสารแนบประกอบการลา</span>
+              </div>
+              <button
+                type="button"
+                @click="openSecureFile(activeLeave.attachment)"
+                class="px-3 py-1 bg-white border border-gray-200 hover:border-[#800000] text-[#800000] text-xs font-semibold rounded-lg shadow-xs transition-colors"
+              >
+                เปิดดูเอกสาร ↗
+              </button>
+            </div>
+
+            <!-- Inspector Action Bar with Presets -->
+            <div class="pt-2 border-t border-gray-100 space-y-3">
+              <div class="flex gap-2">
+                <button
+                  @click="handleApprove(activeLeave.id)"
+                  class="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2 text-sm"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  อนุมัติใบลา
+                </button>
+                <button
+                  @click="handleReject(activeLeave.id)"
+                  class="px-5 py-3 bg-white hover:bg-red-50 text-red-600 border border-red-200 font-bold rounded-xl transition-colors text-sm"
+                >
+                  ปฏิเสธ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination for Approvals -->
+      <div v-if="totalPages > 1" class="flex justify-center items-center gap-2 mt-8 pb-4" role="navigation" aria-label="แถบเปลี่ยนหน้า">
+        <button @click="prevPage" :disabled="currentPage === 1" class="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[#800000]" aria-label="ไปยังหน้าก่อนหน้า">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="flex items-center gap-1">
+          <button v-for="p in totalPages" :key="p" @click="currentPage = p" :class="['w-10 h-10 rounded-lg text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[#800000]', currentPage === p ? 'bg-[#800000] text-white' : 'text-gray-600 hover:bg-gray-100']" :aria-label="`ไปยังหน้าที่ ${p}`" :aria-current="currentPage === p ? 'page' : undefined">
+            {{ p }}
           </button>
         </div>
+        <button @click="nextPage" :disabled="currentPage === totalPages" class="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[#800000]" aria-label="ไปยังหน้าถัดไป">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </button>
       </div>
     </div>
 
@@ -205,78 +406,99 @@
       aria-labelledby="approval-modal-title"
       @keydown.escape="modal.show = false"
       tabindex="-1"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 focus:outline-none"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto focus:outline-none"
+      @click.self="modal.show = false"
     >
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-        <h3 id="approval-modal-title" class="font-bold text-gray-900 text-lg mb-4">
-          {{ modal.isCancelAction 
-              ? (modal.isApprove ? 'ยืนยันอนุมัติยกเลิก' : 'ปฏิเสธการยกเลิก') 
-              : (modal.isApprove ? 'ยืนยันการอนุมัติ' : 'ระบุเหตุผลการปฏิเสธ') }}
-        </h3>
+      <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md my-auto max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex-shrink-0 bg-white">
+          <h3 id="approval-modal-title" class="font-bold text-gray-900 text-lg">
+            {{ modal.isCancelAction 
+                ? (modal.isApprove ? 'ยืนยันอนุมัติยกเลิก' : 'ปฏิเสธการยกเลิก') 
+                : (modal.isApprove ? 'ยืนยันการอนุมัติ' : 'ระบุเหตุผลการปฏิเสธ') }}
+          </h3>
+        </div>
         
-        <!-- Signature Block — ใช้ทั้งการอนุมัติใบลาและการอนุมัติคำขอยกเลิก -->
-        <div v-if="modal.isApprove" class="mb-4">
-          <label class="block text-sm font-semibold text-gray-700 mb-1.5">ลายเซ็นผู้อนุมัติ <span class="text-red-500">*</span></label>
-          <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col gap-3">
-            <div class="flex gap-4 border-b border-gray-200 pb-2">
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" v-model="sigType" value="profile" class="text-green-600 focus:ring-green-500">
-                ลายเซ็นโปรไฟล์
-              </label>
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="radio" v-model="sigType" value="draw" class="text-green-600 focus:ring-green-500">
-                วาดใหม่
-              </label>
-            </div>
-            
-            <div class="flex justify-center">
-              <div v-if="sigType === 'profile'" class="w-full h-20 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
-                <img v-if="authStore.user?.profile?.signature_path" v-secure-src="authStore.user.profile.signature_path" alt="รูปลายเซ็นจากโปรไฟล์ผู้อนุมัติ" class="max-h-full object-contain p-1" />
-                <span v-else class="text-gray-400 text-xs">ไม่พบลายเซ็นในโปรไฟล์</span>
+        <div class="overflow-y-auto flex-1 p-6 space-y-4">
+          <!-- Signature Block — ใช้ทั้งการอนุมัติใบลาและการอนุมัติคำขอยกเลิก -->
+          <div v-if="modal.isApprove">
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">ลายเซ็นผู้อนุมัติ <span class="text-red-500">*</span></label>
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col gap-3">
+              <div class="flex gap-4 border-b border-gray-200 pb-2">
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" v-model="sigType" value="profile" class="text-green-600 focus:ring-green-500">
+                  ลายเซ็นโปรไฟล์
+                </label>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="radio" v-model="sigType" value="draw" class="text-green-600 focus:ring-green-500">
+                  วาดใหม่
+                </label>
               </div>
-              <div v-else class="w-full flex flex-col items-center">
-                <canvas ref="sigCanvas" width="300" height="100" role="img" aria-label="กระดานวาดลายเซ็นผู้อนุมัติ" class="border border-gray-300 bg-white rounded shadow-inner cursor-crosshair touch-none w-full"
-                  @mousedown="startDraw" @mousemove="draw" @mouseup="endDraw" @mouseout="endDraw"
-                  @touchstart="startDrawTouch" @touchmove="drawTouch" @touchend="endDraw"></canvas>
-                <div class="mt-2 flex gap-2 w-full justify-between items-center">
-                  <button type="button" @click="clearCanvas" class="px-2 py-1 text-xs font-semibold bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors focus-visible:ring-2 focus-visible:ring-[#800000]">ล้างลายเซ็น</button>
-                  <span v-if="canvasSaved" class="text-xs text-green-600 flex items-center gap-1">
-                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.check"/>
-                    </svg>
-                    วาดเสร็จแล้ว
-                  </span>
+              
+              <div class="flex justify-center">
+                <div v-if="sigType === 'profile'" class="w-full h-20 bg-white border border-gray-200 rounded-lg flex items-center justify-center">
+                  <img v-if="authStore.user?.profile?.signature_path" v-secure-src="authStore.user.profile.signature_path" alt="รูปลายเซ็นจากโปรไฟล์ผู้อนุมัติ" class="max-h-full object-contain p-1" />
+                  <span v-else class="text-gray-400 text-xs">ไม่พบลายเซ็นในโปรไฟล์</span>
+                </div>
+                <div v-else class="w-full flex flex-col items-center">
+                  <canvas ref="sigCanvas" width="300" height="100" role="img" aria-label="กระดานวาดลายเซ็นผู้อนุมัติ" class="border border-gray-300 bg-white rounded shadow-inner cursor-crosshair touch-none w-full"
+                    @mousedown="startDraw" @mousemove="draw" @mouseup="endDraw" @mouseout="endDraw"
+                    @touchstart="startDrawTouch" @touchmove="drawTouch" @touchend="endDraw"></canvas>
+                  <div class="mt-2 flex gap-2 w-full justify-between items-center">
+                    <button type="button" @click="clearCanvas" class="px-2 py-1 text-xs font-semibold bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors focus-visible:ring-2 focus-visible:ring-[#800000]">ล้างลายเซ็น</button>
+                    <span v-if="canvasSaved" class="text-xs text-green-600 flex items-center gap-1">
+                      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.check"/>
+                      </svg>
+                      วาดเสร็จแล้ว
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Quick Rejection Presets (แสดงเฉพาะกรณีปฏิเสธ) -->
-        <div v-if="!modal.isApprove" class="mb-3">
-          <p class="text-xs font-semibold text-gray-500 mb-2">เหตุผลด่วน:</p>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="preset in rejectionPresets"
-              :key="preset"
-              type="button"
-              @click="modal.comment = preset"
-              :class="['px-3 py-1.5 text-xs font-medium rounded-full border transition-colors focus-visible:ring-2 focus-visible:ring-red-500', modal.comment === preset ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-600 border-gray-300 hover:border-red-400 hover:text-red-600']"
-            >
-              {{ preset }}
-            </button>
+          <!-- Quick Approval Presets (แสดงเฉพาะกรณีอนุมัติ) -->
+          <div v-if="modal.isApprove">
+            <p class="text-xs font-semibold text-gray-500 mb-2">ความเห็นสำเร็จรูป:</p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="preset in approvalPresets"
+                :key="preset"
+                type="button"
+                @click="modal.comment = preset"
+                :class="['px-3 py-1.5 text-xs font-medium rounded-full border transition-colors focus-visible:ring-2 focus-visible:ring-green-500', modal.comment === preset ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-300 hover:border-green-400 hover:text-green-700']"
+              >
+                {{ preset }}
+              </button>
+            </div>
           </div>
+
+          <!-- Quick Rejection Presets (แสดงเฉพาะกรณีปฏิเสธ) -->
+          <div v-if="!modal.isApprove">
+            <p class="text-xs font-semibold text-gray-500 mb-2">เหตุผลด่วน:</p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="preset in rejectionPresets"
+                :key="preset"
+                type="button"
+                @click="modal.comment = preset"
+                :class="['px-3 py-1.5 text-xs font-medium rounded-full border transition-colors focus-visible:ring-2 focus-visible:ring-red-500', modal.comment === preset ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-600 border-gray-300 hover:border-red-400 hover:text-red-600']"
+              >
+                {{ preset }}
+              </button>
+            </div>
+          </div>
+
+          <textarea v-model="modal.comment" rows="3"
+            :placeholder="modal.isApprove ? 'ความเห็น (ไม่บังคับ)' : 'ระบุเหตุผลที่ปฏิเสธ (ไม่บังคับ)'"
+            aria-label="ความคิดเห็นหรือเหตุผลการพิจารณา"
+            class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-[#800000] transition-colors text-sm resize-none">
+          </textarea>
         </div>
 
-        <textarea v-model="modal.comment" rows="3"
-          :placeholder="modal.isApprove ? 'ความเห็น (ไม่บังคับ)' : 'ระบุเหตุผลที่ปฏิเสธ (ไม่บังคับ)'"
-          aria-label="ความคิดเห็นหรือเหตุผลการพิจารณา"
-          class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-[#800000] transition-colors text-sm resize-none">
-        </textarea>
-
-        <div class="flex gap-3 mt-4">
-          <button @click="modal.show = false" :disabled="isProcessingAction" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-gray-400">ยกเลิก</button>
-          <button @click="confirmAction" :disabled="isProcessingAction" :class="['flex-1 py-2.5 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2 focus-visible:ring-2', modal.isApprove ? 'bg-green-600 hover:bg-green-700 focus-visible:ring-green-600' : 'bg-red-600 hover:bg-red-700 focus-visible:ring-red-600']">
+        <div class="flex gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex-shrink-0">
+          <button @click="modal.show = false" :disabled="isProcessingAction" class="flex-1 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm transition-colors shadow-sm disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-gray-400">ยกเลิก</button>
+          <button @click="confirmAction" :disabled="isProcessingAction" :class="['flex-1 py-2.5 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2 focus-visible:ring-2', modal.isApprove ? 'bg-green-600 hover:bg-green-700 focus-visible:ring-green-600' : 'bg-red-600 hover:bg-red-700 focus-visible:ring-red-600']">
             <span v-if="isProcessingAction" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white" aria-hidden="true"></span>
             {{ modal.isApprove ? (isProcessingAction ? 'กำลังอนุมัติ...' : 'อนุมัติ') : (isProcessingAction ? 'กำลังปฏิเสธ...' : 'ปฏิเสธ') }}
           </button>
@@ -296,6 +518,7 @@ import { openSecureFile } from '../utils/secureFile'
 import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
 import { getErrorMessage } from '../utils/errorHandler'
 import { ICONS } from '../utils/icons'
+import AppBreadcrumb from '../components/ui/AppBreadcrumb.vue'
 import LoadingState from '../components/ui/LoadingState.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import ErrorState from '../components/ui/ErrorState.vue'
@@ -310,6 +533,16 @@ const loadError = ref('')
 const isProcessingAction = ref(false)
 const modal = reactive({ show: false, isApprove: false, isCancelAction: false, leaveId: null, comment: '' })
 const expandedLeaveIds = ref([])
+
+const viewMode = ref('cards')
+const activeLeaveId = ref(null)
+
+const approvalPresets = [
+  'อนุมัติมอบหมายงานเรียบร้อย',
+  'เห็นควรอนุมัติ',
+  'อนุมัติตามระเบียบ',
+  'อนุญาตตามสิทธิ์',
+]
 
 function toggleTimeline(leaveId) {
   const index = expandedLeaveIds.value.indexOf(leaveId)
@@ -412,6 +645,14 @@ const filteredApprovals = computed(() => {
     const idCardMatch = leave.user?.profile?.id_card_number?.includes(query)
     return nameMatch || typeMatch || idCardMatch
   })
+})
+
+const activeLeave = computed(() => {
+  if (activeLeaveId.value) {
+    const found = filteredApprovals.value.find(l => l.id === activeLeaveId.value)
+    if (found) return found
+  }
+  return filteredApprovals.value[0] || null
 })
 
 const totalPages = computed(() => Math.ceil(filteredApprovals.value.length / itemsPerPage) || 1)

@@ -1,5 +1,404 @@
 # TASKS
 
+## SARABAN-HUB-CONSOLIDATION-20260916 — Saraban Module Hubs & Redundancy Consolidation (การปรับปรุงโครงสร้างและยุบรวมศูนย์งานสารบรรณ) ✅ เสร็จ 2026-09-16
+- [x] **1. Unified Information Architecture & Menu Tree (จัดกลุ่มเมนูจาก 21 รายการเหลือ 7+1 ศูนย์งานหลัก)**:
+  - เมนูหลักฝั่งผู้ใช้งาน (`saraban`):
+    1. ภาพรวมและสถานะสารบรรณ (`saraban.dashboard` -> `/saraban`)
+    2. กล่องงานและหนังสือของฉัน (`saraban.inbox` -> `/saraban/inbox`) รวม 3 มุมมองแท็บ (งานรอพิจารณา, หนังสือเวียน/เพื่อทราบ, เรื่องที่ฉันส่ง)
+    3. ทะเบียนหนังสือราชการ (`saraban.registers` -> `/saraban/registers`) รวม 4 ทะเบียน (หนังสือรับ, หนังสือส่ง, หนังสือภายใน, จองเลขหนังสือ)
+    4. สร้างและยกร่างหนังสือ (`saraban.documents.create` -> `/saraban/documents/new`)
+    5. คลังเอกสารและสำนวน (`saraban.archive` -> `/saraban/archive`) รวม 2 แท็บ (เอกสารจัดเก็บ, แฟ้ม/สำนวนเรื่อง)
+    6. บันทึกการเวียนหนังสือ (`saraban.distribution` -> `/saraban/distribution/tracking`)
+    7. สถิติและรายงานสารบรรณ (`saraban.reports` -> `/saraban/reports/registers`)
+  - เมนูฝั่งผู้ดูแลระบบสารบรรณ (`saraban_admin`):
+    8. ศูนย์ตั้งค่าและบริหารงานสารบรรณ (`saraban.admin_hub` -> `/saraban/admin`) รวม 4 แท็บ (ชุดลำดับเลข, เวิร์กโฟลว์และแบบจำลอง, อำนาจและนโยบาย, ความปลอดภัยและตรวจสอบ)
+- [x] **2. Frontend Hubs & Sub-Navigation Views**:
+  - สร้าง `RegistersHubView.vue`: ศูนย์รวมสมุดทะเบียนหนังสือราชการสลับ 4 แท็บ พร้อมคง URL Search Params (`?tab=incoming`, `?tab=outgoing`, `?tab=internal`, `?tab=reservations`)
+  - สร้าง `SarabanAdminHubView.vue`: ศูนย์บริหารและตั้งค่าระบบสารบรรณสลับ 4 แท็บ (`?tab=number_series`, `?tab=workflow`, `?tab=authority_policies`, `?tab=operations_compliance`)
+  - สร้าง `ArchiveCasesHubView.vue`: ศูนย์คลังเอกสารและสำนวนเรื่องสลับ 2 แท็บ (`?tab=archive`, `?tab=cases`)
+  - ยกระดับ `InboxView.vue`: รองรับแท็บคิวงาน (`?tab=queue`), หนังสือเวียน (`?tab=inbox`), และเรื่องที่ฉันร่าง (`?tab=my_drafts`) พร้อมฟังก์ชันรายงานความคืบหน้า (`/saraban/inbox/{recipient}/progress`)
+  - อัปเดต `router/index.js` จัดการเส้นทาง Hub ใหม่ และทำ Backward-Compatible Route Redirects สำหรับ URL เดิมทั้งหมด
+- [x] **3. Database Migration & Integrity Fingerprint**:
+  - สร้าง Migration `2026_09_27_100000_consolidate_saraban_menus.php` ทำการลบเมนูย่อยที่ถูกยุบและอัปเดตโครงสร้างเมนูใหม่อย่างปลอดภัย
+  - อัปเดต `MenuSeeder.php` และอัปเดต SHA-256 `TREE_FINGERPRINT` ใน `MenuDriftTest.php`
+- [x] **4. Full Verification & Quality Hard Gates**:
+  - Menu Suite: `MenuIntegrityTest` (9 passed), `MenuDriftTest` (5 passed)
+  - Full Frontend Vitest: 33 files / 213 unit tests passed 100%
+  - Frontend Build: `npm run build` ผ่าน 100% (3.21s)
+  - Backend Pint: ผ่าน 100% (767 files)
+
+## SYSTEM-PDF-ENGINE-CONSOLIDATION-20260916 — Consolidated PDF Vector Engine & Overlay Architecture (การยุบรวมและจัดระเบียบสถาปัตยกรรม PDF Vector Engine) ✅ เสร็จ 2026-09-16
+- [x] **1. Core Shared Vector Drawing Engine (`PdfVectorDrawer.php`)**:
+  - รวมศูนย์ตรรกะการวาดเวกเตอร์ Text Cell, Multiline (Auto Line Height), Checkmark (Vector Green), Digital Pen Strokes (Vector Blue Pen), Stamp Box (Official Border + Metadata), Placeholders และ QR Code Vector Matrix
+- [x] **2. Unified Thai Font & Encoding Layer (`OverlayFonts.php`)**:
+  - รวมการตรวจสอบและลงทะเบียนฟอนต์ไทย `THSarabunNew` และ `THSarabunNewB` เข้ากับ `\setasign\Fpdi\Fpdi`
+  - รวมฟังก์ชัน `OverlayFonts::encode` สำหรับแปลงรหัส UTF-8 เป็น `CP874//TRANSLIT` ปลอดภัยต่อ FPDF
+- [x] **3. Refactored PDF Renderers**:
+  - ปรับปรุง `SarabanPdfRenderer.php` ให้เรียกใช้ `OverlayFonts`, `OverlayPdf` และ `PdfVectorDrawer` ร่วมกัน 100% พร้อมคงมาตรฐานความปลอดภัย SoT §14 (ไม่รับภาพ Raster แรนเดอร์ฝั่ง Client)
+  - ปรับปรุง `PdfOverlayRenderer.php` ของระบบแม่แบบเอกสารให้เรียกใช้ `PdfVectorDrawer` และ `OverlayFonts::encode`
+- [x] **4. Full Quality & Verification**:
+  - Full PHPUnit Feature & Unit Suite: 485+ tests passed 100% (รวม `SarabanPdfWorkspaceTest`, `VocationalSarabanSigningAndWorkspaceTest`, `DocumentEngineTest`)
+  - Full Vitest Suite: 33 files / 213 unit tests passed 100%
+  - Production Build: `npm run build` ผ่าน 100% (3.68s)
+
+## SYSTEM-STREAMLINING-20260916 — System Streamlining & Redundancy Reduction (การจัดระเบียบระบบและลดความซ้ำซ้อนการทำงาน ๔ ด้านหลัก) ✅ เสร็จ 2026-09-16
+- [x] **1. Executive Unified Task Inbox (ศูนย์รวมภารกิจรอดำเนินการของผู้บริหาร)**:
+  - เพิ่ม API สรุปยอดภารกิจรอดำเนินการ 4 ด้านใน `DashboardController.php` (`executive_tasks`: ใบลา, คำสั่ง OT, งานสารบรรณ/เกษียน, หนังสือเวียนเข้า)
+  - พัฒนาวิดเจ็ต **Executive Action Center (ภารกิจรอดำเนินการของท่าน)** ใน `DashboardView.vue`
+  - เพิ่มแถบนำทางสลับคิวงาน (Quick Inbox Switcher) ใน `ApprovalsView.vue`
+- [x] **2. Unified Report & Analytics Hub (ศูนย์รวมรายงานและสถิติแบบเบ็ดเสร็จ)**:
+  - ยกระดับ `ReportsView.vue` เป็นศูนย์รวม 4 หมวดหมู่ (4 Tabs Navigation):
+    1. ทะเบียนการลาราชการและสถิติ (Leave Registry & Analytics)
+    2. เวลาปฏิบัติราชการและ OT (Attendance & OT Summary)
+    3. เกณฑ์วันลาประเมิน ก.ค.ศ. ๒๓ วัน และ ว PA (Vocational Evaluation & PA Evidence)
+    4. สมุดทะเบียนและรายงานสารบรรณ ๔ ฝ่าย สอศ. (Saraban In/Out Registers)
+- [x] **3. Consolidated Personnel Management (จัดระเบียบการสร้างและจัดการข้อมูลบุคลากร)**:
+  - ปรับปรุง `UserFormModal.vue` เพิ่มการกำหนดหัวหน้างาน (`is_org_unit_head`) และวิทยฐานะ (`academic_standing`) ในแท็บข้อมูลการจ้าง
+  - ปรับปรุง `UserController.php` ทั้งใน `store()` และ `update()` ให้บันทึกและซิงค์การมอบหมายผู้รับผิดชอบหน่วยงาน (`org_unit_managers`) ภายใน Transaction เดียวกัน
+- [x] **4. Consolidated Leave Types & Policies (รวมศูนย์การจัดการประเภทการลาและนโยบายสิทธิ)**:
+  - ปรับปรุง `LeaveTypesManagementView.vue` รวมการจัดการประเภทการลา แบบฟอร์ม และนโยบายโควตาสิทธิการลาตามประเภทบุคลากร พร้อมตั้งค่าทั่วไปในหน้าจอเดียวแบบ Master-Detail Tabs
+- [x] **คุณภาพและการตรวจสอบ (Full Quality & Verification)**:
+  - Frontend Vitest Suite: 33 test files / 213 tests passed 100%
+  - Frontend Production Build: `npm run build` ผ่าน 100% (4.55s)
+  - Backend PHPUnit Tests: ผ่าน 100% (รวม PermissionCatalogTest)
+
+## SARABAN-EDOC-PHASE-08 — Cross-Module Document Automation, Template Center Bridge & Inter-College Electronic Envelope Exchange (ระยะที่ ๘) ✅ เสร็จ 2026-09-16
+- [x] **1. Cross-Module Document Automation & Draft Bridge (ระบบยกร่างเอกสารราชการอัตโนมัติข้ามโมดูล)**:
+  - พัฒนา `OfficialDocumentTemplateService` เพิ่มฟังก์ชันยกร่างเอกสารคำสั่ง/ประกาศอัตโนมัติจากโมดูลอื่น:
+    - `createDraftPayloadFromLeave`: แปลงคำขอลาที่ผ่านการอนุมัติ เป็นร่างคำสั่งวิทยาลัยอนุญาตให้บุคลากรลา
+    - `createDraftPayloadFromOvertime`: แปลงคำสั่งปฏิบัติงานนอกเวลา เป็นร่างคำสั่งวิทยาลัยมอบหมายปฏิบัติหน้าที่ล่วงเวลา
+    - `createDraftPayloadFromEvaluation`: แปลงสรุปผลการประเมินวันลา ก.ค.ศ. ๒๓ วัน เป็นร่างประกาศผลการประเมินของวิทยาลัย
+  - เพิ่ม API Endpoint `GET /api/saraban/templates/cross-module-draft` และเชื่อมโยงกับการสร้างเอกสารใน `DocumentFormView.vue` ผ่าน `route.query.source_type`
+- [x] **2. Inter-College & Inter-Agency Electronic Envelope Exchange (ระบบซองเอกสารและแลกเปลี่ยนหนังสือข้ามสถานศึกษา SoT §17, §27)**:
+  - สร้าง `InterAgencyDispatchService` รองรับ:
+    - `buildEvidencePackage`: จัดทำซองพยานหลักฐานอิเล็กทรอนิกส์ (.zip) รวบรวมไฟล์ PDF หนังสือราชการ, เอกสารแนบ, บันทึกการลงนามดิจิทัล (`signature_evidence.json`), และ `manifest.json` พร้อมคำนวณ Cryptographic SHA-512 Checksum
+    - `dispatchToWebhook`: นำส่งหนังสือตรงไปยัง Webhook API ของสถานศึกษา/หน่วยงานปลายทาง พร้อมลงนามความปลอดภัย HMAC-SHA256
+    - `importPackage`: จุดรับเข้าหนังสือราชการจากแพ็กเกจหน่วยงานภายนอก บันทึกลงสู่ทะเบียนหนังสือรับและแนบไฟล์อย่างปลอดภัย
+  - สร้าง `InterAgencyDispatchController` และลงทะเบียน Routes:
+    - `GET /api/saraban/documents/{document}/dispatch-package` (ดาวน์โหลด ZIP)
+    - `POST /api/saraban/documents/{document}/dispatch-webhook` (ส่งผ่าน Webhook)
+    - `POST /api/saraban/incoming/import-package` (รับเข้า Webhook)
+  - สร้างส่วนติดต่อผู้ใช้ `InterAgencyDispatchModal.vue` และเชื่อมต่อกับ `DocumentFormView.vue` สำหรับหนังสือที่ลงนามหรือมีผลสมบูรณ์แล้ว
+- [x] **3. Document Center Bridge & Categorization (ศูนย์จัดการแบบฟอร์มและการเชื่อมโยงแม่แบบ)**:
+  - ยกระดับ `DocumentCenterView.vue` และ `DocumentEngineController`:
+    - เพิ่มตัวกรองหมวดหมู่แม่แบบเอกสาร (Category Filter Tabs: ทั้งหมด, แบบฟอร์มการลา `LEAVE_FORM`, หนังสือราชการสารบรรณ `SARABAN_OFFICIAL`, แบบฟอร์มทั่วไป `ADMIN_CUSTOM`)
+    - เพิ่มช่องค้นหาแม่แบบเอกสารแบบเรียลไทม์ (Live Search Query) ค้นหาชื่อและรหัสแม่แบบ
+- [x] **4. คุณภาพและการตรวจสอบ (Full Quality Hard Gates & Verification)**:
+  - Feature Test: `backend/tests/Feature/VocationalSarabanIntegrationAndExchangeTest.php` (4 passed / 15 assertions)
+  - Architecture & Contract Tests: `ApiSurfaceContractTest` (1 passed / 405 assertions), `SarabanCoreContractTest` (5 passed / 15 assertions)
+  - Full Backend Test Suite: 1,380 passed / 1 skipped (5,767 assertions), 0 failed
+  - Full Frontend Vitest Suite: 33 test files / 213 tests passed 100% (รวม `tests/sarabanIntegrationAndExchange.test.js`)
+  - Frontend Production Build: `npm run build` ผ่าน 100% (3.85s)
+  - Code Style: Laravel Pint ผ่าน 100% (765 files)
+  - UI copy ภาษาไทย 100%, ปลอดการ Hard-code, Non-Destructive 100%
+
+## SYSTEM-UX-UI-ENHANCEMENT-20260916 — Comprehensive UX/UI Modernization (ปรับปรุงประสบการณ์และส่วนติดต่อผู้ใช้ ๖ ด้านหลัก) ✅ เสร็จ 2026-09-16
+- [x] **1. Local Draft Auto-Save & Crash Recovery (ระบบบันทึกร่างอัตโนมัติบนเครื่อง)**:
+  - สร้าง Composable `frontend/src/composables/useFormAutoSave.js` รองรับ Debounced Auto-Save ไปยัง `localStorage` แยกตามผู้ใช้และประเภทฟอร์ม
+  - แถบแจ้งเตือนเมื่อพบฉบับร่างที่ค้างอยู่ (Draft Recovery Banner) พร้อมตัวเลือก "กู้คืนข้อมูล" หรือ "ละทิ้งร่าง"
+  - ไฟแสดงสถานะการบันทึกแบบเรียลไทม์ (Auto-Save Status Indicator: บันทึกร่างแล้ว / กำลังบันทึก)
+  - ล้างข้อมูลร่างอัตโนมัติเมื่อส่งฟอร์มสำเร็จ (Clear on Submit) พร้อมเชื่อมโยงกับฟอร์มยื่นใบลา (`LeaveRequestView.vue`) และฟอร์มร่างหนังสือราชการ (`DocumentFormView.vue`)
+- [x] **2. Split-View / Side Panel Approvals Workflow (ระบบพิจารณาอนุมัติแบบแบ่งหน้าจอ)**:
+  - ยกระดับหน้าพิจารณาอนุมัติ (`ApprovalsView.vue`) ด้วยตัวสลับมุมมอง (Dual-View: Cards View vs Split-View)
+  - ใน Split-View: แสดงรายการคำขอด้านซ้าย และ แผงตรวจสอบรายละเอียดด้านขวาแบบ Sticky Inspector Panel
+  - เพิ่มชุดข้อความหมายเหตุสำเร็จรูป (Quick Preset Remarks) เช่น "อนุมัติ", "อนุมัติตามระเบียบ", "ขอเอกสารเพิ่มเติม" เพื่อความสะดวกรวดเร็ว
+- [x] **3. Mobile Card Transformation for Data Tables (ตารางข้อมูลแปลงเป็นการ์ดบนมือถือ)**:
+  - ปรับปรุงตารางข้อมูลในหน้าจอหลักให้แสดงผลแบบ Responsive: สลับระหว่างตารางแบบเต็ม (`hidden md:block`) บนจอเดสก์ท็อป และการ์ดข้อมูลแบบเรียงชั้น (`block md:hidden`) บนจอมือถือ
+  - ใช้งานใน: การจัดการผู้ใช้ (`UsersManagementView.vue`), ทะเบียนรายงานสารบรรณ (`RegisterReportsView.vue`), กล่องหนังสือเข้า (`InboxView.vue`), และทะเบียนหนังสือ (`DocumentsView.vue`)
+- [x] **4. Breadcrumbs & Contextual Navigation (เส้นทางนำทางและปุ่มย้อนกลับอัจฉริยะ)**:
+  - สร้างคอมโพเนนต์ `frontend/src/components/ui/AppBreadcrumb.vue` รองรับทั้งเส้นทางแบบกำหนดเอง (Custom Items) และการคำนวณอัตโนมัติจาก Vue Router Meta
+  - รองรับปุ่มย้อนกลับอัจฉริยะ (Contextual Back Button) ที่เลือกได้ระหว่าง `router.back()` หรือเส้นทางปลายทางเฉพาะ
+  - ติดตั้งในหน้าจอสำคัญทั่วทั้งระบบ เช่น การยื่นใบลา, การร่างหนังสือ, พื้นที่ลงนาม, พื้นที่เกษียนหนังสือ, พื้นที่ประทับตรา, รายงาน, และทะเบียน
+- [x] **5. Drag & Drop File Upload Zone with Live Preview (พื้นที่อัปโหลดไฟล์ลากวางพร้อมพรีวิวสด)**:
+  - สร้างคอมโพเนนต์ `frontend/src/components/ui/FileUploadZone.vue` รองรับการลากไฟล์มาวาง (Drag & Drop), คลิกเพื่อเลือกไฟล์, ตรวจสอบขนาดและนามสกุลไฟล์
+  - พรีวิวภาพถ่ายและเอกสาร PDF ทันทีในตัวคอมโพเนนต์ พร้อมปุ่มลบไฟล์ก่อนอัปโหลด
+  - ติดตั้งในฟอร์มยื่นใบลา (`LeaveRequestView.vue`) สำหรับแนบใบรับรองแพทย์และเอกสารหลักฐาน
+- [x] **6. Full-Screen Mobile Signature & Endorsement Canvas (ผืนผ้าใบลงนาม/เกษียนเต็มจอสำหรับมือถือ)**:
+  - ยกระดับ `frontend/src/components/ui/HandwritingCanvas.vue` รองรับโหมดเต็มหน้าจอ (Full-Screen Landscape Canvas Overlay)
+  - รองรับปุ่มเลิกทำทีละเส้น (Undo Stroke), ปุ่มล้างทั้งหมด (Clear), สลับสีหมึก (น้ำเงิน/ดำ)
+  - ส่งออกพิกัดเส้นเวกเตอร์ (Normalized Vector Stroke Coordinates) ตามข้อกำหนด SoT §14, §15 อย่างถูกต้อง
+- [x] **คุณภาพและการตรวจสอบ (Full Quality & Verification)**:
+  - Vitest Unit & Component Tests: ผ่านครบ 33 test files / 213 tests passed 100% (รวม `tests/formAutoSave.test.js`)
+  - Production Build: `npm run build` ผ่าน 100% (3.69s)
+  - Backend Test Suite: ผ่าน 100%
+  - UI copy ภาษาไทย 100%, ปลอดการ Hard-code
+
+## ROLE-PERMISSION-ENHANCEMENT-20260916 — Role & Permission Matrix & Live Menu Access (ยกระดับการจัดการบทบาท สิทธิ์ และการเข้าถึงเมนู) ✅ เสร็จ 2026-09-16
+- [x] ยกระดับหน้าระบบจัดการบทบาทและสิทธิ์ (`RolesManagementView.vue`):
+  - พัฒนาโหมดมุมมองคู่ (Dual-View): มุมมองการ์ด (Cards View) และ ตารางเมทริกซ์สิทธิ์แบบโต้ตอบ (Interactive Permission Matrix Grid View)
+  - รองรับการสลับแท็บแยกตามโมดูลหลัก (เช่น Core & Users, Leaves, Attendance, Saraban, System) และช่องค้นหาสิทธิ์แบบทันที (Instant Live Filter)
+  - รองรับการติ๊กเปิด/ปิดสิทธิ์ได้แบบเรียลไทม์ พร้อมตรวจจับสถานะการเปลี่ยนแปลง (Dirty State Detection) บันทึกรายบทบาท หรือ บันทึกพร้อมกันทั้งหมดในครั้งเดียว (Batch Save: `saveAllDirtyRoles`)
+  - กลไกป้องกันบทบาทระบบ (System Role Safeguards): ป้องกันการลบหรือเปลี่ยนคีย์บทบาทหลัก (`is_system`) พร้อมแจ้งเตือนชัดเจน
+- [x] ยกระดับหน้าระบบจัดการเมนูและการเข้าถึง (`MenusManagementView.vue` & `MenuController.php`):
+  - เพิ่มระบบแสดงบทบาทที่มีสิทธิ์เข้าถึงเมนูแบบเรียลไทม์ (Live Role Access Badges & Modal Preview)
+  - เพิ่มหน้าต่างแก้ไขสิทธิ์ของเมนูแบบกลุ่มตามโมดูล (Grouped Module Permission Editor Modal)
+  - เพิ่มปุ่มลัดให้สิทธิ์/เพิกถอนสิทธิ์ระดับโมดูลทันที (Quick Grant/Revoke All per Module)
+  - ปรับปรุง Backend `MenuController`: บันทึก Audit Log (`menu.permissions_updated`) และล้างแคชเมนู (`Cache::flush()`) ทันทีที่มีการปรับเปลี่ยนสิทธิ์
+- [x] ปรับปรุงระบบจัดการสิทธิ์รายบุคคล (`UserPermissionModal.vue`):
+  - เพิ่มช่องค้นหาสิทธิ์และตัวกรองโมดูลแบบเรียลไทม์ และปุ่มลัด "ล้างสิทธิ์เฉพาะบุคคลทั้งหมด" (Clear all direct permissions)
+- [x] คุณภาพและความถูกต้อง (Full Hard Gates Verified):
+  - ตรวจสอบความปลอดภัย: `SystemRoleProtectionTest` (8 passed / 15 assertions), `AuthorizationMatrixTest` (6 passed / 11 assertions)
+  - Full Backend Test Suite: 1,376 passed / 1 skipped (5,740 assertions), 0 failed
+  - Full Frontend Vitest Suite: 31 test files / 206 passed (100%), 0 failed
+  - Frontend Production Build: `npm run build` สำเร็จ 100% (3.21s)
+  - สอดคล้องตามกฎ Hard Gates: Zero Hard-Code, UI ภาษาไทย 100%, Non-Destructive 100%
+
+## SARABAN-EDOC-PHASE-07 — Reporting, Analytics & Legal Compliance Evidence (ระยะที่ ๗) ✅ เสร็จ 2026-09-16
+- [x] รายงานสารบรรณและสถิติการไหลเวียนเอกสาร ๔ ฝ่ายหลัก สอศ. (`RegisterReportService` & `RegisterReportsView.vue`):
+  - สรุปภาพรวมสถิติหนังสือเข้า-ออก รายเดือน และสถานะการดำเนินการ (Monthly In/Out Bar Chart & Status Doughnut)
+  - เพิ่มการวิเคราะห์และแสดงผลสัดส่วนหนังสือแยกตาม ๔ ฝ่ายหลัก สอศ. (`by_division`: ฝ่ายบริหารทรัพยากร, ฝ่ายแผนงานและความร่วมมือ, ฝ่ายพัฒนากิจการนักเรียนนักศึกษา, ฝ่ายวิชาการ)
+  - ระบบรายงานทะเบียนหนังสือรับ (แบบที่ ๑๓), ทะเบียนหนังสือส่ง (แบบที่ ๑๔), ทะเบียนหนังสือภายใน (แบบที่ ๒) พร้อมตัวกรองฝ่ายงาน (สอศ.) และทิศทาง
+  - รายงานทะเบียนเลขหนังสือ (`numbers`) และรายงานสถิติการส่งเวียนและการรับทราบ (`distribution`)
+- [x] ระบบส่งออกรายงานสารบรรณอิเล็กทรอนิกส์ (`RegisterReportExportService`):
+  - รองรับการส่งออกรายงานในรูปแบบ Excel (.xlsx) และ CSV (.csv UTF-8 with BOM) ตามระเบียบสำนักนายกรัฐมนตรีฯ ข้อ ๒๙/๑
+  - รองรับการคัดกรองตามฝ่ายงาน (`division_id`) และทิศทางหนังสือ (`direction`) ในการส่งออกรายงาน
+- [x] ศูนย์ตรวจสอบหลักฐานความสอดคล้องตามกฎหมายและระเบียบสารบรรณ (`ComplianceEvidenceController` & `ComplianceEvidenceView.vue`):
+  - รวบรวมและประเมินหลักฐานความสอดคล้องตามระเบียบ ๗ ด้านหลัก (Cryptographic Hash Sealing, Immutable Audit, Separation of Duties, Legal Hold, Non-Destructive Storage, Trusted Clock Synchronization, RBAC/ABAC Isolation)
+  - แสดงผลสถานะการประเมินแบบเรียลไทม์ (Live Assessment: PASS, PARTIAL, NO_EVIDENCE, N/A) แบบอ่านอย่างเดียว (Read-Only) ป้องกันการเคลมสถานะโดยไม่มีหลักฐาน
+- [x] คุณภาพและความถูกต้อง (Full Hard Gates Verified):
+  - สร้าง Feature Test: `backend/tests/Feature/VocationalSarabanReportsAndComplianceTest.php` (3 passed / 21 assertions)
+  - สร้าง Frontend Vitest Component Test: `frontend/tests/sarabanReportsAndCompliance.test.js` (2 passed)
+  - Full Frontend Vitest Suite: 31 test files / 206 passed (100%), 0 failed
+  - Frontend Production Build: `npm run build` สำเร็จ 100% (3.27s)
+  - Laravel Pint Code Style: 762 files ผ่าน 100% สะอาดสมบูรณ์
+  - Full Backend Test Suite: 1,376 passed / 1 skipped (5,740 assertions), 0 failed
+- [x] สอดคล้องตามกฎ Hard Gates: ปลอดการ Hard-Code 100%, UI ภาษาไทย 100%, Non-Destructive 100%
+
+## SARABAN-EDOC-PHASE-06 — Document Lifecycle, Retention, Archiving & Disposal (ระยะที่ ๖) ✅ เสร็จ 2026-09-16
+- [x] การกำหนดอายุการเก็บรักษาเอกสารราชการ (Document Retention Scheduling):
+  - รองรับตัวเลือกอายุการเก็บรักษามาตรฐานตามระเบียบสำนักนายกรัฐมนตรีฯ ข้อ ๖๖-๗๑ (๑ ปี, ๕ ปี, ๑๐ ปี, ๒๐ ปี, ๒๕ ปี และตลอดไป)
+  - รองรับการคำนวณและตั้งค่าวันครบกำหนดจัดเก็บ (`retain_until`) อัตโนมัติจากวันที่เอกสารมีผลหรือลงนาม
+- [x] ระบบอายัดเอกสารตามกฎหมาย (Legal Hold Management & Audit):
+  - รองรับการสั่งอายัดเอกสาร (`LegalHold`) พร้อมชุดเหตุผลมาตรฐาน (คดีความ/การไต่สวน, ตรวจสอบ สตง., ร้องเรียนวินัย, ตรวจสอบภายใน)
+  - มีมาตรการคุ้มครองเอกสารที่อยู่ระหว่างอายัด: บล็อกการทำลาย (Disposal) โดยเด็ดขาดจนกว่าจะได้รับการปลดอายัด (Release Hold)
+- [x] ระบบการทำลายเอกสารราชการตามหลักการแยกหน้าที่ (Separation of Duties & Non-Destructive Disposal SoT §26):
+  - แยกบทบาทระหว่างผู้อนุมัติการทำลาย (`approve_disposal`) และผู้ดำเนินการทำลาย (`dispose_files`)
+  - การทำลายไฟล์เอกสารจริงใน Storage เกิดขึ้นหลัง Commit Transaction อย่างปลอดภัย พร้อมบันทึกค่า Cryptographic SHA-512 และเก็บรักษาประวัติทะเบียนเอกสาร (Document Registry) ไว้เป็นหลักฐานตลอดไป ไม่ลบ Record
+- [x] การค้นหาและกรองสถานะการเก็บรักษาเอกสารขั้นสูง (Advanced Retention & Lifecycle Search):
+  - อัปเกรด `DocumentController::index()` รองรับการคัดกรองตาม `retention_status` (`on_hold`, `due`, `disposed`, `scheduled`) และ Eager loading `retentionSchedule` และ `legalHolds` พร้อมควบคุมเวลาผ่าน `TrustedClock`
+  - อัปเกรด `RetentionPanel.vue` และ `DocumentsView.vue` แสดงป้ายสถานะ (Badges), ตัวกรองขั้นสูง, และปุ่มลัดการตั้งค่าตามหลัก UI ภาษาไทย 100%
+- [x] คุณภาพและความถูกต้อง (Full Hard Gates Verified):
+  - สร้าง Feature Test: `backend/tests/Feature/VocationalSarabanRetentionAndLifecycleTest.php` (2 passed / 24 assertions)
+  - สร้าง Frontend Vitest Component Test: `frontend/tests/sarabanRetentionAndLifecycle.test.js` (2 passed)
+  - Full Frontend Vitest Suite: 30 test files / 204 passed (100%), 0 failed
+  - Frontend Production Build: `npm run build` สำเร็จ 100% (2.84s)
+  - Laravel Pint Code Style: 761 files ผ่าน 100% สะอาดสมบูรณ์
+  - Full Backend Test Suite: 1,373 passed / 1 skipped (5,719 assertions), 0 failed
+- [x] สอดคล้องตามกฎ Hard Gates: ปลอดการ Hard-Code 100%, UI ภาษาไทย 100%, Non-Destructive 100%
+
+## SARABAN-EDOC-PHASE-05 — Digital Signatures, Endorsement & Stamping Workspace (ระยะที่ ๕) ✅ เสร็จ 2026-09-16
+- [x] ยกระดับพื้นที่การลงนามดิจิทัล (Digital Signature Workspace & Step-Up Authentication):
+  - ระบบลงนามด้วยลายมือชื่อดิจิทัล พร้อมระบบยืนยันตัวตนซ้ำขั้นสูง (Step-Up Authentication via Password/TOTP)
+  - บันทึกพิกัดเส้นลายมือชื่อแบบเวกเตอร์ (Stroke Coordinates) ตามมาตรฐานสากลและ SoT §15 (ไม่บันทึกเป็นไฟล์ภาพบิตแมป)
+  - ปิดผนึกแฮชเอกสาร (Cryptographic Document Hash Sealing) และสร้างบันทึกพยานหลักฐานการลงนามที่เปลี่ยนแปลงไม่ได้ (Immutable Signature Evidence)
+  - เพิ่มปุ่มลัดระบุข้อมูลผู้ลงนามอัตโนมัติ 1 คลิก (`👤 ใช้ชื่อ-ตำแหน่งตนเอง`) ใน `SignDocumentView.vue`
+- [x] ยกระดับระบบเกษียนหนังสือราชการ ๔ ฝ่ายอาชีวศึกษา (Vocational Endorsement Workspace):
+  - พื้นที่เกษียนหนังสือพร้อมแคนวาสวาดลายมือและชุดข้อความเกษียนความเห็นด่วน ๔ ฝ่ายหลัก สอศ. (`EndorseDocumentView.vue`)
+  - แยกการเกษียนความเห็นออกจากการลงนาม โดยการเกษียนไม่สร้าง Signature Evidence ตามข้อกำหนดระเบียบสารบรรณ
+- [x] ยกระดับพื้นที่ประทับตรายางและเรนเดอร์ PDF (Stamping Workspace & Non-Destructive Render):
+  - ปรับปรุง `DocumentToolsView.vue` รองรับการประทับตรารับ-ส่ง (Registration Stamp) และกล่องข้อความกำหนดเอง
+  - ระบบเรนเดอร์ประทับตรายางลงบนไฟล์ PDF ด้วย `SarabanPdfRenderer` สร้างเป็นเอกสารเวอร์ชันใหม่แบบไม่ทำลายต้นฉบับ (Non-Destructive)
+- [x] ระบบยืนยันความถูกต้องของเอกสารฉบับสมบูรณ์ (Finalization & QR Public Verification):
+  - ระบบ Finalize เอกสารพร้อมสร้างรหัส QR Code ตรวจสอบความถูกต้อง
+  - API สาธารณะสำหรับตรวจสอบความถูกต้องของเอกสารราชการ (`/api/saraban/verify/{hash}`)
+- [x] คุณภาพและความถูกต้อง (Full Hard Gates Verified):
+  - สร้าง Feature Test: `backend/tests/Feature/VocationalSarabanSigningAndWorkspaceTest.php` (3 passed / 21 assertions)
+  - สร้าง Frontend Vitest Component Test: `frontend/tests/sarabanSigningAndWorkspace.test.js` (2 passed)
+  - Full Frontend Vitest Suite: 29 test files / 202 passed (100%), 0 failed
+  - Frontend Production Build: `npm run build` สำเร็จ 100% (3.06s)
+  - Laravel Pint Code Style: 760 files ผ่าน 100% สะอาดสมบูรณ์
+  - Full Backend Test Suite: 1,371 passed / 1 skipped (5,695 assertions), 0 failed
+- [x] สอดคล้องตามกฎ Hard Gates: ปลอดการ Hard-Code 100%, UI ภาษาไทย 100%, Non-Destructive 100%
+
+
+## SARABAN-EDOC-PHASE-04 — e-Saraban In/Out Registry & Vocational Routing (ระยะที่ ๔) ✅ เสร็จ 2026-09-16
+- [x] ยกระดับระบบทะเบียนรับ-ส่งหนังสือราชการและระบบหมวดเลขทะเบียนอัตโนมัติ (`SarabanNumberReservationService` & `NumberSeriesService`):
+  - ระบบออกเลขทะเบียนรับ (Incoming Registry) และเลขทะเบียนส่ง (Outgoing Registry) อัตโนมัติ ป้องกันการออกเลขซ้ำซ้อนและการจองเลขข้ามหมวด
+  - ระบบบันทึกเลขที่หนังสือภายนอกเดิม พร้อมระบุวันที่รับ-ส่ง และชั้นความเร็ว/ความลับตามระเบียบสารบรรณ
+- [x] ยกระดับการไหลเวียนหนังสือราชการและส่งเวียน ๔ ฝ่ายหลักอาชีวศึกษา (`DistributionService` & `DistributeDocumentModal.vue`):
+  - เพิ่มปุ่มลัดส่งเวียนหนังสือเข้าสู่โครงสร้างสายงาน ๔ ฝ่ายหลัก สอศ. (`addDivisionSubtreeTarget`): ฝ่ายบริหารทรัพยากร, ฝ่ายวิชาการ, ฝ่ายพัฒนากิจการนักเรียนนักศึกษา, ฝ่ายแผนงานและความร่วมมือ
+  - เพิ่มชุดข้อความและเหตุผลประกอบการส่งเวียนด่วน (`NOTE_PRESETS`): "เพื่อโปรดทราบ", "เพื่อโปรดพิจารณา", "เพื่อโปรดดำเนินการในส่วนที่เกี่ยวข้อง", "เพื่อโปรดแจ้งผู้เกี่ยวข้องทราบและถือปฏิบัติ", "เพื่อโปรดพิจารณาลงนาม"
+- [x] ตรวจสอบความปลอดภัยและข้อกำหนดทางกฎหมาย (Legal & Security Compliance):
+  - ปฏิบัติตามระเบียบสำนักนายกรัฐมนตรีฯ ข้อ ๒๙: บล็อกการส่งเวียนหนังสืออิเล็กทรอนิกส์สำหรับเอกสาร "ลับที่สุด" (Top Secret) เพื่อความปลอดภัยของข้อมูลราชการ
+  - ตรวจสอบสิทธิ์และการป้องกัน IDOR ผ่าน `OrgScopeResolver` และ Server-Side Scope Authorization
+  - บันทึกการลงทะเบียนและการส่งเวียนทุกขั้นตอนลงสู่ Central Audit Log
+- [x] คุณภาพและความถูกต้อง (Full Hard Gates Verified):
+  - สร้าง Feature Test: `backend/tests/Feature/VocationalSarabanRegistryAndRoutingTest.php` (3 passed / 11 assertions)
+  - สร้าง Frontend Vitest Component Test: `frontend/tests/sarabanVocationalRouting.test.js` (3 passed)
+  - Full Frontend Vitest Suite: 28 test files / 200 passed (100%), 0 failed
+  - Frontend Production Build: `npm run build` สำเร็จ 100% (2.80s)
+  - Laravel Pint Code Style: 759 files ผ่าน 100% สะอาดสมบูรณ์
+  - Full Backend Test Suite: 1,368 passed / 1 skipped (5,674 assertions), 0 failed
+- [x] สอดคล้องตามกฎ Hard Gates: ปลอดการ Hard-Code 100%, UI ภาษาไทย 100%, Non-Destructive 100%
+
+## SARABAN-EDOC-PHASE-03 — Document Drafting & Live Preview Integration (ระยะที่ ๓) ✅ เสร็จ 2026-09-16
+- [x] พัฒนาคอมโพเนนต์จำลองเอกสารราชการแบบเรียลไทม์ (`LiveDocumentPreview.vue`):
+  - จำลองหน้ากระดาษ A4 เสมือนจริง จัดวางสัดส่วน ระยะขอบ และตราครุฑราชการมาตรฐานตามระเบียบสำนักนายกรัฐมนตรีฯ
+  - วางตำแหน่งตราครุฑอัตโนมัติตามประเภทแม่แบบ (บันทึกข้อความ: ครุฑซ้าย ๑.๕ ซม., หนังสือภายนอก/คำสั่ง/ประกาศ: ครุฑกลาง ๓.๐ ซม.)
+  - รองรับการแสดงผลตราประทับชั้นความเร็ว (`ด่วนที่สุด`, `ด่วนมาก`, `ด่วน`) และชั้นความลับ (`ลับที่สุด`, `ลับมาก`, `ลับ`)
+  - ฟังก์ชันแปลงตัวเลขอารบิกเป็นเลขไทยอัตโนมัติ (Thai Numerals Converter `๐-๙`) พร้อมปุ่มสลับการแสดงผล
+  - ปุ่มคัดลอกข้อความร่างทั้งหมดสำหรับนำไปใช้งานต่อ
+- [x] ยกระดับหน้ายกร่างและแก้ไขหนังสือราชการ (`DocumentFormView.vue`):
+  - เชื่อมต่อโหลดรายการแม่แบบเอกสารราชการแบบไดนามิกจาก API `/api/saraban/templates`
+  - นำเสนอการเลือกแม่แบบ ๔ รูปแบบมาตรฐาน (บันทึกข้อความ, หนังสือภายนอก, คำสั่งสถานศึกษา, ประกาศสถานศึกษา) พร้อมป้ายระบุขนาดตราครุฑ
+  - โหมดการร่าง ๒ รูปแบบ: **ร่างแบบแยกส่วน (Structured Drafting)** (ส่วนราชการ, คำขึ้นต้น, เหตุผลความเป็นมา, วัตถุประสงค์, ข้อสรุปพิจารณา) และ **โหมดเนื้อความเต็ม (Freeform Summary)**
+  - ระบบซิงก์ข้อมูลสองทิศทางแบบเรียลไทม์ระหว่างฟอร์มยกร่างและ Live Document Preview
+  - แถบแทรกข้อความสั่งการ/เกษียนความเห็นด่วน ๔ ฝ่ายอาชีวศึกษา (`endorsement_presets`)
+- [x] ตรวจสอบและผ่านเกณฑ์ Hard Gates 100%:
+  - สร้าง Frontend Vitest Component Test: `frontend/tests/sarabanDraftingAndLivePreview.test.js` (7 passed)
+  - ผ่าน Full Frontend Vitest Suite: 27 test files / 197 passed, 0 failed
+  - ผ่าน Frontend Production Build: `npm run build` สำเร็จ 100% (2.96s)
+  - ผ่าน Laravel Pint Code Style: 758 files สะอาด 100%
+  - ผ่าน Full Backend Test Suite: 1,365 passed / 1 skipped (5,663 assertions), 0 failed
+- [x] สอดคล้องตามกฎ Hard Gates: ปลอดการ Hard-Code 100%, UI ภาษาไทย 100%, Non-Destructive 100%
+
+## SARABAN-EDOC-PHASE-02 — Template & PDF Engine Expansion (ระยะที่ ๒) ✅ เสร็จ 2026-09-16
+- [x] ยกระดับชุดแม่แบบเอกสารราชการมาตรฐาน ๔ รูปแบบสำหรับสถานศึกษาอาชีวศึกษา (`OfficialDocumentTemplateService`):
+  - **บันทึกข้อความ (ภายใน)**: แบบที่ ๒ ครุฑขนาด ๑.๕ ซม. ด้านซ้ายบน
+  - **หนังสือภายนอก**: แบบที่ ๑ ครุฑขนาด ๓.๐ ซม. กึ่งกลางหน้ากระดาษ
+  - **คำสั่งวิทยาลัย/สถานศึกษา**: แบบที่ ๔ ครุฑขนาด ๓.๐ ซม. กึ่งกลางหน้ากระดาษ
+  - **ประกาศวิทยาลัย/สถานศึกษา**: แบบที่ ๕ ครุฑขนาด ๓.๐ ซม. กึ่งกลางหน้ากระดาษ
+  - ชุดข้อความสั่งการและเกษียนความเห็นตามโครงสร้าง ๔ ฝ่ายอาชีวศึกษา
+- [x] จัดเตรียมและติดตั้งตราครุฑราชการมาตรฐาน (Standard Garuda Emblem Assets):
+  - สร้าง Artisan Command `InstallGarudaEmblem` (`php artisan document:install-garuda`) สร้างไฟล์ `garuda.png` และ `garuda.svg` ลงใน `backend/public/images/` และ `frontend/src/assets/`
+- [x] ยกระดับ Document Engine & PDF Overlay Renderer:
+  - เพิ่มชนิดฟิลด์ `GARUDA` ใน `DocumentFieldMapping::RENDERABLE_TYPES`
+  - รองรับการวาดตราครุฑอัตโนมัติใน `PdfOverlayRenderer` ตามพิกัดและขนาดที่กำหนด พร้อมระบบ Fallback ค้นหาไฟล์ภาพอย่างปลอดภัย
+  - อัปเดต `TemplatePreflight` ให้ยอมรับฟิลด์ชนิด `GARUDA` โดยไม่ติด Warning เรื่องความสูงฟอนต์
+  - เพิ่มชุดข้อมูลตัวอย่างภาษาไทยสมจริงใน `PreviewSampleValues` สำหรับทดสอบพรีวิวฟิลด์บุคลากรและสารบรรณ (`personnel.*`, `saraban.*`, `user.*`, `org_unit.*`, `system.*`)
+- [x] ตรวจสอบและผ่านเกณฑ์ Hard Gates 100%:
+  - สร้าง Feature Test `backend/tests/Feature/OfficialDocumentTemplateEngineTest.php` (5 passed / 28 assertions)
+  - ปรับปรุง `backend/tests/Feature/SarabanMasterSuiteTest.php` ให้ตรวจครบ 4 แม่แบบ (4 passed / 103 assertions)
+  - ผ่าน Laravel Pint Code Styling: ตรวจ 758 ไฟล์ สะอาด 100%
+  - ผ่าน Full Backend Test Suite: 1,365 passed / 1 skipped (5,663 assertions), 0 failed
+  - ผ่าน Full Frontend Vitest Suite: 26 test files / 190 passed, 0 failed
+  - ผ่าน Production Build: `npm run build` สมบูรณ์ 100% (3.03s)
+- [x] ปฏิบัติตามกฎสำคัญ: ปลอดการ Hard-Code 100%, UI ภาษาไทย 100%, Non-Destructive 100%
+
+## SARABAN-EDOC-PHASE-01 — Core Foundation & Data Preparation (ระยะที่ ๑) ✅ เสร็จ 2026-09-16
+- [x] ออกแบบและขยาย Data Provider สำหรับ Document Engine ให้รองรับข้อมูลบุคลากร และหนังสือราชการ/สารบรรณ:
+  - พัฒนา `PersonnelProfileDataProvider.php` (`PERSONNEL_PROFILE_DETAIL`): แหล่งข้อมูลประวัติบุคลากร สังกัดหน่วยงาน ตำแหน่ง วิทยฐานะ ประเภทบุคลากร และข้อมูลสถานศึกษา
+  - พัฒนา `OfficialSarabanDataProvider.php` (`SARABAN_DOCUMENT_DETAIL`): แหล่งข้อมูลหนังสือราชการ เลขที่หนังสือ ชั้นความเร็ว ชั้นความลับ วันที่ไทย และ QR Code ตรวจสอบความถูกต้อง
+  - ลงทะเบียนใน `DataProviderRegistry.php`: ลงทะเบียนรหัส provider, กำหนดชื่อภาษาไทยสำหรับหน้าจัดการ และเชื่อมโยง target scope
+- [x] ซิงก์พจนานุกรมฟิลด์และแหล่งข้อมูล (`FieldDictionarySynchronizer` & `document:sync-fields`):
+  - ซิงก์ฟิลด์จาก catalog ของทั้งสอง provider เข้าสู่ `document_field_definitions` (เพิ่มขึ้นเป็น 203 ฟิลด์ที่พร้อมใช้งาน)
+  - รองรับการทำงานแบบ idempotent และไม่กระทบฟิลด์เดิมของระบบใบลา
+- [x] ทดสอบและตรวจสอบความถูกต้องตามสัญญาการส่งมอบ (Delivery Contract):
+  - พัฒนา Feature Test `backend/tests/Feature/CoreDataDictionaryProviderTest.php` (4 passed / 37 assertions)
+  - ผ่าน Laravel Pint Code Style ตรวจ 756 ไฟล์ สะอาด 100%
+  - ผ่าน Full Backend Test Suite: 1,360 passed / 1 skipped (5,615 assertions), 0 failed
+  - ผ่าน Full Frontend Vitest Suite: 26 test files / 190 passed, 0 failed
+  - ผ่าน Production Build: `npm run build` สำเร็จ 100% (3.45s)
+- [x] สอดคล้องตามกฎ Hard Gates: ปลอดการ Hard-Code 100%, UI ภาษาไทย 100%, Non-Destructive 100%
+
+## DUAL-RAIL-NAV — พัฒนาระบบแถบนำทางแบบโมดูลคู่ (Dual-Rail Navigation) ✅ เสร็จ 2026-09-16
+- [x] ออกแบบและพัฒนาแถบนำทางแบบโมดูลคู่ (Dual-Rail Navigation) รองรับระบบขนาดใหญ่:
+  - **Rail 1 (Primary Module Rail ~72px)**: แถบไอคอนโมดูลหลักแนวตั้ง (หน้าหลัก, ลางาน, ลงเวลา/OT, สารบรรณ, รายงาน, บุคลากร, ตั้งค่า) พร้อมป้ายชื่อไทย, Tooltip, Active Pill และป้ายแจ้งเตือนรวมของแต่ละโมดูล
+  - **Rail 2 (Sub-Navigation Panel ~240px)**: แผงเมนูย่อยของโมดูลที่เลือก พร้อมหัวข้อโมดูล, ปุ่มพับเก็บ `[ ◀ ]`, และจัดกลุ่มเมนูย่อยอย่างกระชับ
+  - **ระบบตรวจจับโมดูลอัตโนมัติ (Smart Route-to-Module Detection)**: สลับโมดูลใน Rail 1 ให้อัตโนมัติเมื่อผู้ใช้เข้าสู่หน้าใดๆ
+  - **ระบบจำสถานะการย่อ/ขยาย (Persistence)**: บันทึกสถานะพับเก็บของ Rail 2 ลง `localStorage`
+  - **ระบบนำทางบนมือถือ (Mobile Drawer)**: แถบเลือกโมดูลแนวนอนด้านบน + รายการเมนูย่อยของโมดูลที่เลือก
+- [x] อัปเกรด `AppMenuNav.vue` และ `App.vue` ให้รองรับการจัดกลุ่มตามโมดูลอย่างสมบูรณ์
+- [x] ผ่านมาตรวัดคุณภาพ (Quality Gates):
+  - Vitest Suite: 26 files / 190 tests ผ่าน 100%
+  - Production Build: `npm run build` ผ่านสมบูรณ์ (2.76s)
+  - Backend MenuDriftTest: ผ่าน 100%
+
+## VOCATIONAL-PERSONA-UI — ปรับปรุง UI และการแสดงผลตรงตามบทบาท สิทธิ์ และการเข้าถึงรายบุคคล ✅ เสร็จ 2026-09-16
+- [x] ปรับปรุงหน้ายื่นใบลา (`LeaveRequestView.vue`):
+  - เพิ่มเกณฑ์วัดวันลาสะสมสำหรับรอบเลื่อนขั้นเงินเดือน ก.ค.ศ. (23 วัน) พร้อมแสดงรอบปัจจุบัน (รอบที่ ๑: ๑ ต.ค. - ๓๑ มี.ค. หรือรอบที่ ๒: ๑ เม.ย. - ๓๐ ก.ย.) และ Progress Gauge
+  - ระบบคัดกรองประเภทการลาอัจฉริยะตามเพศ (Smart Gender Filter: ซ่อนลาคลอดสำหรับเพศชาย, ซ่อนลาอุปสมบท/ช่วยภริยาคลอดสำหรับเพศหญิง)
+  - ดึงข้อมูลที่อยู่และเบอร์โทรติดต่ออัตโนมัติจากข้อมูลส่วนตัว (Profile Auto-Fill)
+- [x] ปรับปรุงหน้าแดชบอร์ด (`DashboardView.vue`):
+  - เพิ่มวิดเจ็ตสรุปสถานะการประเมินวันลา ก.ค.ศ. ๒๓ วัน แสดงแถบความคืบหน้า วันลาสะสม และสถานะความปลอดภัย/ความเสี่ยงต่อการเลื่อนขั้นเงินเดือน
+- [x] ปรับปรุงหน้าระบบลงเวลา (`CheckInView.vue`):
+  - เพิ่มโหมดการลงเวลา ๒ รูปแบบ: (๑) การลงเวลาปกติในสถานศึกษา และ (๒) การลงเวลานอกสถานที่/นิเทศนักศึกษาฝึกงานอาชีวศึกษา
+  - บังคับระบุสถานที่ปฏิบัติงานภายนอก/สถานประกอบการ พร้อมแนบภาพถ่ายหลักฐานและพิกัดดาวเทียม GPS
+- [x] ปรับปรุงหน้ารายการรออนุมัติ (`ApprovalsView.vue`):
+  - แสดงป้ายระบุ ๔ ฝ่ายหลัก สอศ. (Division Badge) ของผู้ยื่นคำขอ เพื่อให้รอง ผอ. แต่ละฝ่ายตรวจพิจารณาได้ตรงฝ่าย
+  - แสดงป้ายแจ้งเตือนสีส้มกรณีผู้ยื่นคำขอมีวันลาสะสมในรอบประเมินเกิน ๒๓ วัน
+- [x] ปรับปรุงเมนูระบบและการเชื่อมโยง (`MenuSeeder.php` & Migration `2026_09_26_100000_sync_vocational_evaluation_and_biometric_menus.php`):
+  - เพิ่มเมนู `leave.vocational_evaluation` และ `attendance.biometric_hub` เข้าสู่โครงสร้างเมนูระบบ
+  - อัปเดต `TREE_FINGERPRINT` และทดสอบ `MenuDriftTest` ผ่าน ๑๐๐%
+- [x] คุณภาพและความถูกต้อง (Full Hard Gates):
+  - Vitest: 26 files / 190 tests passed (100%)
+  - Production Build: `npm run build` สำเร็จ 100%
+  - Full Backend Test Suite: 1,356 passed / 1 skipped (5,575 assertions), 0 failed
+  - Pint Style: 753 files passed clean 100%
+
+## VOCATIONAL-PHASE-04 — Verification, Full-Suite Hard Gates & Rollout Runbook ✅ เสร็จ 2026-09-16
+- [x] จัดทำคู่มือปฏิบัติการและแผนเปิดใช้งานจริงสำหรับสถานศึกษาอาชีวศึกษา: [`docs/onboarding/VOCATIONAL-COLLEGE-ROLLOUT-RUNBOOK.md`](file:///d:/E-Le/docs/onboarding/VOCATIONAL-COLLEGE-ROLLOUT-RUNBOOK.md) ครอบคลุม:
+  - ภาพรวมผังองค์กร ๔ ฝ่ายหลัก สอศ. และบุคลากร ๕ กลุ่ม
+  - คู่มือย้ายและตั้งค่าข้อมูลผัง ๔ ฝ่าย (`VocationalOrgStructureSeeder`) และการแต่งตั้งผู้บริหาร ๕ ระดับ
+  - คู่มือศูนย์นำเข้าไฟล์สแกนเวลา (Smart Biometric Hub) ทั้งแบบ Drag & Drop และประมวลผล Reconciliation
+  - คู่มือรายงานสรุปการประเมิน ก.ค.ศ. เกณฑ์วันลา ๒๓ วัน และการสร้างแฟ้มหลักฐานผลการปฏิบัติงานรายบุคคลสำหรับ ว PA
+  - คู่มือความปลอดภัย การสำรอง และการซ้อมกู้คืนข้อมูล (Backup & Disaster Recovery Drill)
+  - รายการตรวจสอบความพร้อม ๗ ด้านหลังการอัปเกรด (Post-Upgrade 7-Pillar Checklist)
+  - แผ่นพับสรุปการใช้งานระบบ ๑ หน้า (One-Page Cheat Sheet) สำหรับแอดมิน, ผู้บริหาร, และครู/บุคลากร
+- [x] ตรวจสอบคำสั่งสุขภาพระบบ: `php artisan app:preflight-check` ผ่านเกณฑ์หลัก ๑๐๐% (FAIL = 0)
+- [x] รันตรวจสอบมาตรฐานโค้ด Backend: Laravel Pint ผ่าน ๑๐๐% สะอาดครบทุกไฟล์ (752 files)
+- [x] ผ่านชุดทดสอบ Backend ทั้งหมด (Full Backend Suite): **1,356 passed / 1 skipped (5,575 assertions), 0 failed**
+- [x] ผ่านชุดทดสอบ Frontend ทั้งหมด (Vitest Suite): **26 test files / 189 passed (100%), 0 failed**
+- [x] ผ่านการคอมไพล์ Frontend Production Build: `npm run build` สมบูรณ์ ๑๐๐% (2.78s)
+- [x] ปฏิบัติตามกฎทุกข้อ: Non-Destructive, ห้าม Hard-Code, UI ภาษาไทย 100%, และรักษาความสมบูรณ์ของระบบเดิม 100%
+
+## VOCATIONAL-PHASE-03 — Frontend Modern UI & Integration ✅ เสร็จ 2026-09-16
+- [x] พัฒนา `VocationalEvaluationReportView.vue`: หน้ารายงานสรุปการประเมินวันลาและเวลาปฏิบัติราชการ ก.ค.ศ. พร้อม Interactive KPI cards, ปุ่มเลือกช่วงเวลารอบที่ ๑ (๑ ต.ค. – ๓๑ มี.ค.), รอบที่ ๒ (๑ เม.ย. – ๓๐ ก.ย.) และปีงบประมาณ, ตัวกรอง ๔ ฝ่ายหลัก สอศ. และประเภทบุคลากร ๕ กลุ่ม, ตารางแสดงผลพร้อมป้ายแจ้งเตือนเกณฑ์วันลาสะสมเกิน ๒๓ วัน และโมดอลตรวจสอบแฟ้มหลักฐานผลการปฏิบัติงานรายบุคคล (Teacher PA & Workload Evidence Pack)
+- [x] พัฒนา `BiometricHubView.vue`: ศูนย์เชื่อมต่อเครื่องสแกนนิ้ว/ใบหน้าอัจฉริยะ (Biometric Ingestion Zone) รองรับการลากวาง (Drag & Drop) หรือเลือกไฟล์ `.dat`, `.txt`, `.csv`, `.xlsx`, ตัวเลือก Timezone/เขตเวลา, แถบแสดงความคืบหน้า และการ์ดสรุปผลการนำเข้าพร้อมสถานะจับคู่ผู้ใช้และบันทึกเวลาอัตโนมัติ (Reconciled)
+- [x] ลงทะเบียนเส้นทางและผูกปุ่มนำทาง:
+  - ลงทะเบียน `/reports/vocational-evaluation` และ `/admin/attendance/biometric-hub` ใน `frontend/src/router/index.js`
+  - เพิ่มปุ่ม Shortcut "รายงานประเมิน ก.ค.ศ. (ว PA)" ใน `frontend/src/views/ReportsView.vue`
+  - เพิ่มปุ่ม Shortcut "นำเข้าไฟล์สแกน (Biometric Hub)" ใน `frontend/src/views/admin/AttendanceSummaryView.vue`
+  - อัปเดต `ROUTES_WITHOUT_MENU` ใน `backend/tests/Feature/MenuIntegrityTest.php`
+- [x] สร้างชุดทดสอบ Unit/Component Tests:
+  - `frontend/tests/vocationalEvaluationReportView.test.js` (3 tests passed)
+  - `frontend/tests/biometricHubView.test.js` (2 tests passed)
+- [x] ผ่านมาตรวัดคุณภาพ (Quality Gates):
+  - Frontend Vitest: 26 test files / 189 tests ผ่าน 100% (0 failure)
+  - Frontend Production Build: `npm run build` ผ่านสมบูรณ์ (2.78s)
+  - Backend Full Suite: `MenuIntegrityTest` (9 passed), `VocationalReportApiTest` (6 passed), `VocationalDivisionScopeTest` (2 passed), `VocationalOrgStructureSeederTest` (4 passed)
+- [x] ปฏิบัติตามกฎ Non-Destructive, UI ภาษาไทย 100%, และรักษาสัญญา Hard Gate (หยุดรอคำสั่งก่อนเริ่มเฟส 4)
+- [x] พัฒนา `BiometricFileParserService`: รองรับการวิเคราะห์และนำเข้าไฟล์จากเครื่องสแกนลายนิ้วมือ/ใบหน้า (ZKTeco, HIP, Hikvision) ทั้ง `.dat`, `.txt`, `.csv`, `.xlsx` บันทึก raw event พร้อม map ผู้ใช้และประมวลผลการเข้า-ออกงานอัตโนมัติ (Reconciliation)
+- [x] พัฒนา `VocationalLeaveEvaluationService`: ระบบประมวลผลวันลาและเวลาปฏิบัติราชการตามรอบเลื่อนขั้นเงินเดือน ก.ค.ศ. (รอบที่ 1: 1 ต.ค. – 31 มี.ค., รอบที่ 2: 1 เม.ย. – 30 ก.ย., หรือรอบปีงบประมาณ) คำนวณเกณฑ์วันลาสะสม 23 วันสำหรับข้าราชการครู และ 13 วันสำหรับพนักงานราชการ/ลูกจ้าง พร้อมระบบจัดเตรียมแฟ้มหลักฐานผลการปฏิบัติงานรายบุคคล (Teacher PA & Workload Evidence Pack)
+- [x] พัฒนา `VocationalReportController` & RESTful API Endpoints พร้อมระบบความปลอดภัยและการป้องกัน IDOR:
+  - `GET /api/v1/reports/vocational/evaluation-summary` (รายงานสรุปการประเมินวันลา ก.ค.ศ.)
+  - `GET /api/v1/reports/vocational/teacher-pa-evidence` (แฟ้มหลักฐาน ว PA รายบุคคล)
+  - `POST /api/v1/attendance/biometric/import-file` (นำเข้าไฟล์บันทึกเวลาสแกนนิ้ว/ใบหน้า)
+- [x] สร้าง Feature Tests เฉพาะทาง: `BiometricFileParserTest` และ `VocationalReportApiTest`
+- [x] ผ่านการทดสอบ Full Backend Suite: 1,356 passed / 5,575 assertions (0 failed, 1 skipped) และจัดระเบียบโค้ดด้วย Laravel Pint สะอาด 100% (752 files)
+- [x] ปฏิบัติตามกฎ Non-Destructive, ห้าม Hard-code, และรักษาสัญญา Hard Gate (หยุดรอคำสั่งก่อนเริ่มเฟส 3)
+
+## VOCATIONAL-PHASE-01 — ฐานราก Backend & Data Migration (Core Foundation Engines) ✅ เสร็จ 2026-09-16
+- [x] ต่อยอด `OrgScopeResolver`: เพิ่มฟังก์ชันค้นหาฝ่ายหลัก `divisionOrgUnitId()`, ตรวจสอบฝ่ายเดียวกัน `isSameDivision()`, และขยายขอบเขตการมองเห็นระดับ ๔ ฝ่ายหลัก สอศ.
+- [x] ปรับปรุง `ApproverResolverService::resolveDivisionDirectorIds()` ให้ไต่ระดับค้นหาผู้บริหารฝ่าย (รอง ผอ. ๔ ฝ่าย) ตามลำดับชั้นผังองค์กรจริง
+- [x] เพิ่มชุดทดสอบ `VocationalDivisionScopeTest` ครอบคลุมการคำนวณและสโคปข้อมูล ๔ ฝ่าย และการจำแนกบุคลากร
+- [x] ผ่านการทดสอบ Backend ทั้งหมด: 1,348 passed / 5,533 assertions (0 failure) และจัดระเบียบโค้ดด้วย Pint 100%
+- [x] คงความเข้ากันได้ย้อนหลัง 100% (Non-Destructive) ไม่มี Hard-code และไม่กระทบโครงสร้างระบบเดิม
+
+## VOCATIONAL-ARCH-01 — พิมพ์เขียวสถาปัตยกรรมการบริหารงานบุคคลและการปฏิบัติราชการสถานศึกษาอาชีวศึกษา (21 หมวด) ✅ เสร็จ 2026-09-16
+- [x] จัดทำและบันทึกเอกสารแม่บท `docs/VOCATIONAL-COLLEGE-PERSONNEL-ARCHITECTURE.md` ครอบคลุม 21 หมวดหมู่:
+  1. บทนำและวัตถุประสงค์ (สอศ. / วิทยาลัยเทคนิคดอนเมือง)
+  2. โครงสร้างองค์กร ๔ ฝ่ายหลัก (บริหารทรัพยากร, แผนงานฯ, พัฒนากิจการฯ, วิชาการ)
+  3. โมเดลตำแหน่งคู่ขนาน (Dual Role & Multi-Duty Model)
+  4. การจำแนกประเภทบุคลากร ๕ กลุ่ม (ข้าราชการครู, พนักงานราชการ, ครูอัตราจ้าง, ลูกจ้างประจำ, ลูกจ้างชั่วคราว)
+  5. ลำดับบทบาทและสายอำนาจการอนุมัติ ๕ ระดับ + ผู้รักษาการแทน
+  6. ขอบเขตสิทธิ์การเข้าถึงข้อมูล (Division & Institutional Scope)
+  7. แผนที่การพัฒนาระยะยาว (Phase 1–4)
+  8. การตั้งค่าระบบแบบ Zero-Code Admin Self-Service & การปรับลด UX
+  9. สถาปัตยกรรมเทมเพลตฟอร์มการลาไดนามิก & ความไม่เปลี่ยนแปลงของข้อมูลประวัติ (Version Pinning)
+  10. สถาปัตยกรรมสายการอนุมัติและยกเลิกใบลา พร้อมระบบผูกตำแหน่งช่องลงนาม 1:1 กับกระดาษ (Visual Slot Binding)
+  11. เครื่องยนต์โครงสร้างพื้นฐานร่วมกัน ๖ ระบบ (Scope, Approval, PDF Visual Stamp, Notification, Setting, Audit)
+  12. ฟังก์ชันเสริมการลาเฉพาะทางสถานศึกษา (นโยบายใบรับรองแพทย์ยืดหยุ่น, เกณฑ์ประเมิน 23 วัน, ตัวกรองเพศอัจฉริยะ)
+  13. การตั้งค่าสิทธิการลา รายงาน และแบบฟอร์มราชการ (ตัวช่วยยกยอดสิ้นปี, ตารางโควตาสะสม, Leave Hub)
+  14. สถาปัตยกรรมระบบลงเวลาและการปฏิบัติงานนอกเวลา OT (เช็กอินนอกสถานที่ GPS/รูปถ่าย, แผนที่ Geofencing, บัญชีลงเวลา, ขอ OT ผูกคำสั่ง)
+  15. สถาปัตยกรรมสารบรรณและการลงนาม/เกษียนบนไฟล์ PDF โดยตรง (Permanent Visual Flattening, ตรารับอัตโนมัติ, ทะเบียนคำสั่ง)
+  16. การเดินหนังสือราชการและการลงนามหลายบุคคล/คณะกรรมการ (Parallel Committee Signing, ร่วมลงนาม, สารบบจัดเก็บ 3 ระดับ)
+  17. การปรับปรุงโครงสร้างเมนูตั้งค่าระบบให้กระชับและเป็นหมวดหมู่ (Consolidated 6 Tabbed Settings)
+  18. สถาปัตยกรรมศูนย์รายงานกลางสถานศึกษาและเอกสารประเมินราชการ (Unified College Report Hub 5 หมวด, ตัวกรองรอบ 1 เม.ย./1 ต.ค., แดชบอร์ด 4 ฝ่าย)
+  19. มาตรการความปลอดภัย การย้ายข้อมูล และคู่มือหลังการปรับปรุง (Operational Safety, Data Migration & Post-Upgrade Runbook)
+  20. กลยุทธ์และลำดับขั้นตอนการพัฒนา: ลำดับ Backend-First (Backend Foundation -> API & Tests -> Frontend UI -> Verification)
+  21. สถาปัตยกรรมการเชื่อมต่อเครื่องสแกนนิ้ว/ใบหน้าอัจฉริยะ (Smart Biometric Hub: ลากวางไฟล์ + Direct IP/LAN Sync)
+
 ## SCHOOL-FIT-01 — ตรวจข้อมูลและหน้าจอให้ตรงกับการใช้งานจริงของสถานศึกษา (2026-09-15)
 
 คำสั่งเจ้าของระบบ: (1) ทบทวน/จัดระเบียบข้อมูลให้สอดคล้องกับการใช้งานจริงของสถานศึกษา (2) หาจุดที่ใช้งานติดขัดหรือต้องปรับ UI/UX

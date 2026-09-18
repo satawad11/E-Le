@@ -70,7 +70,7 @@ class SarabanMasterSuiteTest extends TestCase
         ]);
 
         $templates = $response->json('templates');
-        $this->assertCount(2, $templates);
+        $this->assertCount(4, $templates);
 
         // ตรวจสอบบันทึกข้อความ ครุฑซ้าย ๑.๕ ซม.
         $memo = collect($templates)->firstWhere('id', 'internal_memo');
@@ -83,6 +83,18 @@ class SarabanMasterSuiteTest extends TestCase
         $this->assertNotNull($external);
         $this->assertSame('center', $external['garuda']['position']);
         $this->assertEquals(3.0, $external['garuda']['size_cm']);
+
+        // ตรวจสอบคำสั่งวิทยาลัย ครุฑกลาง ๓ ซม.
+        $order = collect($templates)->firstWhere('id', 'college_order');
+        $this->assertNotNull($order);
+        $this->assertSame('center', $order['garuda']['position']);
+        $this->assertEquals(3.0, $order['garuda']['size_cm']);
+
+        // ตรวจสอบประกาศวิทยาลัย ครุฑกลาง ๓ ซม.
+        $announcement = collect($templates)->firstWhere('id', 'college_announcement');
+        $this->assertNotNull($announcement);
+        $this->assertSame('center', $announcement['garuda']['position']);
+        $this->assertEquals(3.0, $announcement['garuda']['size_cm']);
 
         // ตรวจสอบ Preset เกษียนด่วน ๔ ฝ่ายอาชีวศึกษา
         $presets = $response->json('endorsement_presets');

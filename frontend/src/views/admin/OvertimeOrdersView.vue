@@ -255,13 +255,13 @@
     </div>
 
     <!-- ============================ Modal: ออกคำสั่ง ============================ -->
-    <div v-if="createModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="createModal.show = false">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div class="px-6 py-4 border-b border-gray-100">
+    <div v-if="createModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" @click.self="createModal.show = false">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden my-auto">
+        <div class="px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <h3 class="text-lg font-bold text-gray-900">ออกคำสั่งปฏิบัติงานล่วงเวลา</h3>
           <p class="text-sm text-gray-500 mt-1">คำสั่งจะถูกส่งเข้าสู่ขั้นตอนอนุมัติทันทีหลังบันทึก</p>
         </div>
-        <div class="px-6 py-4 space-y-4">
+        <div class="px-6 py-4 space-y-4 overflow-y-auto flex-1">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">เรื่อง <span class="text-red-500">*</span></label>
             <input v-model="createForm.title" type="text" maxlength="255" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]" placeholder="เช่น ปฏิบัติงานนอกเวลาราชการเพื่อจัดเตรียมงานพิธี" />
@@ -288,7 +288,7 @@
             คำสั่งจะผูกกับหน่วยงานต้นสังกัดของผู้ออกคำสั่งโดยอัตโนมัติ
           </p>
         </div>
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 flex-shrink-0">
           <button @click="createModal.show = false" class="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl">ยกเลิก</button>
           <button :disabled="submitting" @click="submitCreate" class="px-4 py-2 text-sm font-semibold text-white bg-[#800000] hover:bg-[#600000] rounded-xl disabled:opacity-50">
             {{ submitting ? 'กำลังบันทึก...' : 'บันทึกและส่งอนุมัติ' }}
@@ -298,13 +298,13 @@
     </div>
 
     <!-- ============================ Modal: อนุมัติ ============================ -->
-    <div v-if="approveModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="approveModal.show = false">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg">
-        <div class="px-6 py-4 border-b border-gray-100">
+    <div v-if="approveModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" @click.self="approveModal.show = false">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden my-auto">
+        <div class="px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <h3 class="text-lg font-bold text-gray-900">{{ decisionVerb(approveModal.order || {}) }}คำสั่ง OT</h3>
           <p class="text-sm text-gray-500 mt-1">{{ approveModal.order?.title }}</p>
         </div>
-        <div class="px-6 py-4 space-y-4">
+        <div class="px-6 py-4 space-y-4 overflow-y-auto flex-1">
           <p class="text-sm text-gray-600">
             ปรับช่วงเวลาได้ หากไม่แก้ไขจะใช้ช่วงเวลาที่ขอมา
             <span class="font-medium text-gray-800">ผู้ปฏิบัติงานจะลงเวลา OT ได้เฉพาะภายในช่วงนี้เท่านั้น</span>
@@ -327,7 +327,7 @@
             <textarea v-model="approveForm.comment" rows="2" maxlength="2000" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]"></textarea>
           </div>
         </div>
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 flex-shrink-0">
           <button @click="approveModal.show = false" class="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl">ยกเลิก</button>
           <button :disabled="submitting" @click="submitApprove" class="px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl disabled:opacity-50">
             {{ submitting ? 'กำลังบันทึก...' : `ยืนยัน${decisionVerb(approveModal.order || {})}` }}
@@ -337,17 +337,17 @@
     </div>
 
     <!-- ============================ Modal: ไม่อนุมัติ ============================ -->
-    <div v-if="rejectModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="rejectModal.show = false">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg">
-        <div class="px-6 py-4 border-b border-gray-100">
+    <div v-if="rejectModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" @click.self="rejectModal.show = false">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden my-auto">
+        <div class="px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <h3 class="text-lg font-bold text-gray-900">ไม่{{ decisionVerb(rejectModal.order || {}) }}คำสั่ง OT</h3>
           <p class="text-sm text-gray-500 mt-1">{{ rejectModal.order?.title }}</p>
         </div>
-        <div class="px-6 py-4">
+        <div class="px-6 py-4 overflow-y-auto flex-1">
           <label class="block text-sm font-medium text-gray-700 mb-1">เหตุผล <span class="text-red-500">*</span></label>
           <textarea v-model="rejectForm.comment" rows="3" maxlength="2000" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]" placeholder="ระบุเหตุผลที่ไม่เห็นชอบ"></textarea>
         </div>
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 flex-shrink-0">
           <button @click="rejectModal.show = false" class="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl">ยกเลิก</button>
           <button :disabled="submitting || !rejectForm.comment" @click="submitReject" class="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl disabled:opacity-50">
             {{ submitting ? 'กำลังบันทึก...' : 'ยืนยันไม่อนุมัติ' }}
@@ -357,9 +357,9 @@
     </div>
 
     <!-- ============================ Modal: มอบหมาย ============================ -->
-    <div v-if="assignModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="assignModal.show = false">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div class="px-6 py-4 border-b border-gray-100">
+    <div v-if="assignModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" @click.self="assignModal.show = false">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden my-auto">
+        <div class="px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <h3 class="text-lg font-bold text-gray-900">มอบหมายผู้ปฏิบัติงาน</h3>
           <p class="text-sm text-gray-500 mt-1">{{ assignModal.order?.title }}</p>
         </div>
@@ -384,7 +384,7 @@
             </label>
           </div>
         </div>
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-between items-center gap-2">
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-between items-center gap-2 flex-shrink-0">
           <span class="text-sm text-gray-500">เลือกแล้ว {{ assignForm.user_ids.length }} คน</span>
           <div class="flex gap-2">
             <button @click="assignModal.show = false" class="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl">ยกเลิก</button>
@@ -397,13 +397,13 @@
     </div>
 
     <!-- ============================ Modal: รับรองเวลา ============================ -->
-    <div v-if="certifyModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="certifyModal.show = false">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg">
-        <div class="px-6 py-4 border-b border-gray-100">
+    <div v-if="certifyModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" @click.self="certifyModal.show = false">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden my-auto">
+        <div class="px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <h3 class="text-lg font-bold text-gray-900">รับรองเวลาปฏิบัติงาน OT</h3>
           <p class="text-sm text-gray-500 mt-1">{{ certifyModal.userName }}</p>
         </div>
-        <div class="px-6 py-4 space-y-4">
+        <div class="px-6 py-4 space-y-4 overflow-y-auto flex-1">
           <p class="text-sm text-gray-600">
             เวลาที่ลงจริง
             <span class="font-medium text-gray-800">
@@ -425,7 +425,7 @@
             <textarea v-model="certifyForm.reason" rows="3" maxlength="2000" class="w-full border-gray-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000]" placeholder="เช่น รับรองตามเวลาที่ปฏิบัติงานจริง"></textarea>
           </div>
         </div>
-        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 flex-shrink-0">
           <button @click="certifyModal.show = false" class="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl">ยกเลิก</button>
           <button :disabled="submitting || !certifyForm.reason" @click="submitCertify" class="px-4 py-2 text-sm font-semibold text-white bg-[#800000] hover:bg-[#600000] rounded-xl disabled:opacity-50">
             {{ submitting ? 'กำลังบันทึก...' : 'ยืนยันรับรอง' }}

@@ -22,6 +22,34 @@
           </div>
         </div>
 
+        <!-- Mode Switcher -->
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">รูปแบบการลงเวลา</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button type="button" @click="setMode('normal')"
+              :class="checkinMode === 'normal' ? 'border-[#800000] bg-[#800000]/5 text-[#800000] font-bold ring-2 ring-[#800000]' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'"
+              class="flex items-center justify-center gap-2 p-3 rounded-xl border text-sm transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+              ลงเวลาปฏิบัติงานปกติในสถานศึกษา
+            </button>
+            <button type="button" @click="setMode('offsite')"
+              :class="checkinMode === 'offsite' ? 'border-[#800000] bg-[#800000]/5 text-[#800000] font-bold ring-2 ring-[#800000]' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'"
+              class="flex items-center justify-center gap-2 p-3 rounded-xl border text-sm transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              นิเทศนักศึกษาทวิภาคี / ปฏิบัติงานนอกสถานที่ / ไปราชการ
+            </button>
+          </div>
+        </div>
+
+        <!-- Offsite destination input -->
+        <div v-if="checkinMode === 'offsite'" class="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <label for="offsite-place" class="block text-sm font-semibold text-blue-900 mb-1.5">สถานที่ปฏิบัติงานนอกสถานที่ / สถานประกอบการที่นิเทศ <span class="text-red-500">*</span></label>
+          <input id="offsite-place" v-model="offsiteLocation" type="text"
+            placeholder="เช่น บจก. ฮอนด้า ออโตโมบิล (นิเทศนักศึกษาช่างยนต์)"
+            class="w-full border-blue-300 rounded-lg text-sm focus:ring-[#800000] focus:border-[#800000] p-2.5">
+          <p class="text-xs text-blue-700 mt-1.5">* การลงเวลานิเทศ/นอกสถานที่ ระบบจะบันทึกภาพถ่ายและพิกัดแผนที่แนบส่งให้หัวหน้าแผนกตรวจสอบ</p>
+        </div>
+
         <!-- Location Status -->
         <div class="bg-gray-50 rounded-xl p-4 mb-8 flex items-center gap-4">
           <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
@@ -53,8 +81,8 @@
         </div>
 
         <!-- Camera Preview -->
-        <div v-if="requireSelfie" class="mb-8">
-          <label class="block text-sm font-medium text-gray-700 mb-2">ถ่ายรูปยืนยันตัวตน (บังคับ)</label>
+        <div v-if="requireSelfie || checkinMode === 'offsite'" class="mb-8">
+          <label class="block text-sm font-medium text-gray-700 mb-2">ถ่ายรูปยืนยันตัวตนหน้างาน {{ checkinMode === 'offsite' ? '(บังคับสำหรับนิเทศ/นอกสถานที่)' : '(บังคับ)' }}</label>
           <div class="relative bg-black rounded-xl overflow-hidden aspect-[4/3] flex items-center justify-center">
             <video ref="videoRef" class="w-full h-full object-cover" autoplay playsinline muted aria-label="การแสดงภาพสดจากกล้อง"></video>
             <div v-if="!cameraStream && !cameraError" class="absolute text-white animate-pulse">กำลังเปิดกล้อง...</div>
@@ -159,6 +187,15 @@ const loading = ref(false)
 const gettingLocation = ref(false)
 const location = ref('')
 const notes = ref('')
+const checkinMode = ref('normal')
+const offsiteLocation = ref('')
+
+const setMode = (mode) => {
+  checkinMode.value = mode
+  if (mode === 'offsite' && !cameraStream.value) {
+    startCamera()
+  }
+}
 
 const todayAttendance = ref(null)
 const requireSelfie = ref(false)
@@ -292,8 +329,13 @@ const handleCheckIn = async () => {
     return
   }
 
+  if (checkinMode.value === 'offsite' && !offsiteLocation.value.trim()) {
+    alertStore.addAlert('กรุณาระบุสถานที่ปฏิบัติงานนอกสถานที่ / สถานประกอบการที่นิเทศ', 'warning')
+    return
+  }
+
   let imageData = null
-  if (requireSelfie.value) {
+  if (requireSelfie.value || checkinMode.value === 'offsite') {
     imageData = captureImage()
     if (!imageData) {
       alertStore.addAlert('กรุณาเปิดกล้องเพื่อถ่ายรูปยืนยันตัวตน', 'warning')
@@ -301,11 +343,16 @@ const handleCheckIn = async () => {
     }
   }
 
+  const combinedNotes = [
+    checkinMode.value === 'offsite' ? `[นิเทศ/นอกสถานที่: ${offsiteLocation.value}]` : '',
+    notes.value
+  ].filter(Boolean).join(' ')
+
   loading.value = true
   try {
     const res = await api.post('/attendances/check-in', {
       location: location.value,
-      notes: notes.value,
+      notes: combinedNotes,
       image: imageData
     })
     const att = res.data.attendance
@@ -317,6 +364,7 @@ const handleCheckIn = async () => {
       alertStore.addAlert(msg, 'success')
     }
     notes.value = ''
+    offsiteLocation.value = ''
     await fetchTodayAttendance()
   } catch (error) {
     alertStore.addAlert(getErrorMessage(error, 'เกิดข้อผิดพลาดในการลงเวลา'), 'error')
@@ -332,7 +380,7 @@ const handleCheckOut = async () => {
   }
 
   let imageData = null
-  if (requireSelfie.value) {
+  if (requireSelfie.value || checkinMode.value === 'offsite') {
     imageData = captureImage()
     if (!imageData) {
       alertStore.addAlert('กรุณาเปิดกล้องเพื่อถ่ายรูปยืนยันตัวตน', 'warning')
@@ -340,11 +388,16 @@ const handleCheckOut = async () => {
     }
   }
 
+  const combinedNotes = [
+    checkinMode.value === 'offsite' ? `[นิเทศ/นอกสถานที่: ${offsiteLocation.value}]` : '',
+    notes.value
+  ].filter(Boolean).join(' ')
+
   loading.value = true
   try {
     const res = await api.post('/attendances/check-out', {
       location: location.value,
-      notes: notes.value,
+      notes: combinedNotes,
       image: imageData
     })
     const att = res.data.attendance
@@ -356,6 +409,7 @@ const handleCheckOut = async () => {
       alertStore.addAlert(msg, 'success')
     }
     notes.value = ''
+    offsiteLocation.value = ''
     await fetchTodayAttendance()
   } catch (error) {
     alertStore.addAlert(getErrorMessage(error, 'เกิดข้อผิดพลาดในการลงเวลา'), 'error')

@@ -65,44 +65,53 @@
 
     <!-- Create/Edit Modal -->
     <transition name="fade">
-      <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-          <h3 class="text-lg font-bold text-gray-900 mb-4">{{ isEdit ? 'แก้ไขปีงบประมาณ' : 'เพิ่มปีงบประมาณ' }}</h3>
+      <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" @click.self="showModal = false">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md my-auto max-h-[90vh] flex flex-col overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0 bg-white">
+            <h3 class="text-lg font-bold text-gray-900">{{ isEdit ? 'แก้ไขปีงบประมาณ' : 'เพิ่มปีงบประมาณ' }}</h3>
+            <button @click="showModal = false" class="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg transition-colors" aria-label="ปิด">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
 
-          <form @submit.prevent="submitForm" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">ปีงบประมาณ (พ.ศ.) *</label>
-              <input type="number" v-model="form.year" required min="2500" max="2700" class="block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:ring-red-500 focus:border-red-500 sm:text-sm" placeholder="เช่น 2567">
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อ *</label>
-              <input type="text" v-model="form.name" required class="block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:ring-red-500 focus:border-red-500 sm:text-sm" placeholder="เช่น ปีงบประมาณ 2567">
-            </div>
-            <div class="grid grid-cols-2 gap-4">
+          <form @submit.prevent="submitForm" class="flex flex-col flex-1 overflow-hidden min-h-0">
+            <div class="overflow-y-auto flex-1 p-6 space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">วันที่เริ่มต้น *</label>
-                <ThaiDatePicker
-                  v-model="form.start_date"
-                  required
-                />
+                <label class="block text-sm font-medium text-gray-700 mb-1">ปีงบประมาณ (พ.ศ.) *</label>
+                <input type="number" v-model="form.year" required min="2500" max="2700" class="block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:ring-red-500 focus:border-red-500 sm:text-sm" placeholder="เช่น 2567">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">วันที่สิ้นสุด *</label>
-                <ThaiDatePicker
-                  v-model="form.end_date"
-                  :minDate="form.start_date || ''"
-                  required
-                />
+                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อ *</label>
+                <input type="text" v-model="form.name" required class="block w-full border border-gray-300 rounded-lg shadow-sm py-2 px-3 focus:ring-red-500 focus:border-red-500 sm:text-sm" placeholder="เช่น ปีงบประมาณ 2567">
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">วันที่เริ่มต้น *</label>
+                  <ThaiDatePicker
+                    v-model="form.start_date"
+                    required
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">วันที่สิ้นสุด *</label>
+                  <ThaiDatePicker
+                    v-model="form.end_date"
+                    :minDate="form.start_date || ''"
+                    required
+                  />
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="checkbox" v-model="form.is_current" id="is_current" class="rounded text-red-600 focus:ring-red-500">
+                <label for="is_current" class="text-sm text-gray-700 font-medium cursor-pointer">ตั้งเป็นปีงบประมาณปัจจุบัน</label>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <input type="checkbox" v-model="form.is_current" id="is_current" class="rounded text-red-600 focus:ring-red-500">
-              <label for="is_current" class="text-sm text-gray-700 font-medium cursor-pointer">ตั้งเป็นปีงบประมาณปัจจุบัน</label>
-            </div>
 
-            <div class="flex gap-3 pt-2">
-              <button type="button" @click="showModal = false" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors">ยกเลิก</button>
-              <button type="submit" :disabled="submitting" class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50">
+            <div class="flex gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex-shrink-0">
+              <button type="button" @click="showModal = false" class="flex-1 py-2.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm transition-colors shadow-sm">ยกเลิก</button>
+              <button type="submit" :disabled="submitting" class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm disabled:opacity-50">
                 {{ submitting ? 'กำลังบันทึก...' : (isEdit ? 'อัปเดต' : 'บันทึก') }}
               </button>
             </div>
@@ -113,8 +122,8 @@
 
     <!-- Delete Confirmation Modal -->
     <transition name="fade">
-      <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
+      <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" @click.self="showDeleteModal = false">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm my-auto p-6 text-center">
           <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
           </div>

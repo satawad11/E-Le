@@ -131,5 +131,15 @@ export const ThaiDateFormatter = {
    */
   toThaiDateOnly(dateStr) {
     return this.toThaiSlash(dateStr);
+  },
+
+  /**
+   * Convert Arabic digits (0-9) to Thai digits (๐-๙)
+   * Example: '16 กันยายน 2569' -> '๑๖ กันยายน ๒๕๖๙'
+   */
+  toThaiDigits(str) {
+    if (str === null || str === undefined) return '';
+    const thaiDigits = ['๐', '๑', '๒', '๓', '๔', '๕', '๖', '๗', '๘', '๙'];
+    return String(str).replace(/[0-9]/g, (d) => thaiDigits[Number(d)]);
   }
 };

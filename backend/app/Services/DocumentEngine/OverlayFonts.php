@@ -2,6 +2,8 @@
 
 namespace App\Services\DocumentEngine;
 
+use setasign\Fpdi\Fpdi;
+
 /**
  * ฟอนต์ไทยของเอกสารที่วางฟิลด์บน PDF
  *
@@ -30,11 +32,25 @@ class OverlayFonts
     }
 
     /** ลงทะเบียนทั้งแบบปกติและแบบขีดเส้นใต้ เพราะ FPDF ถือว่าเป็นคนละสไตล์ของฟอนต์เดียวกัน */
-    public static function register(OverlayPdf $pdf): void
+    public static function register(Fpdi $pdf): void
     {
         foreach ([self::REGULAR, self::BOLD] as $family) {
             $pdf->AddFont($family, '', $family.'.json');
             $pdf->AddFont($family, 'U', $family.'.json');
         }
+    }
+
+    /**
+     * ฟอนต์ไทยของโครงการเก็บสตริงเป็น cp874 — ต้องแปลงจาก UTF-8 ก่อนส่งให้ FPDF
+     */
+    public static function encode(string $text): string
+    {
+        if ($text === '') {
+            return '';
+        }
+
+        $converted = @iconv('UTF-8', 'CP874//TRANSLIT', $text);
+
+        return $converted === false ? $text : $converted;
     }
 }

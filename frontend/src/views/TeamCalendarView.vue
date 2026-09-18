@@ -69,15 +69,15 @@
 
     <!-- Leave Details Modal -->
     <transition name="fade">
-      <div v-if="selectedLeave" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-          <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+      <div v-if="selectedLeave" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" @click.self="selectedLeave = null">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden my-auto max-h-[90vh] flex flex-col">
+          <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50 flex-shrink-0">
             <h3 class="font-bold text-gray-900">รายละเอียดการลา</h3>
             <button @click="selectedLeave = null" class="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg transition-colors">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
-          <div class="p-6 space-y-4">
+          <div class="p-6 space-y-4 overflow-y-auto flex-1">
             <div>
               <p class="text-xs text-gray-500 font-semibold mb-1">บุคลากร</p>
               <p class="text-sm font-medium text-gray-900">{{ selectedLeave.user?.name }}</p>

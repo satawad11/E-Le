@@ -1,5 +1,14 @@
 <template>
   <div class="max-w-2xl mx-auto">
+    <!-- Breadcrumb Navigation -->
+    <AppBreadcrumb
+      :items="[
+        { title: 'ระบบการลา', to: '/leaves' },
+        { title: draftId ? 'แก้ไขร่างใบลา' : 'ยื่นใบลา' }
+      ]"
+      :backTo="'/leaves'"
+    />
+
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-900">{{ draftId ? 'แก้ไขร่างใบลา' : 'ยื่นใบลา' }}</h1>
       <p class="text-gray-500 mt-1">
@@ -7,14 +16,66 @@
       </p>
     </div>
 
+    <!-- Local Draft Detected Alert Banner -->
+    <transition name="fade">
+      <div v-if="hasDraft && !draftId" class="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div class="flex items-center gap-2.5 text-sm">
+          <span class="text-lg">📝</span>
+          <div>
+            <p class="font-bold">พบข้อมูลร่างที่เคยพิมพ์ไว้ในเครื่อง</p>
+            <p class="text-xs text-amber-700">บันทึกอัตโนมัติล่าสุดเมื่อ {{ lastSavedAt }}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" @click="handleRestoreDraft" class="px-3.5 py-2 bg-[#800000] hover:bg-[#600000] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            กู้คืนข้อมูลร่าง
+          </button>
+          <button type="button" @click="clearDraft" class="px-3.5 py-2 bg-white hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold rounded-xl transition-colors">
+            ล้างทิ้ง
+          </button>
+        </div>
+      </div>
+    </transition>
+
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 md:p-8">
       <form @submit.prevent="handleSubmit" enctype="multipart/form-data" class="space-y-6">
+        <!-- แถบแจ้งเตือนเกณฑ์ประเมินเลื่อนขั้นเงินเดือน ก.ค.ศ. (เกณฑ์ไม่เกิน ๒๓ วัน) -->
+        <div v-if="currentCycleInfo" class="p-4 rounded-xl border transition-all"
+          :class="currentCycleInfo.statusColor === 'red' ? 'bg-red-50 border-red-200 text-red-900' :
+                  currentCycleInfo.statusColor === 'orange' ? 'bg-amber-50 border-amber-200 text-amber-900' :
+                  'bg-emerald-50 border-emerald-200 text-emerald-900'">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full flex-shrink-0"
+                :class="currentCycleInfo.statusColor === 'red' ? 'bg-red-500' :
+                        currentCycleInfo.statusColor === 'orange' ? 'bg-amber-500' : 'bg-emerald-500'"></span>
+              <span class="text-xs sm:text-sm font-bold">เกณฑ์วันลาประเมิน ก.ค.ศ. ({{ currentCycleInfo.cycleName }}):</span>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                :class="currentCycleInfo.statusColor === 'red' ? 'bg-red-200 text-red-800' :
+                        currentCycleInfo.statusColor === 'orange' ? 'bg-amber-200 text-amber-800' :
+                        'bg-emerald-200 text-emerald-800'">
+                {{ currentCycleInfo.statusLabel }}
+              </span>
+            </div>
+            <div class="text-xs font-medium">
+              ลาป่วย+ลากิจสะสม: <strong class="font-bold">{{ currentCycleInfo.totalUsed }}</strong> / ๒๓ วันทำการ
+            </div>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2 mt-2.5 overflow-hidden">
+            <div class="h-2 rounded-full transition-all duration-500"
+              :class="currentCycleInfo.statusColor === 'red' ? 'bg-red-500' :
+                      currentCycleInfo.statusColor === 'orange' ? 'bg-amber-500' : 'bg-emerald-500'"
+              :style="{ width: `${Math.min(100, (currentCycleInfo.totalUsed / 23) * 100)}%` }"></div>
+          </div>
+        </div>
+
         <!-- Leave type -->
         <div>
           <label for="leave-type" class="block text-sm font-semibold text-gray-700 mb-1.5">ประเภทการลา <span class="text-red-500">*</span></label>
           <select v-model="form.leave_type_id" required id="leave-type" @change="onLeaveTypeChange" class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-900 focus:outline-none focus:border-[#800000] transition-colors bg-white">
             <option value="" disabled>เลือกประเภทการลา...</option>
-            <option v-for="type in leaveStore.types" :key="type.id" :value="type.id">{{ type.name }}</option>
+            <option v-for="type in eligibleLeaveTypes" :key="type.id" :value="type.id">{{ type.name }}</option>
           </select>
 
           <!-- Contextual Leave Balance (แสดงเมื่อเลือกประเภทการลาแล้ว) -->
@@ -355,38 +416,44 @@
           </div>
         </div>
 
-        <!-- Attachment -->
+        <!-- Attachment with FileUploadZone -->
         <div>
-          <!-- ป้ายเปลี่ยนตามหลักเกณฑ์จริงของนโยบาย ไม่ใช่ "(ถ้ามี)" เสมอไป -->
-          <label class="block text-sm font-semibold text-gray-700 mb-1.5">
-            เอกสารแนบ
-            <template v-if="evidenceRequired"><span class="text-red-500">*</span> ({{ evidenceLabel }})</template>
-            <template v-else>(ถ้ามี)</template>
-          </label>
-          <div
-            class="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:border-[#800000] transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#800000] focus:outline-none"
-            role="button"
-            tabindex="0"
-            aria-label="คลิกหรือกด Enter เพื่อเลือกแนบไฟล์เอกสารประกอบการลา"
-            @click="$refs.fileInput.click()"
-            @keydown.enter.prevent="$refs.fileInput.click()"
-            @keydown.space.prevent="$refs.fileInput.click()"
-          >
-            <input ref="fileInput" type="file" accept=".pdf,.jpg,.jpeg,.png" @change="handleFile" class="hidden" aria-hidden="true">
-            <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-            <p class="text-sm text-gray-500">{{ fileName || 'คลิกเพื่อแนบไฟล์ (PDF, JPG, PNG ไม่เกิน 5MB)' }}</p>
-          </div>
+          <FileUploadZone
+            v-model="selectedFile"
+            :label="evidenceRequired ? `เอกสารแนบ (${evidenceLabel})` : 'เอกสารแนบ (ถ้ามี)'"
+            :required="evidenceRequired"
+            :accept="'.pdf,.jpg,.jpeg,.png'"
+            :maxSizeMb="5"
+          />
         </div>
 
-        <!--
-          บันทึกร่างไว้ก่อนได้ — ร่างยังไม่ออกเลขที่หนังสือและยังไม่กันวันลา
-          จึงแก้หรือลบทิ้งได้อิสระ ต่างจากใบที่ยื่นแล้วซึ่งลบไม่ได้เพื่อให้ตรวจสอบย้อนหลังได้
-        -->
+        <!-- Auto-Save status & Draft control -->
+        <div v-if="!draftId" class="flex items-center justify-between text-xs text-gray-500 pt-1">
+          <div class="flex items-center gap-2">
+            <span
+              class="w-2 h-2 rounded-full"
+              :class="isSaving ? 'bg-amber-400 animate-ping' : lastSavedAt ? 'bg-emerald-500' : 'bg-gray-300'"
+            ></span>
+            <span>
+              {{ isSaving ? 'กำลังบันทึกร่างลงในเครื่อง...' : lastSavedAt ? `บันทึกร่างอัตโนมัติแล้วเมื่อ ${lastSavedAt}` : 'ระบบบันทึกร่างอัตโนมัติในเครื่อง' }}
+            </span>
+          </div>
+          <button
+            v-if="lastSavedAt"
+            type="button"
+            @click="clearDraft"
+            class="text-gray-400 hover:text-red-600 transition-colors"
+          >
+            ล้างร่างในเครื่อง
+          </button>
+        </div>
+
+        <!-- Submit & Draft Action Buttons -->
         <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-2">
           <button type="button" :disabled="loading" @click="handleSubmit(true)"
             class="w-full sm:w-auto px-6 py-3.5 border border-gray-300 text-gray-700 font-semibold rounded-xl transition-colors hover:bg-gray-50 disabled:opacity-50 flex items-center justify-center gap-2 text-base sm:text-sm min-h-[48px] focus-visible:ring-2 focus-visible:ring-gray-400">
             <span v-if="savingDraft" class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500" aria-hidden="true"></span>
-            {{ savingDraft ? 'กำลังบันทึก...' : 'บันทึกร่าง' }}
+            {{ savingDraft ? 'กำลังบันทึก...' : 'บันทึกร่างบนเซิร์ฟเวอร์' }}
           </button>
           <button type="submit" id="submit-leave" :disabled="loading" class="w-full sm:w-auto px-8 py-3.5 bg-[#800000] hover:bg-[#600000] text-white font-bold rounded-xl shadow-md transition-all hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 text-base sm:text-sm min-h-[48px] focus-visible:ring-2 focus-visible:ring-[#800000]">
             <span v-if="loading && !savingDraft" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white" aria-hidden="true"></span>
@@ -408,6 +475,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
 import ThaiDatePicker from '../components/ThaiDatePicker.vue'
+import AppBreadcrumb from '../components/ui/AppBreadcrumb.vue'
+import FileUploadZone from '../components/ui/FileUploadZone.vue'
+import { useFormAutoSave } from '../composables/useFormAutoSave'
 import api from '../axios'
 import { ICONS } from '../utils/icons'
 
@@ -433,6 +503,80 @@ const sigBase64 = ref(null)
 let isDrawing = false
 let ctx = null
 const canvasSaved = ref(false)
+
+const eligibleLeaveTypes = computed(() => {
+  const allTypes = leaveStore.types || []
+  const user = authStore.user || {}
+  const gender = (user.gender || '').toLowerCase()
+
+  return allTypes.filter(type => {
+    const name = type.name || ''
+    // บุคลากรเพศชาย: ซ่อน "ลาคลอดบุตร"
+    if (gender === 'male' || gender === 'ชาย' || gender === 'm') {
+      if (name.includes('คลอดบุตร') && !name.includes('ช่วยเหลือภริยา')) {
+        return false
+      }
+    }
+    // บุคลากรเพศหญิง: ซ่อน "ลาอุปสมบท" และ "ลาไปช่วยเหลือภริยาที่คลอดบุตร"
+    if (gender === 'female' || gender === 'หญิง' || gender === 'f') {
+      if (name.includes('อุปสมบท') || name.includes('ช่วยเหลือภริยา')) {
+        return false
+      }
+    }
+    return true
+  })
+})
+
+const currentCycleInfo = computed(() => {
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
+  const thaiYear = year + 543
+
+  let cycleName = ''
+  let startDate = ''
+  let endDate = ''
+
+  if (month >= 4 && month <= 9) {
+    cycleName = `รอบที่ ๒ (๑ เม.ย. – ๓๐ ก.ย. ${thaiYear})`
+    startDate = `${year}-04-01`
+    endDate = `${year}-09-30`
+  } else if (month >= 10) {
+    cycleName = `รอบที่ ๑ (๑ ต.ค. ${thaiYear} – ๓๑ มี.ค. ${thaiYear + 1})`
+    startDate = `${year}-10-01`
+    endDate = `${year + 1}-03-31`
+  } else {
+    cycleName = `รอบที่ ๑ (๑ ต.ค. ${thaiYear - 1} – ๓๑ มี.ค. ${thaiYear})`
+    startDate = `${year - 1}-10-01`
+    endDate = `${year}-03-31`
+  }
+
+  const sickBalance = leaveStore.balances.find(b => (b.type?.name || '').includes('ป่วย'))
+  const personalBalance = leaveStore.balances.find(b => (b.type?.name || '').includes('กิจส่วนตัว'))
+
+  const totalUsed = Number(sickBalance?.used || 0) + Number(personalBalance?.used || 0)
+  const remainingThreshold = Math.max(0, 23 - totalUsed)
+
+  let statusColor = 'green'
+  let statusLabel = 'ปกติ'
+  if (totalUsed >= 23) {
+    statusColor = 'red'
+    statusLabel = 'แตะหรือเกินเกณฑ์ ๒๓ วัน'
+  } else if (totalUsed >= 16) {
+    statusColor = 'orange'
+    statusLabel = 'ใกล้แตะเพดาน ๒๓ วัน'
+  }
+
+  return {
+    cycleName,
+    startDate,
+    endDate,
+    totalUsed,
+    remainingThreshold,
+    statusColor,
+    statusLabel,
+  }
+})
 
 const selectedLeaveTypeName = computed(() => {
   return leaveStore.types.find(t => t.id === form.leave_type_id)?.name || ''
@@ -595,6 +739,23 @@ const form = reactive({
   }
 })
 
+const autoSaveKey = computed(() => `ela_draft_leave_form_${authStore.user?.id || 'guest'}`)
+const {
+  hasDraft,
+  lastSavedAt,
+  isSaving,
+  restoreDraft,
+  clearDraft,
+} = useFormAutoSave(autoSaveKey.value, form, {
+  debounceMs: 1200,
+  isFormPopulated: (f) => !!(f.leave_type_id || f.reason || f.start_date || f.contact_address),
+})
+
+const handleRestoreDraft = () => {
+  restoreDraft()
+  calcDays()
+}
+
 onMounted(async () => {
   await Promise.all([
     leaveStore.fetchTypes(),
@@ -609,6 +770,16 @@ onMounted(async () => {
   }
 
   await loadDraftIfRequested()
+
+  // ดึงที่อยู่และเบอร์โทรศัพท์จากประวัติส่วนตัวมาเติมอัตโนมัติหากยังไม่ได้ระบุ
+  if (!form.contact_address && authStore.user) {
+    const user = authStore.user
+    const addr = user.address || user.profile?.address || ''
+    const phone = user.phone || user.profile?.phone || ''
+    if (addr || phone) {
+      form.contact_address = [addr, phone ? `โทร. ${phone}` : ''].filter(Boolean).join(' ')
+    }
+  }
 
   // Setup Canvas Context initially in case 'draw' is selected later
   setupCanvas()
@@ -837,6 +1008,7 @@ const handleSubmit = async (asDraft = false) => {
      */
     if (draftId.value) {
       await leaveStore.updateDraft(draftId.value, formData)
+      clearDraft()
 
       if (asDraft === true) {
         alertStore.success('บันทึกร่างใบลาแล้ว')
@@ -851,6 +1023,7 @@ const handleSubmit = async (asDraft = false) => {
     }
 
     await leaveStore.submitLeaveFormData(formData)
+    clearDraft()
 
     if (asDraft === true) {
       alertStore.success('บันทึกร่างใบลาแล้ว — เปิดแก้ไขและส่งอนุมัติได้ที่รายการใบลาของฉัน')

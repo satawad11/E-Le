@@ -1,5 +1,15 @@
 <template>
-  <div class="max-w-4xl mx-auto space-y-6">
+  <div class="max-w-5xl mx-auto space-y-6">
+    <!-- Breadcrumb Navigation -->
+    <AppBreadcrumb
+      :items="[
+        { title: 'งานสารบรรณ', to: '/saraban' },
+        { title: 'ทะเบียนหนังสือ', to: '/saraban/documents' },
+        { title: pageTitle }
+      ]"
+      :backTo="'/saraban/documents'"
+    />
+
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">{{ pageTitle }}</h1>
@@ -7,6 +17,28 @@
           หนังสือที่เสนอเข้าสู่กระบวนการแล้วจะแก้ไขไม่ได้ การแนบไฟล์ใหม่จะบันทึกเป็นฉบับใหม่เสมอ
         </p>
       </div>
+
+      <!-- Local Draft Alert Banner (for new documents) -->
+      <transition name="fade">
+        <div v-if="hasDraft && !isEdit" class="w-full p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div class="flex items-center gap-2.5 text-sm">
+            <span class="text-lg">📝</span>
+            <div>
+              <p class="font-bold">พบเนื้อหาร่างหนังสือที่บันทึกไว้ในเครื่อง</p>
+              <p class="text-xs text-amber-700">บันทึกอัตโนมัติล่าสุดเมื่อ {{ lastSavedAt }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" @click="handleRestoreDraft" class="px-3.5 py-2 bg-[#800000] hover:bg-[#600000] text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              กู้คืนเนื้อหาร่าง
+            </button>
+            <button type="button" @click="clearDraft" class="px-3.5 py-2 bg-white hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold rounded-xl transition-colors">
+              ล้างทิ้ง
+            </button>
+          </div>
+        </div>
+      </transition>
       <div class="flex flex-wrap gap-2">
         <!-- เกษียนหนังสือ (สำหรับผู้บริหาร / ผอ. - รอง ผอ. ๔ ฝ่าย / ผู้ตรวจทาน) -->
         <AppButton
@@ -38,6 +70,15 @@
         >
           เวียนหนังสือ
         </AppButton>
+        <!-- ส่งหนังสือข้ามสถานศึกษา (Inter-Agency Exchange) -->
+        <AppButton
+          v-if="isEdit && (documentRecord?.status === 'signed' || documentRecord?.status === 'registered' || documentRecord?.finalized_at)"
+          v-can="'saraban.distribution.track'"
+          variant="secondary"
+          @click="showInterAgencyModal = true"
+        >
+          🌐 ส่งข้ามสถานศึกษา
+        </AppButton>
         <!-- INT-10 — พื้นที่ประทับตราของหนังสือฉบับนี้ (เฉพาะหนังสือรับเข้า) -->
         <AppButton
           v-if="isEdit && (documentRecord?.direction === 'incoming' || documentRecord?.incoming_registration)"
@@ -55,6 +96,14 @@
         :confidentiality="form.confidentiality"
         @close="distributing = false"
         @sent="onDistributed"
+      />
+
+      <InterAgencyDispatchModal
+        v-if="isEdit && showInterAgencyModal"
+        :is-open="showInterAgencyModal"
+        :document="documentRecord"
+        @close="showInterAgencyModal = false"
+        @success="onInterAgencyDispatched"
       />
     </div>
 
@@ -96,127 +145,265 @@
     <ErrorState v-else-if="loadError" :message="loadError" @retry="boot" />
 
     <form v-else class="space-y-6" @submit.prevent="save">
-      <!-- แม่แบบหนังสือราชการมาตรฐานสำหรับสร้างหนังสือใหม่ -->
-      <section v-if="!isEdit" class="bg-gradient-to-r from-primary-50/70 to-blue-50/70 border border-primary-100 rounded-2xl p-5 shadow-xs">
-        <div class="flex items-center justify-between mb-3">
+      <!-- แม่แบบหนังสือราชการมาตรฐานสำหรับสร้างหนังสือใหม่ (๔ รูปแบบตามระเบียบสำนักนายกฯ ๒๕๖๔) -->
+      <section v-if="!isEdit" class="bg-gradient-to-r from-primary-50/70 to-blue-50/70 border border-primary-100 rounded-2xl p-5 shadow-xs space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <span class="text-base">📋</span>
             <h2 class="font-semibold text-gray-800 text-sm">แม่แบบหนังสือราชการมาตรฐาน (ระเบียบสำนักนายกฯ ๒๕๖๔)</h2>
           </div>
-          <span class="text-xs text-primary-700 font-medium">คลิกเพื่อใส่โครงสร้างเอกสารอัตโนมัติ</span>
+          <span class="text-xs text-primary-700 font-medium">คลิกเลือกแม่แบบเพื่อใส่โครงสร้างเอกสารและตำแหน่งตราครุฑอัตโนมัติ</span>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <button
-            type="button"
-            class="flex flex-col text-left p-3.5 rounded-xl border transition-all bg-white hover:border-primary-400 hover:shadow-xs"
-            :class="selectedTemplate === 'memo' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'"
-            @click="applyTemplate('memo')"
-          >
-            <span class="font-semibold text-sm text-gray-800 flex items-center justify-between">
-              บันทึกข้อความ (แบบที่ ๒)
-              <span class="text-[11px] px-2 py-0.5 rounded-full bg-primary-100 text-primary-800 font-normal">ครุฑซ้าย ๑.๕ ซม.</span>
-            </span>
-            <span class="text-xs text-gray-500 mt-1">ใช้ติดต่อราชการภายในวิทยาลัย / เสนอ ผอ. - รอง ผอ. ตามสายงาน</span>
-          </button>
 
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <button
+            v-for="tpl in availableTemplates"
+            :key="tpl.id"
             type="button"
-            class="flex flex-col text-left p-3.5 rounded-xl border transition-all bg-white hover:border-primary-400 hover:shadow-xs"
-            :class="selectedTemplate === 'external' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'"
-            @click="applyTemplate('external')"
+            class="flex flex-col text-left p-3.5 rounded-xl border transition-all bg-white hover:border-primary-400 hover:shadow-xs group relative"
+            :class="selectedTemplateId === tpl.id ? 'border-primary-500 ring-2 ring-primary-200 bg-primary-50/20' : 'border-gray-200'"
+            @click="applyTemplate(tpl.id)"
           >
-            <span class="font-semibold text-sm text-gray-800 flex items-center justify-between">
-              หนังสือภายนอก (แบบที่ ๑)
-              <span class="text-[11px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-normal">ครุฑกลาง ๓ ซม.</span>
+            <div class="flex items-center justify-between gap-1 mb-1">
+              <span class="font-bold text-xs text-gray-800 line-clamp-1 group-hover:text-primary-800">
+                {{ tpl.name }}
+              </span>
+              <span
+                class="text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap"
+                :class="tpl.garuda?.position === 'left' ? 'bg-primary-100 text-primary-800' : 'bg-blue-100 text-blue-800'"
+              >
+                {{ tpl.garuda?.position === 'left' ? 'ครุฑซ้าย ๑.๕ ซม.' : 'ครุฑกลาง ๓ ซม.' }}
+              </span>
+            </div>
+            <span class="text-[11px] text-gray-500 line-clamp-2 leading-snug">
+              {{ tpl.description }}
             </span>
-            <span class="text-xs text-gray-500 mt-1">ใช้ติดต่อราชการภายนอกวิทยาลัย / ติดต่อหน่วยงานอื่น / เอกชน</span>
+          </button>
+        </div>
+
+        <!-- ชุดข้อความสั่งการ/เกษียนความเห็นด่วน ๔ ฝ่ายอาชีวศึกษา -->
+        <div v-if="endorsementPresets.length" class="flex flex-wrap items-center gap-2 pt-1 text-xs">
+          <span class="text-gray-600 font-medium flex items-center gap-1">
+            <span>⚡</span> ข้อความสั่งการด่วน ๔ ฝ่าย:
+          </span>
+          <button
+            v-for="preset in endorsementPresets"
+            :key="preset.id"
+            type="button"
+            class="px-2.5 py-1 rounded-lg border border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/50 text-gray-700 text-xs transition-colors"
+            @click="insertPreset(preset)"
+          >
+            {{ preset.label }}
           </button>
         </div>
 
         <!-- ข้อความปฏิเสธความรับผิดสำหรับแนบท้ายอีเมลหนังสือภายนอก (ภาคผนวก ๗) -->
-        <div v-if="externalDisclaimer" class="mt-3 rounded-xl bg-white/70 border border-primary-100 p-3">
+        <div v-if="externalDisclaimer && (selectedTemplateId === 'external_letter' || selectedTemplateId === 'external')" class="rounded-xl bg-white/80 border border-primary-100 p-3">
           <p class="text-xs font-semibold text-gray-700 mb-1">ข้อความปฏิเสธความรับผิดสำหรับแนบท้ายอีเมล (๒ ภาษา)</p>
           <pre class="text-[11px] text-gray-500 whitespace-pre-wrap font-sans leading-relaxed">{{ externalDisclaimer }}</pre>
         </div>
       </section>
 
-      <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-        <header class="px-5 py-4 border-b border-gray-100">
-          <h2 class="font-semibold text-gray-800">รายละเอียดหนังสือ</h2>
+      <!-- แผงตัวอย่างหนังสือแบบเรียลไทม์ (Live Document Preview) -->
+      <section class="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-xs">
+        <header class="px-5 py-3.5 bg-gray-50/90 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">📄</span>
+            <div>
+              <h2 class="font-semibold text-sm text-gray-800">ตัวอย่างการจัดวางหนังสือราชการ (Live Preview)</h2>
+              <p class="text-xs text-gray-500">แสดงผลตราครุฑ ส่วนหัวหนังสือ และการจัดหน้ากระดาษแบบเรียลไทม์</p>
+            </div>
+          </div>
+          <AppButton size="sm" variant="outline" @click="showLivePreview = !showLivePreview">
+            {{ showLivePreview ? 'ซ่อนตัวอย่าง ▲' : 'แสดงตัวอย่าง ▼' }}
+          </AppButton>
         </header>
 
-        <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <AppSelect
-            v-model="form.document_type_id"
-            label="ประเภทหนังสือ"
-            required
-            :disabled="readOnly"
-            :error="errors.document_type_id"
-          >
-            <option value="">เลือกประเภท</option>
-            <option v-for="type in options.document_types" :key="type.id" :value="type.id">
-              {{ type.name }}
-            </option>
-          </AppSelect>
+        <div v-if="showLivePreview" class="p-4 bg-gray-100/50 border-t border-gray-100">
+          <LiveDocumentPreview
+            :template-id="selectedTemplateId || 'internal_memo'"
+            :subject="form.subject"
+            :summary="form.summary"
+            :agency="draftSections.agency || ownerOrgUnitName"
+            :salutation="draftSections.salutation"
+            :reference="draftSections.reference"
+            :enclosures="draftSections.enclosures"
+            :contact="draftSections.contact"
+            :signatory-name="draftSections.signatory_name"
+            :signatory-title="draftSections.signatory_title"
+            :urgency="form.urgency"
+            :confidentiality="form.confidentiality"
+            :document-number="documentRecord?.document_number"
+          />
+        </div>
+      </section>
 
-          <AppSelect
-            v-model="form.direction"
-            label="ทิศทางของหนังสือ"
-            required
-            :disabled="readOnly"
-            :error="errors.direction"
-          >
-            <option v-for="d in DIRECTIONS" :key="d.value" :value="d.value">{{ d.label }}</option>
-          </AppSelect>
-
-          <div class="sm:col-span-2">
-            <AppInput v-model="form.subject" label="เรื่อง" required :disabled="readOnly" :error="errors.subject" />
+      <!-- ฟอร์มรายละเอียดหนังสือและการยกร่าง -->
+      <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+        <header class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="font-semibold text-gray-800">รายละเอียดหนังสือ</h2>
+            <p class="text-xs text-gray-500 mt-0.5">กรอกข้อมูลและเนื้อหาร่างหนังสือตามระเบียบงานสารบรรณ</p>
           </div>
-
-          <div class="sm:col-span-2">
-            <AppTextarea
-              v-model="form.summary"
-              label="สาระสำคัญ"
-              :disabled="readOnly"
-              :error="errors.summary"
-            />
+          <div v-if="!readOnly" class="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl text-xs">
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg font-medium transition-all"
+              :class="draftMode === 'structured' ? 'bg-white shadow-xs text-primary-800' : 'text-gray-600 hover:text-gray-900'"
+              @click="draftMode = 'structured'"
+            >
+              ร่างแบบแยกส่วน (แนะนำ)
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg font-medium transition-all"
+              :class="draftMode === 'freeform' ? 'bg-white shadow-xs text-primary-800' : 'text-gray-600 hover:text-gray-900'"
+              @click="draftMode = 'freeform'"
+            >
+              เนื้อหาเต็มอิสระ
+            </button>
           </div>
+        </header>
 
-          <AppSelect
-            v-model="form.confidentiality"
-            label="ชั้นความลับ"
-            required
-            :disabled="readOnly"
-            :error="errors.confidentiality"
-          >
-            <option v-for="c in CONFIDENTIALITY" :key="c.value" :value="c.value">{{ c.label }}</option>
-          </AppSelect>
-
-          <AppSelect
-            v-model="form.urgency"
-            label="ชั้นความเร็ว"
-            required
-            :disabled="readOnly"
-            :error="errors.urgency"
-          >
-            <option v-for="u in URGENCY" :key="u.value" :value="u.value">{{ u.label }}</option>
-          </AppSelect>
-
-          <div class="sm:col-span-2">
+        <div class="p-5 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <AppSelect
-              v-model="form.owner_org_unit_id"
-              label="หน่วยงานเจ้าของเรื่อง"
+              v-model="form.document_type_id"
+              label="ประเภทหนังสือ"
               required
               :disabled="readOnly"
-              :error="errors.owner_org_unit_id"
+              :error="errors.document_type_id"
             >
-              <option value="">เลือกหน่วยงาน</option>
-              <option v-for="unit in orgUnits" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
+              <option value="">เลือกประเภท</option>
+              <option v-for="type in options.document_types" :key="type.id" :value="type.id">
+                {{ type.name }}
+              </option>
             </AppSelect>
+
+            <AppSelect
+              v-model="form.direction"
+              label="ทิศทางของหนังสือ"
+              required
+              :disabled="readOnly"
+              :error="errors.direction"
+            >
+              <option v-for="d in DIRECTIONS" :key="d.value" :value="d.value">{{ d.label }}</option>
+            </AppSelect>
+
+            <div class="sm:col-span-2">
+              <AppInput v-model="form.subject" label="เรื่อง" required :disabled="readOnly" :error="errors.subject" placeholder="ระบุชื่อเรื่องหนังสือ..." />
+            </div>
+
+            <AppSelect
+              v-model="form.confidentiality"
+              label="ชั้นความลับ"
+              required
+              :disabled="readOnly"
+              :error="errors.confidentiality"
+            >
+              <option v-for="c in CONFIDENTIALITY" :key="c.value" :value="c.value">{{ c.label }}</option>
+            </AppSelect>
+
+            <AppSelect
+              v-model="form.urgency"
+              label="ชั้นความเร็ว"
+              required
+              :disabled="readOnly"
+              :error="errors.urgency"
+            >
+              <option v-for="u in URGENCY" :key="u.value" :value="u.value">{{ u.label }}</option>
+            </AppSelect>
+
+            <div class="sm:col-span-2">
+              <AppSelect
+                v-model="form.owner_org_unit_id"
+                label="หน่วยงานเจ้าของเรื่อง"
+                required
+                :disabled="readOnly"
+                :error="errors.owner_org_unit_id"
+              >
+                <option value="">เลือกหน่วยงาน</option>
+                <option v-for="unit in orgUnits" :key="unit.id" :value="unit.id">{{ unit.name }}</option>
+              </AppSelect>
+            </div>
+          </div>
+
+          <!-- โหมดร่างแบบแยกส่วน (Structured Drafting) -->
+          <div v-if="draftMode === 'structured' && !readOnly" class="border-t border-gray-100 pt-4 space-y-4">
+            <h3 class="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+              <span>✍️</span> ส่วนประกอบข้อความหนังสือ (จะประกอบรวมเป็นเนื้อหาเอกสารอัตโนมัติ)
+            </h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <AppInput
+                v-model="draftSections.agency"
+                label="ส่วนราชการ / หน่วยงาน"
+                placeholder="เช่น ฝ่ายบริหารทรัพยากร งานสารบรรณ โทร. ๐-๒xxx-xxxx"
+                @input="syncSummaryFromSections"
+              />
+              <AppInput
+                v-model="draftSections.salutation"
+                label="คำขึ้นต้น (เรียน)"
+                placeholder="เช่น ผู้อำนวยการวิทยาลัย / ตำแหน่งผู้รับ"
+                @input="syncSummaryFromSections"
+              />
+
+              <!-- กรณีหนังสือภายนอก -->
+              <template v-if="selectedTemplateId === 'external_letter' || selectedTemplateId === 'external'">
+                <AppInput
+                  v-model="draftSections.reference"
+                  label="อ้างถึง (ถ้ามี)"
+                  placeholder="หนังสือที่เคยติดต่อกัน..."
+                  @input="syncSummaryFromSections"
+                />
+                <AppInput
+                  v-model="draftSections.enclosures"
+                  label="สิ่งที่ส่งมาด้วย (ถ้ามี)"
+                  placeholder="เอกสารประกอบ..."
+                  @input="syncSummaryFromSections"
+                />
+              </template>
+            </div>
+
+            <div class="space-y-3">
+              <AppTextarea
+                v-model="draftSections.background"
+                label="๑. ข้อความตอนแรก / เหตุผลความเป็นมา (ด้วย...)"
+                :rows="3"
+                placeholder="ระบุเหตุผล ความเป็นมา หรือข้อเท็จจริง..."
+                @input="syncSummaryFromSections"
+              />
+              <AppTextarea
+                v-model="draftSections.objective"
+                label="๒. ข้อความตอนกลาง / รายละเอียดการดำเนินการ (ในการนี้...)"
+                :rows="3"
+                placeholder="ระบุวัตถุประสงค์ รายละเอียด หรือสิ่งที่ขอความร่วมมือ..."
+                @input="syncSummaryFromSections"
+              />
+              <AppInput
+                v-model="draftSections.conclusion"
+                label="๓. ข้อความตอนท้าย / ข้อสรุปเพื่อโปรดพิจารณา (จึงเรียนมาเพื่อ...)"
+                placeholder="เช่น จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ"
+                @input="syncSummaryFromSections"
+              />
+            </div>
+          </div>
+
+          <!-- โหมดเนื้อหาเต็ม (Freeform Summary) -->
+          <div class="border-t border-gray-100 pt-4">
+            <AppTextarea
+              v-model="form.summary"
+              label="เนื้อความหนังสือฉบับเต็ม / สาระสำคัญ"
+              :rows="7"
+              :disabled="readOnly"
+              :error="errors.summary"
+              placeholder="พิมพ์เนื้อหาหนังสือฉบับเต็ม หรือใช้การร่างแบบแยกส่วนด้านบน..."
+            />
           </div>
         </div>
       </section>
 
+      <!-- ไฟล์หนังสือและประวัติเวอร์ชัน -->
       <section class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
         <header class="px-5 py-4 border-b border-gray-100">
           <h2 class="font-semibold text-gray-800">ไฟล์หนังสือ</h2>
@@ -250,6 +437,7 @@
                   <th class="text-left px-4 py-2.5 font-semibold">ฉบับที่</th>
                   <th class="text-left px-4 py-2.5 font-semibold">ขั้น</th>
                   <th class="text-left px-4 py-2.5 font-semibold">บันทึกเมื่อ</th>
+                  <th class="text-right px-4 py-2.5 font-semibold">การกระทำ</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-50">
@@ -267,13 +455,7 @@
             <p class="px-4 py-2 text-xs text-gray-400">ต้นฉบับถูกเก็บไว้ทุกฉบับและไม่ถูกเขียนทับ</p>
           </div>
 
-          <!--
-            ตัวอย่างเอกสาร (NAV §4.2, §4.3)
-
-            **ดึงผ่านด่านไฟล์ที่มีสิทธิ์เสมอ** (`fetchObjectUrl`) ไม่ใช่ลิงก์ตรง —
-            ไฟล์อยู่บน private disk และต้องผ่าน `SecureFileController` ทุกครั้ง
-            ตามสัญญา INT-01 §1.12 · การฝัง URL ตรงจะทำให้ไฟล์หลุดออกนอกด่าน
-          -->
+          <!-- ตัวอย่างเอกสารไฟล์แนบ -->
           <div v-if="previewError" role="alert" class="text-sm text-red-700">{{ previewError }}</div>
 
           <div v-if="previewUrl" class="border border-gray-200 rounded-xl overflow-hidden">
@@ -290,7 +472,7 @@
         </div>
       </section>
 
-      <!-- การเดินเรื่อง (INT-08) — ปุ่มที่แสดงมาจากสิทธิ์จริงที่ engine ตัดสิน -->
+      <!-- การเดินเรื่อง (INT-08) -->
       <section
         v-if="workflow.started"
         class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden"
@@ -338,13 +520,34 @@
         </div>
       </section>
 
-      <div class="flex flex-wrap justify-end gap-3">
-        <AppButton v-if="!readOnly" type="submit" :loading="saving">
-          {{ isEdit ? 'บันทึกการแก้ไข' : 'บันทึกฉบับร่าง' }}
-        </AppButton>
-        <AppButton v-if="canSubmit" variant="secondary" :loading="submitting" @click="submitDocument">
-          เสนอเรื่อง
-        </AppButton>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+        <div v-if="!isEdit" class="flex items-center gap-2 text-xs text-gray-500">
+          <span
+            class="w-2 h-2 rounded-full"
+            :class="isSaving ? 'bg-amber-400 animate-ping' : lastSavedAt ? 'bg-emerald-500' : 'bg-gray-300'"
+          ></span>
+          <span>
+            {{ isSaving ? 'กำลังบันทึกร่างลงในเครื่อง...' : lastSavedAt ? `บันทึกร่างอัตโนมัติแล้วเมื่อ ${lastSavedAt}` : 'ระบบบันทึกร่างอัตโนมัติในเครื่อง' }}
+          </span>
+          <button
+            v-if="lastSavedAt"
+            type="button"
+            @click="clearDraft"
+            class="text-gray-400 hover:text-red-600 transition-colors ml-2"
+          >
+            ล้างร่างในเครื่อง
+          </button>
+        </div>
+        <div v-else></div>
+
+        <div class="flex flex-wrap justify-end gap-3">
+          <AppButton v-if="!readOnly" type="submit" :loading="saving">
+            {{ isEdit ? 'บันทึกการแก้ไข' : 'บันทึกฉบับร่าง' }}
+          </AppButton>
+          <AppButton v-if="canSubmit" variant="secondary" :loading="submitting" @click="submitDocument">
+            เสนอเรื่อง
+          </AppButton>
+        </div>
       </div>
     </form>
     <DocumentTools v-if="documentRecord && !loading" :key="documentRecord.id" :document="documentRecord" @changed="boot" />
@@ -359,6 +562,7 @@ import api from '../../axios'
 import { getErrorMessage } from '../../utils/errorHandler'
 import { fetchObjectUrl } from '../../utils/secureFile'
 import { useAlertStore } from '../../stores/alert'
+import AppBreadcrumb from '../../components/ui/AppBreadcrumb.vue'
 import AppButton from '../../components/ui/AppButton.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
@@ -367,8 +571,11 @@ import AppBadge from '../../components/ui/AppBadge.vue'
 import ErrorState from '../../components/ui/ErrorState.vue'
 import LoadingState from '../../components/ui/LoadingState.vue'
 import DistributeDocumentModal from '../../components/saraban/DistributeDocumentModal.vue'
+import InterAgencyDispatchModal from '../../components/saraban/InterAgencyDispatchModal.vue'
 import DocumentTools from '../../components/saraban/DocumentTools.vue'
 import RetentionPanel from '../../components/saraban/RetentionPanel.vue'
+import LiveDocumentPreview from '../../components/saraban/LiveDocumentPreview.vue'
+import { useFormAutoSave } from '../../composables/useFormAutoSave'
 
 const DIRECTIONS = [
   { value: 'incoming', label: 'หนังสือรับ' },
@@ -409,38 +616,107 @@ const options = ref({ document_types: [] })
 const orgUnits = ref([])
 const errors = reactive({})
 const selectedFile = ref(null)
-const selectedTemplate = ref('')
 
-const applyTemplate = (type) => {
-  /*
-   * แม่แบบเป็นโครงตั้งต้น ไม่ใช่การล้างของเดิม — ถ้าผู้ใช้พิมพ์เนื้อเรื่องไว้แล้ว
-   * ต้องถามก่อนทับ ไม่งั้นการกดเทียบแม่แบบสองแบบจะทำให้งานที่ร่างไว้หายทันที
-   */
+const availableTemplates = ref([])
+const endorsementPresets = ref([])
+const selectedTemplateId = ref('internal_memo')
+const showLivePreview = ref(true)
+const draftMode = ref('structured')
+
+const draftSections = reactive({
+  agency: '',
+  salutation: 'ผู้อำนวยการ',
+  reference: '',
+  enclosures: '',
+  background: 'ด้วย มีความจำเป็นต้องดำเนินงาน...',
+  objective: 'ในการนี้ จึงขออนุมัติการดำเนินงาน...',
+  conclusion: 'จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ',
+  signatory_name: '',
+  signatory_title: 'ผู้อำนวยการวิทยาลัย',
+  contact: '',
+})
+
+const ownerOrgUnitName = computed(() => {
+  const found = orgUnits.value.find((u) => String(u.id) === String(form.owner_org_unit_id))
+  return found?.name || ''
+})
+
+const syncSummaryFromSections = () => {
+  const parts = []
+  if (draftSections.salutation) {
+    parts.push(`เรียน  ${draftSections.salutation}`)
+  }
+  if (draftSections.reference) {
+    parts.push(`อ้างถึง  ${draftSections.reference}`)
+  }
+  if (draftSections.enclosures) {
+    parts.push(`สิ่งที่ส่งมาด้วย  ${draftSections.enclosures}`)
+  }
+  if (draftSections.background) {
+    parts.push(`\n${draftSections.background}`)
+  }
+  if (draftSections.objective) {
+    parts.push(`\n${draftSections.objective}`)
+  }
+  if (draftSections.conclusion) {
+    parts.push(`\n${draftSections.conclusion}`)
+  }
+
+  form.summary = parts.join('\n').trim()
+}
+
+const applyTemplate = (typeId) => {
   if (form.summary && !window.confirm('เนื้อเรื่องที่พิมพ์ไว้จะถูกแทนที่ด้วยแม่แบบ ต้องการดำเนินการต่อหรือไม่?')) {
     return
   }
 
-  selectedTemplate.value = type
-  if (type === 'memo') {
-    form.direction = 'internal'
-    if (!form.subject) {
-      form.subject = 'ขออนุมัติ...'
+  selectedTemplateId.value = typeId
+  const tpl = availableTemplates.value.find((t) => t.id === typeId)
+
+  if (tpl) {
+    form.direction = tpl.direction || 'internal'
+    form.confidentiality = tpl.default_confidentiality || 'normal'
+    form.urgency = tpl.default_urgency || 'normal'
+
+    if (tpl.sections) {
+      draftSections.agency = tpl.sections.agency || draftSections.agency
+      draftSections.salutation = tpl.sections.salutation?.replace(/^เรียน\s+/, '') || draftSections.salutation
+      draftSections.background = tpl.sections.background || draftSections.background
+      draftSections.objective = tpl.sections.objective || draftSections.objective
+      draftSections.conclusion = tpl.sections.conclusion || draftSections.conclusion
+      draftSections.reference = tpl.sections.reference?.replace(/^อ้างถึง\s+/, '') || ''
+      draftSections.enclosures = tpl.sections.enclosures?.replace(/^สิ่งที่ส่งมาด้วย\s+/, '') || ''
+      draftSections.contact = tpl.sections.contact || ''
+      draftSections.signatory_title = tpl.sections.signatory_title || 'ผู้อำนวยการวิทยาลัย'
     }
-    form.summary = 'เรียน  ผู้อำนวยการ\n\nด้วย [ระบุความเป็นมา หรือเหตุผลความจำเป็น]\n\nในการนี้ [ระบุวัตถุประสงค์ หรือรายละเอียดการดำเนินงาน]\n\nจึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ'
-  } else if (type === 'external') {
-    form.direction = 'outgoing'
-    if (!form.subject) {
-      form.subject = 'ขอความอนุเคราะห์...'
+
+    if (typeId === 'internal_memo' || typeId === 'memo') {
+      if (!form.subject) form.subject = 'ขออนุมัติ...'
+    } else if (typeId === 'external_letter' || typeId === 'external') {
+      if (!form.subject) form.subject = 'ขอความอนุเคราะห์...'
+      loadExternalDisclaimer()
+    } else if (typeId === 'college_order' || typeId === 'order') {
+      if (!form.subject) form.subject = 'แต่งตั้งคณะกรรมการ...'
+    } else if (typeId === 'college_announcement' || typeId === 'announcement') {
+      if (!form.subject) form.subject = 'ประกาศรับสมัคร/จัดกิจกรรม...'
     }
-    form.summary = 'เรียน  [ระบุตำแหน่งผู้รับ]\nอ้างถึง  [ถ้ามี]\nสิ่งที่ส่งมาด้วย  [ถ้ามี]\n\nด้วย [ระบุความเป็นมา หรือข้อเท็จจริง]\n\nในการนี้ [ระบุวัตถุประสงค์ หรือสิ่งที่ขอความร่วมมือ]\n\nจึงเรียนมาเพื่อโปรดพิจารณาให้ความอนุเคราะห์\n\nขอแสดงความนับถือ'
-    loadExternalDisclaimer()
+
+    syncSummaryFromSections()
   }
 }
 
-/*
- * ข้อความปฏิเสธความรับผิด ๒ ภาษาสำหรับแนบท้ายอีเมลหนังสือภายนอก (ภาคผนวก ๗)
- * โหลดเมื่อเลือกแม่แบบหนังสือภายนอกเท่านั้น เพราะเกี่ยวกับการส่งออกภายนอกโดยตรง
- */
+const insertPreset = (preset) => {
+  if (preset.text) {
+    if (draftSections.conclusion) {
+      draftSections.conclusion += ` (${preset.text})`
+    } else {
+      draftSections.conclusion = preset.text
+    }
+    syncSummaryFromSections()
+    alertStore.success(`แทรกข้อความสั่งการ "${preset.label}" แล้ว`)
+  }
+}
+
 const externalDisclaimer = ref('')
 
 const loadExternalDisclaimer = async () => {
@@ -449,7 +725,7 @@ const loadExternalDisclaimer = async () => {
     const { data } = await api.get('/saraban/templates/disclaimer')
     externalDisclaimer.value = data.disclaimer?.formatted || ''
   } catch {
-    // ไม่รบกวนผู้ใช้ — เป็นข้อมูลประกอบ ไม่ใช่ขั้นตอนบังคับ
+    // ไม่รบกวนผู้ใช้ — เป็นข้อมูลประกอบ
   }
 }
 
@@ -462,6 +738,38 @@ const form = reactive({
   urgency: 'normal',
   owner_org_unit_id: '',
 })
+
+const autoSaveDraftState = computed({
+  get: () => ({
+    form: { ...form },
+    draftSections: { ...draftSections },
+    selectedTemplateId: selectedTemplateId.value,
+    draftMode: draftMode.value,
+  }),
+  set: (val) => {
+    if (val.form) Object.assign(form, val.form)
+    if (val.draftSections) Object.assign(draftSections, val.draftSections)
+    if (val.selectedTemplateId) selectedTemplateId.value = val.selectedTemplateId
+    if (val.draftMode) draftMode.value = val.draftMode
+  }
+})
+
+const autoSaveKey = computed(() => `ela_draft_saraban_doc_${route.params.id || 'new'}`)
+const {
+  hasDraft,
+  lastSavedAt,
+  isSaving,
+  restoreDraft,
+  clearDraft,
+} = useFormAutoSave(autoSaveKey.value, autoSaveDraftState, {
+  debounceMs: 1500,
+  isFormPopulated: (d) => !!(d?.form?.subject || d?.draftSections?.background || d?.draftSections?.agency),
+})
+
+const handleRestoreDraft = () => {
+  restoreDraft()
+  syncSummaryFromSections()
+}
 
 const isEdit = computed(() => Boolean(route.params.id))
 const readOnly = computed(() => Boolean(documentRecord.value) && documentRecord.value.status !== 'draft')
@@ -477,13 +785,12 @@ const pageTitle = computed(() => {
 
 const stageLabel = (stage) => STAGES[stage] || stage
 
-// ── ตัวอย่างเอกสาร (NAV §4.3) ────────────────────────────────────────────
+// ── ตัวอย่างเอกสารไฟล์แนบ (NAV §4.3) ────────────────────────────────────
 const previewUrl = ref('')
 const previewVersion = ref(null)
 const previewError = ref('')
 
 function closePreview() {
-  /* คืน object URL ทุกครั้ง — ไม่คืนแล้วเบราว์เซอร์จะถือไฟล์ไว้ในหน่วยความจำจนปิดแท็บ */
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
   previewUrl.value = ''
   previewVersion.value = null
@@ -494,7 +801,6 @@ async function preview(version) {
 
   if (!path) {
     previewError.value = 'ฉบับนี้ไม่มีไฟล์ให้แสดง'
-
     return
   }
 
@@ -511,12 +817,6 @@ async function preview(version) {
 
 const downloading = ref(false)
 
-/*
- * ดาวน์โหลดหนังสือพร้อมชื่อไฟล์ทางการตามระเบียบฯ (ภาคผนวก ๗ ข้อ ๔.๓)
- *
- * ชื่อไฟล์มาจาก Content-Disposition ที่ฝั่ง server สร้างให้ ไม่ใช่ประกอบเองที่นี่
- * เพื่อให้ตรงกับกฎการตั้งชื่อไฟล์ราชการชุดเดียวกันเสมอ
- */
 async function downloadOfficial() {
   downloading.value = true
   try {
@@ -570,14 +870,21 @@ const boot = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    /*
-     * หน่วยงานมาจาก endpoint ของสารบรรณเอง ไม่ใช่ `/admin/departments`
-     * ซึ่งต้องมีสิทธิ์จัดการโครงสร้างองค์กร — ผู้ที่สร้างหนังสือได้ไม่ควรต้องมีสิทธิ์นั้น
-     */
-    const { data: reference } = await api.get('/saraban/documents/options')
+    const [refRes, tplRes] = await Promise.all([
+      api.get('/saraban/documents/options'),
+      api.get('/saraban/templates').catch(() => ({ data: { templates: [], endorsement_presets: [] } })),
+    ])
 
+    const reference = refRes.data
     options.value = reference
     orgUnits.value = reference.org_units || []
+
+    availableTemplates.value = tplRes.data?.templates || []
+    endorsementPresets.value = tplRes.data?.endorsement_presets || []
+
+    if (!form.owner_org_unit_id && orgUnits.value.length) {
+      form.owner_org_unit_id = orgUnits.value[0].id
+    }
 
     if (isEdit.value) {
       const { data: existing } = await api.get(`/saraban/documents/${route.params.id}`)
@@ -585,6 +892,41 @@ const boot = async () => {
       Object.keys(form).forEach((key) => {
         if (existing[key] !== undefined && existing[key] !== null) form[key] = existing[key]
       })
+    } else if (route.query.source_type) {
+      try {
+        const { data: crossData } = await api.get('/saraban/templates/cross-module-draft', {
+          params: {
+            source_type: route.query.source_type,
+            source_id: route.query.source_id,
+          },
+        })
+        if (crossData?.draft) {
+          const d = crossData.draft
+          if (d.subject) form.subject = d.subject
+          if (d.template_id) selectedTemplateId.value = d.template_id
+          if (d.sections) {
+            if (d.sections.preamble) draftSections.background = d.sections.preamble
+            if (d.sections.body) draftSections.objective = d.sections.body
+            if (d.sections.effective_clause) draftSections.conclusion = d.sections.effective_clause
+            if (d.sections.subject) draftSections.reference = d.sections.subject
+          }
+          syncSummaryFromSections()
+          alertStore.info('แปลงข้อมูลตั้งต้นจากโมดูลอื่นเรียบร้อยแล้ว')
+        }
+      } catch {
+        if (availableTemplates.value.length) {
+          applyTemplate(availableTemplates.value[0].id)
+        } else {
+          syncSummaryFromSections()
+        }
+      }
+    } else {
+      // ค่าเริ่มต้นสำหรับสร้างหนังสือใหม่
+      if (availableTemplates.value.length) {
+        applyTemplate(availableTemplates.value[0].id)
+      } else {
+        syncSummaryFromSections()
+      }
     }
   } catch (err) {
     loadError.value = getErrorMessage(err, 'โหลดข้อมูลหนังสือไม่สำเร็จ')
@@ -603,10 +945,10 @@ const save = async () => {
     })
 
     alertStore.success(isEdit.value ? 'บันทึกการแก้ไขแล้ว' : 'บันทึกฉบับร่างแล้ว')
+    clearDraft()
 
     if (!isEdit.value) {
       router.push({ name: 'saraban-document-detail', params: { id: data.id } })
-
       return
     }
 
@@ -652,11 +994,16 @@ const ACTIONS = {
 
 const workflow = ref({ started: false, status: null, current_step: null, transitions: [], history: [] })
 const workflowComment = ref('')
-// INT-13 — กล่องเวียนหนังสือ
 const distributing = ref(false)
+const showInterAgencyModal = ref(false)
 
 const onDistributed = async () => {
   distributing.value = false
+  await boot()
+}
+
+const onInterAgencyDispatched = async () => {
+  showInterAgencyModal.value = false
   await boot()
 }
 
@@ -673,7 +1020,6 @@ const loadWorkflow = async () => {
     const { data } = await api.get(`/saraban/documents/${route.params.id}/workflow`)
     workflow.value = data
   } catch {
-    // สถานะการเดินเรื่องโหลดไม่ได้ไม่ควรทำให้ทั้งหน้าใช้ไม่ได้ — ส่วนอื่นยังทำงานได้
     workflow.value = { started: false, status: null, current_step: null, transitions: [], history: [] }
   }
 }
@@ -681,7 +1027,6 @@ const loadWorkflow = async () => {
 const performWorkflow = async (transition) => {
   if (transition.requires_comment && !workflowComment.value.trim()) {
     alertStore.error('การดำเนินการนี้ต้องระบุความเห็นประกอบ')
-
     return
   }
 
@@ -696,7 +1041,6 @@ const performWorkflow = async (transition) => {
     workflowComment.value = ''
     alertStore.success('บันทึกการดำเนินการแล้ว')
 
-    // สถานะของหนังสืออาจเปลี่ยน (เช่น ได้เลขหนังสือหลังลงนาม) จึงโหลดใหม่
     await boot()
     await loadWorkflow()
   } catch (err) {

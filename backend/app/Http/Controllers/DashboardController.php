@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\FiscalYear;
 use App\Models\Leave;
+use App\Models\Overtime\OvertimeOrder;
 use App\Models\User;
+use App\Services\Saraban\DashboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -117,6 +119,40 @@ class DashboardController extends Controller
         // Get all fiscal years for the dropdown
         $allFiscalYears = FiscalYear::latestYear()->get(['id', 'year', 'name', 'is_current']);
 
+        // Executive Action Tasks Summary
+        $pendingLeavesForUser = 0;
+        if ($user->can('leave.approval.dept') || $user->can('leave.management.manage')) {
+            try {
+                $pendingResponse = app(ApprovalController::class)->pending($request);
+                $pendingData = $pendingResponse->getData();
+                $pendingLeavesForUser = is_array($pendingData) ? count($pendingData) : 0;
+            } catch (\Throwable) {
+                $pendingLeavesForUser = 0;
+            }
+        }
+
+        $pendingOtOrdersCount = 0;
+        if (class_exists(OvertimeOrder::class) && ($user->can('overtime.management.review') || $user->can('attendance.ot_summary'))) {
+            try {
+                $pendingOtOrdersCount = OvertimeOrder::whereIn('status', ['submitted', 'permitted'])->count();
+            } catch (\Throwable) {
+                $pendingOtOrdersCount = 0;
+            }
+        }
+
+        $pendingSarabanTasksCount = 0;
+        $unacknowledgedInboxCount = 0;
+        if (class_exists(DashboardService::class)) {
+            try {
+                $sarabanSummary = app(DashboardService::class)->summaryFor($user);
+                $pendingSarabanTasksCount = $sarabanSummary['tiles'][0]['value'] ?? 0;
+                $unacknowledgedInboxCount = $sarabanSummary['tiles'][2]['value'] ?? 0;
+            } catch (\Throwable) {
+                $pendingSarabanTasksCount = 0;
+                $unacknowledgedInboxCount = 0;
+            }
+        }
+
         return response()->json([
             'pending' => $pendingCount,
             'approved' => $approvedCount,
@@ -126,6 +162,13 @@ class DashboardController extends Controller
             'by_type' => $byTypeCounts,
             'fiscal_year' => $fiscalYearLabel,
             'fiscal_years' => $allFiscalYears,
+            'executive_tasks' => [
+                'pending_leaves_count' => $pendingLeavesForUser,
+                'pending_ot_orders_count' => $pendingOtOrdersCount,
+                'pending_saraban_tasks_count' => $pendingSarabanTasksCount,
+                'unacknowledged_inbox_count' => $unacknowledgedInboxCount,
+                'total_actionable' => $pendingLeavesForUser + $pendingOtOrdersCount + $pendingSarabanTasksCount + $unacknowledgedInboxCount,
+            ],
         ]);
     }
 }

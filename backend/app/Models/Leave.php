@@ -98,6 +98,11 @@ class Leave extends Model
         return $this->belongsTo(LeaveType::class, 'leave_type_id');
     }
 
+    public function leaveType()
+    {
+        return $this->type();
+    }
+
     public function policy()
     {
         return $this->belongsTo(LeavePolicy::class, 'leave_policy_id');

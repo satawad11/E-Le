@@ -7,6 +7,15 @@
         <p class="text-gray-500 text-sm mt-1">สรุปเวลาปฏิบัติงานรายเดือนของบุคลากร</p>
       </div>
       <div class="flex flex-wrap gap-2">
+        <router-link
+          to="/admin/attendance/biometric-hub"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-[#800000] hover:bg-[#660000] text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          </svg>
+          นำเข้าไฟล์สแกนนิ้ว/ใบหน้า
+        </router-link>
         <button @click="previewReport"
           class="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

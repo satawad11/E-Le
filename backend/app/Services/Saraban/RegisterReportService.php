@@ -56,6 +56,10 @@ class RegisterReportService
                     DocumentType::query()->where('category', $filters['category'])->select('id'),
                 ),
             )
+            ->when(
+                isset($filters['division_id']),
+                fn ($q) => $q->whereIn('owner_org_unit_id', $this->scopes->subtreeIds((int) $filters['division_id'])),
+            )
             ->when(isset($filters['from']), fn ($q) => $q->whereDate('created_at', '>=', $filters['from']))
             ->when(isset($filters['to']), fn ($q) => $q->whereDate('created_at', '<=', $filters['to']))
             ->when(isset($filters['status']), fn ($q) => $q->where('status', $filters['status']));
@@ -204,7 +208,7 @@ class RegisterReportService
         $query = Document::query()->where('created_at', '>=', $since);
         $this->applyScope($query, $user);
 
-        $documents = $query->get(['id', 'direction', 'status', 'created_at']);
+        $documents = $query->get(['id', 'direction', 'status', 'owner_org_unit_id', 'created_at']);
 
         $monthly = $months->map(function ($month) use ($documents) {
             $inMonth = $documents->filter(
@@ -221,6 +225,29 @@ class RegisterReportService
         });
 
         /*
+         * สถิติแยกตาม ๔ ฝ่ายหลัก สอศ.
+         */
+        $rootId = DB::table('org_units')->whereNull('parent_id')->value('id');
+        $divisions = $rootId ? DB::table('org_units')->where('parent_id', $rootId)->orderBy('id')->get(['id', 'name', 'code']) : collect();
+
+        $byDivision = $divisions->map(function ($div) use ($documents) {
+            $count = $documents->filter(function (Document $doc) use ($div) {
+                if (! $doc->owner_org_unit_id) {
+                    return false;
+                }
+
+                return $this->scopes->divisionOrgUnitId((int) $doc->owner_org_unit_id) === (int) $div->id;
+            })->count();
+
+            return [
+                'division_id' => $div->id,
+                'name' => $div->name,
+                'code' => $div->code,
+                'count' => $count,
+            ];
+        })->values();
+
+        /*
          * สถานะทั้งหมดที่พบจริง ไม่ใช่รายการที่ฝังไว้ในโค้ด — สถานะใหม่ที่เพิ่ม
          * ในอนาคตจะปรากฏในกราฟเองโดยไม่ต้องแก้ที่นี่ และจะไม่มีหนังสือกลุ่มใด
          * หายไปจากกราฟเงียบ ๆ เพราะสถานะของมันไม่อยู่ในรายการ
@@ -235,6 +262,7 @@ class RegisterReportService
             'total' => $documents->count(),
             'monthly' => $monthly,
             'by_status' => $byStatus,
+            'by_division' => $byDivision,
             'since' => $since->toDateString(),
         ];
     }

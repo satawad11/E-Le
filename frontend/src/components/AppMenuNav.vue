@@ -1,68 +1,73 @@
 <template>
-  <nav class="space-y-1" :aria-label="ariaLabel">
+  <nav class="space-y-2" :aria-label="ariaLabel">
     <template v-for="item in menus" :key="item.code">
-      <!-- เมนูปลายทาง (ไม่มีเมนูย่อย) -->
+      <!-- กรณีที่ 1: เมนูปลายทางเดี่ยว (ไม่มีเมนูย่อย) -->
       <router-link
         v-if="!item.children?.length"
         :to="item.route_path"
-        class="nav-link flex items-center justify-between"
+        class="nav-link flex items-center justify-between group"
         :class="collapsed ? 'justify-center px-0' : ''"
         active-class="nav-link-active"
         :title="collapsed ? item.title_th : ''"
         @click="$emit('navigate')"
       >
-        <span class="flex items-center gap-3 min-w-0">
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <span class="flex items-center gap-2.5 min-w-0">
+          <svg class="w-4 h-4 flex-shrink-0 opacity-80 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPath(item.icon)"/>
           </svg>
-          <span v-show="!collapsed" class="whitespace-nowrap">{{ item.title_th }}</span>
+          <span v-show="!collapsed" class="whitespace-nowrap text-sm">{{ item.title_th }}</span>
         </span>
-        <span v-if="!collapsed && badgeFor(item)" class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+        <span v-if="!collapsed && badgeFor(item)" class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
           {{ badgeFor(item) }}
         </span>
       </router-link>
 
-      <!-- กลุ่มเมนูที่พับได้ -->
-      <div v-else>
-        <button
-          type="button"
-          class="nav-link w-full flex justify-between items-center"
-          :class="[isGroupActive(item) ? 'bg-white/10 text-white' : '', collapsed ? 'justify-center px-0' : '']"
-          :title="collapsed ? item.title_th : ''"
-          :aria-expanded="isOpen(item.code) ? 'true' : 'false'"
-          @click="toggle(item.code)"
-        >
-          <span class="flex items-center gap-3 min-w-0">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPath(item.icon)"/>
-            </svg>
-            <span v-show="!collapsed" class="whitespace-nowrap">{{ item.title_th }}</span>
-          </span>
-          <span v-if="!collapsed" class="flex items-center gap-2">
-            <span v-if="groupBadge(item)" class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              {{ groupBadge(item) }}
+      <!-- กรณีที่ 2: กลุ่มเมนูที่มีเมนูย่อย -->
+      <div v-else class="space-y-1">
+        <!-- หัวข้อกลุ่ม (แสดงเมื่อมีหลายกลุ่มในโมดูล หรือไม่ได้เปิด singleGroupDirect) -->
+        <div v-if="shouldShowGroupHeader(item)" class="pt-2 pb-1">
+          <button
+            type="button"
+            class="nav-group-header w-full flex justify-between items-center text-xs font-semibold uppercase tracking-wider text-white/60 hover:text-white px-2 py-1 rounded-md transition-colors"
+            :aria-expanded="isOpen(item.code) ? 'true' : 'false'"
+            @click="toggle(item.code)"
+          >
+            <span class="flex items-center gap-2 truncate">
+              <svg class="w-3.5 h-3.5 flex-shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPath(item.icon)"/>
+              </svg>
+              <span>{{ item.title_th }}</span>
             </span>
-            <svg
-              class="w-4 h-4 transition-transform duration-200 flex-shrink-0"
-              :class="{ 'rotate-180': isOpen(item.code) }"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-            </svg>
-          </span>
-        </button>
+            <span class="flex items-center gap-1.5 flex-shrink-0">
+              <span v-if="groupBadge(item)" class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {{ groupBadge(item) }}
+              </span>
+              <svg
+                class="w-3.5 h-3.5 transition-transform duration-200"
+                :class="{ 'rotate-180': isOpen(item.code) }"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </span>
+          </button>
+        </div>
 
-        <div v-show="isOpen(item.code) && !collapsed" class="mt-1 space-y-1 pl-9">
+        <!-- รายการเมนูย่อย -->
+        <div v-show="isOpen(item.code) && !collapsed" class="space-y-0.5" :class="shouldShowGroupHeader(item) ? 'pl-2 border-l border-white/10 ml-2' : ''">
           <router-link
             v-for="child in item.children"
             :key="child.code"
             :to="child.route_path"
-            class="nav-link !py-2 !text-sm flex items-center justify-between"
+            class="nav-link !py-1.5 !px-2.5 !text-xs flex items-center justify-between group"
             active-class="nav-link-active"
             @click="$emit('navigate')"
           >
-            <span>{{ child.title_th }}</span>
-            <span v-if="badgeFor(child)" class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+            <span class="flex items-center gap-2 truncate">
+              <span class="w-1.5 h-1.5 rounded-full bg-white/40 group-hover:bg-white flex-shrink-0"></span>
+              <span class="truncate">{{ child.title_th }}</span>
+            </span>
+            <span v-if="badgeFor(child)" class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full flex-shrink-0">
               {{ badgeFor(child) }}
             </span>
           </router-link>
@@ -74,14 +79,10 @@
 
 <script setup>
 /**
- * แถบเมนูที่วาดจากตาราง `menus` (CLEANUP-01 · D1)
+ * แถบเมนูย่อยรองรับ Dual-Rail Sub-Panel & Mobile Drawer (CLEANUP-01 · D1 · DUAL-RAIL)
  *
- * ก่อนหน้านี้เมนูถูกเขียนตายตัวใน `App.vue` สองก๊อป (จอใหญ่กับจอมือถือ) ต้องแก้คู่กัน
- * ทุกครั้งและเงื่อนไขสิทธิ์ก็ถูกคัดลอกซ้ำ ตอนนี้ทั้งสองจอใช้ component เดียวกัน
- * และรายการเมนูมาจาก `/api/user/menus` ซึ่งกรองตามสิทธิ์และโมดูลที่เปิดใช้งานให้แล้ว
- *
- * ป้ายตัวเลข (badge) เป็นสถานะ runtime ไม่ใช่การตั้งค่าเมนู จึงส่งเข้ามาทาง prop
- * โดยอ้างชื่อ route ไม่ใช่เก็บไว้ในฐานข้อมูล
+ * ดึงรายการเมนูของโมดูลที่เลือกมาเรนเดอร์อย่างเป็นระเบียบ แบ่งกลุ่มชัดเจน
+ * และเปิดค้างไว้ตามค่าเริ่มต้นเพื่อความสะดวกในการเข้าถึง
  */
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -91,7 +92,8 @@ const props = defineProps({
   menus: { type: Array, default: () => [] },
   collapsed: { type: Boolean, default: false },
   badges: { type: Object, default: () => ({}) },
-  ariaLabel: { type: String, default: 'เมนูหลัก' },
+  ariaLabel: { type: String, default: 'เมนูย่อยของโมดูล' },
+  showSingleHeader: { type: Boolean, default: false },
 })
 
 defineEmits(['navigate'])
@@ -99,7 +101,7 @@ defineEmits(['navigate'])
 const route = useRoute()
 const openGroups = ref(new Set())
 
-const iconPath = (icon) => ICONS[icon] || ICONS.document
+const iconPath = (icon) => ICONS[icon] || (icon === 'settings' ? ICONS.cog : null) || ICONS.document
 
 const badgeFor = (item) => props.badges[item.route_name] || 0
 
@@ -117,13 +119,21 @@ const toggle = (code) => {
   openGroups.value = next
 }
 
-// เปิดกลุ่มที่มีหน้าปัจจุบันอยู่ข้างในให้อัตโนมัติ
+const shouldShowGroupHeader = (group) => {
+  // หากในโมดูลมีมากกว่า 1 กลุ่ม หรือตั้งค่าให้แสดงหัวข้อ ให้แสดง header
+  if (props.showSingleHeader) return true
+  return props.menus.length > 1
+}
+
+// เปิดกลุ่มเมนูทั้งหมดของโมดูลที่เลือกโดยอัตโนมัติ
 watch(
   () => [route.path, props.menus],
   () => {
     const next = new Set(openGroups.value)
     props.menus.forEach((group) => {
-      if (group.children?.length && isGroupActive(group)) next.add(group.code)
+      if (group.children?.length) {
+        next.add(group.code)
+      }
     })
     openGroups.value = next
   },
@@ -135,23 +145,24 @@ watch(
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.75rem;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.875rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.5rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.8125rem;
   font-weight: 500;
-  transition: background 0.15s, color 0.15s;
+  transition: all 0.15s ease;
   text-decoration: none;
   cursor: pointer;
 }
 .nav-link:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  transform: translateX(2px);
 }
 .nav-link-active {
-  background: rgba(255, 255, 255, 0.2) !important;
-  color: #fff !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
   font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 </style>

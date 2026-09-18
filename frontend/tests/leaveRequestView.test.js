@@ -144,4 +144,11 @@ describe('หน้ายื่นใบลา', () => {
     expect(wrapper.text()).toContain('ประเภทนี้ลาครึ่งวันไม่ได้')
     expect(wrapper.text()).toContain('ต้องยื่นล่วงหน้าอย่างน้อย 60 วัน')
   })
+
+  it('แสดงแถบเตือนเกณฑ์วันลาประเมิน ก.ค.ศ. (เพดาน ๒๓ วัน)', async () => {
+    const wrapper = await mountRequestView()
+
+    expect(wrapper.text()).toContain('เกณฑ์วันลาประเมิน ก.ค.ศ.')
+    expect(wrapper.text()).toContain('๒๓ วันทำการ')
+  })
 })

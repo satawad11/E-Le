@@ -129,8 +129,8 @@
     </section>
 
     <!-- ฟอร์มขอแก้ไขเวลา -->
-    <div v-if="correctionTarget" class="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4" @click.self="correctionTarget = null">
-      <form role="dialog" aria-modal="true" aria-labelledby="correction-title" class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6" @submit.prevent="submitCorrection">
+    <div v-if="correctionTarget" class="fixed inset-0 z-50 grid place-items-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto" @click.self="correctionTarget = null">
+      <form role="dialog" aria-modal="true" aria-labelledby="correction-title" class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 max-h-[90vh] overflow-y-auto my-auto" @submit.prevent="submitCorrection">
         <div>
           <h3 id="correction-title" class="text-xl font-bold text-gray-900">ขอแก้ไขเวลาปฏิบัติงาน</h3>
           <p class="text-sm text-gray-500">{{ formatDate(correctionTarget.date) }}</p>

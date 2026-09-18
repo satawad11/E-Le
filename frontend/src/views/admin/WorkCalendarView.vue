@@ -40,8 +40,8 @@
       </table></div>
     </section>
 
-    <div v-if="editing" class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" @click.self="editing = false">
-      <form class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-xl" @submit.prevent="save">
+    <div v-if="editing" class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 overflow-y-auto" @click.self="editing = false">
+      <form class="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto my-auto" @submit.prevent="save">
         <h2 class="text-xl font-bold">{{ form.id ? 'แก้ไขวันพิเศษ' : 'เพิ่มวันพิเศษ' }}</h2>
         <label class="block text-sm">วันที่<input v-model="form.date" required type="date" class="mt-1 w-full rounded-lg border px-3 py-2" /></label>
         <label class="block text-sm">ชื่อรายการ<input v-model="form.name" required maxlength="255" class="mt-1 w-full rounded-lg border px-3 py-2" /></label>

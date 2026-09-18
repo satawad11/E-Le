@@ -42,10 +42,10 @@ class MenuDriftTest extends TestCase
      *
      * การอัปเดตค่านี้เฉย ๆ โดยไม่ทำข้อ 1 = ปิดปากเทสต์ ไม่ใช่แก้ปัญหา
      */
-    private const TREE_FINGERPRINT = '214c54990ab6518609abe54ea45ecd30eb8af1e8e14fa90974659077c58dc9e7';
+    private const TREE_FINGERPRINT = '2a00badfe3559264d514bbc8d95bf059b6643821fdab27b530abaf45d710e441';
 
     /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว */
-    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_25_100000_reorganize_menus_structure';
+    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_27_100000_consolidate_saraban_menus';
 
     public function test_changing_the_menu_tree_requires_a_migration_for_installed_systems(): void
     {
@@ -92,7 +92,7 @@ class MenuDriftTest extends TestCase
         (require database_path('migrations/'.self::LATEST_MENU_SYNC_MIGRATION.'.php'))->up();
 
         $this->assertSame('การลงเวลาของฉัน', Menu::where('code', 'attendance.history')->value('title_th'));
-        $this->assertSame('รายงานสารบรรณ', Menu::where('code', 'saraban.reports')->value('title_th'));
+        $this->assertSame('รายงานและสถิติสารบรรณ', Menu::where('code', 'saraban.reports')->value('title_th'));
         $this->assertSame('สิทธิ์การเข้าถึงเมนู', Menu::where('code', 'users.menus')->value('title_th'));
         $this->assertSame('Menu Access', Menu::where('code', 'users.menus')->value('title_en'));
     }
@@ -102,7 +102,7 @@ class MenuDriftTest extends TestCase
      *
      * ตัวเลขนี้คือสิ่งที่หายไปจริงในเหตุการณ์ข้างต้น (มี 6 จาก 13)
      *
-     * นับรวมสองกลุ่มหลัก ("งานสารบรรณ" กับ "การจัดการงานสารบรรณ") รวม 21 หน้า
+     * นับรวมสองกลุ่มหลัก ("งานสารบรรณ" กับ "การจัดการงานสารบรรณ") รวม 8 หน้า (7 + 1)
      */
     public function test_the_saraban_branch_declares_every_page_the_module_has(): void
     {
@@ -112,7 +112,7 @@ class MenuDriftTest extends TestCase
         $this->assertCount(2, $groups, 'เมนูสารบรรณต้องมีสองกลุ่ม: งานประจำวัน และการจัดการ');
 
         $this->assertCount(
-            21,
+            8,
             $groups->flatMap(fn (array $item) => $item['children'] ?? [])->all(),
             'จำนวนหน้าของงานสารบรรณในสองกลุ่มหลักเปลี่ยนไป — ถ้าตั้งใจ ให้แก้ตัวเลขนี้พร้อม migration sync เมนู',
         );
@@ -125,9 +125,9 @@ class MenuDriftTest extends TestCase
         });
 
         $this->assertCount(
-            21,
+            8,
             $allSarabanChildren->all(),
-            'จำนวนหน้าทั้งหมดของโมดูลสารบรรณต้องครบ 21 หน้า',
+            'จำนวนหน้าทั้งหมดของโมดูลสารบรรณต้องครบ 8 หน้า',
         );
     }
 

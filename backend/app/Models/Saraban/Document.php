@@ -159,4 +159,16 @@ class Document extends Model
     {
         return $this->hasOne(IncomingRegistration::class, 'document_id');
     }
+
+    /** กำหนดการเก็บรักษาของหนังสือฉบับนี้ (SoT §25) */
+    public function retentionSchedule()
+    {
+        return $this->hasOne(RetentionSchedule::class, 'document_id');
+    }
+
+    /** ประวัติและรายการอายัดของหนังสือฉบับนี้ (SoT §25) */
+    public function legalHolds()
+    {
+        return $this->hasMany(LegalHold::class, 'document_id');
+    }
 }
