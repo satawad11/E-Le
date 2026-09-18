@@ -124,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   modelValue: { type: [File, Array, null], default: null },

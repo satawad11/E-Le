@@ -369,7 +369,7 @@ async function openCaseDetail(c) {
   try {
     const res = await api.get(`/saraban/cases/${c.id}`)
     selectedCase.value = res.data.data || c
-  } catch (e) {
+  } catch {
     selectedCase.value = c
   }
 }

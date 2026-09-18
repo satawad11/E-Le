@@ -629,7 +629,7 @@ const saveGeneral = async () => {
   try {
     await api.post('/admin/settings', general.value)
     alertStore.success('บันทึกการตั้งค่าทั่วไปเรียบร้อยแล้ว')
-  } catch (error) {
+  } catch {
     alertStore.error('บันทึกการตั้งค่าไม่สำเร็จ')
   } finally {
     isSavingGeneral.value = false

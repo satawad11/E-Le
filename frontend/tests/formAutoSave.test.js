@@ -12,7 +12,7 @@ describe('useFormAutoSave Composable', () => {
 
   it('saves form data to localStorage automatically with debounce', async () => {
     const formData = ref({ title: '', reason: '' })
-    const { lastSavedAt, isSaving } = useFormAutoSave(KEY, formData, { debounceMs: 100 })
+    const { lastSavedAt } = useFormAutoSave(KEY, formData, { debounceMs: 100 })
 
     expect(localStorage.getItem(KEY)).toBeNull()
 

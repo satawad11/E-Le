@@ -108,9 +108,6 @@ const badgeFor = (item) => props.badges[item.route_name] || 0
 const groupBadge = (group) =>
   (group.children || []).reduce((total, child) => total + badgeFor(child), 0)
 
-const isGroupActive = (group) =>
-  (group.children || []).some((child) => route.path === child.route_path || route.path.startsWith(`${child.route_path}/`))
-
 const isOpen = (code) => openGroups.value.has(code)
 
 const toggle = (code) => {
@@ -119,7 +116,7 @@ const toggle = (code) => {
   openGroups.value = next
 }
 
-const shouldShowGroupHeader = (group) => {
+const shouldShowGroupHeader = (_group) => {
   // หากในโมดูลมีมากกว่า 1 กลุ่ม หรือตั้งค่าให้แสดงหัวข้อ ให้แสดง header
   if (props.showSingleHeader) return true
   return props.menus.length > 1

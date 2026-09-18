@@ -492,8 +492,6 @@ const alertStore = useAlertStore()
 const loading = ref(false)
 const savingDraft = ref(false)
 const calculatedDays = ref(null)
-const fileName = ref('')
-const fileInput = ref(null)
 const selectedFile = ref(null)
 const users = ref([])
 
@@ -533,9 +531,9 @@ const currentCycleInfo = computed(() => {
   const year = now.getFullYear()
   const thaiYear = year + 543
 
-  let cycleName = ''
-  let startDate = ''
-  let endDate = ''
+  let cycleName
+  let startDate
+  let endDate
 
   if (month >= 4 && month <= 9) {
     cycleName = `รอบที่ ๒ (๑ เม.ย. – ๓๐ ก.ย. ${thaiYear})`
@@ -956,14 +954,6 @@ const calcDays = () => {
     cur.setDate(cur.getDate() + 1)
   }
   calculatedDays.value = count || 0.5
-}
-
-const handleFile = (e) => {
-  const file = e.target.files[0]
-  if (file) {
-    selectedFile.value = file
-    fileName.value = file.name
-  }
 }
 
 const handleSubmit = async (asDraft = false) => {

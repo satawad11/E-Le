@@ -389,7 +389,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../axios'
 import AppBadge from '../../components/ui/AppBadge.vue'

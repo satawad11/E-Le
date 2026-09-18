@@ -451,7 +451,7 @@ const vocationalEvaluation = computed(() => {
   const year = now.getFullYear()
   const thaiYear = year + 543
 
-  let cycleName = ''
+  let cycleName
   if (month >= 4 && month <= 9) {
     cycleName = `รอบที่ ๒ (๑ เม.ย. – ๓๐ ก.ย. ${thaiYear})`
   } else if (month >= 10) {
