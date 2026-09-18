@@ -47,6 +47,9 @@ jobs:
           php-version: '8.4'
           extensions: mbstring, pdo_mysql, zip
           coverage: none
+          # ตั้ง memory_limit ให้ตรงกับที่ image ใช้ (backend/Dockerfile, docker/php/php.ini)
+          # เทสต์อัปโหลดรูปเพดาน 5 MB (base64) กินหน่วยความจำเกิน default 128M จน OOM
+          ini-values: memory_limit=256M
       # INT-18 — การปกปิดข้อมูลต้องแปลงเอกสารเป็นภาพเพื่อลบชั้นข้อความจริง
       #
       # กล่องดำทับข้อความไม่ใช่การปกปิด — ข้อความยังคัดลอกออกมาได้
