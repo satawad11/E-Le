@@ -78,11 +78,14 @@ jobs:
       # ถ้าไม่ติดตั้ง เทสต์ที่เรนเดอร์เอกสารจะล้มด้วยข้อความ "ยังไม่ได้ติดตั้งฟอนต์ไทย"
       - name: Install document engine Thai fonts
         run: php artisan document:install-fonts
-      # --coverage พิมพ์สรุป coverage ของ app/ (ยังไม่ตั้ง --min เป็นด่านบังคับ
-      # เพราะ baseline ปัจจุบันยังไม่ถูกวัด · เมื่อทีมเห็นตัวเลขแล้วค่อยเพิ่ม
-      # `--min=NN` เพื่อ ratchet ขึ้นทีละขั้น)
-      - name: Tests
-        run: php artisan test --coverage
+      # รันเทสต์พร้อมวัด coverage — เรียก phpunit ตรง ๆ ในโปรเซสเดียว และยก
+      # memory_limit เฉพาะคำสั่งนี้ เพราะการ "รวมรายงาน coverage" ใช้หน่วยความจำ
+      # เกินค่า runtime 256M (`php artisan test` spawn child ที่อ่าน php.ini 256M
+      # จึง OOM ตอนสร้างรายงาน) · ค่า default ของระบบยังเป็น 256M ตามเดิม
+      # (ดู ConfigDriftTest) · ยังไม่ตั้ง --min เป็นด่านบังคับ เมื่อทีมเห็นตัวเลข
+      # แล้วค่อยเพิ่มใน phpunit.xml เพื่อ ratchet ขึ้นทีละขั้น
+      - name: Tests (with coverage)
+        run: php -d memory_limit=-1 vendor/bin/phpunit --coverage-text
       # INT-20 — พิสูจน์ว่าการออกเลขหนังสือไม่ให้เลขซ้ำเมื่อมีผู้ขอพร้อมกัน (RISK-22)
       #
       # ชุดทดสอบปกติรันบน SQLite ซึ่งไม่มี row-level lock จริง จึงพิสูจน์เรื่องนี้
