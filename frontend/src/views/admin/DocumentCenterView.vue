@@ -48,6 +48,14 @@
       </span>
     </div>
 
+    <div
+      v-if="failedSections.length"
+      role="alert"
+      class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+    >
+      โหลดข้อมูลบางส่วนไม่สำเร็จ: {{ failedSections.join(', ') }} — ส่วนอื่นใช้งานได้ตามปกติ กด "รีเฟรช" เพื่อลองใหม่
+    </div>
+
     <!-- ตัวเลขภาพรวม -->
     <div v-if="overview" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <div v-for="card in cards" :key="card.label" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -77,7 +85,7 @@
     <template v-else>
       <!-- แบบฟอร์มเอกสาร -->
       <section v-if="activeTab === 'templates'" class="space-y-4">
-        <div class="flex flex-wrap justify-end gap-2">
+        <div v-if="canManage" class="flex flex-wrap justify-end gap-2">
           <!--
             CLEANUP-01 (D2) — ปุ่มชุดแม่แบบตั้งต้นย้ายมาจากหน้า "จัดการแม่แบบเอกสาร"
             ที่ถูกยุบเข้ามาที่นี่ เพื่อให้เหลือทางเข้าเดียว
@@ -186,7 +194,7 @@
                 <td class="px-5 py-3">{{ template.bound_entities }} รายการ</td>
                 <td class="px-5 py-3 text-right space-x-1 whitespace-nowrap">
                   <button
-                    v-if="template.render_mode !== 'pdf_overlay'"
+                    v-if="canManage && template.render_mode !== 'pdf_overlay'"
                     type="button"
                     class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100 text-xs font-semibold"
                     @click="openContentEditor(template)"
@@ -200,6 +208,7 @@
                     จัดการเวอร์ชัน
                   </button>
                   <button
+                    v-if="canManage"
                     type="button"
                     class="px-3 py-1.5 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 text-xs font-semibold"
                     @click="deleteTemplate(template)"
@@ -263,7 +272,7 @@
               </div>
               <div class="flex items-center gap-2 flex-shrink-0">
                 <span class="text-[10px] font-semibold text-gray-500 bg-gray-100 rounded px-1.5 py-0.5">{{ field.data_type }}</span>
-                <button @click="editField(field)" class="text-[11px] font-semibold text-[#800000] hover:underline">แก้ไข</button>
+                <button v-if="canManage" @click="editField(field)" class="text-[11px] font-semibold text-[#800000] hover:underline">แก้ไข</button>
               </div>
             </div>
           </div>
@@ -302,7 +311,7 @@
         </div>
 
         <!-- เพิ่ม/แก้กติกาผูกแบบฟอร์ม -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div v-if="canManage" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <h3 class="font-bold text-gray-800 text-sm mb-3">
             {{ bindingForm.id ? 'แก้กติกาการผูกแบบฟอร์ม' : 'ผูกแบบฟอร์มกับประเภทการลา' }}
           </h3>
@@ -352,6 +361,7 @@
 
           <p class="text-[11px] text-gray-400 mt-2">
             หนึ่งรายการควรใช้แบบฟอร์มเดียว — ถ้าผูกซ้ำ ระบบจะเลือกกติกาที่ลำดับน้อยกว่า
+            · กติกาที่เคยมีผลแล้วจะไม่ถูกแก้ทับหรือลบ ระบบปิดช่วงของกติกาเดิมไว้เป็นประวัติแล้วออกกติกาใหม่แทน
           </p>
         </div>
 
@@ -375,8 +385,10 @@
               <td class="px-5 py-3 font-semibold text-gray-800">{{ rule.template?.name || '—' }}</td>
               <td class="px-5 py-3">{{ rule.priority }}</td>
               <td class="px-5 py-3 text-right">
-                <button @click="editBinding(rule)" class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-xs font-semibold mr-2">แก้ไข</button>
-                <button @click="removeBinding(rule)" class="px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 text-xs font-semibold">ลบ</button>
+                <template v-if="canManage">
+                  <button @click="editBinding(rule)" class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-xs font-semibold mr-2">แก้ไข</button>
+                  <button @click="removeBinding(rule)" class="px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 text-xs font-semibold">ลบ</button>
+                </template>
               </td>
             </tr>
             <tr v-if="bindings.length === 0">
@@ -420,7 +432,7 @@
             </label>
           </div>
 
-          <button @click="saveEnabledLeaveTypes" :disabled="savingEntities"
+          <button v-if="canManage" @click="saveEnabledLeaveTypes" :disabled="savingEntities"
             class="px-5 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm min-h-[44px] disabled:opacity-50">
             {{ savingEntities ? 'กำลังบันทึก...' : 'บันทึกประเภทที่เปิดใช้' }}
           </button>
@@ -428,8 +440,45 @@
       </section>
 
       <!-- เอกสารที่สร้างแล้ว -->
-      <section v-else-if="activeTab === 'generated'" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
-        <table class="w-full text-sm min-w-[820px]">
+      <section v-else-if="activeTab === 'generated'" class="space-y-4">
+        <form
+          class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 grid grid-cols-1 md:grid-cols-5 gap-3 items-end"
+          @submit.prevent="applyGeneratedFilters"
+        >
+          <label class="block md:col-span-2">
+            <span class="block text-[11px] font-bold text-gray-500 uppercase mb-1">ค้นหา</span>
+            <input
+              v-model="generatedFilters.q"
+              type="search"
+              placeholder="เลขที่ใบลา หรือชื่อแม่แบบ"
+              class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm"
+            />
+          </label>
+          <label class="block">
+            <span class="block text-[11px] font-bold text-gray-500 uppercase mb-1">สถานะ</span>
+            <select v-model="generatedFilters.status" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
+              <option value="">ทุกสถานะ</option>
+              <option value="GENERATED">ออกแล้ว</option>
+              <option value="FINALIZED">ฉบับสมบูรณ์</option>
+              <option value="SUPERSEDED">ถูกแทนที่</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="block text-[11px] font-bold text-gray-500 uppercase mb-1">ตั้งแต่วันที่</span>
+            <input v-model="generatedFilters.date_from" type="date" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm" />
+          </label>
+          <label class="block">
+            <span class="block text-[11px] font-bold text-gray-500 uppercase mb-1">ถึงวันที่</span>
+            <input v-model="generatedFilters.date_to" type="date" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm" />
+          </label>
+          <div class="md:col-span-5 flex justify-end gap-2">
+            <button type="button" class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm min-h-[44px]" @click="resetGeneratedFilters">ล้างตัวกรอง</button>
+            <button type="submit" class="px-5 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm min-h-[44px]">ค้นหา</button>
+          </div>
+        </form>
+
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+        <table class="w-full text-sm min-w-[820px]" :class="{ 'opacity-50': generatedLoading }">
           <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
             <tr>
               <th class="text-left px-5 py-3">เอกสาร</th>
@@ -442,7 +491,7 @@
           </thead>
           <tbody>
             <tr v-for="file in generated" :key="file.id" class="border-t border-gray-50">
-              <td class="px-5 py-3 font-mono text-xs">{{ file.source_type }} #{{ file.source_id }}</td>
+              <td class="px-5 py-3">{{ file.source_label || `${file.source_type} #${file.source_id}` }}</td>
               <td class="px-5 py-3">{{ file.template?.name || '—' }}</td>
               <td class="px-5 py-3">{{ file.revision }}</td>
               <td class="px-5 py-3">
@@ -452,14 +501,22 @@
               </td>
               <td class="px-5 py-3 text-xs text-gray-500">{{ formatDate(file.generated_at) }}</td>
               <td class="px-5 py-3 text-right">
-                <button @click="downloadGenerated(file)" class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-xs font-semibold">ดาวน์โหลด</button>
+                <button v-if="canDownload" @click="downloadGenerated(file)" class="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-xs font-semibold">ดาวน์โหลด</button>
               </td>
             </tr>
             <tr v-if="generated.length === 0">
-              <td colspan="6" class="px-5 py-10 text-center text-gray-400">ยังไม่มีเอกสารที่ระบบออกให้</td>
+              <td colspan="6" class="px-5 py-10 text-center text-gray-400">ไม่มีเอกสารที่ตรงกับเงื่อนไข หรือที่คุณมีสิทธิ์เปิด</td>
             </tr>
           </tbody>
         </table>
+        </div>
+
+        <AppPagination
+          :page="generatedPage"
+          :total="generatedTotal"
+          :per-page="GENERATED_PER_PAGE"
+          @update:page="loadGenerated"
+        />
       </section>
 
       <!-- รายงาน -->
@@ -494,6 +551,7 @@
               <input aria-label="เลื่อนแนวตั้ง (pt)" v-model.number="calibrationForm.y_offset" type="number" step="0.5" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm" />
             </div>
             <button
+              v-if="canManage"
               @click="saveCalibration"
               class="px-5 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm min-h-[44px]"
             >
@@ -661,11 +719,21 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useAuthStore } from '../../stores/auth'
 import { useConfirm } from '../../composables/useConfirm'
+import AppPagination from '../../components/ui/AppPagination.vue'
 
 const router = useRouter()
 const alertStore = useAlertStore()
+const authStore = useAuthStore()
 const { confirmAction, confirmDanger } = useConfirm()
+
+/*
+ * ปุ่มแสดงตามสิทธิ์ที่ API ใช้ตัดสินจริง — ผู้ดูอย่างเดียวไม่ต้องเห็นปุ่มที่กดแล้วได้ 403
+ * ด่านจริงยังอยู่ที่ backend เสมอ
+ */
+const canManage = computed(() => authStore.hasAnyPermission(['document.template.manage', 'system.setting.manage']))
+const canDownload = computed(() => authStore.hasAnyPermission(['document.final.download', 'system.setting.manage']))
 
 const loading = ref(false)
 const saving = ref(false)
@@ -679,6 +747,12 @@ const dataSources = ref([])
 const bindings = ref([])
 const bindingEntities = ref({})
 const generated = ref([])
+const generatedPage = ref(1)
+const generatedTotal = ref(0)
+const generatedLoading = ref(false)
+const GENERATED_PER_PAGE = 30
+const generatedFilters = ref({ q: '', status: '', date_from: '', date_to: '' })
+const failedSections = ref([])
 const calibrations = ref([])
 const leaveTypeForms = ref([])
 const fieldForm = ref(null)
@@ -714,18 +788,21 @@ const templateSearchQuery = ref('')
 const templateCategories = [
   { value: 'ALL', label: 'ทั้งหมด' },
   { value: 'LEAVE_FORM', label: 'แบบฟอร์มการลา' },
-  { value: 'SARABAN_OFFICIAL', label: 'หนังสือราชการสารบรรณ' },
   { value: 'ADMIN_CUSTOM', label: 'แบบฟอร์มทั่วไป / อื่น ๆ' },
 ]
+
+/*
+ * DC-05 — หมวดแยกตามโมดูลที่แม่แบบสังกัดเท่านั้น ไม่ปนกับชนิดเอกสาร
+ * เดิมแม่แบบชนิด FORM ของโมดูลอื่นไหลเข้าหมวดการลา · ค่า module มีทั้ง 'leave' และ 'LEAVE' จึงเทียบแบบไม่สนตัวพิมพ์
+ */
+const isLeaveTemplate = (template) => String(template.module || '').toLowerCase() === 'leave'
 
 const filteredTemplates = computed(() => {
   let list = templates.value || []
   if (templateCategoryFilter.value === 'LEAVE_FORM') {
-    list = list.filter(t => t.module === 'leave' || t.document_type === 'FORM')
-  } else if (templateCategoryFilter.value === 'SARABAN_OFFICIAL') {
-    list = list.filter(t => t.module === 'saraban' || t.document_type === 'LETTER')
+    list = list.filter(isLeaveTemplate)
   } else if (templateCategoryFilter.value === 'ADMIN_CUSTOM') {
-    list = list.filter(t => t.module !== 'leave' && t.module !== 'saraban' && t.document_type !== 'LETTER' && t.document_type !== 'FORM')
+    list = list.filter(t => !isLeaveTemplate(t))
   }
 
   if (templateSearchQuery.value.trim()) {
@@ -778,38 +855,82 @@ const entityName = (rule) => {
 
 const formatDate = (value) => value ? new Date(value).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '—'
 
+/*
+ * โหลดแต่ละส่วนแยกกัน — เดิมใช้ Promise.all ถ้าคำขอเดียวล้ม ทั้งหน้าจะไม่อัปเดตเลย
+ * ตอนนี้ส่วนที่โหลดได้แสดงตามปกติ และบอกชื่อส่วนที่โหลดไม่สำเร็จให้กดรีเฟรชใหม่
+ */
+const sections = {
+  overview: { label: 'ภาพรวม', url: '/admin/document-engine/overview', apply: (data) => { overview.value = data } },
+  templates: { label: 'แบบฟอร์มเอกสาร', url: '/admin/document-engine/templates', apply: (data) => { templates.value = data } },
+  fields: { label: 'สารบัญตัวแปร', url: '/admin/document-engine/fields', apply: (data) => { fields.value = data } },
+  sources: { label: 'แหล่งข้อมูล', url: '/admin/document-engine/data-sources', apply: (data) => { dataSources.value = data } },
+  bindings: {
+    label: 'การผูกแบบฟอร์ม',
+    url: '/admin/document-engine/bindings',
+    apply: (data) => {
+      bindings.value = data.rules
+      bindingEntities.value = data.entities
+      unboundLeaveTypes.value = data.unbound_leave_types || []
+    },
+  },
+  calibrations: { label: 'ตั้งค่าการพิมพ์', url: '/admin/document-engine/calibrations', apply: (data) => { calibrations.value = data } },
+  forms: { label: 'แบบฟอร์มรายประเภทการลา', url: '/admin/document-engine/leave-type-forms', apply: (data) => { leaveTypeForms.value = data.rows } },
+}
+
 const loadAll = async () => {
   loading.value = true
-  try {
-    const [ov, tpl, fld, src, bnd, gen, cal, forms] = await Promise.all([
-      api.get('/admin/document-engine/overview'),
-      api.get('/admin/document-engine/templates'),
-      api.get('/admin/document-engine/fields'),
-      api.get('/admin/document-engine/data-sources'),
-      api.get('/admin/document-engine/bindings'),
-      api.get('/admin/document-engine/generated'),
-      api.get('/admin/document-engine/calibrations'),
-      api.get('/admin/document-engine/leave-type-forms'),
-    ])
-    overview.value = ov.data
-    templates.value = tpl.data
-    fields.value = fld.data
-    dataSources.value = src.data
-    bindings.value = bnd.data.rules
-    bindingEntities.value = bnd.data.entities
-    unboundLeaveTypes.value = bnd.data.unbound_leave_types || []
-    generated.value = gen.data.data || gen.data
-    calibrations.value = cal.data
-    leaveTypeForms.value = forms.data.rows
+  const keys = Object.keys(sections)
+  const results = await Promise.allSettled(keys.map(key => api.get(sections[key].url)))
+
+  failedSections.value = []
+  results.forEach((result, index) => {
+    const section = sections[keys[index]]
+    if (result.status === 'fulfilled') {
+      section.apply(result.value.data)
+    } else {
+      failedSections.value.push(section.label)
+    }
+  })
+
+  if (overview.value && leaveTypeForms.value.length) {
     // `['*']` = เปิดทุกประเภท — แสดงเป็นการติ๊กครบทุกช่องเพื่อไม่ให้ผู้ดูแลเห็นสถานะที่ขัดกับความจริง
-    enabledLeaveTypes.value = ov.data.enabled_leave_types.includes('*')
-      ? forms.data.rows.map(row => row.leave_type_id)
-      : forms.data.rows.filter(row => row.engine_enabled).map(row => row.leave_type_id)
-  } catch (error) {
-    alertStore.error(error.response?.data?.message || 'โหลดข้อมูลศูนย์จัดการเอกสารไม่สำเร็จ')
-  } finally {
-    loading.value = false
+    enabledLeaveTypes.value = overview.value.enabled_leave_types.includes('*')
+      ? leaveTypeForms.value.map(row => row.leave_type_id)
+      : leaveTypeForms.value.filter(row => row.engine_enabled).map(row => row.leave_type_id)
   }
+
+  loading.value = false
+  await loadGenerated(generatedPage.value)
+}
+
+/* DC-04 — เอกสารที่ออกแล้วแบ่งหน้าที่เซิร์ฟเวอร์ (หน้าละ 30) พร้อมตัวกรอง */
+const loadGenerated = async (page = 1) => {
+  generatedLoading.value = true
+  try {
+    const params = { page }
+    for (const [key, value] of Object.entries(generatedFilters.value)) {
+      if (value) params[key] = value
+    }
+    const { data } = await api.get('/admin/document-engine/generated', { params })
+    generated.value = data.data || []
+    generatedTotal.value = data.total ?? generated.value.length
+    generatedPage.value = data.current_page ?? page
+    failedSections.value = failedSections.value.filter(label => label !== 'เอกสารที่สร้างแล้ว')
+  } catch (error) {
+    if (!failedSections.value.includes('เอกสารที่สร้างแล้ว')) failedSections.value.push('เอกสารที่สร้างแล้ว')
+    if (error.response?.status === 422) {
+      alertStore.error(Object.values(error.response.data?.errors || {}).flat()[0] || 'ตัวกรองไม่ถูกต้อง')
+    }
+  } finally {
+    generatedLoading.value = false
+  }
+}
+
+const applyGeneratedFilters = () => loadGenerated(1)
+
+const resetGeneratedFilters = () => {
+  generatedFilters.value = { q: '', status: '', date_from: '', date_to: '' }
+  loadGenerated(1)
 }
 
 const importPackage = async (event) => {
@@ -998,10 +1119,15 @@ const saveContent = async () => {
 const previewContent = async () => {
   previewing.value = true
   try {
+    // DC-06 — ส่งระยะขอบที่กำลังแก้ไปด้วย พรีวิวจึงใช้สไตล์หน้ากระดาษชุดเดียวกับตอนพิมพ์จริง
     const response = await api.post('/admin/document-engine/templates/preview', {
       content_html: contentForm.value.content_html,
       paper_size: contentForm.value.paper_size,
       orientation: contentForm.value.orientation,
+      margin_top: contentForm.value.margin_top,
+      margin_right: contentForm.value.margin_right,
+      margin_bottom: contentForm.value.margin_bottom,
+      margin_left: contentForm.value.margin_left,
     }, { responseType: 'blob' })
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
     window.open(url, '_blank')

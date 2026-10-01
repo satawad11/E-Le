@@ -14,6 +14,7 @@ use App\Models\DocumentTemplateVersion;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveType;
+use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\DefaultDocumentTemplateService;
 use App\Services\DocumentEngine\DataProviderRegistry;
@@ -21,6 +22,7 @@ use App\Services\DocumentEngine\DocumentEngine;
 use App\Services\DocumentEngine\EngineActivation;
 use App\Services\DocumentEngine\FieldDictionarySynchronizer;
 use App\Services\DocumentEngine\GeneratedDocumentAccess;
+use App\Services\DocumentEngine\LeaveDocumentGateway;
 use App\Services\DocumentEngine\PrintCalibrationSheet;
 use App\Services\DocumentEngine\Providers\LeaveRequestDataProvider;
 use App\Services\DocumentEngine\SafeTemplateRenderer;
@@ -229,6 +231,10 @@ class DocumentEngineController extends Controller
             'content_html' => 'required|string',
             'paper_size' => 'nullable|string|max:20',
             'orientation' => 'nullable|string|max:20',
+            'margin_top' => 'nullable|numeric|min:0|max:100',
+            'margin_right' => 'nullable|numeric|min:0|max:100',
+            'margin_bottom' => 'nullable|numeric|min:0|max:100',
+            'margin_left' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $this->assertSafeContent($data['content_html']);
@@ -241,6 +247,14 @@ class DocumentEngineController extends Controller
         } catch (\Throwable $exception) {
             return response()->json(['message' => 'แม่แบบมีข้อผิดพลาด: '.$exception->getMessage()], 422);
         }
+
+        // ต่อท้ายสไตล์หน้ากระดาษชุดเดียวกับตอนพิมพ์จริง (DC-06)
+        $html .= $resolver->previewPageStyle([
+            'top' => $data['margin_top'] ?? null,
+            'right' => $data['margin_right'] ?? null,
+            'bottom' => $data['margin_bottom'] ?? null,
+            'left' => $data['margin_left'] ?? null,
+        ]);
 
         return Pdf::loadHTML($html)
             ->setPaper(strtolower($data['paper_size'] ?? 'a4'), strtolower($data['orientation'] ?? 'portrait'))
@@ -1083,12 +1097,48 @@ class DocumentEngineController extends Controller
      */
     public function generatedFiles(Request $request, GeneratedDocumentAccess $access)
     {
+        $request->validate([
+            'status' => 'nullable|string|in:'.implode(',', [DocumentGeneratedFile::STATUS_GENERATED, DocumentGeneratedFile::STATUS_FINALIZED, DocumentGeneratedFile::STATUS_SUPERSEDED]),
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+            'q' => 'nullable|string|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
         $files = $access->scopeVisible(DocumentGeneratedFile::query(), $request->user())
             ->when($request->filled('module'), fn ($query) => $query->where('module', $request->string('module')))
             ->when($request->filled('source_type'), fn ($query) => $query->where('source_type', $request->string('source_type')))
+            // DC-04 — ตัวกรองที่หน้ารายการต้องใช้เมื่อเอกสารมีมากกว่าหนึ่งหน้า
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            ->when($request->filled('date_from'), fn ($query) => $query->whereDate('generated_at', '>=', $request->date('date_from')))
+            ->when($request->filled('date_to'), fn ($query) => $query->whereDate('generated_at', '<=', $request->date('date_to')))
+            ->when($request->filled('q'), function ($query) use ($request) {
+                $term = (string) $request->string('q');
+                $query->where(fn ($match) => $match
+                    ->where('source_id', $term)
+                    ->orWhereIn('document_template_id', DocumentTemplate::query()->select('id')->where('name', 'like', '%'.$term.'%'))
+                    ->orWhereIn('source_id', Leave::query()->selectRaw('CAST(id AS CHAR)')->where('document_number', 'like', '%'.$term.'%')));
+            })
             ->with(['template:id,code,name', 'version:id,version', 'generatedBy:id,name'])
             ->orderByDesc('id')
             ->paginate(30);
+
+        /*
+         * ชื่อที่ผู้ดูแลอ่านออก แทน "Leave #12" — ผู้เรียกผ่านการหรี่สิทธิ์มาแล้ว จึงเห็นเลขที่และชื่อเจ้าของได้
+         */
+        $leaves = Leave::query()
+            ->whereIn('id', $files->getCollection()->whereIn('source_type', GeneratedDocumentAccess::LEAVE_SOURCES)->pluck('source_id'))
+            ->get(['id', 'user_id', 'document_number'])
+            ->keyBy('id');
+        $owners = User::query()->whereIn('id', $leaves->pluck('user_id'))->pluck('name', 'id');
+
+        $files->getCollection()->each(function (DocumentGeneratedFile $file) use ($leaves, $owners) {
+            $leave = $leaves->get((int) $file->source_id);
+            $kind = $file->source_type === LeaveDocumentGateway::SOURCE_TYPE_CANCELLATION ? 'คำขอยกเลิกวันลา' : 'ใบลา';
+            $owner = $leave !== null ? $owners->get($leave->user_id) : null;
+
+            $file->setAttribute('source_label', trim($kind.' '.($leave?->document_number ?: 'รายการที่ '.$file->source_id).($owner ? ' · '.$owner : '')));
+        });
 
         return response()->json($files);
     }

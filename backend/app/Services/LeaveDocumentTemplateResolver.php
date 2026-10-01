@@ -211,16 +211,55 @@ class LeaveDocumentTemplateResolver
      */
     private function pageStyle(?DocumentTemplateVersion $version): string
     {
+        return $this->styleFor($version !== null
+            ? [(float) $version->margin_top, (float) $version->margin_right, (float) $version->margin_bottom, (float) $version->margin_left]
+            : null);
+    }
+
+    /**
+     * สไตล์หน้ากระดาษชุดเดียวกับตอนพิมพ์จริง สำหรับพรีวิวเนื้อหาที่ยังไม่บันทึก (DC-06)
+     *
+     * เดิมพรีวิวส่ง HTML เข้า dompdf ตรง ๆ ไม่ผ่านขั้นนี้ ระยะขอบ การตัดบรรทัด
+     * และจำนวนหน้าในพรีวิวจึงต่างจากเอกสารจริงเมื่อค่าที่ตั้งต่างจาก CSS ในแม่แบบ
+     *
+     * @param  array{top?: mixed, right?: mixed, bottom?: mixed, left?: mixed}  $margins  มิลลิเมตร — ช่องที่ว่างใช้ค่ากลางของระบบ
+     */
+    public function previewPageStyle(array $margins): string
+    {
+        $system = $this->systemMargins();
+
+        return $this->styleFor([
+            is_numeric($margins['top'] ?? null) ? (float) $margins['top'] : $system[0],
+            is_numeric($margins['right'] ?? null) ? (float) $margins['right'] : $system[1],
+            is_numeric($margins['bottom'] ?? null) ? (float) $margins['bottom'] : $system[2],
+            is_numeric($margins['left'] ?? null) ? (float) $margins['left'] : $system[3],
+        ]);
+    }
+
+    /**
+     * ระยะขอบกลางของระบบ (ตั้งเป็นเซนติเมตรในหน้าตั้งค่า) — ลำดับบน ขวา ล่าง ซ้าย หน่วยมิลลิเมตร
+     *
+     * @return array{0: float, 1: float, 2: float, 3: float}
+     */
+    private function systemMargins(): array
+    {
         $settings = Setting::pluck('value', 'key');
 
-        $margins = $version !== null
-            ? [(float) $version->margin_top, (float) $version->margin_right, (float) $version->margin_bottom, (float) $version->margin_left]
-            : [
-                $this->centimetresToMillimetres($settings['margin_top'] ?? null, 8.0),
-                $this->centimetresToMillimetres($settings['margin_right'] ?? null, 12.0),
-                $this->centimetresToMillimetres($settings['margin_bottom'] ?? null, 8.0),
-                $this->centimetresToMillimetres($settings['margin_left'] ?? null, 12.0),
-            ];
+        return [
+            $this->centimetresToMillimetres($settings['margin_top'] ?? null, 8.0),
+            $this->centimetresToMillimetres($settings['margin_right'] ?? null, 12.0),
+            $this->centimetresToMillimetres($settings['margin_bottom'] ?? null, 8.0),
+            $this->centimetresToMillimetres($settings['margin_left'] ?? null, 12.0),
+        ];
+    }
+
+    /**
+     * @param  array{0: float, 1: float, 2: float, 3: float}|null  $margins  null = ค่ากลางของระบบ
+     */
+    private function styleFor(?array $margins): string
+    {
+        $settings = Setting::pluck('value', 'key');
+        $margins ??= $this->systemMargins();
 
         $font = self::FONT_FILES[$settings['default_font'] ?? ''] ?? self::FONT_FILES['TH Sarabun New'];
         $family = $font['family'];
