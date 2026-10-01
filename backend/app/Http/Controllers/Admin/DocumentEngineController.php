@@ -20,6 +20,7 @@ use App\Services\DocumentEngine\DataProviderRegistry;
 use App\Services\DocumentEngine\DocumentEngine;
 use App\Services\DocumentEngine\EngineActivation;
 use App\Services\DocumentEngine\FieldDictionarySynchronizer;
+use App\Services\DocumentEngine\GeneratedDocumentAccess;
 use App\Services\DocumentEngine\PrintCalibrationSheet;
 use App\Services\DocumentEngine\Providers\LeaveRequestDataProvider;
 use App\Services\DocumentEngine\TemplateGeometry;
@@ -965,9 +966,14 @@ class DocumentEngineController extends Controller
 
     // ───────────────────────────── เอกสารที่สร้างแล้ว ─────────────────────────────
 
-    public function generatedFiles(Request $request)
+    /**
+     * รายการเอกสารที่ระบบออกให้ — เฉพาะฉบับที่ผู้เรียกเปิดต้นทางได้ (DC-01)
+     *
+     * คืน metadata เท่านั้น snapshot และ path ของไฟล์ถูกซ่อนที่ model
+     */
+    public function generatedFiles(Request $request, GeneratedDocumentAccess $access)
     {
-        $files = DocumentGeneratedFile::query()
+        $files = $access->scopeVisible(DocumentGeneratedFile::query(), $request->user())
             ->when($request->filled('module'), fn ($query) => $query->where('module', $request->string('module')))
             ->when($request->filled('source_type'), fn ($query) => $query->where('source_type', $request->string('source_type')))
             ->with(['template:id,code,name', 'version:id,version', 'generatedBy:id,name'])
@@ -977,8 +983,14 @@ class DocumentEngineController extends Controller
         return response()->json($files);
     }
 
-    public function downloadGenerated(DocumentGeneratedFile $file)
+    public function downloadGenerated(Request $request, DocumentGeneratedFile $file, GeneratedDocumentAccess $access)
     {
+        if (! $access->canDownload($request->user(), $file)) {
+            $this->audit->log('document_download_denied', 'DocumentGeneratedFile', $file->id, after: ['source_type' => $file->source_type]);
+
+            abort(403, 'ไม่มีสิทธิ์เปิดเอกสารฉบับนี้');
+        }
+
         $disk = Storage::disk('private_uploads');
         abort_unless($disk->exists($file->file_path), 404, 'ไม่พบไฟล์เอกสารในระบบ');
 

@@ -3,8 +3,10 @@
 namespace App\Policies;
 
 use App\Models\Leave;
+use App\Models\LeaveApproval;
 use App\Models\User;
 use App\Services\OrgScopeResolver;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * สิทธิ์การเข้าถึงใบลารายฉบับ (SEC-003 / SEC-004)
@@ -79,6 +81,53 @@ class LeavePolicy
         }
 
         return false;
+    }
+
+    /**
+     * รูปแบบ query ของ `view()` — หรี่รายการใบลาให้เหลือฉบับที่ผู้ใช้เปิดดูได้
+     *
+     * ใช้กับหน้ารายการที่ต้องแบ่งหน้า (เช่น เอกสารที่ระบบออกให้ในศูนย์จัดการเอกสาร · DC-01)
+     * ซึ่งกรองทีละฉบับด้วย `view()` ไม่ได้เพราะยอดรวมและหน้าจะเพี้ยน ลำดับเงื่อนไขตรงกับ `view()`:
+     * เจ้าของ → ผู้ปฏิบัติงานแทน → ผู้อนุมัติที่มีชื่อ → permission ระดับองค์กร → ระดับหน่วยงาน
+     *
+     * ระดับหน่วยงานเทียบ `users.org_unit_id` ของเจ้าของใบลา (แบบเดียวกับ `LeaveVisibility`)
+     * ส่วน `view()` ใช้หน่วยงานต้นสังกัดที่รวม personnel_assignments — การดาวน์โหลดจริง
+     * จึงต้องผ่าน `download()` ทุกครั้ง query นี้มีไว้หรี่รายการเท่านั้น
+     *
+     * @param  Builder<Leave>  $leaves
+     * @return Builder<Leave>
+     */
+    public function viewableQuery(Builder $leaves, User $user): Builder
+    {
+        // ผ่าน Gate (`can`) ไม่ใช่ hasAnyPermission ตรง ๆ — Super Admin และ explicit deny จึงมีผลเหมือนที่อื่น
+        $organisationWide = collect(self::ORGANISATION_WIDE)->contains(fn (string $ability) => $user->can($ability));
+
+        if ($organisationWide) {
+            return $leaves->where(fn (Builder $query) => $query
+                ->where('status', '!=', 'Draft')
+                ->orWhere('user_id', $user->id));
+        }
+
+        $resolver = app(OrgScopeResolver::class);
+        $departmentUnits = $user->can(self::DEPARTMENT_SCOPED) && $resolver->homeOrgUnitId($user) !== null
+            ? $resolver->visibleOrgUnitIds($user, self::DEPARTMENT_SCOPED, OrgScopeResolver::UNIT)
+            : [];
+
+        return $leaves->where(function (Builder $query) use ($user, $departmentUnits) {
+            $query->where('user_id', $user->id)
+                ->orWhere(fn (Builder $others) => $others
+                    ->where('status', '!=', 'Draft')
+                    ->where(function (Builder $reach) use ($user, $departmentUnits) {
+                        $reach->where('substitute_id', $user->id)
+                            ->orWhereIn('id', LeaveApproval::query()->select('leave_id')->where('approver_id', $user->id));
+
+                        if ($departmentUnits === null) {
+                            $reach->orWhereNotNull('id');
+                        } elseif ($departmentUnits !== []) {
+                            $reach->orWhereIn('user_id', User::query()->select('id')->whereIn('org_unit_id', $departmentUnits));
+                        }
+                    }));
+        });
     }
 
     /** ดาวน์โหลดไฟล์เอกสารของใบลา ใช้เกณฑ์เดียวกับการเปิดดู */

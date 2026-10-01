@@ -28,6 +28,12 @@ class DocumentGeneratedFile extends Model
 
     protected $guarded = [];
 
+    /**
+     * snapshot มีข้อมูลส่วนบุคคลของต้นทาง (เหตุผลการลา ที่อยู่ เบอร์โทร) และ path คือที่อยู่ไฟล์ภายใน
+     * ไม่ต้องออกไปกับ JSON ของหน้ารายการ (DC-01) — โค้ดฝั่งเซิร์ฟเวอร์ยังอ่านได้ตามปกติ
+     */
+    protected $hidden = ['snapshot', 'file_path'];
+
     protected $casts = [
         'snapshot' => 'array',
         'generated_at' => 'datetime',
