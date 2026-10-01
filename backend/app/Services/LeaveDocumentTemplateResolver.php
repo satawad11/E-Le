@@ -6,8 +6,10 @@ use App\Models\DocumentTemplateVersion;
 use App\Models\Leave;
 use App\Models\LeaveType;
 use App\Models\Setting;
+use App\Services\DocumentEngine\SafeTemplateRenderer;
+use App\Services\DocumentEngine\TemplateSyntaxException;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Log;
 
 /**
  * LEGACY-07 · 07-1 — เลือกและเรนเดอร์แบบฟอร์มใบลาจาก **เวอร์ชันที่ใบลานั้น pin ไว้**
@@ -29,8 +31,9 @@ use Illuminate\Support\Facades\Blade;
  *   - **ถอยไปใช้ blade เดิมเมื่อไม่มีเวอร์ชันที่ตรง** — แบบฟอร์มลาไปประกอบพิธีฮัจย์
  *     ลาไปช่วยภริยา และลาศึกษาต่อ ยังไม่มีแถวในตารางเทมเพลต จึงต้องไม่พัง
  *
- * `content_html` เป็นสำเนาของไฟล์ blade แบบตรงตัว (ดู `DefaultDocumentTemplateService`)
- * การเรนเดอร์ผ่าน `Blade::render()` จึงให้ผลเหมือนเดิมทุกประการ
+ * `content_html` ตั้งต้นเป็นสำเนาของไฟล์ blade แบบตรงตัว (ดู `DefaultDocumentTemplateService`)
+ * สำเนาตรงตัวจึงเรนเดอร์จากไฟล์ของโครงการ ส่วนเนื้อหาที่ผู้ดูแลแก้เองผ่าน SafeTemplateRenderer
+ * ห้ามส่งเนื้อหาจากฐานข้อมูลเข้า `Blade::render()` อีก เพราะ Blade รันโค้ด PHP ได้ (DC-02)
  */
 class LeaveDocumentTemplateResolver
 {
@@ -131,9 +134,67 @@ class LeaveDocumentTemplateResolver
 
         $html = ($version === null || blank($version->content_html))
             ? view($viewName, $data)->render()
-            : Blade::render($version->content_html, $data);
+            : $this->renderContent($version->content_html, $data, $viewName);
 
         return $html.$this->pageStyle($version);
+    }
+
+    /**
+     * เรนเดอร์เนื้อหาแม่แบบที่เก็บในฐานข้อมูล โดยไม่ส่งเข้า Blade (DC-02)
+     *
+     * 1. เนื้อหาที่ตรงกับไฟล์ blade ของโครงการทุกตัวอักษร (สำเนาที่ระบบสร้างตอนติดตั้ง)
+     *    → เรนเดอร์จากไฟล์ของโครงการ ซึ่งเป็นโค้ดที่ผ่าน review แล้ว ผลเหมือนเดิมทุกประการ
+     * 2. เนื้อหาที่ผู้ดูแลแก้เอง → SafeTemplateRenderer ซึ่งแสดงตัวแปรได้แต่รันโค้ดไม่ได้
+     * 3. เนื้อหาเก่าที่ไม่ผ่านไวยากรณ์ใหม่ (เช่นมี `@php`) → **ไม่ประมวลผล** ใช้ไฟล์ตั้งต้น
+     *    ของแบบฟอร์มแทนและบันทึกเตือน เนื้อหาเดิมยังอยู่ในฐานข้อมูลให้ผู้ดูแลแก้ต่อ
+     *
+     * @param  array<string,mixed>  $data
+     *
+     * @throws TemplateSyntaxException เมื่อเนื้อหาไม่ผ่านไวยากรณ์และไม่มีไฟล์ตั้งต้นให้ถอย
+     */
+    public function renderContent(string $html, array $data, ?string $fallbackView = null): string
+    {
+        $trusted = $this->trustedViewFor($html);
+
+        if ($trusted !== null) {
+            return view($trusted, $data)->render();
+        }
+
+        $renderer = app(SafeTemplateRenderer::class);
+
+        if ($renderer->isValid($html) || $fallbackView === null) {
+            return $renderer->render($html, $data);
+        }
+
+        Log::warning('แม่แบบเอกสารใช้ไวยากรณ์ที่ไม่รองรับ ใช้แบบฟอร์มตั้งต้นแทน', [
+            'view' => $fallbackView,
+            'errors' => $renderer->validate($html),
+        ]);
+
+        return view($fallbackView, $data)->render();
+    }
+
+    /**
+     * ชื่อ view ของโครงการที่เนื้อหานี้เป็นสำเนาตรงตัว (ไม่นับความต่างของการขึ้นบรรทัด)
+     */
+    public function trustedViewFor(string $html): ?string
+    {
+        $normalized = $this->normalize($html);
+
+        foreach (array_keys(self::VIEW_TO_TEMPLATE) as $view) {
+            $path = resource_path('views/'.str_replace('.', '/', $view).'.blade.php');
+
+            if (is_file($path) && $this->normalize((string) file_get_contents($path)) === $normalized) {
+                return $view;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalize(string $html): string
+    {
+        return trim(str_replace("\r\n", "\n", $html));
     }
 
     /**

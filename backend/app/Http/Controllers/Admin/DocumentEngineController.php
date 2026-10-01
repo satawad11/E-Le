@@ -23,19 +23,21 @@ use App\Services\DocumentEngine\FieldDictionarySynchronizer;
 use App\Services\DocumentEngine\GeneratedDocumentAccess;
 use App\Services\DocumentEngine\PrintCalibrationSheet;
 use App\Services\DocumentEngine\Providers\LeaveRequestDataProvider;
+use App\Services\DocumentEngine\SafeTemplateRenderer;
 use App\Services\DocumentEngine\TemplateGeometry;
 use App\Services\DocumentEngine\TemplatePackage;
 use App\Services\DocumentEngine\TemplatePreflight;
 use App\Services\DocumentEngine\TemplateResolver;
 use App\Services\DocumentEngine\ValueFormatter;
 use App\Services\LeaveDocumentFields;
+use App\Services\LeaveDocumentTemplateResolver;
 use App\Support\DocumentFilename;
 use App\Support\UploadRules;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use setasign\Fpdi\Fpdi;
 
 /**
@@ -201,6 +203,8 @@ class DocumentEngineController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        $this->assertSafeContent($data['content_html']);
+
         $before = $template->toArray();
         $template->update($data);
 
@@ -219,7 +223,7 @@ class DocumentEngineController extends Controller
     }
 
     /** พรีวิวด้วยข้อมูลตัวอย่าง — ไม่แตะข้อมูลจริงและไม่ต้องมีใบลา */
-    public function previewContent(Request $request, LeaveDocumentFields $fields)
+    public function previewContent(Request $request, LeaveDocumentFields $fields, LeaveDocumentTemplateResolver $resolver)
     {
         $data = $request->validate([
             'content_html' => 'required|string',
@@ -227,8 +231,11 @@ class DocumentEngineController extends Controller
             'orientation' => 'nullable|string|max:20',
         ]);
 
+        $this->assertSafeContent($data['content_html']);
+
         try {
-            $html = Blade::render($data['content_html'], array_merge($fields->sample(), [
+            // ไม่ส่งเข้า Blade — ดู LeaveDocumentTemplateResolver::renderContent() (DC-02)
+            $html = $resolver->renderContent($data['content_html'], array_merge($fields->sample(), [
                 'approverBlocks' => $this->sampleApproverBlocks(),
             ]));
         } catch (\Throwable $exception) {
@@ -238,6 +245,24 @@ class DocumentEngineController extends Controller
         return Pdf::loadHTML($html)
             ->setPaper(strtolower($data['paper_size'] ?? 'a4'), strtolower($data['orientation'] ?? 'portrait'))
             ->stream('preview.pdf');
+    }
+
+    /**
+     * เนื้อหาแม่แบบที่รับจากหน้าเว็บต้องเป็นสำเนาตรงตัวของแบบฟอร์มตั้งต้น หรือผ่านไวยากรณ์ที่ปลอดภัย (DC-02)
+     *
+     * @throws ValidationException
+     */
+    private function assertSafeContent(string $html): void
+    {
+        if (app(LeaveDocumentTemplateResolver::class)->trustedViewFor($html) !== null) {
+            return;
+        }
+
+        $errors = app(SafeTemplateRenderer::class)->validate($html);
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages(['content_html' => $errors]);
+        }
     }
 
     /** สร้าง/คืนค่าแม่แบบตั้งต้นของแบบฟอร์มราชการ */
