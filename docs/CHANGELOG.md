@@ -2,6 +2,16 @@
 
 All notable changes to the E-la project will be documented in this file.
 
+### ปิดข้อค้นพบศูนย์เอกสาร และถอดโมดูลสารบรรณ V1.2 — 2026-10-01
+
+- **[Security] DC-01** เอกสารที่ระบบออกให้เปิด/ดาวน์โหลดได้เฉพาะผู้ที่เปิดใบลาต้นทางได้ (`GeneratedDocumentAccess`, `LeavePolicy::viewableQuery`) รายการไม่คืน snapshot/path อีก
+- **[Security] DC-02** เนื้อหาแม่แบบที่แก้จากหน้าเว็บไม่ผ่าน Blade — `SafeTemplateRenderer` (ADR-DOC-TEMPLATE-01)
+- **[Data] DC-03** แก้/ลบกติกาผูกแบบฟอร์มที่เคยมีผลจะปิดช่วงแทนการเขียนทับ; ห้ามปลุกเวอร์ชันที่ปลดแล้วในที่เดิม; ล็อกแถวตอนสร้าง/เผยแพร่เวอร์ชัน
+- **[UX] DC-04..06** เอกสารแบ่งหน้า+ตัวกรอง, หมวดแบบฟอร์มตามโมดูล, พรีวิวใช้สไตล์หน้ากระดาษเดียวกับการพิมพ์, ปุ่มตามสิทธิ์, โหลดรายส่วน
+- **[Refactor]** ศูนย์ปฏิบัติการระบบย้ายเป็น `system.*` และ `/api/admin/operations/*` (ADR-OPS-01)
+- **[Breaking]** ถอดโมดูลงานสารบรรณ V1.2 ออกทั้งหมด — migration drop มีด่านกันข้อมูลหาย (ADR-MODULE-02)
+- รายงาน: `docs/checkpoints/DOC-CENTER-FIX-AND-SARABAN-REMOVAL-2026-10-01.md` · backend 1,096 passed, frontend 135 passed, PHPStan/Pint/lint/typecheck/build ผ่าน
+
 ### เทสต์ล้มเองเมื่อขึ้นปีงบประมาณใหม่ — 2026-10-01
 
 - เทสต์ 12 ข้อใน 6 คลาส (ApprovalTest, LeaveTest, LeaveFormBindingTest, LeavePendingCancellationConcurrencyTest, LeaveApprovalCutoverTest, WorkflowAuthorizationTest) สร้างสิทธิ์วันลาด้วยปีปฏิทิน (`now()->year`) แต่คีย์ `leave_balances.year` คือปีที่ปีงบประมาณสิ้นสุด ตั้งแต่ 1 ต.ค. ใบลาในเทสต์จึงตกปีงบถัดไปและล้มเองทุกปีช่วง ต.ค.–ธ.ค. — ตรึงนาฬิกากลางปีงบด้วย trait `Tests\Concerns\FreezesClockMidFiscalYear` (แนวเดียวกับ commit 8307f5b) ไม่แก้โค้ดระบบ

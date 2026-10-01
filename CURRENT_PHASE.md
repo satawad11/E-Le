@@ -10,6 +10,10 @@
 
 `PROD-00 Architecture Freeze`
 
+> **2026-10-01** — ปิด DC-01..06 ของศูนย์จัดการเอกสาร ย้ายศูนย์ปฏิบัติการเป็น `system.*` และถอดโมดูลสารบรรณ V1.2
+> backend 1,096 passed · frontend 135 passed · `docs/checkpoints/DOC-CENTER-FIX-AND-SARABAN-REMOVAL-2026-10-01.md`
+> ค้าง: รัน migration drop บน production หลังสำรอง (`SARABAN_DROP_CONFIRMED`), ตรวจ PROD-02 ซ้ำบน production
+
 > เสร็จเมื่อ 2026-08-15 · 456 tests / 1,328 assertions · Pint 452 files · frontend build 879 modules
 > `docs/checkpoints/LEGACY-12-REPORT.md` · `docs/checkpoints/LEGACY-MODERNIZATION-FINAL-REPORT.md`
 > **LEGACY-00 ถึง LEGACY-12 = FINAL PASS** · หยุดตามคำสั่ง

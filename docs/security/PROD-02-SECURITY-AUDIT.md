@@ -170,3 +170,21 @@ The application maintains strong separation of privileges, secure defaults, and 
 
 **Status:** เปิดค้าง — PROD-02 ยังไม่ผ่าน · ต้องตรวจซ้ำบน environment จริงของ Production
 ก่อนจึงจะประเมินสถานะ PASS ได้
+
+---
+
+# ภาคผนวก ค — ปิดข้อค้นพบศูนย์จัดการเอกสาร และพื้นผิวที่ลดลงจากการถอดสารบรรณ (2026-10-01)
+
+| รหัส | ระดับ | สถานะ | การแก้ | หลักฐาน |
+|---|---|---|---|---|
+| DC-01 | P1 | ปิดแล้ว | ผูกเอกสารที่ออกแล้วกลับไปที่ใบลาต้นทาง ให้ `LeavePolicy` ตัดสิน · ต้นทางที่ไม่รู้จักถูกปฏิเสธ · ไม่คืน snapshot/path | `GeneratedDocumentAuthorizationTest` |
+| DC-02 | P1 | ปิดแล้ว | เนื้อหาแม่แบบจากฐานข้อมูล/พรีวิวไม่ผ่าน Blade · `SafeTemplateRenderer` ไม่มี eval | `SafeTemplateRendererTest`, `TemplateContentSecurityTest` |
+| DC-03 | P1 | ปิดแล้ว | กติกาที่เคยมีผลปิดช่วงแทนเขียนทับ/ลบ · audit before/after · row lock | `DocumentTemplateHistoryTest` |
+
+พื้นผิวการโจมตีที่ลดลง: route `/api/saraban/*`, `/api/v1/saraban/*` และหน้าตรวจสอบสาธารณะ `/api/saraban/verify/*` ถูกถอดทั้งหมด
+(`RouteAuthorizationAuditTest::test_no_saraban_route_remains`) · ศูนย์ปฏิบัติการย้ายไปใต้สิทธิ์ `system.*` โดยทุก route ต้องประกาศ ability
+(`test_every_operations_route_declares_the_ability_it_requires`)
+
+## ค.1 สถานะ
+
+**Status:** เปิดค้าง — DC-01..03 ปิดแล้ว แต่ PROD-02 ยังต้องตรวจซ้ำบน environment จริงของ Production ตามภาคผนวก ข
