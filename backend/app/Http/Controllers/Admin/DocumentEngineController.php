@@ -326,6 +326,9 @@ class DocumentEngineController extends Controller
             : $template->versions()->orderByDesc('version')->first();
 
         $version = DB::transaction(function () use ($template, $source, $request) {
+            // ล็อกแม่แบบก่อนหาเลขเวอร์ชันถัดไป คำขอพร้อมกันจะได้ไม่ชนเลขเดียวกัน (DC-03)
+            DocumentTemplate::whereKey($template->id)->lockForUpdate()->first();
+
             $version = $template->versions()->create([
                 'version' => ($template->versions()->max('version') ?? 0) + 1,
                 'status' => DocumentTemplateVersion::STATUS_DRAFT,
@@ -410,6 +413,19 @@ class DocumentEngineController extends Controller
         abort_if($version->status === DocumentTemplateVersion::STATUS_ACTIVE, 422, 'เวอร์ชันนี้เผยแพร่อยู่แล้ว');
 
         /*
+         * DC-03 — เวอร์ชันที่ปลดแล้วห้ามกลับมาใช้ในที่เดิม
+         *
+         * การเผยแพร่เขียน effective_from ใหม่ ช่วงที่เวอร์ชันนี้เคยมีผลจึงหายไปจากประวัติ
+         * การย้อนกลับต้องคัดลอกเป็นเวอร์ชันใหม่ (createVersion + from_version_id) แทน
+         */
+        abort_if(
+            $version->status === DocumentTemplateVersion::STATUS_RETIRED
+                && ($version->effective_to !== null || $version->published_at !== null || $version->isReferenced()),
+            422,
+            'เวอร์ชันนี้ถูกปลดแล้ว — หากต้องการกลับไปใช้ ให้สร้างเวอร์ชันใหม่จากเวอร์ชันนี้แล้วเผยแพร่',
+        );
+
+        /*
          * ตรวจเต็มชุดก่อนเผยแพร่ (DESIGNER-04)
          *
          * ตำแหน่งฟิลด์อาจมาจากการนำเข้าหรือคัดลอกเวอร์ชัน ไม่ได้ผ่านหน้าออกแบบทุกครั้ง
@@ -426,6 +442,11 @@ class DocumentEngineController extends Controller
         }
 
         DB::transaction(function () use ($version, $request) {
+            // ล็อกแม่แบบไว้ก่อน การเผยแพร่สองเวอร์ชันพร้อมกันจะได้ไม่เกิด ACTIVE ซ้อนกัน
+            DocumentTemplate::whereKey($version->document_template_id)->lockForUpdate()->first();
+            $current = DocumentTemplateVersion::whereKey($version->id)->lockForUpdate()->firstOrFail();
+            abort_if($current->status === DocumentTemplateVersion::STATUS_ACTIVE, 422, 'เวอร์ชันนี้ถูกเผยแพร่ไประหว่างนั้นแล้ว กรุณาโหลดใหม่');
+
             // เวอร์ชันที่ใช้อยู่เดิมถูกปลดเป็น RETIRED (ไม่ลบ) เอกสารเก่าที่อ้างอยู่จึงยังพิมพ์ได้
             DocumentTemplateVersion::where('document_template_id', $version->document_template_id)
                 ->where('id', '!=', $version->id)
@@ -572,6 +593,10 @@ class DocumentEngineController extends Controller
         }
 
         DB::transaction(function () use ($version, $data) {
+            // ตรวจซ้ำภายใต้ล็อก — เวอร์ชันอาจถูกเผยแพร่ไประหว่างที่คำขอนี้กำลังตรวจตำแหน่ง (DC-03)
+            $current = DocumentTemplateVersion::whereKey($version->id)->lockForUpdate()->firstOrFail();
+            abort_unless($current->status === DocumentTemplateVersion::STATUS_DRAFT, 422, 'เวอร์ชันนี้ไม่ใช่ฉบับร่างแล้ว กรุณาโหลดใหม่');
+
             $version->fieldMappings()->delete();
 
             foreach ($data['mappings'] as $mapping) {
@@ -971,22 +996,82 @@ class DocumentEngineController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        $rule = DocumentBindingRule::updateOrCreate(
-            ['id' => $data['id'] ?? null],
-            $data + ['priority' => $data['priority'] ?? 100, 'is_active' => $data['is_active'] ?? true, 'created_by' => $request->user()?->id],
-        );
+        $attributes = collect($data)->except('id')->all()
+            + ['priority' => $data['priority'] ?? 100, 'is_active' => $data['is_active'] ?? true];
 
-        $this->audit->log('document_binding_changed', 'DocumentBindingRule', $rule->id, after: $rule->toArray());
+        $existing = isset($data['id']) ? DocumentBindingRule::findOrFail($data['id']) : null;
+
+        /*
+         * DC-03 — กติกาที่เคยมีผลแล้วห้ามแก้ทับ
+         *
+         * TemplateResolver เลือกแม่แบบตามช่วงวันที่ของกติกา ถ้าแก้แถวเดิมทับ การย้อนดูว่า
+         * "วันนั้นใช้แบบฟอร์มอะไร" จะได้คำตอบใหม่แทนคำตอบจริง จึงปิดช่วงของแถวเดิมไว้ที่เมื่อวาน
+         * แล้วออกแถวใหม่ที่มีผลตั้งแต่วันนี้ (หรือวันที่ระบุในอนาคต)
+         */
+        if ($existing !== null && $this->bindingHasTakenEffect($existing)) {
+            $before = $existing->toArray();
+
+            $rule = DB::transaction(function () use ($existing, $attributes, $request) {
+                $existing->update(['effective_to' => now()->subDay()->toDateString()]);
+
+                $from = $attributes['effective_from'] ?? null;
+                $attributes['effective_from'] = $from !== null && $from > now()->toDateString() ? $from : now()->toDateString();
+
+                return DocumentBindingRule::create($attributes + ['created_by' => $request->user()?->id]);
+            });
+
+            $this->audit->log('document_binding_superseded', 'DocumentBindingRule', $existing->id, before: $before, after: ['closed' => $existing->fresh()->toArray(), 'replacement' => $rule->toArray()]);
+
+            return response()->json(['message' => 'บันทึกกติกาใหม่แล้ว กติกาเดิมถูกปิดช่วงไว้เป็นประวัติ', 'rule' => $rule->load('template')]);
+        }
+
+        $before = $existing?->toArray();
+        $rule = $existing ?? new DocumentBindingRule(['created_by' => $request->user()?->id]);
+        $rule->fill($attributes)->save();
+
+        $this->audit->log('document_binding_changed', 'DocumentBindingRule', $rule->id, before: $before, after: $rule->toArray());
 
         return response()->json(['message' => 'บันทึกกติกาการผูกแบบฟอร์มเรียบร้อยแล้ว', 'rule' => $rule->load('template')]);
     }
 
+    /**
+     * ลบได้เฉพาะกติกาที่ยังไม่เคยมีผล — ที่เคยมีผลแล้วถูก "ยุติ" ด้วยการปิดช่วงวันที่ (DC-03)
+     */
     public function deleteBinding(DocumentBindingRule $rule)
     {
+        $before = $rule->toArray();
+
+        if ($this->bindingHasTakenEffect($rule)) {
+            $yesterday = now()->subDay()->toDateString();
+
+            if ($rule->effective_to === null || $rule->effective_to->toDateString() > $yesterday) {
+                $rule->update(['effective_to' => $yesterday]);
+            }
+
+            $this->audit->log('document_binding_ended', 'DocumentBindingRule', $rule->id, before: $before, after: $rule->fresh()->toArray());
+
+            return response()->json(['message' => 'ยุติกติกาแล้ว (กติกาเคยมีผลจึงเก็บไว้เป็นประวัติ ไม่ลบ)']);
+        }
+
         $rule->delete();
-        $this->audit->log('document_binding_deleted', 'DocumentBindingRule', $rule->id);
+        $this->audit->log('document_binding_deleted', 'DocumentBindingRule', $rule->id, before: $before);
 
         return response()->json(['message' => 'ลบกติกาเรียบร้อยแล้ว']);
+    }
+
+    /**
+     * กติกานี้เคยถูกใช้เลือกแบบฟอร์มในวันที่ผ่านมาแล้วหรือไม่
+     *
+     * ต้องมีอยู่และมีผลตั้งแต่เมื่อวานหรือก่อนหน้า — กติกาที่เพิ่งสร้างวันนี้หรือยังไม่ถึงวันมีผล
+     * ยังไม่เคยเป็นคำตอบของวันใดในอดีต จึงแก้ในที่เดิมได้
+     */
+    private function bindingHasTakenEffect(DocumentBindingRule $rule): bool
+    {
+        $yesterday = now()->subDay()->toDateString();
+
+        return $rule->created_at !== null
+            && $rule->created_at->toDateString() <= $yesterday
+            && ($rule->effective_from === null || $rule->effective_from->toDateString() <= $yesterday);
     }
 
     // ───────────────────────────── เอกสารที่สร้างแล้ว ─────────────────────────────
