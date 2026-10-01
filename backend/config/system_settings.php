@@ -5,6 +5,9 @@ return [
         'institution_name',
         'short_name_th',
         'organization_logo',
+        // ช่วงวันที่ยังยกเลิกใบลาที่รออนุมัติได้ — หน้าเว็บ (MyLeavesView) ใช้ควบคุมปุ่ม
+        // ให้ตรงกับค่าที่ผู้ดูแลตั้งไว้ เป็นตัวเลขนโยบายทั่วไป ไม่ใช่ข้อมูลอ่อนไหว
+        'cancel_allowed_days',
     ],
 
     'secret_keys' => [

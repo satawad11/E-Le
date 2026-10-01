@@ -417,6 +417,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useLeaveStore } from '../stores/leave'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
+import { useSettingStore } from '../stores/settingStore'
 import { useConfirm } from '../composables/useConfirm'
 import { compositeStatusLabel, compositeStatusBadgeClass } from '../utils/statusHelper'
 import { ThaiDateFormatter } from '../utils/ThaiDateFormatter'
@@ -433,7 +434,18 @@ import api from '../axios'
 const leaveStore = useLeaveStore()
 const authStore  = useAuthStore()
 const alertStore = useAlertStore()
+const settingStore = useSettingStore()
 const { confirmAction, confirmDanger } = useConfirm()
+
+/*
+ * ช่วงเวลาที่ยังกดยกเลิกใบลาที่ "รออนุมัติ" ได้ (นับจากวันที่สร้าง)
+ * มาจากค่าตั้งค่าระบบ `cancel_allowed_days` ที่ผู้ดูแลตั้งได้ (ค่าเริ่มต้น 5)
+ * ไม่ฝังเลขตายตัวไว้ในโค้ด เพื่อให้ปุ่มฝั่งหน้าเว็บตรงกับค่าที่ตั้งไว้จริง
+ */
+const cancelAllowedDays = computed(() => {
+  const raw = Number(settingStore.settings?.cancel_allowed_days)
+  return Number.isFinite(raw) ? raw : 5
+})
 
 const loading      = ref(true)
 const loadError    = ref('')
@@ -481,8 +493,8 @@ const canCancel = (leave) => {
   const createdDate = new Date(leave.created_at);
   const now = new Date();
   const diffTime = Math.abs(now - createdDate);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-  return diffDays <= 5;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays <= cancelAllowedDays.value;
 }
 
 /*
@@ -804,6 +816,7 @@ const submitPartialCancel = async () => {
 
 onMounted(() => {
   loadLeaves()
+  if (!settingStore.loaded) settingStore.fetchSettings()
 })
 </script>
 

@@ -1,5 +1,27 @@
 # TASKS
 
+## DOCUMENT-CENTER-REVIEW-20260919 — วิเคราะห์ศูนย์จัดการเอกสาร
+
+- [x] ตรวจ frontend/API/model/resolver และบันทึกข้อค้นพบ DC-01 ถึง DC-06 ใน `docs/checkpoints/DOCUMENT-CENTER-REVIEW-2026-09-19.md`
+- [x] รัน lint/typecheck/tests/build ตามขอบเขต และบันทึกผลรวมถึงข้อจำกัดในรายงาน; งานนี้วิเคราะห์และเพิ่มเอกสารเท่านั้น
+- [ ] DC-01 จำกัด scope รายการ/ดาวน์โหลดเอกสารและไม่คืน snapshot ในรายการ
+- [ ] DC-02 ปิดการประมวลผล PHP จากแม่แบบที่ผู้ใช้ส่งผ่าน API
+- [ ] DC-03 รักษาประวัติกติกาผูกแม่แบบแบบ effective-dated
+- [ ] DC-04 เพิ่ม pagination เอกสาร; DC-05 แก้ตัวกรองหมวด; DC-06 ใช้ page style เดียวกันในพรีวิวและพิมพ์จริง
+
+
+## SYSTEM-REVIEW-FIX-20260919 — ปิดข้อค้นพบ 6 รายการจากการตรวจระบบ
+
+- [x] คงขอบเขตสิทธิ์โทเคนเมื่อต่ออายุ รวมโทเคนสิทธิ์ว่างและ wildcard
+- [x] ตรวจผู้มอบอำนาจกับผู้มีสิทธิ์จริงของเรื่อง/ขั้น ทั้ง legacy และ workflow delegation
+- [x] จำกัดสิทธิ์ `leave.management.manage` ให้ใช้ข้ามขั้นได้เฉพาะใบลา
+- [x] แก้ข้อมูล transitions ของสายงานสารบรรณให้คืนชื่อและเงื่อนไขจากโมเดลได้
+- [x] เปรียบเทียบ multipart จากฟิลด์และเนื้อหาไฟล์ โดยการเปลี่ยน boundary ไม่ทำให้ส่งซ้ำไม่ได้
+- [x] รักษาช่วงเวลา OT ที่ผู้อนุญาตปรับไว้ทั้ง API และฟอร์มขั้นอนุมัติ
+- [x] เพิ่ม regression tests; โค้ดและเทสต์ถูกรวมในประวัติ repository แล้วก่อนกลับมาปิดงาน
+- [x] ตรวจ quality gates บน HEAD ล่าสุด: backend 1,380 passed / 2 skipped (รันสองส่วนที่ข้ามซ้ำพร้อม repository ครบ: 9 passed / 0 skipped); Pint 768 files; PHPStan; frontend lint/typecheck/213 tests/build ผ่าน — `docs/checkpoints/SYSTEM-REVIEW-FIX-2026-09-19.md`
+- ไม่มี migration, dependency upgrade หรือ API endpoint ใหม่ในงานนี้
+
 ## SARABAN-HUB-CONSOLIDATION-20260916 — Saraban Module Hubs & Redundancy Consolidation (การปรับปรุงโครงสร้างและยุบรวมศูนย์งานสารบรรณ) ✅ เสร็จ 2026-09-16
 - [x] **1. Unified Information Architecture & Menu Tree (จัดกลุ่มเมนูจาก 21 รายการเหลือ 7+1 ศูนย์งานหลัก)**:
   - เมนูหลักฝั่งผู้ใช้งาน (`saraban`):

@@ -55,14 +55,14 @@
         </span>
       </router-link>
       <router-link
-        to="/approvals/cancel"
+        to="/cancel-approvals"
         class="px-3.5 py-2 rounded-xl transition-colors inline-flex items-center gap-1.5"
         :class="isCancel ? 'bg-[#800000] text-white shadow-xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'"
       >
         <span>อนุมัติยกเลิกใบลา</span>
       </router-link>
       <router-link
-        to="/overtime/orders"
+        to="/admin/overtime-orders"
         class="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors inline-flex items-center gap-1.5"
       >
         <span>คำสั่ง OT รออนุมัติ ↗</span>
@@ -750,7 +750,8 @@ const loadApprovals = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    await leaveStore.fetchApprovals(authStore.user?.id)
+    // /approvals/pending กรองผู้อนุมัติตามสิทธิ์ฝั่ง server อยู่แล้ว ไม่ต้องส่ง user id
+    await leaveStore.fetchApprovals()
   } catch (e) {
     console.error(e)
     loadError.value = getErrorMessage(e, 'ไม่สามารถโหลดรายการรออนุมัติได้')

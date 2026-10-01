@@ -2,6 +2,39 @@
 
 All notable changes to the E-la project will be documented in this file.
 
+### เทสต์ล้มเองเมื่อขึ้นปีงบประมาณใหม่ — 2026-10-01
+
+- เทสต์ 12 ข้อใน 6 คลาส (ApprovalTest, LeaveTest, LeaveFormBindingTest, LeavePendingCancellationConcurrencyTest, LeaveApprovalCutoverTest, WorkflowAuthorizationTest) สร้างสิทธิ์วันลาด้วยปีปฏิทิน (`now()->year`) แต่คีย์ `leave_balances.year` คือปีที่ปีงบประมาณสิ้นสุด ตั้งแต่ 1 ต.ค. ใบลาในเทสต์จึงตกปีงบถัดไปและล้มเองทุกปีช่วง ต.ค.–ธ.ค. — ตรึงนาฬิกากลางปีงบด้วย trait `Tests\Concerns\FreezesClockMidFiscalYear` (แนวเดียวกับ commit 8307f5b) ไม่แก้โค้ดระบบ
+- `LeaveQueryController::teamCalendar()` อ่าน relation ผ่าน `getRelationValue()` ปิด PHPStan 2 ข้อ
+- ผล: backend 1,385 passed / 0 failed, PHPStan ไม่มี error, Pint ผ่าน
+
+### ตรวจสอบและแก้ระบบลาออนไลน์ (ความปลอดภัย + บั๊ก UX) — 2026-09-20
+
+- **[Security] ปฏิทินวันลาทีมไม่รั่วข้อมูลอ่อนไหวอีกต่อไป**: `LeaveQueryController::teamCalendar()` เดิมคืน Leave model เต็ม (รวม `reason`, `contact_address`, `cancellation_reason`, `meta_data`) ให้ผู้ใช้ทุกคนในหน่วยงานเดียวกัน — ปรับให้ select เฉพาะคอลัมน์ที่ปฏิทินต้องใช้และ map เป็น payload เฉพาะชื่อผู้ลา/ประเภท/ช่วงวัน/สถานะ สอดคล้องกับ `LeavePolicy::view` เพิ่ม `TeamCalendarPrivacyTest` (3 tests) ล็อกไม่ให้ field อ่อนไหวหลุด
+- **[UX] แก้ลิงก์นำทางเสียในหน้าอนุมัติ** (`ApprovalsView.vue`): `/approvals/cancel` → `/cancel-approvals`, `/overtime/orders` → `/admin/overtime-orders` (เดิมกดแล้วตก 404)
+- **[UX] กฎเตือนนโยบายในหน้ายื่นใบลาทำงานจริง**: `policyRules`/`evidenceRequired` เดิมอ่าน `form.total_days` ที่ไม่มีในฟอร์ม จึงไม่เคยเตือน "เกินเพดานต่อครั้ง"/"ต้องแนบหลักฐาน" — เปลี่ยนไปใช้ `calculatedDays`
+- **[UX] บังคับลายเซ็นก่อนส่งใบลาฝั่ง client** ให้สอดคล้องกับหน้าอนุมัติ (ร่างยังไม่ต้องมี การบังคับจริงยังอยู่ที่ backend)
+- **[UX] ปุ่มยกเลิกใบลาอิงค่าตั้งค่าจริง**: `MyLeavesView.canCancel` เดิมฝังเลข 5 วันตายตัว — เปลี่ยนไปอ่าน `cancel_allowed_days` จาก settings (เพิ่มคีย์นี้เข้า `system_settings.public_keys` ให้ `/settings` คืนค่าได้)
+- **[Cleanup]** เพิ่ม action สาธารณะ `leaveStore.refetchBalances()` แทนการที่ `DashboardView` แหย่ guard `_fetchingBalances` โดยตรง; ลบ argument ที่ถูกทิ้งใน `fetchApprovals()`
+- ผลตรวจ: frontend 213 tests + lint + typecheck + build ผ่าน; backend leave suite 349 tests + settings 42 tests ผ่าน; Pint ผ่าน
+- คงค้าง (follow-up): จัดรูปแบบ `LeaveEvidenceManager.vue` ที่ถูกบีบบรรทัดเดียว (เลื่อนเพราะเป็น cosmetic และเสี่ยงทำคอมโพเนนต์ที่ทำงานอยู่พัง)
+
+### วิเคราะห์ศูนย์จัดการเอกสาร — 2026-09-19
+
+- เพิ่มรายงาน `docs/checkpoints/DOCUMENT-CENTER-REVIEW-2026-09-19.md` พร้อมหลักฐานและแนวทางแก้ 6 ประเด็น: resource scope/snapshot, Blade execution, ประวัติกติกา, pagination, หมวดแบบฟอร์ม และความตรงกันของพรีวิว
+- อัปเดต TASKS และ TRACEABILITY; ไม่มีการแก้ application code, API, schema, migration หรือ deploy ข้อค้นพบยังเปิดอยู่
+
+
+### ปิดงานแก้ข้อค้นพบจากการตรวจระบบ 6 รายการ — 2026-09-19
+
+- ต่ออายุโทเคนโดยรักษา abilities เดิม; ผู้รับมอบอำนาจต้องมาจากผู้มีสิทธิ์กับเรื่องจริง และสิทธิ์จัดการใบลาไม่ขยายไปงานสารบรรณ
+- สายงานสารบรรณคืน transition metadata ได้โดยไม่เกิด TypeError สำหรับผู้มีสิทธิ์ดำเนินการ
+- Idempotency ของ multipart เปรียบเทียบฟิลด์และ hash ของไฟล์; ส่งเนื้อหาเดิมซ้ำได้แม้ boundary เปลี่ยน และปฏิเสธกุญแจเดิมที่ใช้กับเนื้อหาต่างกัน
+- OT ใช้ช่วงเวลาที่อนุญาตแล้วเป็นค่าเริ่มต้นของการอนุมัติทั้ง backend และ frontend
+- การแก้และ regression tests อยู่ในประวัติ repository แล้ว; รอบนี้ตรวจยืนยันกับ HEAD ล่าสุดและเติมเอกสารส่งมอบ ดู `docs/checkpoints/SYSTEM-REVIEW-FIX-2026-09-19.md`
+- ผลล่าสุด: backend 1,380 passed / 2 skipped และตรวจซ้ำสองคลาสที่มีข้อข้ามผ่าน 9/9 เมื่อ mount repository ครบ; frontend 213 tests; Pint 768 files; PHPStan/lint/typecheck/build ผ่าน
+- ไม่มี migration หรือ endpoint ใหม่ และไม่มีการ deploy โดยงานนี้
+
 ### การปรับปรุงโครงสร้างและยุบรวมศูนย์งานสารบรรณ (Saraban Module Hubs & Redundancy Consolidation) — 2026-09-16
 
 - **1. การจัดกลุ่มและยุบรวมเมนูสารบรรณ (Unified Information Architecture)**:

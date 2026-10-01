@@ -59,6 +59,19 @@ export const useLeaveStore = defineStore('leave', {
       this.balances = res.data;
     },
     /*
+     * บังคับดึงยอดวันลาคงเหลือใหม่ (เช่น เมื่อผู้ใช้เปลี่ยนปีงบประมาณ)
+     *
+     * ห้ามผู้เรียกภายนอกไปเซ็ต `_fetchingBalances` เองเพื่อ "ปลดล็อก" guard เพราะถ้ามี
+     * คำขอกำลังวิ่งอยู่จะเกิดการดึงซ้อนและทำลายสัญญาของ guard — action นี้รอคำขอที่ค้าง
+     * ให้จบก่อน แล้วจึงเริ่มดึงชุดใหม่ตามปีที่ระบุ
+     */
+    async refetchBalances(fiscalYear = null) {
+      if (this._fetchingBalances) {
+        try { await this._fetchingBalances; } catch { /* จะเริ่มดึงใหม่อยู่แล้ว */ }
+      }
+      return this.fetchBalances(fiscalYear);
+    },
+    /*
      * ทุกคำสั่งที่ทำให้ "วันลาคงเหลือ" เปลี่ยน ต้องดึงทั้งรายการใบลาและโควตาใหม่พร้อมกัน
      *
      * เดิมมีแต่ `cancelLeave` ที่ดึงโควตาใหม่ ที่เหลือ (ยื่นใบลา อนุมัติ ปฏิเสธ

@@ -10,10 +10,12 @@ use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\FreezesClockMidFiscalYear;
 use Tests\TestCase;
 
 class ApprovalTest extends TestCase
 {
+    use FreezesClockMidFiscalYear;
     use RefreshDatabase;
 
     protected User $employee;
@@ -27,6 +29,8 @@ class ApprovalTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->freezeClockMidFiscalYear();
 
         $empRole = Role::create(['name' => 'Employee', 'guard_name' => 'web']);
         $mgmtRole = Role::create(['name' => 'Manager',  'guard_name' => 'web']);

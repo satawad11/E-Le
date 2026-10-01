@@ -16,6 +16,7 @@ use App\Services\Workflow\LeaveWorkflowProvisioner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Permission\Models\Permission;
+use Tests\Concerns\FreezesClockMidFiscalYear;
 use Tests\TestCase;
 
 /**
@@ -27,6 +28,7 @@ use Tests\TestCase;
  */
 class WorkflowAuthorizationTest extends TestCase
 {
+    use FreezesClockMidFiscalYear;
     use RefreshDatabase;
 
     private Role $hr;
@@ -40,6 +42,8 @@ class WorkflowAuthorizationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->freezeClockMidFiscalYear();
 
         $this->hr = Role::firstOrCreate(['name' => 'HR Head', 'guard_name' => 'web']);
         $this->deputy = Role::firstOrCreate(['name' => 'Deputy Director', 'guard_name' => 'web']);

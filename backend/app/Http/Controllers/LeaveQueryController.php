@@ -195,7 +195,14 @@ class LeaveQueryController extends Controller
     public function teamCalendar(Request $request)
     {
         $user = $request->user();
-        $query = Leave::with(['user.profile', 'user.orgUnit', 'type'])
+
+        // ปฏิทินทีมต้องการเพียงชื่อผู้ลา/ประเภท/ช่วงวัน/สถานะ จึง select เฉพาะคอลัมน์
+        // ที่จำเป็น และ map เป็น payload ที่ไม่มีข้อมูลอ่อนไหว (reason, contact_address,
+        // cancellation_reason, meta_data) เพื่อไม่ให้เพื่อนร่วมหน่วยงานเห็นเหตุผลการลา
+        // ของกันและกัน — สอดคล้องกับ LeavePolicy::view ที่ปกป้องข้อมูลเหล่านี้
+        $query = Leave::query()
+            ->select(['id', 'user_id', 'leave_type_id', 'start_date', 'end_date', 'leave_period', 'status'])
+            ->with(['user:id,name', 'type:id,name'])
             ->whereIn('status', ['Approved', 'Pending']);
 
         if (! $user->can('attendance.view_all')) {
@@ -215,7 +222,22 @@ class LeaveQueryController extends Controller
                 ->orWhereYear('end_date', $year);
         });
 
-        return response()->json($query->get());
+        $leaves = $query->get()->map(function (Leave $leave) {
+            $owner = $leave->getRelationValue('user');
+            $type = $leave->getRelationValue('type');
+
+            return [
+                'id' => $leave->id,
+                'status' => $leave->status,
+                'start_date' => optional($leave->start_date)->toDateString(),
+                'end_date' => optional($leave->end_date)->toDateString(),
+                'leave_period' => $leave->leave_period,
+                'user' => $owner ? ['id' => $owner->id, 'name' => $owner->name] : null,
+                'type' => $type ? ['id' => $type->id, 'name' => $type->name] : null,
+            ];
+        })->values();
+
+        return response()->json($leaves);
     }
 
     public function types()

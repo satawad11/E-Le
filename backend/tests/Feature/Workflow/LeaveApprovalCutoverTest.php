@@ -14,6 +14,7 @@ use App\Models\Workflow\WorkflowInstance;
 use App\Services\Workflow\LeaveWorkflowProvisioner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Concerns\FreezesClockMidFiscalYear;
 use Tests\TestCase;
 
 /**
@@ -34,6 +35,7 @@ use Tests\TestCase;
  */
 class LeaveApprovalCutoverTest extends TestCase
 {
+    use FreezesClockMidFiscalYear;
     use RefreshDatabase;
 
     private User $employee;
@@ -47,6 +49,8 @@ class LeaveApprovalCutoverTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->freezeClockMidFiscalYear();
 
         $department = OrgUnit::factory()->create(['name' => 'ทดสอบ']);
         Role::create(['name' => 'Employee', 'guard_name' => 'web']);

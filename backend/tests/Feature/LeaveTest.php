@@ -9,10 +9,12 @@ use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\FreezesClockMidFiscalYear;
 use Tests\TestCase;
 
 class LeaveTest extends TestCase
 {
+    use FreezesClockMidFiscalYear;
     use RefreshDatabase;
 
     protected User $employee;
@@ -22,6 +24,8 @@ class LeaveTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->freezeClockMidFiscalYear();
 
         Role::create(['name' => 'Employee', 'guard_name' => 'web']);
         $dept = OrgUnit::factory()->create(['name' => 'ทดสอบ']);

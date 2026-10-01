@@ -13,6 +13,7 @@ use App\Services\Attendance\LeaveAttendanceSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use RuntimeException;
+use Tests\Concerns\FreezesClockMidFiscalYear;
 use Tests\TestCase;
 
 /**
@@ -25,6 +26,7 @@ use Tests\TestCase;
  */
 class LeavePendingCancellationConcurrencyTest extends TestCase
 {
+    use FreezesClockMidFiscalYear;
     use RefreshDatabase;
 
     private User $owner;
@@ -36,6 +38,8 @@ class LeavePendingCancellationConcurrencyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->freezeClockMidFiscalYear();
 
         $department = OrgUnit::factory()->create(['name' => 'ฝ่ายทดสอบ']);
         $this->type = LeaveType::create(['name' => 'ลาพักผ่อน', 'max_days' => 10]);

@@ -544,9 +544,8 @@ const fetchDashboard = async () => {
       selectedYear.value = dashRes.data.fiscal_year
     }
 
-    // Re-fetch balances for the selected fiscal year
-    leaveStore._fetchingBalances = false // reset guard
-    leaveStore.fetchBalances(selectedYear.value)
+    // Re-fetch balances for the selected fiscal year (ผ่าน action สาธารณะ ไม่แหย่ guard ภายใน)
+    leaveStore.refetchBalances(selectedYear.value)
   } catch (e) {
     console.error(e)
     fetchError.value = getErrorMessage(e, 'ไม่สามารถโหลดข้อมูลสถิติหน้าหลักได้')

@@ -618,7 +618,8 @@ const policyRules = computed(() => {
   if (!policy) return []
 
   const rules = []
-  const days = Number(form.total_days || 0)
+  // ใช้จำนวนวันทำการที่คำนวณจริงของคำขอ (calculatedDays) ฟอร์มไม่มี field total_days
+  const days = Number(calculatedDays.value || 0)
 
   if (policy.attachment_required_after_days !== null && policy.attachment_required_after_days !== undefined) {
     const threshold = Number(policy.attachment_required_after_days)
@@ -657,7 +658,7 @@ const allowsHalfDay = computed(() => selectedBalance.value?.policy?.allow_half_d
 const evidenceRequired = computed(() => {
   const threshold = selectedBalance.value?.policy?.attachment_required_after_days
 
-  return threshold !== null && threshold !== undefined && Number(form.total_days || 0) >= Number(threshold)
+  return threshold !== null && threshold !== undefined && Number(calculatedDays.value || 0) >= Number(threshold)
 })
 
 /*
@@ -957,6 +958,23 @@ const calcDays = () => {
 }
 
 const handleSubmit = async (asDraft = false) => {
+  /*
+   * ลายเซ็นเป็นข้อบังคับสำหรับการ "ส่งคำขอ" จริง (ร่างไม่ต้องมี)
+   * ตรวจฝั่ง client ก่อนเพื่อ UX ที่สอดคล้องกับหน้าอนุมัติ (ApprovalsView)
+   * — วาดแล้วต้องบันทึกก่อน / ใช้ลายเซ็นโปรไฟล์ต้องมีลายเซ็นในโปรไฟล์จริง
+   * การบังคับจริงยังอยู่ที่ backend
+   */
+  if (asDraft !== true) {
+    if (sigType.value === 'draw' && !sigBase64.value) {
+      alertStore.error('กรุณาวาดและบันทึกลายเซ็นก่อนส่งคำขอ')
+      return
+    }
+    if (sigType.value === 'profile' && !authStore.user?.profile?.signature_path) {
+      alertStore.error('ไม่พบลายเซ็นในโปรไฟล์ กรุณาวาดลายเซ็น หรือเพิ่มลายเซ็นในโปรไฟล์ก่อนส่งคำขอ')
+      return
+    }
+  }
+
   loading.value = true
   savingDraft.value = asDraft === true
   try {

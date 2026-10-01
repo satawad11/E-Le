@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\LeaveDocumentFields;
 use App\Services\LeaveDocumentTemplateResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\FreezesClockMidFiscalYear;
 use Tests\TestCase;
 
 /**
@@ -19,6 +20,7 @@ use Tests\TestCase;
  */
 class LeaveFormBindingTest extends TestCase
 {
+    use FreezesClockMidFiscalYear;
     use RefreshDatabase;
 
     private User $employee;
@@ -26,6 +28,8 @@ class LeaveFormBindingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->freezeClockMidFiscalYear();
 
         Role::firstOrCreate(['name' => 'Employee', 'guard_name' => 'web']);
         $department = OrgUnit::factory()->create(['name' => 'แผนกวิชาช่างยนต์']);
