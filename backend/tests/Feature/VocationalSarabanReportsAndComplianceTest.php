@@ -41,6 +41,7 @@ class VocationalSarabanReportsAndComplianceTest extends TestCase
             'saraban.document.view',
             'saraban.document.register',
             'saraban.compliance.view',
+            'system.operations.view',
         ];
 
         foreach ($permissions as $permission) {
@@ -197,7 +198,7 @@ class VocationalSarabanReportsAndComplianceTest extends TestCase
             ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
 
         // ทดสอบศูนย์ตรวจสอบหลักฐานความสอดคล้องตามระเบียบ
-        $complianceResponse = $this->getJson('/api/saraban/operations/compliance');
+        $complianceResponse = $this->getJson('/api/admin/operations/compliance');
 
         $complianceResponse->assertOk()
             ->assertJsonStructure([

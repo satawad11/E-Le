@@ -53,9 +53,9 @@
 import { computed, ref } from 'vue'
 import api from '../../axios'
 import { getErrorMessage } from '../../utils/errorHandler'
-import AppModal from '../ui/AppModal.vue'
-import AppButton from '../ui/AppButton.vue'
-import AppInput from '../ui/AppInput.vue'
+import AppModal from './AppModal.vue'
+import AppButton from './AppButton.vue'
+import AppInput from './AppInput.vue'
 const props = defineProps({ title: String, description: String, action: { type: Function, required: true } })
 const emit = defineEmits(['close', 'done'])
 const busy = ref(false)

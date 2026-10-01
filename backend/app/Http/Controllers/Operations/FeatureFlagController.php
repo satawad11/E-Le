@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
  *
  * **ธง ≠ สิทธิ์** — endpoint นี้เปลี่ยน "ความสามารถนี้เปิดอยู่ไหม" เท่านั้น
  * ไม่มีทางใดที่การเปิดธงจะให้สิทธิ์เพิ่มแก่ใคร · ใช้สิทธิ์
- * `saraban.feature_flags.manage` ซึ่งอยู่ในสารบัญตั้งแต่ INT-02
+ * `system.feature_flags.manage` (เดิม `saraban.feature_flags.manage` ย้ายเป็นของระบบเมื่อถอดสารบรรณ)
  */
 class FeatureFlagController extends Controller
 {

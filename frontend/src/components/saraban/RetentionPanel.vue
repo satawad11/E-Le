@@ -230,7 +230,7 @@ import { getErrorMessage } from '../../utils/errorHandler'
 import AppBadge from '../ui/AppBadge.vue'
 import AppButton from '../ui/AppButton.vue'
 import AppInput from '../ui/AppInput.vue'
-import ConfirmOperation from './ConfirmOperation.vue'
+import ConfirmOperation from '../ui/ConfirmOperation.vue'
 
 const props = defineProps({
   documentId: { type: [String, Number], default: null },

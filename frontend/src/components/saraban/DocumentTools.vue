@@ -176,7 +176,7 @@ import AppButton from '../ui/AppButton.vue'
 import AppInput from '../ui/AppInput.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import PdfWorkspace from './PdfWorkspace.vue'
-import ConfirmOperation from './ConfirmOperation.vue'
+import ConfirmOperation from '../ui/ConfirmOperation.vue'
 const props = defineProps({ document: { type: Object, required: true } })
 const emit = defineEmits(['changed'])
 const router = useRouter()

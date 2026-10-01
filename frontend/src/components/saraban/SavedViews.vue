@@ -21,7 +21,7 @@ import api from '../../axios'
 import { getErrorMessage } from '../../utils/errorHandler'
 import AppInput from '../ui/AppInput.vue'
 import AppButton from '../ui/AppButton.vue'
-import ConfirmOperation from './ConfirmOperation.vue'
+import ConfirmOperation from '../ui/ConfirmOperation.vue'
 const props = defineProps({ filters: { type: Object, required: true } })
 defineEmits(['apply'])
 const views = ref(null), name = ref(''), shared = ref(false), busy = ref(false), error = ref(''), operation = ref(null)

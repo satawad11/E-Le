@@ -46,6 +46,9 @@ class ApiSurfaceContractTest extends TestCase
         'api/v1/saraban/incoming/import-package' => 'จุดรับเข้า Webhook สำหรับหนังสือราชการข้ามสถานศึกษา/หน่วยงานภายนอก (เฟส 8: SoT §17, §27)',
         'api/saraban/documents/{document}/dispatch-package' => 'จุดสร้าง/ดาวน์โหลดแพ็กเกจส่งหนังสือราชการอิเล็กทรอนิกส์ข้ามสถานศึกษา (เฟส 8: SoT §17, §27)',
         'api/v1/saraban/documents/{document}/dispatch-package' => 'จุดสร้าง/ดาวน์โหลดแพ็กเกจส่งหนังสือราชการอิเล็กทรอนิกส์ข้ามสถานศึกษา (เฟส 8: SoT §17, §27)',
+        // ชั่วคราว — ทางเข้าเดิมอยู่ในศูนย์ปฏิบัติการซึ่งย้ายเป็นของระบบแล้ว · ถอดพร้อมโมดูลสารบรรณ
+        'api/saraban/revocations/pending' => 'ถอดพร้อมโมดูลสารบรรณ',
+        'api/v1/saraban/revocations/pending' => 'ถอดพร้อมโมดูลสารบรรณ',
     ];
 
     public function test_every_api_endpoint_is_reachable_from_the_web_application(): void

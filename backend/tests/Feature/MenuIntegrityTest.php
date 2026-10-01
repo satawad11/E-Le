@@ -53,8 +53,6 @@ class MenuIntegrityTest extends TestCase
         '/saraban/workflow' => 'เข้าจากแท็บสายการเดินหนังสือในศูนย์จัดการระบบสารบรรณ',
         '/saraban/authority' => 'เข้าจากแท็บตารางอำนาจหน้าที่ในศูนย์จัดการระบบสารบรรณ',
         '/saraban/policies' => 'เข้าจากแท็บศูนย์นโยบายในศูนย์จัดการระบบสารบรรณ',
-        '/saraban/operations' => 'เข้าจากแท็บการเฝ้าระวังในศูนย์จัดการระบบสารบรรณ',
-        '/saraban/compliance' => 'เข้าจากแท็บหลักฐานตามระเบียบในศูนย์จัดการระบบสารบรรณ',
     ];
 
     public function test_seeded_menus_match_the_declared_tree(): void

@@ -180,11 +180,11 @@
             </p>
           </div>
           <div class="flex items-center gap-2">
-            <RouterLink to="/saraban/operations" class="text-xs text-[#800000] font-medium hover:underline">
+            <RouterLink to="/admin/operations" class="text-xs text-[#800000] font-medium hover:underline">
               ศูนย์เฝ้าระวัง →
             </RouterLink>
             <span class="text-gray-300">|</span>
-            <RouterLink to="/saraban/compliance" class="text-xs text-[#800000] font-medium hover:underline">
+            <RouterLink to="/admin/operations/compliance" class="text-xs text-[#800000] font-medium hover:underline">
               ทะเบียนหลักฐาน →
             </RouterLink>
           </div>

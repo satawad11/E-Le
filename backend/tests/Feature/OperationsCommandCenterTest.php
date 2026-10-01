@@ -92,14 +92,14 @@ class OperationsCommandCenterTest extends TestCase
     public function test_acknowledge_assign_and_resolve_are_all_audited(): void
     {
         $exception = $this->raise();
-        $operator = $this->userWith(['saraban.operations.retry']);
+        $operator = $this->userWith(['system.operations.retry']);
         $assignee = $this->userWith([]);
 
         $this->actingAs($operator);
 
-        $this->postJson("/api/saraban/operations/exceptions/{$exception->id}/acknowledge")->assertOk();
-        $this->postJson("/api/saraban/operations/exceptions/{$exception->id}/assign", ['user_id' => $assignee->id])->assertOk();
-        $this->postJson("/api/saraban/operations/exceptions/{$exception->id}/resolve", ['note' => 'แก้ที่ต้นเหตุแล้ว'])->assertOk();
+        $this->postJson("/api/admin/operations/exceptions/{$exception->id}/acknowledge")->assertOk();
+        $this->postJson("/api/admin/operations/exceptions/{$exception->id}/assign", ['user_id' => $assignee->id])->assertOk();
+        $this->postJson("/api/admin/operations/exceptions/{$exception->id}/resolve", ['note' => 'แก้ที่ต้นเหตุแล้ว'])->assertOk();
 
         foreach ([
             'system.exception.acknowledged',
@@ -139,8 +139,8 @@ class OperationsCommandCenterTest extends TestCase
         $exception = SystemException::query()->where('type', 'webhook.dead_letter')->firstOrFail();
 
         Queue::fake();
-        $this->actingAs($this->userWith(['saraban.operations.retry']))
-            ->postJson("/api/saraban/operations/exceptions/{$exception->id}/retry")
+        $this->actingAs($this->userWith(['system.operations.retry']))
+            ->postJson("/api/admin/operations/exceptions/{$exception->id}/retry")
             ->assertOk();
 
         Queue::assertPushed(DeliverWebhook::class);
@@ -156,8 +156,8 @@ class OperationsCommandCenterTest extends TestCase
     {
         $exception = $this->raise();
 
-        $this->actingAs($this->userWith(['saraban.operations.retry']))
-            ->postJson("/api/saraban/operations/exceptions/{$exception->id}/retry")
+        $this->actingAs($this->userWith(['system.operations.retry']))
+            ->postJson("/api/admin/operations/exceptions/{$exception->id}/retry")
             ->assertStatus(422);
     }
 
@@ -205,18 +205,18 @@ class OperationsCommandCenterTest extends TestCase
         $exception = $this->raise();
 
         // ผู้ที่ดูได้อย่างเดียวต้องกดสั่งงานไม่ได้
-        $this->actingAs($this->userWith(['saraban.operations.view']));
-        $this->getJson('/api/saraban/operations/exceptions')->assertOk();
-        $this->postJson("/api/saraban/operations/exceptions/{$exception->id}/resolve")->assertForbidden();
+        $this->actingAs($this->userWith(['system.operations.view']));
+        $this->getJson('/api/admin/operations/exceptions')->assertOk();
+        $this->postJson("/api/admin/operations/exceptions/{$exception->id}/resolve")->assertForbidden();
 
-        $this->actingAs($this->userWith(['saraban.operations.retry']));
-        $this->postJson("/api/saraban/operations/exceptions/{$exception->id}/resolve")->assertOk();
+        $this->actingAs($this->userWith(['system.operations.retry']));
+        $this->postJson("/api/admin/operations/exceptions/{$exception->id}/resolve")->assertOk();
     }
 
     public function test_an_ordinary_user_sees_nothing_of_the_command_center(): void
     {
         $this->actingAs(User::factory()->create())
-            ->getJson('/api/saraban/operations/command-center')
+            ->getJson('/api/admin/operations/command-center')
             ->assertForbidden();
     }
 
@@ -224,8 +224,8 @@ class OperationsCommandCenterTest extends TestCase
 
     public function test_the_command_center_reports_every_section_the_master_requires(): void
     {
-        $body = $this->actingAs($this->userWith(['saraban.operations.view']))
-            ->getJson('/api/saraban/operations/command-center')
+        $body = $this->actingAs($this->userWith(['system.operations.view']))
+            ->getJson('/api/admin/operations/command-center')
             ->assertOk()
             ->json();
 
@@ -269,10 +269,10 @@ class OperationsCommandCenterTest extends TestCase
      */
     public function test_turning_a_flag_on_grants_no_permission_to_anyone(): void
     {
-        $admin = $this->userWith(['saraban.feature_flags.manage']);
+        $admin = $this->userWith(['system.feature_flags.manage']);
 
         foreach (array_keys(FeatureFlags::catalogue()) as $key) {
-            $this->actingAs($admin)->putJson('/api/saraban/feature-flags/'.$key, ['enabled' => true])->assertOk();
+            $this->actingAs($admin)->putJson('/api/admin/feature-flags/'.$key, ['enabled' => true])->assertOk();
         }
 
         $this->actingAs(User::factory()->create())
@@ -299,21 +299,21 @@ class OperationsCommandCenterTest extends TestCase
         $dispatcher = app(WebhookDispatcher::class);
         $this->assertSame(1, $dispatcher->dispatch(WebhookCatalogue::DOCUMENT_FINALIZED, []));
 
-        app(FeatureFlags::class)->set('saraban.webhooks', false, $this->userWith([]));
+        app(FeatureFlags::class)->set('system.webhooks', false, $this->userWith([]));
 
         $this->assertSame(0, $dispatcher->dispatch(WebhookCatalogue::DOCUMENT_FINALIZED, []));
     }
 
     public function test_every_flag_change_is_audited(): void
     {
-        $admin = $this->userWith(['saraban.feature_flags.manage']);
+        $admin = $this->userWith(['system.feature_flags.manage']);
 
         $this->actingAs($admin)
-            ->putJson('/api/saraban/feature-flags/saraban.webhooks', ['enabled' => false])
+            ->putJson('/api/admin/feature-flags/system.webhooks', ['enabled' => false])
             ->assertOk();
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'system.feature_flag.changed']);
-        $this->assertDatabaseHas('feature_flags', ['key' => 'saraban.webhooks', 'enabled' => false]);
+        $this->assertDatabaseHas('feature_flags', ['key' => 'system.webhooks', 'enabled' => false]);
     }
 
     /** ชื่อธงที่พิมพ์ผิดต้องถือว่าปิด ไม่ใช่เปิด */
@@ -321,15 +321,15 @@ class OperationsCommandCenterTest extends TestCase
     {
         $this->assertFalse(app(FeatureFlags::class)->enabled('made.up.flag'));
 
-        $this->actingAs($this->userWith(['saraban.feature_flags.manage']))
-            ->putJson('/api/saraban/feature-flags/made.up.flag', ['enabled' => true])
+        $this->actingAs($this->userWith(['system.feature_flags.manage']))
+            ->putJson('/api/admin/feature-flags/made.up.flag', ['enabled' => true])
             ->assertStatus(422);
     }
 
     public function test_changing_a_flag_requires_the_manage_permission(): void
     {
-        $this->actingAs($this->userWith(['saraban.operations.view']))
-            ->putJson('/api/saraban/feature-flags/saraban.webhooks', ['enabled' => false])
+        $this->actingAs($this->userWith(['system.operations.view']))
+            ->putJson('/api/admin/feature-flags/system.webhooks', ['enabled' => false])
             ->assertForbidden();
     }
 
@@ -361,11 +361,11 @@ class OperationsCommandCenterTest extends TestCase
 
     public function test_the_flag_overview_marks_which_values_were_overridden(): void
     {
-        app(FeatureFlags::class)->set('saraban.webhooks', false, $this->userWith([]));
+        app(FeatureFlags::class)->set('system.webhooks', false, $this->userWith([]));
 
         $overview = collect(app(FeatureFlags::class)->overview());
 
-        $this->assertTrue($overview->firstWhere('key', 'saraban.webhooks')['overridden']);
+        $this->assertTrue($overview->firstWhere('key', 'system.webhooks')['overridden']);
         $this->assertFalse($overview->firstWhere('key', 'notification.web_push')['overridden']);
         $this->assertSame(FeatureFlag::query()->count(), $overview->where('overridden', true)->count());
     }

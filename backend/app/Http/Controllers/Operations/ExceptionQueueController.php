@@ -16,8 +16,8 @@ use Illuminate\Validation\Rule;
  * การกระทำที่ SoT §19 กำหนด: **assign / retry / resolve / ack** — ครบทั้งสี่
  * และทุกข้อลง audit กลาง
  *
- * **แยกสิทธิ์ดูออกจากสิทธิ์แก้** — `saraban.operations.view` สำหรับดู
- * และ `saraban.operations.retry` สำหรับสั่งทำซ้ำ/มอบหมาย/ปิดเรื่อง
+ * **แยกสิทธิ์ดูออกจากสิทธิ์แก้** — `system.operations.view` สำหรับดู
+ * และ `system.operations.retry` สำหรับสั่งทำซ้ำ/มอบหมาย/ปิดเรื่อง
  * ผู้บริหารที่ต้องเห็นสถานะไม่จำเป็นต้องมีสิทธิ์ไปกดสั่งงานระบบ
  */
 class ExceptionQueueController extends Controller

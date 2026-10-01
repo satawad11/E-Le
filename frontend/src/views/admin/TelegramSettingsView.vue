@@ -141,7 +141,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import api from '../../axios'
-import OperationsTools from '../../components/saraban/OperationsTools.vue'
+import OperationsTools from '../../components/admin/OperationsTools.vue'
 import { useAlertStore } from '../../stores/alert'
 import { useConfirm } from '../../composables/useConfirm'
 import { ICONS } from '../../utils/icons'

@@ -12,7 +12,6 @@
 
     <template v-else>
       <OperationsTools />
-      <RetentionPanel v-can="'saraban.config.manage'" />
       <!-- งานตามเวลาที่หยุดทำงานคือเรื่องที่ต้องเห็นก่อนอย่างอื่น -->
       <section
         v-if="center.scheduler?.stale?.length"
@@ -77,7 +76,7 @@
                 <td class="px-5 py-3 text-right whitespace-nowrap">
                   <AppButton
                     v-if="item.can_retry"
-                    v-can="'saraban.operations.retry'"
+                    v-can="'system.operations.retry'"
                     size="sm"
                     variant="secondary"
                     @click="act(item, 'retry')"
@@ -85,7 +84,7 @@
                     สั่งซ้ำ
                   </AppButton>
                   <AppButton
-                    v-can="'saraban.operations.retry'"
+                    v-can="'system.operations.retry'"
                     size="sm"
                     variant="secondary"
                     class="ml-1"
@@ -94,7 +93,7 @@
                     รับทราบ
                   </AppButton>
                   <AppButton
-                    v-can="'saraban.operations.retry'"
+                    v-can="'system.operations.retry'"
                     size="sm"
                     class="ml-1"
                     @click="act(item, 'resolve')"
@@ -130,7 +129,7 @@
                 {{ flag.enabled ? 'เปิด' : 'ปิด' }}
               </AppBadge>
               <AppButton
-                v-can="'saraban.feature_flags.manage'"
+                v-can="'system.feature_flags.manage'"
                 size="sm"
                 variant="secondary"
                 :disabled="busy"
@@ -148,15 +147,14 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import api from '../../axios'
-import OperationsTools from '../../components/saraban/OperationsTools.vue'
-import RetentionPanel from '../../components/saraban/RetentionPanel.vue'
-import { getErrorMessage } from '../../utils/errorHandler'
-import AppBadge from '../../components/ui/AppBadge.vue'
-import AppButton from '../../components/ui/AppButton.vue'
-import EmptyState from '../../components/ui/EmptyState.vue'
-import ErrorState from '../../components/ui/ErrorState.vue'
-import LoadingState from '../../components/ui/LoadingState.vue'
+import api from '../../../axios'
+import OperationsTools from '../../../components/admin/OperationsTools.vue'
+import { getErrorMessage } from '../../../utils/errorHandler'
+import AppBadge from '../../../components/ui/AppBadge.vue'
+import AppButton from '../../../components/ui/AppButton.vue'
+import EmptyState from '../../../components/ui/EmptyState.vue'
+import ErrorState from '../../../components/ui/ErrorState.vue'
+import LoadingState from '../../../components/ui/LoadingState.vue'
 
 /**
  * ศูนย์เฝ้าระวังการปฏิบัติการ (SoT §19, §20, §21 · INT-17)
@@ -208,8 +206,8 @@ const load = async () => {
 
   try {
     const [summary, queue] = await Promise.all([
-      api.get('/saraban/operations/command-center'),
-      api.get('/saraban/operations/exceptions'),
+      api.get('/admin/operations/command-center'),
+      api.get('/admin/operations/exceptions'),
     ])
     center.value = summary.data
     exceptions.value = queue.data.data
@@ -224,7 +222,7 @@ const act = async (item, action) => {
   busy.value = true
 
   try {
-    await api.post(`/saraban/operations/exceptions/${item.id}/${action}`)
+    await api.post(`/admin/operations/exceptions/${item.id}/${action}`)
     await load()
   } catch (err) {
     error.value = getErrorMessage(err, 'ดำเนินการไม่สำเร็จ')
@@ -237,7 +235,7 @@ const toggleFlag = async (flag) => {
   busy.value = true
 
   try {
-    await api.put(`/saraban/feature-flags/${flag.key}`, { enabled: !flag.enabled })
+    await api.put(`/admin/feature-flags/${flag.key}`, { enabled: !flag.enabled })
     await load()
   } catch (err) {
     error.value = getErrorMessage(err, 'เปลี่ยนธงไม่สำเร็จ')

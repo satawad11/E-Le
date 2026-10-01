@@ -112,8 +112,8 @@ class SarabanModuleRegistrationTest extends TestCase
          */
         $requiredGroups = [
             'document', 'incoming', 'number', 'workflow', 'endorse', 'signature',
-            'distribution', 'report', 'policy', 'authority', 'exception',
-            'operations', 'feature_flags', 'audit', 'config',
+            'distribution', 'report', 'policy', 'authority',
+            'audit', 'config',
         ];
 
         foreach ($requiredGroups as $group) {

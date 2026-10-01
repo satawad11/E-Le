@@ -24,6 +24,18 @@ return [
         'notifications' => [],
         'reports' => [],
         'audit_events' => ['user.created', 'user.updated', 'user.deleted'],
+        /*
+         * ศูนย์ปฏิบัติการระบบ — เดิมเป็น `saraban.*` ย้ายมาเมื่อถอดโมดูลสารบรรณ
+         * (migration `2026_10_01_100000_move_operations_permissions_to_system`)
+         * ส่วนชื่อสิทธิ์อื่นของระบบกลางมาจาก `config/modules.php`
+         */
+        'permissions' => [
+            'system.operations.view' => 'ดูศูนย์ปฏิบัติการระบบ',
+            'system.operations.retry' => 'สั่งประมวลผลงานที่ล้มเหลวซ้ำ',
+            'system.exception.view' => 'ดูรายการข้อผิดพลาดที่ต้องตามแก้',
+            'system.exception.manage' => 'มอบหมายและปิดรายการข้อผิดพลาด',
+            'system.feature_flags.manage' => 'เปิด-ปิดความสามารถของระบบ',
+        ],
         'providers' => [],
         'route_patterns' => [],
         'legacy_permissions' => ['view_users', 'edit_users', 'delete_users', 'admin.users.manage_permissions', 'manage_departments', 'manage_workflow_steps', 'manage_leave_types', 'manage_settings'],
@@ -208,12 +220,6 @@ return [
             'saraban.authority.view' => 'ดูตารางอำนาจหน้าที่',
             'saraban.config.manage' => 'ตั้งค่าทะเบียนหนังสือและหน่วยงานสารบรรณ',
 
-            // การปฏิบัติการ (SoT §19, §20, §21)
-            'saraban.exception.view' => 'ดูรายการข้อผิดพลาดที่ต้องตามแก้',
-            'saraban.exception.manage' => 'มอบหมายและปิดรายการข้อผิดพลาด',
-            'saraban.operations.view' => 'ดูศูนย์เฝ้าระวังการปฏิบัติการ',
-            'saraban.operations.retry' => 'สั่งประมวลผลงานที่ล้มเหลวซ้ำ',
-            'saraban.feature_flags.manage' => 'เปิด-ปิดความสามารถของโมดูลสารบรรณ',
         ],
         'policies' => ['saraban_document'],
         'workflow_definitions' => [],

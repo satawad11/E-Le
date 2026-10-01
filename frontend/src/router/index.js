@@ -237,18 +237,6 @@ const router = createRouter({
       component: () => import('../views/saraban/PolicyCenterView.vue'),
       meta: { requiresAuth: true, title: 'ศูนย์นโยบายงานสารบรรณ', parent: 'งานสารบรรณ' }
     },
-    {
-      path: '/saraban/operations',
-      name: 'saraban-command-center',
-      component: () => import('../views/saraban/CommandCenterView.vue'),
-      meta: { requiresAuth: true, title: 'รายการที่ต้องตามแก้', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/compliance',
-      name: 'saraban-compliance',
-      component: () => import('../views/saraban/ComplianceEvidenceView.vue'),
-      meta: { requiresAuth: true, title: 'หลักฐานตามระเบียบ', parent: 'งานสารบรรณ' }
-    },
 
     // --- ทางลัดและ Redirect เพื่อความเข้ากันได้ย้อนหลัง (Backward Compatibility) ---
     { path: '/saraban/documents/queue', redirect: { name: 'saraban-inbox', query: { tab: 'queue' } } },
@@ -539,6 +527,19 @@ const router = createRouter({
       name: 'admin-integrations',
       component: () => import('../views/admin/IntegrationsView.vue'),
       meta: { requiresAuth: true, permission: 'system.setting.manage', title: 'การเชื่อมต่อระบบภายนอก', parent: 'ตั้งค่าระบบ' }
+    },
+    // ศูนย์ปฏิบัติการระบบ — เดิมอยู่ใต้ /saraban ย้ายเป็นของระบบเมื่อถอดโมดูลสารบรรณ
+    {
+      path: '/admin/operations',
+      name: 'admin-operations',
+      component: () => import('../views/admin/operations/CommandCenterView.vue'),
+      meta: { requiresAuth: true, permissions: ['system.operations.view', 'system.exception.view'], title: 'ศูนย์ปฏิบัติการระบบ', parent: 'ตั้งค่าระบบ' }
+    },
+    {
+      path: '/admin/operations/compliance',
+      name: 'admin-compliance',
+      component: () => import('../views/admin/operations/ComplianceEvidenceView.vue'),
+      meta: { requiresAuth: true, permission: 'system.operations.view', title: 'หลักฐานตามระเบียบ', parent: 'ตั้งค่าระบบ' }
     },
 
     /*

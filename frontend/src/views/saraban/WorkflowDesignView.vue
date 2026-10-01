@@ -182,7 +182,7 @@ import AppSelect from '../../components/ui/AppSelect.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ErrorState from '../../components/ui/ErrorState.vue'
 import LoadingState from '../../components/ui/LoadingState.vue'
-import ConfirmOperation from '../../components/saraban/ConfirmOperation.vue'
+import ConfirmOperation from '../../components/ui/ConfirmOperation.vue'
 import StepChain from '../../components/saraban/StepChain.vue'
 
 /**

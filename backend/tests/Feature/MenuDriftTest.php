@@ -42,10 +42,10 @@ class MenuDriftTest extends TestCase
      *
      * การอัปเดตค่านี้เฉย ๆ โดยไม่ทำข้อ 1 = ปิดปากเทสต์ ไม่ใช่แก้ปัญหา
      */
-    private const TREE_FINGERPRINT = '2a00badfe3559264d514bbc8d95bf059b6643821fdab27b530abaf45d710e441';
+    private const TREE_FINGERPRINT = '4e542c03da66926aa6c95ba3a02da94580bc9e542c675a5a7f3439183219a49a';
 
     /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว */
-    private const LATEST_MENU_SYNC_MIGRATION = '2026_09_27_100000_consolidate_saraban_menus';
+    private const LATEST_MENU_SYNC_MIGRATION = '2026_10_01_100000_move_operations_permissions_to_system';
 
     public function test_changing_the_menu_tree_requires_a_migration_for_installed_systems(): void
     {
@@ -69,32 +69,29 @@ class MenuDriftTest extends TestCase
     }
 
     /**
-     * migration ที่อ้างถึงต้องเปลี่ยนชื่อเมนูของ **ระบบที่ติดตั้งไปแล้ว** ได้จริง
+     * migration ที่อ้างถึงต้องพาเมนูไปให้ **ระบบที่ติดตั้งไปแล้ว** ได้จริง
      *
      * เทสต์ข้างบนตรวจแค่ว่าไฟล์มีอยู่ ซึ่งยังปิดปากตัวเองได้ด้วย migration เปล่า ๆ
-     * ความต่างที่เทสต์ชุดนี้เกิดมาเพื่อกันอยู่ที่แถวใน `menus` ที่ค้างชื่อเก่าไว้ —
-     * จำลองด้วยการ seed แล้วเขียนชื่อเก่าทับ ก่อนเรียก `up()` ของ migration ตรง ๆ
+     * จำลองระบบที่ติดตั้งก่อนมีเมนูศูนย์ปฏิบัติการ ด้วยการ seed แล้วลบสองเมนูนั้นออก
+     * ก่อนเรียก `up()` ของ migration ตรง ๆ
      */
-    public function test_the_referenced_migration_actually_renames_installed_menus(): void
+    public function test_the_referenced_migration_actually_delivers_menus_to_installed_systems(): void
     {
         $this->seed(MenuSeeder::class);
-
-        $renamed = Menu::query()->whereIn('code', [
-            'attendance.history', 'saraban.reports', 'users.menus',
-        ])->get();
-
-        $this->assertCount(3, $renamed, 'เมนูที่ใช้ทดสอบต้องถูก seed ครบก่อน');
-
-        foreach ($renamed as $menu) {
-            $menu->forceFill(['title_th' => 'ชื่อเดิมก่อนเปลี่ยน', 'title_en' => 'Old Title'])->save();
-        }
+        Menu::query()->whereIn('code', ['settings.operations', 'settings.compliance'])->delete();
 
         (require database_path('migrations/'.self::LATEST_MENU_SYNC_MIGRATION.'.php'))->up();
 
-        $this->assertSame('การลงเวลาของฉัน', Menu::where('code', 'attendance.history')->value('title_th'));
-        $this->assertSame('รายงานและสถิติสารบรรณ', Menu::where('code', 'saraban.reports')->value('title_th'));
-        $this->assertSame('สิทธิ์การเข้าถึงเมนู', Menu::where('code', 'users.menus')->value('title_th'));
-        $this->assertSame('Menu Access', Menu::where('code', 'users.menus')->value('title_en'));
+        $settings = Menu::where('code', 'settings')->firstOrFail();
+        $operations = Menu::where('code', 'settings.operations')->firstOrFail();
+
+        $this->assertSame($settings->id, $operations->parent_id);
+        $this->assertSame('/admin/operations', $operations->route_path);
+        $this->assertEqualsCanonicalizing(
+            ['system.operations.view', 'system.exception.view'],
+            $operations->permissions()->pluck('name')->all(),
+        );
+        $this->assertSame('/admin/operations/compliance', Menu::where('code', 'settings.compliance')->value('route_path'));
     }
 
     /**

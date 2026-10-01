@@ -7,10 +7,10 @@ vi.mock('../src/stores/auth', () => ({ useAuthStore: () => ({ hasPermission: () 
 vi.mock('../src/utils/secureFile', () => ({ fetchObjectUrl: vi.fn(async () => 'blob:preview') }))
 const push = vi.hoisted(() => vi.fn())
 vi.mock('vue-router', () => ({ useRouter: () => ({ push }), useRoute: () => ({ params: {} }) }))
-import ConfirmOperation from '../src/components/saraban/ConfirmOperation.vue'
+import ConfirmOperation from '../src/components/ui/ConfirmOperation.vue'
 import DocumentTools from '../src/components/saraban/DocumentTools.vue'
 import RetentionPanel from '../src/components/saraban/RetentionPanel.vue'
-import OperationsTools from '../src/components/saraban/OperationsTools.vue'
+import OperationsTools from '../src/components/admin/OperationsTools.vue'
 import SavedViews from '../src/components/saraban/SavedViews.vue'
 import { fetchObjectUrl } from '../src/utils/secureFile'
 const global = {

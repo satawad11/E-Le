@@ -30,7 +30,7 @@ class RouteAuthorizationAuditTest extends TestCase
          *
          * เปิดสาธารณะโดยเจตนา · คืนแค่ ok/degraded/down ไม่มีรายละเอียดใด ๆ
          * — monitor ต้องเรียกได้โดยไม่มีบัญชีผู้ใช้ · รายละเอียดอยู่หลังด่านสิทธิ์
-         * ที่ `api/saraban/operations/health`
+         * ที่ `api/admin/operations/health`
          */
         'api/health',
     ];

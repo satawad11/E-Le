@@ -685,10 +685,10 @@ class SarabanSecurityAuditTest extends TestCase
     public function test_the_compliance_register_requires_a_permission(): void
     {
         $this->actAs($this->userWith([]));
-        $this->getJson('/api/saraban/operations/compliance')->assertForbidden();
+        $this->getJson('/api/admin/operations/compliance')->assertForbidden();
 
-        $this->actAs($this->userWith(['saraban.report.view']));
-        $this->getJson('/api/saraban/operations/compliance')->assertOk();
+        $this->actAs($this->userWith(['system.operations.view']));
+        $this->getJson('/api/admin/operations/compliance')->assertOk();
     }
 
     /** ทะเบียนหลักฐานต้องอ่านอย่างเดียว — ไม่มีเส้นทางตั้งสถานะเอง */

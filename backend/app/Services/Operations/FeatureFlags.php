@@ -39,10 +39,11 @@ class FeatureFlags
     public static function catalogue(): array
     {
         return [
-            'saraban.webhooks' => [
+            // เดิมชื่อ `saraban.webhooks` — webhook เป็นของทั้งระบบ (migration ย้ายค่าที่ผู้ดูแลตั้งไว้มาด้วย)
+            'system.webhooks' => [
                 'name' => 'ส่งเหตุการณ์ออกทาง webhook',
                 'description' => 'ปิดเพื่อหยุดส่งข้อมูลออกนอกระบบชั่วคราวโดยไม่ต้องลบปลายทางที่ตั้งไว้',
-                'module' => 'saraban',
+                'module' => 'system',
                 'default' => true,
             ],
             'saraban.distribution.all_authorized' => [

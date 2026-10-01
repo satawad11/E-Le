@@ -2,33 +2,16 @@
   <section class="bg-white border rounded-2xl p-5 space-y-4">
     <h2 class="font-semibold">ตรวจระบบและจัดการการแจ้งเตือน</h2>
     <p v-if="error" class="text-red-700" role="alert">{{ error }}</p>
-    <details v-if="auth.hasPermission('saraban.operations.view')">
+    <details v-if="auth.hasPermission('system.operations.view')">
       <summary class="cursor-pointer">สุขภาพระบบ</summary>
       <AppButton class="my-3" :loading="busy" @click="loadHealth">ตรวจสุขภาพระบบ</AppButton>
       <p v-if="health">ตรวจเมื่อ {{ health.checked_at }} · {{ healthLabel(health.summary?.status) }}</p>
       <ul><li v-for="check in health?.checks || []" :key="check.name" class="text-sm py-1">{{ checkLabel(check.name) }}: {{ healthLabel(check.status) }}</li></ul>
     </details>
-    <!--
-      คิวคำขอเพิกถอนที่รอการตัดสิน (SIGNATURE-VERIFICATION · SoT §14, §26)
-
-      กรองด้วยขอบเขตของผู้เรียกที่ฝั่ง server แล้ว — คิวที่ไม่กรองคือช่องทาง
-      ค้นพบว่าหนังสือของหน่วยงานอื่นกำลังมีปัญหา · การตัดสินทำที่หน้ารายละเอียด
-      หนังสือ เพื่อให้ผู้ตัดสินเห็นผลตรวจลายเซ็นก่อนกดเสมอ
-    -->
-    <details v-can="'saraban.signature.revoke_approve'">
-      <summary class="cursor-pointer">คำขอเพิกถอนที่รอการตัดสิน</summary>
-      <AppButton class="my-3" :loading="busy" @click="loadRevocations">โหลดคำขอ</AppButton>
-      <p v-if="revocations && !revocations.length" class="text-sm">ไม่มีคำขอที่รอการตัดสิน</p>
-      <ul>
-        <li v-for="item in revocations || []" :key="item.id" class="text-sm py-1">
-          {{ item.document_number || 'ยังไม่มีเลข' }} · {{ item.subject }} — ขอโดย {{ item.requested_by }} เมื่อ {{ item.requested_at }} · เหตุผล: {{ item.reason }}
-        </li>
-      </ul>
-    </details>
-    <details v-if="auth.hasAnyPermission(['saraban.operations.view', 'saraban.feature_flags.manage'])">
+    <details v-if="auth.hasAnyPermission(['system.operations.view', 'system.feature_flags.manage'])">
       <summary class="cursor-pointer">การเปิดใช้ความสามารถ</summary>
       <AppButton class="my-3" :loading="busy" @click="loadFlags">ตรวจการเปิดใช้</AppButton>
-      <ul class="space-y-3"><li v-for="flag in flags" :key="flag.key" class="flex flex-wrap gap-3 items-center"><span>{{ flag.label || flag.name || flag.key }} · {{ flag.enabled ? 'เปิดอยู่' : 'ปิดอยู่' }}</span><AppButton v-can="'saraban.feature_flags.manage'" variant="secondary" @click="toggleFlag(flag)">{{ flag.enabled ? 'ปิดความสามารถ' : 'เปิดความสามารถ' }}</AppButton></li></ul>
+      <ul class="space-y-3"><li v-for="flag in flags" :key="flag.key" class="flex flex-wrap gap-3 items-center"><span>{{ flag.label || flag.name || flag.key }} · {{ flag.enabled ? 'เปิดอยู่' : 'ปิดอยู่' }}</span><AppButton v-can="'system.feature_flags.manage'" variant="secondary" @click="toggleFlag(flag)">{{ flag.enabled ? 'ปิดความสามารถ' : 'เปิดความสามารถ' }}</AppButton></li></ul>
     </details>
     <details v-if="auth.hasPermission('system.setting.manage')">
       <summary class="cursor-pointer">การแจ้งเตือนที่ส่งไม่สำเร็จ</summary>
@@ -47,20 +30,19 @@ import api from '../../axios'
 import { useAuthStore } from '../../stores/auth'
 import { getErrorMessage } from '../../utils/errorHandler'
 import AppButton from '../ui/AppButton.vue'
-import ConfirmOperation from './ConfirmOperation.vue'
+import ConfirmOperation from '../ui/ConfirmOperation.vue'
 const auth = useAuthStore()
-const health = ref(null), revocations = ref(null), flags = ref([]), channels = ref([]), deliveries = ref(null), meta = ref(null), operation = ref(null), error = ref(''), busy = ref(false)
+const health = ref(null), flags = ref([]), channels = ref([]), deliveries = ref(null), meta = ref(null), operation = ref(null), error = ref(''), busy = ref(false)
 const healthLabel = v => ({ ok: 'ปกติ', degraded: 'ควรตรวจสอบ', down: 'ขัดข้อง', disabled: 'ปิดอยู่' }[v] || 'ไม่ทราบสถานะ')
 const checkLabel = v => ({ database: 'ฐานข้อมูล', cache: 'แคช', queue: 'คิวงาน', storage: 'พื้นที่จัดเก็บ', pdf_renderer: 'การสร้างเอกสาร', notification_providers: 'ผู้ให้บริการแจ้งเตือน', scheduler: 'งานตามเวลา', exceptions: 'ข้อผิดพลาด' }[v] || 'องค์ประกอบระบบ')
 const channelLabel = v => ({ in_app: 'ในระบบ', email: 'อีเมล', web_push: 'เบราว์เซอร์', line: 'ไลน์', line_oa: 'ไลน์ทางการ', telegram: 'เทเลแกรม' }[v] || 'ช่องทางอื่น')
 async function read(fn) { busy.value = true; error.value = ''; try { await fn() } catch (e) { error.value = getErrorMessage(e, 'โหลดข้อมูลไม่สำเร็จ') } finally { busy.value = false } }
-const loadHealth = () => read(async () => { health.value = (await api.get('/saraban/operations/health')).data })
-const loadRevocations = () => read(async () => { revocations.value = (await api.get('/saraban/revocations/pending')).data.pending })
-const loadFlags = () => read(async () => { flags.value = (await api.get('/saraban/feature-flags')).data.flags })
+const loadHealth = () => read(async () => { health.value = (await api.get('/admin/operations/health')).data })
+const loadFlags = () => read(async () => { flags.value = (await api.get('/admin/feature-flags')).data.flags })
 const loadNotifications = (page) => read(async () => {
   const [summary, queue] = await Promise.all([api.get('/admin/notifications/channel-health'), api.get('/admin/notifications/dead-letters', { params: { page } })])
   channels.value = summary.data.channels; deliveries.value = queue.data.data; meta.value = queue.data.meta
 })
-function toggleFlag(flag) { operation.value = { title: 'เปลี่ยนการเปิดใช้', description: `${flag.enabled ? 'ปิด' : 'เปิด'} ${flag.label || flag.name || flag.key}`, action: async () => { flags.value = (await api.put(`/saraban/feature-flags/${flag.key}`, { enabled: !flag.enabled })).data.flags } } }
+function toggleFlag(flag) { operation.value = { title: 'เปลี่ยนการเปิดใช้', description: `${flag.enabled ? 'ปิด' : 'เปิด'} ${flag.label || flag.name || flag.key}`, action: async () => { flags.value = (await api.put(`/admin/feature-flags/${flag.key}`, { enabled: !flag.enabled })).data.flags } } }
 function requeue(d) { operation.value = { title: 'ส่งข้อความใหม่', description: `ส่งการแจ้งเตือนถึง ${d.recipient || 'ผู้รับเดิม'} อีกครั้งหลังแก้ต้นเหตุแล้ว`, action: async () => { await api.post(`/admin/notifications/dead-letters/${d.id}/requeue`); await loadNotifications(meta.value?.current_page || 1) } } }
 </script>

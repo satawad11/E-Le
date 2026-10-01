@@ -115,7 +115,7 @@ import AppInput from '../../components/ui/AppInput.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import LoadingState from '../../components/ui/LoadingState.vue'
-import ConfirmOperation from '../../components/saraban/ConfirmOperation.vue'
+import ConfirmOperation from '../../components/ui/ConfirmOperation.vue'
 
 const items = ref([])
 const series = ref([])

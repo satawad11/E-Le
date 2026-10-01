@@ -78,7 +78,7 @@ Route::middleware('throttle:public-api')->group(function () {
      *
      * เปิดสาธารณะโดยตั้งใจ และ **คืนแค่ ok/degraded/down ไม่มีรายละเอียดใด ๆ**
      * — monitor ภายนอกต้องเรียกได้โดยไม่มีบัญชีผู้ใช้ ส่วนรายละเอียดของแต่ละชิ้น
-     * เป็นข้อมูลภายในที่อยู่หลังด่านสิทธิ์ที่ `/api/saraban/operations/health`
+     * เป็นข้อมูลภายในที่อยู่หลังด่านสิทธิ์ที่ `/api/admin/operations/health`
      *
      * คืน 503 เมื่อระบบใช้งานไม่ได้ เพื่อให้ monitor จับได้จาก status code
      * โดยไม่ต้องอ่าน body
@@ -477,6 +477,38 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/admin/document-engine/generated/{file}/download', [DocumentEngineController::class, 'downloadGenerated'])
         ->middleware(['ability:document.final.download|system.setting.manage', 'throttle:documents']);
 
+    /*
+     * ศูนย์ปฏิบัติการระบบ (INT-17 · INT-20 · SoT §19–§21, §23)
+     *
+     * เดิมอยู่ใต้ `/api/saraban/*` และใช้สิทธิ์ `saraban.*` ทั้งที่ข้อมูลเป็นของทั้งระบบ
+     * (คิวงาน การแจ้งเตือน webhook ธงความสามารถ) — ย้ายมาเป็นของผู้ดูแลระบบเมื่อถอดโมดูลสารบรรณ
+     *
+     * **แยกสิทธิ์ดูออกจากสิทธิ์แก้** — ผู้บริหารที่ต้องเห็นสถานะไม่จำเป็นต้องมีสิทธิ์ไปกดสั่งงานระบบ
+     * ทะเบียนหลักฐาน (compliance) อ่านอย่างเดียว สถานะทุกช่องคำนวณสดจากการตรวจจริง
+     */
+    Route::prefix('admin')->group(function () {
+        Route::get('/operations/command-center', CommandCenterController::class)
+            ->middleware('ability:system.operations.view');
+        Route::get('/operations/exceptions', [ExceptionQueueController::class, 'index'])
+            ->middleware('ability:system.exception.view|system.operations.view');
+
+        Route::middleware('ability:system.exception.manage|system.operations.retry')->group(function () {
+            Route::post('/operations/exceptions/{exception}/acknowledge', [ExceptionQueueController::class, 'acknowledge']);
+            Route::post('/operations/exceptions/{exception}/assign', [ExceptionQueueController::class, 'assign']);
+            Route::post('/operations/exceptions/{exception}/resolve', [ExceptionQueueController::class, 'resolve']);
+            Route::post('/operations/exceptions/{exception}/retry', [ExceptionQueueController::class, 'retry']);
+        });
+
+        Route::get('/operations/health', [HealthController::class, 'details'])
+            ->middleware('ability:system.operations.view');
+        Route::get('/operations/compliance', ComplianceEvidenceController::class)
+            ->middleware('ability:system.operations.view');
+        Route::get('/feature-flags', [FeatureFlagController::class, 'index'])
+            ->middleware('ability:system.operations.view|system.feature_flags.manage');
+        Route::put('/feature-flags/{key}', [FeatureFlagController::class, 'update'])
+            ->middleware('ability:system.feature_flags.manage');
+    });
+
     // ดาวน์โหลดไฟล์อัปโหลด — ต้องยืนยันตัวตน (แทน /api/storage/{path} เดิมที่เปิดสาธารณะ)
     Route::get('/files/{path}', [SecureFileController::class, 'show'])
         ->middleware('throttle:files')
@@ -728,41 +760,6 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/authority', [AuthorityMatrixController::class, 'show']);
         Route::get('/authority/holders', [AuthorityMatrixController::class, 'holders'])
             ->middleware('ability:saraban.authority.view');
-
-        /*
-         * ศูนย์เฝ้าระวังการปฏิบัติการและคิวข้อผิดพลาด (INT-17 · SoT §19, §20, §21)
-         *
-         * **แยกสิทธิ์ดูออกจากสิทธิ์แก้** — ผู้บริหารที่ต้องเห็นสถานะไม่จำเป็นต้องมี
-         * สิทธิ์ไปกดสั่งงานระบบ · `operations.view` สำหรับดู `operations.retry`
-         * สำหรับสั่งทำซ้ำ มอบหมาย และปิดเรื่อง
-         */
-        Route::get('/operations/command-center', CommandCenterController::class)
-            ->middleware('ability:saraban.operations.view');
-        Route::get('/operations/exceptions', [ExceptionQueueController::class, 'index'])
-            ->middleware('ability:saraban.exception.view|saraban.operations.view');
-
-        Route::middleware('ability:saraban.exception.manage|saraban.operations.retry')->group(function () {
-            Route::post('/operations/exceptions/{exception}/acknowledge', [ExceptionQueueController::class, 'acknowledge']);
-            Route::post('/operations/exceptions/{exception}/assign', [ExceptionQueueController::class, 'assign']);
-            Route::post('/operations/exceptions/{exception}/resolve', [ExceptionQueueController::class, 'resolve']);
-            Route::post('/operations/exceptions/{exception}/retry', [ExceptionQueueController::class, 'retry']);
-        });
-
-        /*
-         * ทะเบียนหลักฐานการปฏิบัติตามข้อกำหนด (INT-20 · SoT §23)
-         *
-         * **อ่านอย่างเดียว** — ไม่มี endpoint ที่ตั้งสถานะได้ · สถานะทุกช่อง
-         * คำนวณสดจากการตรวจจริง ซึ่งเป็นการบังคับข้อ "ห้าม claim PASS
-         * โดยไม่มี evidence จริง" ด้วยการออกแบบ ไม่ใช่ด้วยความไว้ใจ
-         */
-        Route::get('/operations/health', [HealthController::class, 'details'])
-            ->middleware('ability:saraban.operations.view');
-        Route::get('/operations/compliance', ComplianceEvidenceController::class)
-            ->middleware('ability:saraban.operations.view|saraban.report.view');
-        Route::get('/feature-flags', [FeatureFlagController::class, 'index'])
-            ->middleware('ability:saraban.operations.view|saraban.feature_flags.manage');
-        Route::put('/feature-flags/{key}', [FeatureFlagController::class, 'update'])
-            ->middleware('ability:saraban.feature_flags.manage');
 
         /*
          * สารบบเรื่อง การปกปิดข้อมูล และมุมมองที่บันทึกไว้ (INT-18 · SoT §22)

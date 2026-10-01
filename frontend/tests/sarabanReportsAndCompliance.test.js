@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RegisterReportsView from '../src/views/saraban/RegisterReportsView.vue'
-import ComplianceEvidenceView from '../src/views/saraban/ComplianceEvidenceView.vue'
+import ComplianceEvidenceView from '../src/views/admin/operations/ComplianceEvidenceView.vue'
 
 vi.mock('../src/axios', () => ({
   default: {
@@ -45,7 +45,7 @@ vi.mock('../src/axios', () => ({
           },
         })
       }
-      if (url === '/saraban/operations/compliance') {
+      if (url === '/admin/operations/compliance') {
         return Promise.resolve({
           data: {
             generated_at: '2026-09-16T10:00:00+07:00',

@@ -70,18 +70,18 @@ class OperationsHealthAndReadOnlyTest extends TestCase
     public function test_the_detailed_health_endpoint_requires_a_permission(): void
     {
         $this->actingAs(User::factory()->create())
-            ->getJson('/api/saraban/operations/health')
+            ->getJson('/api/admin/operations/health')
             ->assertForbidden();
 
-        $this->actingAs($this->userWith(['saraban.operations.view']))
-            ->getJson('/api/saraban/operations/health')
+        $this->actingAs($this->userWith(['system.operations.view']))
+            ->getJson('/api/admin/operations/health')
             ->assertOk();
     }
 
     public function test_the_detailed_health_report_covers_every_area_the_master_requires(): void
     {
-        $checks = $this->actingAs($this->userWith(['saraban.operations.view']))
-            ->getJson('/api/saraban/operations/health')
+        $checks = $this->actingAs($this->userWith(['system.operations.view']))
+            ->getJson('/api/admin/operations/health')
             ->assertOk()
             ->json('checks');
 
@@ -170,12 +170,12 @@ class OperationsHealthAndReadOnlyTest extends TestCase
     /** ต้องปิดโหมดนี้ได้จากในระบบ ไม่งั้นต้องแก้ฐานข้อมูลด้วยมือ */
     public function test_the_flag_that_turns_read_only_off_still_works_while_it_is_on(): void
     {
-        $admin = $this->userWith(['saraban.feature_flags.manage']);
+        $admin = $this->userWith(['system.feature_flags.manage']);
 
         app(FeatureFlags::class)->set('system.read_only', true, $admin);
 
         $this->actingAs($admin)
-            ->putJson('/api/saraban/feature-flags/system.read_only', ['enabled' => false])
+            ->putJson('/api/admin/feature-flags/system.read_only', ['enabled' => false])
             ->assertOk();
 
         $this->assertFalse(app(FeatureFlags::class)->enabled('system.read_only'));

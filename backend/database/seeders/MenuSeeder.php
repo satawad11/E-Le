@@ -314,7 +314,6 @@ class MenuSeeder extends Seeder
                 'saraban.workflow.simulate',
                 'saraban.policy.manage',
                 'saraban.config.manage',
-                'saraban.operations.view',
                 'saraban.report.view',
             ],
             'children' => [
@@ -330,7 +329,6 @@ class MenuSeeder extends Seeder
                         'saraban.workflow.simulate',
                         'saraban.authority.view',
                         'saraban.policy.manage',
-                        'saraban.operations.view',
                     ],
                 ],
             ],
@@ -530,6 +528,23 @@ class MenuSeeder extends Seeder
                     'route_name' => 'admin-modules',
                     'route_path' => '/admin/modules',
                     'permissions' => ['system.setting.manage'],
+                ],
+                [
+                    // ศูนย์ปฏิบัติการระบบ — เดิมอยู่ใต้งานสารบรรณ ย้ายมาเมื่อถอดโมดูลสารบรรณ
+                    'code' => 'settings.operations',
+                    'title_th' => 'ศูนย์ปฏิบัติการระบบ',
+                    'title_en' => 'Operations Center',
+                    'route_name' => 'admin-operations',
+                    'route_path' => '/admin/operations',
+                    'permissions' => ['system.operations.view', 'system.exception.view'],
+                ],
+                [
+                    'code' => 'settings.compliance',
+                    'title_th' => 'หลักฐานตามระเบียบ',
+                    'title_en' => 'Compliance Evidence',
+                    'route_name' => 'admin-compliance',
+                    'route_path' => '/admin/operations/compliance',
+                    'permissions' => ['system.operations.view'],
                 ],
                 [
                     // INT-15 — ปลายทาง webhook ขาออก (SoT §17)

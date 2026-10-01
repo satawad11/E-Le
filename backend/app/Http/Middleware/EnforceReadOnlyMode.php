@@ -35,7 +35,7 @@ class EnforceReadOnlyMode
         // ต้องเข้าสู่ระบบได้เพื่อมาดูสถานะ
         'api/login',
         // ต้องปิดโหมดนี้ได้จากในระบบ ไม่งั้นต้องแก้ฐานข้อมูลด้วยมือ
-        'api/saraban/feature-flags/{key}',
+        'api/admin/feature-flags/{key}',
     ];
 
     public function __construct(private readonly FeatureFlags $flags) {}

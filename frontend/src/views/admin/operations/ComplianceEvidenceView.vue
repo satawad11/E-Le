@@ -74,11 +74,11 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import api from '../../axios'
-import { getErrorMessage } from '../../utils/errorHandler'
-import AppBadge from '../../components/ui/AppBadge.vue'
-import ErrorState from '../../components/ui/ErrorState.vue'
-import LoadingState from '../../components/ui/LoadingState.vue'
+import api from '../../../axios'
+import { getErrorMessage } from '../../../utils/errorHandler'
+import AppBadge from '../../../components/ui/AppBadge.vue'
+import ErrorState from '../../../components/ui/ErrorState.vue'
+import LoadingState from '../../../components/ui/LoadingState.vue'
 
 /**
  * ทะเบียนหลักฐานการปฏิบัติตามข้อกำหนด (SoT §23 · INT-20)
@@ -124,7 +124,7 @@ const load = async () => {
   error.value = ''
 
   try {
-    const { data } = await api.get('/saraban/operations/compliance')
+    const { data } = await api.get('/admin/operations/compliance')
     topics.value = data.topics
     summary.value = data.summary
     generatedAt.value = data.generated_at

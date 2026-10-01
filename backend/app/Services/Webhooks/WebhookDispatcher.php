@@ -33,11 +33,11 @@ class WebhookDispatcher
     public function dispatch(string $event, array $payload): int
     {
         /*
-         * ธง `saraban.webhooks` (SoT §21) — ปิดเพื่อหยุดส่งข้อมูลออกนอกระบบ
+         * ธง `system.webhooks` (SoT §21) — ปิดเพื่อหยุดส่งข้อมูลออกนอกระบบ
          * ชั่วคราวโดยไม่ต้องลบปลายทางที่ตั้งไว้ · **ธงไม่ใช่สิทธิ์** ปิดแล้วปิดกับ
          * ทุกคนรวมถึงผู้ดูแลสูงสุด
          */
-        if (! $this->flags->enabled('saraban.webhooks')) {
+        if (! $this->flags->enabled('system.webhooks')) {
             return 0;
         }
 
