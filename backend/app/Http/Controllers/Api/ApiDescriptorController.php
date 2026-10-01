@@ -50,7 +50,7 @@ class ApiDescriptorController extends Controller
         return response()->json([
             'openapi' => '3.1.0',
             'info' => [
-                'title' => 'E-Leave / SARABAN API',
+                'title' => 'E-Leave API',
                 'version' => 'v1',
                 'description' => 'พื้นผิว API รุ่น v1 · สร้างจากตาราง route จริงของระบบ',
             ],

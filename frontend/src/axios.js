@@ -56,7 +56,7 @@ export const isAuthenticationExpired = (error) => error?.response?.status === 40
  *
  * @type {string[]}
  */
-export const PUBLIC_PATH_PREFIXES = ['/login', '/verify-leave/', '/verify-saraban/'];
+export const PUBLIC_PATH_PREFIXES = ['/login', '/verify-leave/'];
 
 /** เส้นทางนี้เปิดสาธารณะหรือไม่ */
 export const isPublicPath = (pathname) =>

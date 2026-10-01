@@ -142,15 +142,15 @@ class OperationsHealthAndReadOnlyTest extends TestCase
 
     public function test_read_only_mode_blocks_writes_but_keeps_reads_working(): void
     {
-        $user = $this->userWith(['saraban.document.view', 'saraban.document.create']);
+        $user = $this->userWith(['document.template.view', 'document.template.manage']);
 
         app(FeatureFlags::class)->set('system.read_only', true, $user);
 
         // อ่านได้ตามปกติ — งานราชการหยุดรอไม่ได้
-        $this->actingAs($user)->getJson('/api/saraban/documents')->assertOk();
+        $this->actingAs($user)->getJson('/api/admin/document-engine/templates')->assertOk();
 
         // เขียนไม่ได้ และต้องเป็น 503 ไม่ใช่ 403
-        $response = $this->actingAs($user)->postJson('/api/saraban/documents', []);
+        $response = $this->actingAs($user)->postJson('/api/admin/document-engine/templates', []);
         $response->assertStatus(503);
         $response->assertHeader('Retry-After');
         $this->assertTrue($response->json('read_only'));
@@ -164,7 +164,7 @@ class OperationsHealthAndReadOnlyTest extends TestCase
 
         app(FeatureFlags::class)->set('system.read_only', true, $admin);
 
-        $this->actingAs($admin)->postJson('/api/saraban/documents', [])->assertStatus(503);
+        $this->actingAs($admin)->postJson('/api/admin/document-engine/templates', [])->assertStatus(503);
     }
 
     /** ต้องปิดโหมดนี้ได้จากในระบบ ไม่งั้นต้องแก้ฐานข้อมูลด้วยมือ */
@@ -194,8 +194,8 @@ class OperationsHealthAndReadOnlyTest extends TestCase
     {
         $this->assertFalse(app(FeatureFlags::class)->enabled('system.read_only'));
 
-        $user = $this->userWith(['saraban.document.view', 'saraban.document.create']);
-        $this->actingAs($user)->postJson('/api/saraban/documents', [])->assertStatus(422);
+        $user = $this->userWith(['document.template.view', 'document.template.manage']);
+        $this->actingAs($user)->postJson('/api/admin/document-engine/templates', [])->assertStatus(422);
     }
 
     // ── หลักฐานการกู้คืน (SoT §23, §27) ─────────────────────────────────────

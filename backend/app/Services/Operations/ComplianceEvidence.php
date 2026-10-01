@@ -3,10 +3,9 @@
 namespace App\Services\Operations;
 
 use App\Models\AuditLog;
-use App\Models\Saraban\LegalHold;
-use App\Models\Saraban\SignatureEvidence;
 use App\Models\ScheduledTaskHeartbeat;
 use App\Models\SystemException;
+use App\Services\Modules\ModuleDefinition;
 use App\Services\Modules\ModuleRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -62,7 +61,6 @@ class ComplianceEvidence
             $this->providers(),
             $this->contracts(),
             $this->incidents(),
-            $this->retention(),
         ];
     }
 
@@ -85,12 +83,17 @@ class ComplianceEvidence
 
     private function permissions(): array
     {
-        $declared = array_keys($this->modules->get('saraban')?->permissions() ?? []);
+        // สิทธิ์ที่ manifest ของทุกโมดูลประกาศไว้ (เดิมนับเฉพาะโมดูลสารบรรณ)
+        $declared = collect($this->modules->all())
+            ->flatMap(fn (ModuleDefinition $module) => array_keys($module->permissions()))
+            ->unique()
+            ->values()
+            ->all();
         $stored = DB::table('permissions')->whereIn('name', $declared)->count();
 
         return $this->topic(
             'permission',
-            'สิทธิ์ของโมดูลถูกสร้างครบตามสารบัญ',
+            'สิทธิ์ของทุกโมดูลถูกสร้างครบตามสารบัญ',
             $stored === count($declared) ? self::PASS : self::PARTIAL,
             ['declared' => count($declared), 'present_in_database' => $stored],
             'นับชื่อสิทธิ์ใน `permissions` เทียบกับ manifest ของโมดูล',
@@ -103,7 +106,7 @@ class ComplianceEvidence
 
         return $this->topic(
             'workflow',
-            'มีสายงานเดินหนังสือที่เผยแพร่แล้ว',
+            'มีสายงานอนุมัติที่เผยแพร่แล้ว',
             $published > 0 ? self::PASS : self::NO_EVIDENCE,
             ['published_versions' => $published],
             'นับ `workflow_versions` ที่สถานะ published',
@@ -242,7 +245,6 @@ class ComplianceEvidence
                 (string) config('filesystems.disks.private_uploads.root', ''),
                 'public',
             ),
-            'signature_evidence_present' => SignatureEvidence::query()->exists(),
         ];
 
         $passed = count(array_filter($checks));
@@ -252,7 +254,7 @@ class ComplianceEvidence
             'การตั้งค่าความปลอดภัยที่บังคับได้จากโค้ดเปิดอยู่',
             $passed === count($checks) ? self::PASS : self::PARTIAL,
             $checks,
-            'อ่าน config จริงและตรวจว่ามีหลักฐานการลงนามในระบบ',
+            'อ่าน config จริงของระบบ',
         );
     }
 
@@ -330,22 +332,6 @@ class ComplianceEvidence
             $open === 0 ? self::PASS : self::FAIL,
             ['open_exceptions' => $open],
             'นับรายการที่ยังไม่ปิดในคิวข้อผิดพลาด',
-        );
-    }
-
-    private function retention(): array
-    {
-        $scheduled = DB::getSchemaBuilder()->hasTable('saraban_retention_schedules')
-            ? DB::table('saraban_retention_schedules')->count()
-            : 0;
-        $holds = LegalHold::query()->whereNull('released_at')->count();
-
-        return $this->topic(
-            'retention',
-            'มีการกำหนดอายุการเก็บรักษาเอกสาร',
-            $scheduled > 0 ? self::PASS : self::NO_EVIDENCE,
-            ['scheduled_documents' => $scheduled, 'documents_on_hold' => $holds],
-            'นับกำหนดการเก็บรักษาและการอายัดที่มีผลอยู่',
         );
     }
 

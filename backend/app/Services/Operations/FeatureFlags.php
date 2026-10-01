@@ -46,12 +46,6 @@ class FeatureFlags
                 'module' => 'system',
                 'default' => true,
             ],
-            'saraban.distribution.all_authorized' => [
-                'name' => 'เวียนหนังสือถึงผู้มีสิทธิ์ทั้งหมด',
-                'description' => 'ปิดเพื่อบังคับให้ระบุหน่วยงานหรือรายบุคคลเสมอ ในองค์กรที่มีผู้ใช้จำนวนมาก',
-                'module' => 'saraban',
-                'default' => true,
-            ],
             /*
              * INT-21 — โหมดอ่านอย่างเดียว (SoT §27)
              *

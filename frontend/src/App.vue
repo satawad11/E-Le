@@ -431,13 +431,6 @@ const KNOWN_MODULE_METAS = {
     icon: 'clock',
     order: 30,
   },
-  saraban: {
-    key: 'saraban',
-    short_title: 'สารบรรณ',
-    full_title: 'งานสารบรรณอิเล็กทรอนิกส์',
-    icon: 'document',
-    order: 40,
-  },
   reporting: {
     key: 'reporting',
     short_title: 'รายงาน',
@@ -600,12 +593,11 @@ const detectModuleFromRoute = (path) => {
     }
   }
 
-  if (path.startsWith('/saraban')) return 'saraban'
   if (path.startsWith('/attendance') || path.startsWith('/admin/ot') || path.startsWith('/admin/overtime') || path.startsWith('/admin/attendances')) return 'attendance'
   if (path.startsWith('/request') || path.startsWith('/leaves') || path.startsWith('/leave-card') || path.startsWith('/team-calendar') || path.startsWith('/approvals') || path.startsWith('/cancel-approvals') || path.startsWith('/reports/vocational') || path.startsWith('/admin/leave') || path.startsWith('/admin/promotion-screening')) return 'leave'
   if (path.startsWith('/reports') || path.startsWith('/admin/reports')) return 'reporting'
   if (path.startsWith('/admin/users') || path.startsWith('/admin/roles') || path.startsWith('/admin/org') || path.startsWith('/admin/personnel') || path.startsWith('/my-access-history')) return 'users'
-  if (path.startsWith('/admin/settings') || path.startsWith('/admin/modules') || path.startsWith('/admin/fiscal') || path.startsWith('/admin/calendar') || path.startsWith('/admin/workflow') || path.startsWith('/admin/leave-types') || path.startsWith('/admin/document-templates')) return 'system'
+  if (path.startsWith('/admin/operations') || path.startsWith('/admin/settings') || path.startsWith('/admin/modules') || path.startsWith('/admin/fiscal') || path.startsWith('/admin/calendar') || path.startsWith('/admin/workflow') || path.startsWith('/admin/leave-types') || path.startsWith('/admin/document-templates')) return 'system'
 
   return 'dashboard'
 }

@@ -6,7 +6,6 @@ use App\Models\FiscalYear;
 use App\Models\Leave;
 use App\Models\Overtime\OvertimeOrder;
 use App\Models\User;
-use App\Services\Saraban\DashboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -140,19 +139,6 @@ class DashboardController extends Controller
             }
         }
 
-        $pendingSarabanTasksCount = 0;
-        $unacknowledgedInboxCount = 0;
-        if (class_exists(DashboardService::class)) {
-            try {
-                $sarabanSummary = app(DashboardService::class)->summaryFor($user);
-                $pendingSarabanTasksCount = $sarabanSummary['tiles'][0]['value'] ?? 0;
-                $unacknowledgedInboxCount = $sarabanSummary['tiles'][2]['value'] ?? 0;
-            } catch (\Throwable) {
-                $pendingSarabanTasksCount = 0;
-                $unacknowledgedInboxCount = 0;
-            }
-        }
-
         return response()->json([
             'pending' => $pendingCount,
             'approved' => $approvedCount,
@@ -165,9 +151,7 @@ class DashboardController extends Controller
             'executive_tasks' => [
                 'pending_leaves_count' => $pendingLeavesForUser,
                 'pending_ot_orders_count' => $pendingOtOrdersCount,
-                'pending_saraban_tasks_count' => $pendingSarabanTasksCount,
-                'unacknowledged_inbox_count' => $unacknowledgedInboxCount,
-                'total_actionable' => $pendingLeavesForUser + $pendingOtOrdersCount + $pendingSarabanTasksCount + $unacknowledgedInboxCount,
+                'total_actionable' => $pendingLeavesForUser + $pendingOtOrdersCount,
             ],
         ]);
     }

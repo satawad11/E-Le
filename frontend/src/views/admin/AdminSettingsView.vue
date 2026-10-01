@@ -381,16 +381,6 @@
 
                   <!-- Action Link / Button -->
                   <div class="shrink-0 flex items-center justify-end gap-2">
-                    <button
-                      v-if="item.id === 'saraban_number_series' && item.status !== 'PASS'"
-                      type="button"
-                      :disabled="isQuickSettingUpSeries"
-                      class="inline-flex items-center gap-1 text-xs font-medium text-white bg-[#800000] hover:bg-[#600000] px-3 py-1.5 rounded transition disabled:opacity-50"
-                      @click="triggerQuickSetupSeries"
-                    >
-                      <svg v-if="isQuickSettingUpSeries" class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                      <span>{{ isQuickSettingUpSeries ? 'กำลังสร้าง...' : 'สร้างชุดเลข 5 หมวดทันที' }}</span>
-                    </button>
                     <router-link
                       :to="item.action_url"
                       class="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800 hover:underline bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded transition"
@@ -625,19 +615,6 @@ const formatThaiDateTime = (isoString) => {
     return `${day} ${month} ${year} ${hours}:${mins} น.`
   } catch {
     return isoString
-  }
-}
-
-const isQuickSettingUpSeries = ref(false)
-const triggerQuickSetupSeries = async () => {
-  isQuickSettingUpSeries.value = true
-  try {
-    await api.post('/saraban/number-series/quick-setup')
-    await fetchPreflightCheck()
-  } catch (error) {
-    preflightError.value = validationMessage(error, 'ไม่สามารถสร้างชุดเลขเริ่มต้นได้')
-  } finally {
-    isQuickSettingUpSeries.value = false
   }
 }
 

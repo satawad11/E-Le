@@ -77,19 +77,6 @@ return [
     ],
 
     /*
-     * ไฟล์แนบของหนังสือในงานสารบรรณ (INT-04)
-     *
-     * แยกชุดจาก `attachments` ของใบลา เพราะหนังสือราชการมักเป็นไฟล์สแกนหลายหน้า
-     * จึงต้องการเพดานที่สูงกว่า แต่ยังคง allowlist สองชั้นแบบเดียวกัน
-     * และยังต้องผ่านด่านตรวจไวรัสเหมือนทุกชุด
-     */
-    'saraban_attachments' => [
-        'mime_types' => ['application/pdf', 'image/jpeg', 'image/png'],
-        'extensions' => ['pdf', 'jpg', 'jpeg', 'png'],
-        'max_size_kb' => 25600,
-    ],
-
-    /*
      * แม่แบบเอกสารของ Document Engine — PDF เท่านั้น
      */
     'document_templates' => [

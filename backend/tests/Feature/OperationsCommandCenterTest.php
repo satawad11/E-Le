@@ -14,9 +14,6 @@ use App\Services\NotificationCenter\NotificationCenter;
 use App\Services\Operations\ExceptionQueue;
 use App\Services\Operations\FeatureFlags;
 use App\Services\Operations\SchedulerHeartbeat;
-use App\Services\Saraban\DistributionException;
-use App\Services\Saraban\RecipientResolver;
-use App\Services\Webhooks\WebhookCatalogue;
 use App\Services\Webhooks\WebhookDispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -121,14 +118,14 @@ class OperationsCommandCenterTest extends TestCase
             'name' => 'ปลายทางทดสอบ',
             'url' => 'https://partner.test/hook',
             'secret' => 'secret-value',
-            'events' => [WebhookCatalogue::DOCUMENT_FINALIZED],
+            'events' => ['test.document.finalized'],
             'is_active' => true,
             'created_by' => $this->userWith([])->id,
         ]);
 
         $delivery = WebhookDelivery::create([
             'webhook_endpoint_id' => $endpoint->id,
-            'event' => WebhookCatalogue::DOCUMENT_FINALIZED,
+            'event' => 'test.document.finalized',
             'payload' => [],
             'status' => 'failed',
             'attempt_count' => 5,
@@ -276,11 +273,11 @@ class OperationsCommandCenterTest extends TestCase
         }
 
         $this->actingAs(User::factory()->create())
-            ->getJson('/api/saraban/documents')
+            ->getJson('/api/admin/document-engine/templates')
             ->assertForbidden();
 
-        // และผู้ที่จัดการธงได้ ก็ยังเข้าทะเบียนหนังสือไม่ได้ถ้าไม่มีสิทธิ์นั้น
-        $this->actingAs($admin)->getJson('/api/saraban/documents')->assertForbidden();
+        // และผู้ที่จัดการธงได้ ก็ยังเข้าศูนย์จัดการเอกสารไม่ได้ถ้าไม่มีสิทธิ์นั้น
+        $this->actingAs($admin)->getJson('/api/admin/document-engine/templates')->assertForbidden();
     }
 
     public function test_turning_a_flag_off_closes_the_capability_for_everyone(): void
@@ -291,17 +288,17 @@ class OperationsCommandCenterTest extends TestCase
             'name' => 'ปลายทางทดสอบ',
             'url' => 'https://partner.test/hook',
             'secret' => 'secret-value',
-            'events' => [WebhookCatalogue::DOCUMENT_FINALIZED],
+            'events' => ['test.document.finalized'],
             'is_active' => true,
             'created_by' => $this->userWith([])->id,
         ]);
 
         $dispatcher = app(WebhookDispatcher::class);
-        $this->assertSame(1, $dispatcher->dispatch(WebhookCatalogue::DOCUMENT_FINALIZED, []));
+        $this->assertSame(1, $dispatcher->dispatch('test.document.finalized', []));
 
         app(FeatureFlags::class)->set('system.webhooks', false, $this->userWith([]));
 
-        $this->assertSame(0, $dispatcher->dispatch(WebhookCatalogue::DOCUMENT_FINALIZED, []));
+        $this->assertSame(0, $dispatcher->dispatch('test.document.finalized', []));
     }
 
     public function test_every_flag_change_is_audited(): void
@@ -344,19 +341,6 @@ class OperationsCommandCenterTest extends TestCase
         $this->assertFalse($flags->enabled('notification.web_push'));
         $this->assertFalse(Cache::has('system.feature_flags') && ($flags->all()['notification.web_push'] ?? true));
         $this->assertDatabaseHas('feature_flags', ['key' => 'notification.web_push', 'enabled' => false]);
-    }
-
-    /** ธง `all_authorized` ปิดแล้ว ต้องเวียนถึงทุกคนไม่ได้จริง ไม่ใช่แค่ซ่อนปุ่ม */
-    public function test_the_distribution_flag_actually_blocks_the_target(): void
-    {
-        app(FeatureFlags::class)->set('saraban.distribution.all_authorized', false, $this->userWith([]));
-
-        $this->expectException(DistributionException::class);
-
-        app(RecipientResolver::class)->resolve(
-            [['type' => 'all_authorized']],
-            $this->userWith(['saraban.distribution.send']),
-        );
     }
 
     public function test_the_flag_overview_marks_which_values_were_overridden(): void

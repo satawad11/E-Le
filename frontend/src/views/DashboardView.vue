@@ -60,7 +60,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <!-- 1. Leaves Pending Approval -->
           <router-link to="/approvals" class="p-4 bg-white/90 hover:bg-white rounded-xl border border-amber-100 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group">
             <div class="flex items-center gap-3">
@@ -91,38 +91,6 @@
               </div>
             </div>
             <span class="text-gray-400 group-hover:text-orange-600 transition-colors">&rarr;</span>
-          </router-link>
-
-          <!-- 3. Saraban Tasks Queue -->
-          <router-link to="/saraban/documents/queue" class="p-4 bg-white/90 hover:bg-white rounded-xl border border-amber-100 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 font-medium">งานเกษียน/ลงนาม</p>
-                <p class="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                  {{ stats.executive_tasks.pending_saraban_tasks_count }} <span class="text-xs font-normal text-gray-500">เรื่อง</span>
-                </p>
-              </div>
-            </div>
-            <span class="text-gray-400 group-hover:text-blue-600 transition-colors">&rarr;</span>
-          </router-link>
-
-          <!-- 4. Saraban Unread Circulars -->
-          <router-link to="/saraban/inbox" class="p-4 bg-white/90 hover:bg-white rounded-xl border border-amber-100 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between group">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 font-medium">หนังสือเวียนเข้า</p>
-                <p class="text-lg font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
-                  {{ stats.executive_tasks.unacknowledged_inbox_count }} <span class="text-xs font-normal text-gray-500">เรื่อง</span>
-                </p>
-              </div>
-            </div>
-            <span class="text-gray-400 group-hover:text-purple-600 transition-colors">&rarr;</span>
           </router-link>
         </div>
       </div>

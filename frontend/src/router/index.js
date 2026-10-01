@@ -42,18 +42,6 @@ const router = createRouter({
       meta: { requiresGuest: false, bare: true, public: true, title: 'ตรวจสอบใบลา' }
     },
     {
-      /*
-       * INT-12 — ตรวจสอบหนังสือราชการจาก QR (SoT §12)
-       *
-       * ใช้ meta ชุดเดียวกับหน้าตรวจสอบใบลา: `bare` = แสดงนอก app shell,
-       * `public` = ไม่ต้องเข้าสู่ระบบ — ผู้เปิดคือคนทั่วไปที่ถือกระดาษอยู่ในมือ
-       */
-      path: '/verify-saraban/:hash',
-      name: 'verify-saraban',
-      component: () => import('../views/saraban/VerifyDocumentView.vue'),
-      meta: { requiresGuest: false, bare: true, public: true, title: 'ตรวจสอบหนังสือราชการ' }
-    },
-    {
       path: '/',
       name: 'dashboard',
       component: DashboardView,
@@ -136,120 +124,6 @@ const router = createRouter({
       path: '/admin/document-center/reports',
       redirect: { name: 'report-designer' }
     },
-    // ==========================================
-    // === งานสารบรรณ (CONSOLIDATED HUBS) ===
-    // ==========================================
-    {
-      path: '/saraban',
-      name: 'saraban-dashboard',
-      component: () => import('../views/saraban/SarabanDashboardView.vue'),
-      meta: { requiresAuth: true, title: 'แดชบอร์ด', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/inbox',
-      name: 'saraban-inbox',
-      component: () => import('../views/saraban/InboxView.vue'),
-      meta: { requiresAuth: true, title: 'กล่องงานและหนังสือของฉัน', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/registers',
-      name: 'saraban-registers',
-      component: () => import('../views/saraban/RegistersHubView.vue'),
-      meta: { requiresAuth: true, title: 'สมุดทะเบียนสารบรรณ', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/documents/new',
-      name: 'saraban-document-create',
-      component: () => import('../views/saraban/DocumentFormView.vue'),
-      meta: { requiresAuth: true, title: 'สร้างหนังสือราชการ', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/archive',
-      name: 'saraban-archive',
-      component: () => import('../views/saraban/ArchiveCasesHubView.vue'),
-      meta: { requiresAuth: true, title: 'คลังเอกสารและสารบบเรื่อง', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/distributions',
-      name: 'saraban-distributions',
-      component: () => import('../views/saraban/DistributionTrackingView.vue'),
-      meta: { requiresAuth: true, title: 'กระจายหนังสือและหนังสือเวียน', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/reports',
-      name: 'saraban-reports',
-      component: () => import('../views/saraban/RegisterReportsView.vue'),
-      meta: { requiresAuth: true, title: 'รายงานและสถิติสารบรรณ', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/admin',
-      name: 'saraban-admin-hub',
-      component: () => import('../views/saraban/SarabanAdminHubView.vue'),
-      meta: { requiresAuth: true, title: 'ศูนย์จัดการและตั้งค่าระบบสารบรรณ', parent: 'งานสารบรรณ' }
-    },
-
-    // --- หน้ารายฉบับและพื้นที่ทำงาน (Document Workspaces) ---
-    {
-      path: '/saraban/incoming/new',
-      name: 'saraban-incoming-register',
-      component: () => import('../views/saraban/IncomingRegisterView.vue'),
-      meta: { requiresAuth: true, title: 'ลงทะเบียนรับ', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/documents/:id',
-      name: 'saraban-document-detail',
-      component: () => import('../views/saraban/DocumentFormView.vue'),
-      meta: { requiresAuth: true, title: 'รายละเอียดหนังสือ', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/documents/:id/sign',
-      name: 'saraban-document-sign',
-      component: () => import('../views/saraban/SignDocumentView.vue'),
-      meta: { requiresAuth: true, title: 'ลงนามในหนังสือ', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/documents/:id/endorse',
-      name: 'saraban-document-endorse',
-      component: () => import('../views/saraban/EndorseDocumentView.vue'),
-      meta: { requiresAuth: true, title: 'เกษียนหนังสือ', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/documents/:id/workspace',
-      name: 'saraban-document-workspace',
-      component: () => import('../views/saraban/DocumentWorkspaceView.vue'),
-      meta: { requiresAuth: true, title: 'ประทับตราหนังสือ', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/workflow',
-      name: 'saraban-workflow-design',
-      component: () => import('../views/saraban/WorkflowDesignView.vue'),
-      meta: { requiresAuth: true, title: 'สายการเดินหนังสือ', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/authority',
-      name: 'saraban-authority',
-      component: () => import('../views/saraban/AuthorityMatrixView.vue'),
-      meta: { requiresAuth: true, title: 'ตารางอำนาจหน้าที่', parent: 'งานสารบรรณ' }
-    },
-    {
-      path: '/saraban/policies',
-      name: 'saraban-policies',
-      component: () => import('../views/saraban/PolicyCenterView.vue'),
-      meta: { requiresAuth: true, title: 'ศูนย์นโยบายงานสารบรรณ', parent: 'งานสารบรรณ' }
-    },
-
-    // --- ทางลัดและ Redirect เพื่อความเข้ากันได้ย้อนหลัง (Backward Compatibility) ---
-    { path: '/saraban/documents/queue', redirect: { name: 'saraban-inbox', query: { tab: 'queue' } } },
-    { path: '/saraban/incoming', redirect: { name: 'saraban-registers', query: { tab: 'incoming' } } },
-    { path: '/saraban/incoming/pending', redirect: { name: 'saraban-registers', query: { tab: 'incoming' } } },
-    { path: '/saraban/numbers', redirect: { name: 'saraban-registers', query: { tab: 'reservations' } } },
-    { path: '/saraban/documents/outgoing', redirect: { name: 'saraban-registers', query: { tab: 'outgoing' } } },
-    { path: '/saraban/documents/internal', redirect: { name: 'saraban-registers', query: { tab: 'internal' } } },
-    { path: '/saraban/documents', redirect: { name: 'saraban-archive', query: { tab: 'archive' } } },
-    { path: '/saraban/cases', redirect: { name: 'saraban-archive', query: { tab: 'cases' } } },
-    { path: '/saraban/number-series', redirect: { name: 'saraban-admin-hub', query: { tab: 'number_series' } } },
-    { path: '/saraban/workflow/simulate', redirect: { name: 'saraban-admin-hub', query: { tab: 'workflow' } } },
-    { path: '/saraban/distribution', redirect: { name: 'saraban-distributions' } },
     {
       path: '/leave-card',
       name: 'leave-card',

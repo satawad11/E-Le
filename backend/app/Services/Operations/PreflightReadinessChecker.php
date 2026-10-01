@@ -87,9 +87,6 @@ class PreflightReadinessChecker
         // 7. ศูนย์การแจ้งเตือน (Notifications)
         $this->checkNotificationChannels($collect);
 
-        // 8. งานสารบรรณ (Saraban Readiness)
-        $this->checkSarabanReadiness($collect);
-
         $status = 'READY';
         if ($failCount > 0) {
             $status = 'FAILED';
@@ -289,7 +286,7 @@ class PreflightReadinessChecker
     private function checkDocumentTemplates(callable $collect): void
     {
         if (! Schema::hasTable('document_templates')) {
-            $collect('document_templates', 'แบบฟอร์มเอกสาร (Document Engine)', 'WARN', 'ไม่พบตาราง document_templates', null, '/saraban/document-templates', 'จัดการแบบฟอร์ม');
+            $collect('document_templates', 'แบบฟอร์มเอกสาร (Document Engine)', 'WARN', 'ไม่พบตาราง document_templates', null, '/admin/document-center', 'จัดการแบบฟอร์ม');
 
             return;
         }
@@ -312,12 +309,12 @@ class PreflightReadinessChecker
         $totalCount = DocumentTemplate::query()->count();
 
         if ($publishedCount === 0) {
-            $collect('document_templates', 'แบบฟอร์มเอกสาร (Document Engine)', 'WARN', 'ยังไม่มีแบบฟอร์มเอกสารที่เผยแพร่ (Published)', 'เผยแพร่แบบฟอร์มมาตรฐานที่ศูนย์จัดการเอกสารเพื่อให้ระบบสร้าง PDF/Word ได้', '/saraban/document-templates', 'เผยแพร่แบบฟอร์ม');
+            $collect('document_templates', 'แบบฟอร์มเอกสาร (Document Engine)', 'WARN', 'ยังไม่มีแบบฟอร์มเอกสารที่เผยแพร่ (Published)', 'เผยแพร่แบบฟอร์มมาตรฐานที่ศูนย์จัดการเอกสารเพื่อให้ระบบสร้าง PDF/Word ได้', '/admin/document-center', 'เผยแพร่แบบฟอร์ม');
 
             return;
         }
 
-        $collect('document_templates', 'แบบฟอร์มเอกสาร (Document Engine)', 'PASS', "มีแบบฟอร์มเอกสารพร้อมใช้งาน ({$publishedCount}/{$totalCount} เผยแพร่แล้ว)", null, '/saraban/document-templates', 'ดูแบบฟอร์มเอกสาร');
+        $collect('document_templates', 'แบบฟอร์มเอกสาร (Document Engine)', 'PASS', "มีแบบฟอร์มเอกสารพร้อมใช้งาน ({$publishedCount}/{$totalCount} เผยแพร่แล้ว)", null, '/admin/document-center', 'ดูแบบฟอร์มเอกสาร');
     }
 
     private function checkNotificationChannels(callable $collect): void
@@ -352,37 +349,5 @@ class PreflightReadinessChecker
 
         $channelList = implode(', ', $channels);
         $collect('notification_channels', 'ศูนย์การแจ้งเตือน (Notifications)', 'PASS', "ช่องทางการแจ้งเตือนพร้อมใช้งาน: {$channelList}", null, '/admin/settings', 'ดูการตั้งค่าการแจ้งเตือน');
-    }
-
-    private function checkSarabanReadiness(callable $collect): void
-    {
-        if (Schema::hasTable('saraban_number_series')) {
-            $activeSeriesCount = DB::table('saraban_number_series')->where('is_active', true)->count();
-            if ($activeSeriesCount === 0) {
-                $collect('saraban_number_series', 'งานสารบรรณ (Saraban Readiness)', 'WARN', 'ยังไม่ได้สร้างชุดเลขหนังสือราชการที่เปิดใช้งาน', 'สร้างชุดเลขหนังสืออย่างน้อยหนึ่งชุด หรือใช้ปุ่มตั้งค่าเริ่มต้นสำหรับสถานศึกษา', '/saraban/number-series', 'จัดการชุดเลขหนังสือ');
-            } else {
-                $collect('saraban_number_series', 'งานสารบรรณ (Saraban Readiness)', 'PASS', "มีชุดเลขหนังสือพร้อมใช้งาน ({$activeSeriesCount} ชุด)", null, '/saraban/number-series', 'ดูชุดเลขหนังสือ');
-            }
-        }
-
-        if (Schema::hasTable('permissions') && Schema::hasTable('model_has_permissions')) {
-            $hasSigners = DB::table('model_has_permissions')
-                ->join('permissions', 'permissions.id', '=', 'model_has_permissions.permission_id')
-                ->where('permissions.name', 'saraban.signature.sign')
-                ->exists();
-
-            if (! $hasSigners && Schema::hasTable('role_has_permissions')) {
-                $hasSigners = DB::table('role_has_permissions')
-                    ->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')
-                    ->where('permissions.name', 'saraban.signature.sign')
-                    ->exists();
-            }
-
-            if (! $hasSigners) {
-                $collect('saraban_signers', 'งานสารบรรณ (Saraban Readiness)', 'WARN', 'ยังไม่มีผู้ได้รับมอบหมายสิทธิ์ลงนามในหนังสือราชการ (saraban.signature.sign)', 'มอบหมายสิทธิ์ลงนามให้แก่ผู้อำนวยการสถานศึกษาหรือผู้บริหาร', '/saraban/authority', 'กำหนดผู้มีอำนาจลงนาม');
-            } else {
-                $collect('saraban_signers', 'งานสารบรรณ (Saraban Readiness)', 'PASS', 'มีผู้ได้รับมอบหมายสิทธิ์ลงนามในหนังสือราชการเรียบร้อยแล้ว', null, '/saraban/authority', 'ดูผู้มีอำนาจลงนาม');
-            }
-        }
     }
 }

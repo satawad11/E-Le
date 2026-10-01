@@ -35,7 +35,7 @@ class WebhookEndpointController extends Controller
                 ])
                 ->orderBy('name')
                 ->get(['id', 'uuid', 'name', 'url', 'events', 'is_active', 'created_at']),
-            'available_events' => WebhookCatalogue::EVENTS,
+            'available_events' => WebhookCatalogue::events(),
         ]);
     }
 
@@ -50,7 +50,7 @@ class WebhookEndpointController extends Controller
              */
             'url' => ['required', 'url:https', 'max:500'],
             'events' => ['required', 'array', 'min:1'],
-            'events.*' => ['required', 'string', Rule::in(WebhookCatalogue::EVENTS)],
+            'events.*' => ['required', 'string', Rule::in(WebhookCatalogue::events())],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -81,7 +81,7 @@ class WebhookEndpointController extends Controller
             'name' => ['sometimes', 'string', 'max:120'],
             'url' => ['sometimes', 'url:https', 'max:500'],
             'events' => ['sometimes', 'array', 'min:1'],
-            'events.*' => ['required', 'string', Rule::in(WebhookCatalogue::EVENTS)],
+            'events.*' => ['required', 'string', Rule::in(WebhookCatalogue::events())],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 

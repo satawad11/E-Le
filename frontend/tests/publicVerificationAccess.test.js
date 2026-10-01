@@ -24,13 +24,12 @@ const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src')
  */
 describe('การเข้าถึงหน้าตรวจสอบสาธารณะ', () => {
   it('ไม่พาไปหน้าเข้าสู่ระบบเมื่ออยู่บนหน้าตรวจสอบเอกสาร', () => {
-    expect(isPublicPath('/verify-saraban/abc123')).toBe(true)
     expect(isPublicPath('/verify-leave/abc123')).toBe(true)
     expect(isPublicPath('/login')).toBe(true)
   })
 
   it('ยังพาไปหน้าเข้าสู่ระบบสำหรับหน้าที่ต้องยืนยันตัวตน', () => {
-    expect(isPublicPath('/saraban/documents')).toBe(false)
+    expect(isPublicPath('/leaves')).toBe(false)
     expect(isPublicPath('/')).toBe(false)
     expect(isPublicPath(undefined)).toBe(false)
   })
@@ -64,37 +63,3 @@ describe('การเข้าถึงหน้าตรวจสอบสา�
   })
 })
 
-/**
- * หน้าตรวจสอบต้องเชื่อผลที่ server ตัดสิน ไม่ไล่เงื่อนไขเอง
- *
- * ตรวจที่ตัวซอร์สโดยตรง เพราะสิ่งที่ต้องกันคือ **รูปแบบการเขียน** ที่ทำให้หน้าจอ
- * ตกยุคทุกครั้งที่ server ตรวจเพิ่ม ไม่ใช่ผลลัพธ์ของกรณีใดกรณีหนึ่ง
- */
-describe('หน้าตรวจสอบหนังสือราชการ', () => {
-  const view = readFileSync(
-    join(SRC, 'views/saraban/VerifyDocumentView.vue'),
-    'utf8',
-  )
-
-  it('ตัดสินข้อความจาก verification_status ที่ server ส่งมา', () => {
-    expect(view).toContain('verification_status')
-  })
-
-  it('ถือว่าสถานะที่ไม่รู้จักคือใช้อ้างอิงไม่ได้ ไม่ใช่ผ่าน', () => {
-    expect(view).toContain('UNUSABLE')
-    expect(view).toMatch(/STATUS_TEXT\[[^\]]+\]\s*\|\|\s*UNUSABLE/)
-  })
-
-  it('รู้จักสถานะที่ทำให้ใช้อ้างอิงไม่ได้ทุกตัวที่ server ส่งได้', () => {
-    for (const status of ['DOCUMENT_MODIFIED_AFTER_SIGNING', 'REVOKED', 'REVOCATION_PENDING']) {
-      expect(view).toContain(status)
-    }
-  })
-
-  /** ห้ามบอกคนทั่วไปว่าผิดพลาดที่จุดใด — เป็นข้อมูลภายใน */
-  it('ไม่เปิดเผยรายละเอียดภายในให้ผู้ตรวจสอบทั่วไป', () => {
-    for (const internal of ['AUTHORITY_INVALID', 'SIGNER_MISMATCH', 'CERTIFICATE_', 'checks']) {
-      expect(view).not.toContain(internal)
-    }
-  })
-})

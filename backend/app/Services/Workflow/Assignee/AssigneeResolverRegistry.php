@@ -16,8 +16,6 @@ class AssigneeResolverRegistry
     /** @var array<int,class-string<SubjectAssigneeResolver>> */
     private const RESOLVERS = [
         LeaveAssigneeResolver::class,
-        // INT-08 — งานสารบรรณหรี่ผู้มีสิทธิ์ให้เหลือเฉพาะผู้มีอำนาจกับหน่วยงานเจ้าของหนังสือ
-        SarabanAssigneeResolver::class,
     ];
 
     public function __construct(private readonly Container $container) {}

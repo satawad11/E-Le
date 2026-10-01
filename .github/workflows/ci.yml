@@ -86,20 +86,6 @@ jobs:
       # แล้วค่อยเพิ่มใน phpunit.xml เพื่อ ratchet ขึ้นทีละขั้น
       - name: Tests (with coverage)
         run: php -d memory_limit=-1 vendor/bin/phpunit --coverage-text
-      # INT-20 — พิสูจน์ว่าการออกเลขหนังสือไม่ให้เลขซ้ำเมื่อมีผู้ขอพร้อมกัน (RISK-22)
-      #
-      # ชุดทดสอบปกติรันบน SQLite ซึ่งไม่มี row-level lock จริง จึงพิสูจน์เรื่องนี้
-      # ไม่ได้เลย · คำสั่งนี้เปิด process จริงหลายตัวแย่งกันออกเลขบน MySQL 8
-      # แล้วตรวจสามข้อพร้อมกัน: ได้ครบ / ไม่ซ้ำ / ไม่มีช่องว่างในลำดับ
-      - name: Numbering concurrency proof
-        run: php artisan saraban:concurrency-check --workers=8 --per-worker=15
-      # ตรวจทาน 2026-09-05 — พิสูจน์ว่าการอายัดกับการทำลายเอกสารแย่งกันแล้วไม่พัง
-      #
-      # เหตุผลเดียวกับข้างบน แต่ผลของการพลาดหนักกว่ามาก: **ไฟล์ที่ถูกลบเรียกคืน
-      # ไม่ได้** · การรันบนโค้ดก่อนแก้ทำลายไฟล์ของหนังสือที่ถูกอายัดไว้จริง 5 ฉบับ
-      # จาก 12 ฉบับที่ทดสอบ
-      - name: Disposal concurrency proof
-        run: php artisan saraban:concurrency-check --disposal --documents=12
 
   frontend:
     runs-on: ubuntu-latest

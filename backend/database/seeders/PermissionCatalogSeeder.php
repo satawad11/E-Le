@@ -72,53 +72,7 @@ class PermissionCatalogSeeder extends Seeder
         'document.final.download' => 'ดาวน์โหลดเอกสารฉบับสมบูรณ์',
         'document.audit.view' => 'ดูประวัติการออกเอกสาร',
 
-        /*
-         * งานสารบรรณ (INT-02)
-         *
-         * ต้องตรงกับ `permissions` ของโมดูล `saraban` ใน `config/module_registry.php`
-         * ทุกชื่อ — `PermissionCatalogTest` บังคับความตรงกันนั้นไว้แล้ว
-         * การเพิ่มชื่อที่นี่ "สร้างชื่อเท่านั้น ไม่แจกให้ใคร" จึงไม่เปลี่ยนสิทธิ์ของผู้ใช้คนใด
-         */
-        'saraban.document.view' => 'ดูหนังสือและทะเบียนเอกสาร',
-        'saraban.document.create' => 'สร้างหนังสือ',
-        'saraban.document.update' => 'แก้ไขหนังสือที่ยังไม่ออกเลข',
-        'saraban.document.submit' => 'เสนอหนังสือเข้าสู่กระบวนการ',
-        'saraban.incoming.register' => 'ลงทะเบียนรับหนังสือ',
-        'saraban.incoming.stamp' => 'ประทับตรารับหนังสือ',
-        'saraban.number.reserve' => 'จองเลขหนังสือ',
-        'saraban.number.allocate' => 'ออกเลขหนังสือ',
-        'saraban.number.release' => 'คืนเลขหนังสือที่จองไว้',
-        'saraban.number.cancel' => 'ยกเลิกเลขหนังสือ',
-        'saraban.workflow.review' => 'ตรวจและดำเนินการหนังสือตามสายงาน',
-        'saraban.workflow.approve' => 'พิจารณาและเห็นชอบหนังสือก่อนเสนอลงนาม',
-        'saraban.workflow.forward' => 'ส่งหนังสือต่อไปยังขั้นถัดไป',
-        'saraban.workflow.return' => 'ส่งหนังสือกลับไปแก้ไข',
-        'saraban.workflow.simulate' => 'จำลองเส้นทางเดินหนังสือ',
-        'saraban.workflow.manage' => 'จัดการและเผยแพร่เวอร์ชันสายงานเดินหนังสือ',
-        'saraban.endorse.create' => 'เกษียนหนังสือ',
-        'saraban.signature.sign' => 'ลงนามในหนังสือ',
-        // การเพิกถอน — ผู้ขอกับผู้ตัดสินต้องเป็นคนละคน (SoT §26)
-        'saraban.signature.revoke' => 'ยื่นคำขอเพิกถอนลายเซ็นหรือหนังสือ',
-        'saraban.signature.revoke_approve' => 'อนุมัติหรือปฏิเสธคำขอเพิกถอน',
-        'saraban.distribution.create' => 'จัดทำรายการกระจายหนังสือ',
-        'saraban.distribution.send' => 'ส่งหนังสือถึงผู้รับ',
-        'saraban.distribution.track' => 'ติดตามการรับทราบและการดำเนินการ',
-        'saraban.inbox.view' => 'เปิดกล่องหนังสือเวียนถึงตนเอง',
-        /*
-         * ชั้นความลับสามชั้นตามระเบียบว่าด้วยการรักษาความลับของทางราชการ พ.ศ. 2544
-         *
-         * เป็นด่านเพิ่มจากขอบเขตหน่วยงาน ไม่ใช่ด่านแทน · และผู้ได้รับอนุญาต
-         * ชั้นสูงกว่าเข้าถึงชั้นต่ำกว่าได้ จึงไม่ต้องแจกทั้งสามข้อให้คนเดียวกัน
-         */
-        'saraban.confidential.view' => 'เปิดหนังสือชั้นลับ',
-        'saraban.secret.view' => 'เปิดหนังสือชั้นลับมาก',
-        'saraban.top_secret.view' => 'เปิดหนังสือชั้นลับที่สุด',
-        'saraban.report.view' => 'ดูรายงานงานสารบรรณ',
-        'saraban.report.export' => 'ส่งออกรายงานงานสารบรรณ',
-        'saraban.audit.view' => 'ดูประวัติการดำเนินการของหนังสือ',
-        'saraban.policy.manage' => 'จัดการและเผยแพร่นโยบายงานสารบรรณ',
-        'saraban.authority.view' => 'ดูตารางอำนาจหน้าที่',
-        'saraban.config.manage' => 'ตั้งค่าทะเบียนหนังสือและหน่วยงานสารบรรณ',
+        // ศูนย์ปฏิบัติการระบบ (เดิม saraban.* — ย้ายเมื่อถอดโมดูลสารบรรณ)
         'system.exception.view' => 'ดูรายการข้อผิดพลาดที่ต้องตามแก้',
         'system.exception.manage' => 'มอบหมายและปิดรายการข้อผิดพลาด',
         'system.operations.view' => 'ดูศูนย์ปฏิบัติการระบบ',

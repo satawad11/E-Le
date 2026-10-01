@@ -15,17 +15,11 @@ vi.mock('../src/axios', () => ({
 const AdminModulesView = (await import('../src/views/admin/AdminModulesView.vue')).default
 
 /**
- * INT-02 — โมดูลสารบรรณต้องแสดงในหน้า "โมดูลระบบ" ของระบบเดิม โดยไม่มี UI ใหม่
+ * หน้า "โมดูลระบบ" — การลงทะเบียนโมดูลอย่างเดียวต้องทำให้การ์ดของโมดูลโผล่ครบ
+ * (ชื่อ คำอธิบาย สถานะ สวิตช์เปิด-ปิด) โดยไม่ต้องแตะไฟล์หน้าเว็บ
  *
- * `SARABAN-V1.2-EXISTING-SYSTEM-MODULE-MASTER.md` §2 บังคับว่า SARABAN ต้องใช้
- * App Shell / Theme / Component ของระบบเดิม ห้ามสร้างหน้าจอหรือชุด UI ของตัวเอง
- *
- * เทสต์นี้คือ UI QA ของ INT-02: ยืนยันว่าการลงทะเบียนโมดูลอย่างเดียว ทำให้การ์ด
- * ของสารบรรณโผล่ในหน้าจอเดิมได้ครบทุกส่วน (ชื่อ คำอธิบาย สถานะ สวิตช์เปิด-ปิด)
- * โดยไม่ต้องแตะไฟล์หน้าเว็บเลยแม้แต่บรรทัดเดียว
- *
- * payload ที่ป้อนเข้าไปมีรูปร่างเดียวกับที่ `ModuleRegistry::describe()` คืนจริง
- * ซึ่ง `SarabanModuleRegistrationTest` ฝั่ง backend ตรึงไว้อีกชั้นหนึ่ง
+ * เดิมใช้โมดูลสารบรรณเป็นตัวอย่าง · ถอดสารบรรณแล้ว (2026-10-01) จึงใช้โมดูลงานล่วงเวลา
+ * ซึ่งเป็นโมดูลธุรกิจที่ปิดได้เช่นกัน payload มีรูปร่างเดียวกับที่ `ModuleRegistry::describe()` คืนจริง
  */
 const modulesPayload = [
   {
@@ -39,12 +33,11 @@ const modulesPayload = [
     disabled_dependencies: [],
   },
   {
-    code: 'saraban',
-    config_key: 'saraban',
-    name_th: 'ระบบงานสารบรรณอิเล็กทรอนิกส์',
-    name: 'ระบบงานสารบรรณอิเล็กทรอนิกส์',
-    description:
-      'ทะเบียนหนังสือรับ-ส่ง หนังสือภายใน การเดินเรื่อง เกษียนหนังสือ ลงนาม และกระจายหนังสือ',
+    code: 'overtime',
+    config_key: 'overtime',
+    name_th: 'ระบบงานล่วงเวลา',
+    name: 'ระบบงานล่วงเวลา',
+    description: 'คำสั่งปฏิบัติงานนอกเวลา การลงเวลาจริง และการรับรองเวลา',
     enabled: true,
     can_disable: true,
     dependencies: ['system'],
@@ -52,7 +45,7 @@ const modulesPayload = [
   },
 ]
 
-describe('AdminModulesView — การ์ดโมดูลสารบรรณ', () => {
+describe('AdminModulesView — การ์ดโมดูลธุรกิจ', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     get.mockReset()
@@ -67,66 +60,44 @@ describe('AdminModulesView — การ์ดโมดูลสารบรร�
     return wrapper
   }
 
-  it('แสดงชื่อและคำอธิบายของโมดูลสารบรรณด้วยการ์ดเดิมของหน้าจอ', async () => {
-    const wrapper = await mountView()
-    const text = wrapper.text()
+  it('แสดงชื่อและคำอธิบายของโมดูลด้วยการ์ดเดิมของหน้าจอ', async () => {
+    const text = (await mountView()).text()
 
-    expect(text).toContain('ระบบงานสารบรรณอิเล็กทรอนิกส์')
-    expect(text).toContain('ทะเบียนหนังสือรับ-ส่ง')
+    expect(text).toContain('ระบบงานล่วงเวลา')
+    expect(text).toContain('คำสั่งปฏิบัติงานนอกเวลา')
     expect(text).toContain('เปิดใช้งาน')
   })
 
-  it('บอกว่าสารบรรณต้องใช้ร่วมกับโมดูลระบบกลาง', async () => {
-    const wrapper = await mountView()
-
-    expect(wrapper.text()).toContain('ต้องใช้ร่วมกับ: system')
+  it('บอกว่าโมดูลต้องใช้ร่วมกับโมดูลระบบกลาง', async () => {
+    expect((await mountView()).text()).toContain('ต้องใช้ร่วมกับ: system')
   })
 
-  it('มีสวิตช์ปิดโมดูลได้ เพราะสารบรรณเป็นโมดูลธุรกิจ ไม่ใช่โมดูลแกน', async () => {
-    const wrapper = await mountView()
-
-    const labels = wrapper
+  it('มีสวิตช์ปิดโมดูลธุรกิจได้ แต่โมดูลแกนไม่มี', async () => {
+    const labels = (await mountView())
       .findAll('button[role="switch"]')
       .map((button) => button.attributes('aria-label'))
 
-    expect(labels).toContain('เปิดหรือปิดระบบงานสารบรรณอิเล็กทรอนิกส์')
+    expect(labels).toContain('เปิดหรือปิดระบบงานล่วงเวลา')
+    expect(labels).not.toContain('เปิดหรือปิดระบบกลางและการบริหารระบบ')
   })
 
   /**
-   * สวิตช์ต้องส่ง `config_key` ไม่ใช่ `code` — กลไกเปิด-ปิดของระบบเดิมผูกกับค่าตั้งค่า
-   * `module_{configKey}_enabled` ถ้าส่งผิดคีย์ สวิตช์จะกดแล้วไม่มีอะไรเกิดขึ้น
-   * ซึ่งเป็นบั๊กเดิมที่ CLEANUP-02 เพิ่งแก้ไป
+   * สวิตช์ต้องส่ง `config_key` ไม่ใช่ `code` — กลไกเปิด-ปิดผูกกับค่าตั้งค่า
+   * `module_{configKey}_enabled` ถ้าส่งผิดคีย์ สวิตช์จะกดแล้วไม่มีอะไรเกิดขึ้น (บั๊กเดิมที่ CLEANUP-02 แก้)
    */
-  it('กดสวิตช์แล้วส่ง config_key ของสารบรรณไปยัง endpoint เดิม', async () => {
+  it('กดสวิตช์แล้วส่ง config_key ไปยัง endpoint เดิม', async () => {
     post.mockResolvedValue({
       data: { message: 'ปิดโมดูลแล้ว', affected_dependants: [], modules: modulesPayload },
     })
 
     const wrapper = await mountView()
 
-    const sarabanSwitch = wrapper
+    await wrapper
       .findAll('button[role="switch"]')
-      .find(
-        (button) =>
-          button.attributes('aria-label') === 'เปิดหรือปิดระบบงานสารบรรณอิเล็กทรอนิกส์',
-      )
-
-    await sarabanSwitch.trigger('click')
+      .find((button) => button.attributes('aria-label') === 'เปิดหรือปิดระบบงานล่วงเวลา')
+      .trigger('click')
     await flushPromises()
 
-    expect(post).toHaveBeenCalledWith('/admin/modules', {
-      module: 'saraban',
-      enabled: false,
-    })
-  })
-
-  it('ไม่ได้เพิ่มหน้าจอหรือแถบเมนูใหม่ให้สารบรรณในเช็คพอยต์นี้', async () => {
-    const wrapper = await mountView()
-
-    // หน้านี้เรียกเฉพาะ endpoint เดิมของทะเบียนโมดูล ไม่มีเส้นทางของสารบรรณโดยเฉพาะ
-    const calledUrls = get.mock.calls.map(([url]) => url)
-
-    expect(calledUrls).toEqual(['/admin/modules'])
-    expect(wrapper.html()).not.toContain('/saraban/')
+    expect(post).toHaveBeenCalledWith('/admin/modules', { module: 'overtime', enabled: false })
   })
 })

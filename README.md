@@ -1,12 +1,16 @@
-# SARABAN V1.2 Existing-System Module Pack
+# E-Le — ระบบบริหารงานบุคคลสถานศึกษา
 
-ใช้เมื่อจะเพิ่ม SARABAN เข้าในระบบเดิม โดย UI ต้องตามระบบเดิม
+ระบบลาออนไลน์ ลงเวลา งานล่วงเวลา ศูนย์แจ้งเตือน ศูนย์รายงาน และศูนย์จัดการเอกสาร
+สำหรับสถานศึกษาอาชีวศึกษา · Laravel 13 + Vue 3 + MySQL 8 (Docker)
 
-ลำดับ:
-1. ใส่ไฟล์ใน repository
-2. ส่ง `01-FIRST-PROMPT.md`
-3. ทำ INT-00
-4. ต่อด้วย `02-NEXT-CHECKPOINT-PROMPT.md`
-5. ถ้าไม่รู้ว่าถึงไหน ใช้ `03-RESUME-VERIFY-STATE.md`
-6. ถ้า AI หลุดกรอบ ใช้ `04-RESET-SCOPE.md`
-7. ก่อน Go-live ใช้ `05-FINAL-ACCEPTANCE-PROMPT.md`
+| เริ่มที่ | เนื้อหา |
+|---|---|
+| `START-HERE.md`, `AGENTS.md`, `PROJECT_RULES.md`, `CLAUDE.md` | กติกาการพัฒนาและลำดับงาน |
+| `CURRENT_PHASE.md`, `TASKS.md` | สถานะปัจจุบันและงานค้าง |
+| `docs/00-MASTER-BLUEPRINT.md`, `docs/01-ARCHITECTURE.md` | ภาพรวมและสถาปัตยกรรม |
+| `docs/modules/` | ข้อกำหนดรายโมดูล |
+| `docs/CHANGELOG.md`, `docs/DECISION-LOG.md` | ประวัติการเปลี่ยนแปลงและการตัดสินใจ |
+| `docs/archive/saraban-v1.2/` | เอกสารโมดูลสารบรรณที่ถอดออกแล้ว (เก็บถาวร) |
+
+ตรวจคุณภาพก่อน push: `cd backend && composer verify` และ `cd frontend && npm run verify`
+(hook `.githooks/pre-push` รันให้อัตโนมัติ)

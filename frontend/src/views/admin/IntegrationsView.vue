@@ -173,11 +173,8 @@ import LoadingState from '../../components/ui/LoadingState.vue'
  * **ความลับสำหรับเซ็นแสดงครั้งเดียว** — หน้าจอจึงต้องทำให้เห็นชัดและคัดลอกง่าย
  * ที่สุดในจังหวะนั้น ไม่ใช่แสดงเป็นข้อความเล็ก ๆ ที่ผู้ใช้กดผ่านไปแล้วกู้ไม่ได้
  */
-const EVENT_LABELS = {
-  'saraban.document.finalized': 'ออกหนังสือฉบับสมบูรณ์',
-  'saraban.document.distributed': 'เวียนหนังสือ',
-  'saraban.document.acknowledged': 'ผู้รับรับทราบหนังสือ',
-}
+// เหตุการณ์ชุดเดิมของสารบรรณถูกถอดไปพร้อมโมดูล — ชื่อที่ไม่อยู่ในตารางนี้แสดงเป็นรหัสตามจริง
+const EVENT_LABELS = {}
 
 const STATUS_LABELS = {
   pending: 'รอส่ง',

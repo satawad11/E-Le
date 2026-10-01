@@ -42,10 +42,13 @@ class MenuDriftTest extends TestCase
      *
      * การอัปเดตค่านี้เฉย ๆ โดยไม่ทำข้อ 1 = ปิดปากเทสต์ ไม่ใช่แก้ปัญหา
      */
-    private const TREE_FINGERPRINT = '4e542c03da66926aa6c95ba3a02da94580bc9e542c675a5a7f3439183219a49a';
+    private const TREE_FINGERPRINT = 'fe943bcb7d9c8187b18a72d4c01a8fe18250692ef23b3165d30ea0091fa44045';
 
-    /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว */
-    private const LATEST_MENU_SYNC_MIGRATION = '2026_10_01_100000_move_operations_permissions_to_system';
+    /** migration ล่าสุดที่ทำหน้าที่ sync เมนูให้ระบบที่ติดตั้งแล้ว (ถอดกิ่งสารบรรณ) */
+    private const LATEST_MENU_SYNC_MIGRATION = '2026_10_01_110000_drop_saraban_v12_module';
+
+    /** migration ที่ส่งเมนูศูนย์ปฏิบัติการให้ระบบที่ติดตั้งแล้ว */
+    private const OPERATIONS_MENU_MIGRATION = '2026_10_01_100000_move_operations_permissions_to_system';
 
     public function test_changing_the_menu_tree_requires_a_migration_for_installed_systems(): void
     {
@@ -75,12 +78,24 @@ class MenuDriftTest extends TestCase
      * จำลองระบบที่ติดตั้งก่อนมีเมนูศูนย์ปฏิบัติการ ด้วยการ seed แล้วลบสองเมนูนั้นออก
      * ก่อนเรียก `up()` ของ migration ตรง ๆ
      */
-    public function test_the_referenced_migration_actually_delivers_menus_to_installed_systems(): void
+    public function test_the_latest_migration_removes_the_saraban_branch_from_installed_systems(): void
+    {
+        $this->seed(MenuSeeder::class);
+        $parent = Menu::create(['code' => 'saraban', 'title_th' => 'งานสารบรรณ', 'title_en' => 'Saraban', 'module' => 'saraban', 'sort_order' => 9]);
+        Menu::create(['code' => 'saraban.inbox', 'title_th' => 'กล่องหนังสือ', 'title_en' => 'Inbox', 'module' => 'saraban', 'parent_id' => $parent->id, 'sort_order' => 1]);
+
+        (require database_path('migrations/'.self::LATEST_MENU_SYNC_MIGRATION.'.php'))->up();
+
+        $this->assertSame(0, Menu::query()->where('module', 'saraban')->orWhere('code', 'like', 'saraban%')->count());
+        $this->assertNotNull(Menu::where('code', 'settings.operations')->first(), 'เมนูของระบบต้องไม่ถูกลบตาม');
+    }
+
+    public function test_the_operations_migration_delivers_its_menus_to_installed_systems(): void
     {
         $this->seed(MenuSeeder::class);
         Menu::query()->whereIn('code', ['settings.operations', 'settings.compliance'])->delete();
 
-        (require database_path('migrations/'.self::LATEST_MENU_SYNC_MIGRATION.'.php'))->up();
+        (require database_path('migrations/'.self::OPERATIONS_MENU_MIGRATION.'.php'))->up();
 
         $settings = Menu::where('code', 'settings')->firstOrFail();
         $operations = Menu::where('code', 'settings.operations')->firstOrFail();
@@ -92,40 +107,6 @@ class MenuDriftTest extends TestCase
             $operations->permissions()->pluck('name')->all(),
         );
         $this->assertSame('/admin/operations/compliance', Menu::where('code', 'settings.compliance')->value('route_path'));
-    }
-
-    /**
-     * เมนูสารบรรณต้องครบทุกหน้าที่โมดูลมี — ตรวจจำนวนตรง ๆ
-     *
-     * ตัวเลขนี้คือสิ่งที่หายไปจริงในเหตุการณ์ข้างต้น (มี 6 จาก 13)
-     *
-     * นับรวมสองกลุ่มหลัก ("งานสารบรรณ" กับ "การจัดการงานสารบรรณ") รวม 8 หน้า (7 + 1)
-     */
-    public function test_the_saraban_branch_declares_every_page_the_module_has(): void
-    {
-        $groups = collect(MenuSeeder::TREE)
-            ->filter(fn (array $item) => ($item['module'] ?? null) === 'saraban');
-
-        $this->assertCount(2, $groups, 'เมนูสารบรรณต้องมีสองกลุ่ม: งานประจำวัน และการจัดการ');
-
-        $this->assertCount(
-            8,
-            $groups->flatMap(fn (array $item) => $item['children'] ?? [])->all(),
-            'จำนวนหน้าของงานสารบรรณในสองกลุ่มหลักเปลี่ยนไป — ถ้าตั้งใจ ให้แก้ตัวเลขนี้พร้อม migration sync เมนู',
-        );
-
-        $allSarabanChildren = collect(MenuSeeder::TREE)->flatMap(function (array $item) {
-            $parentModule = $item['module'] ?? null;
-
-            return collect($item['children'] ?? [])
-                ->filter(fn (array $child) => ($child['module'] ?? $parentModule) === 'saraban');
-        });
-
-        $this->assertCount(
-            8,
-            $allSarabanChildren->all(),
-            'จำนวนหน้าทั้งหมดของโมดูลสารบรรณต้องครบ 8 หน้า',
-        );
     }
 
     /**

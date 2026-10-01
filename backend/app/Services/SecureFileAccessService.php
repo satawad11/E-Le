@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
-use App\Models\Saraban\DocumentVersion;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -59,34 +58,10 @@ class SecureFileAccessService
             return true;
         }
 
-        if ($this->isAccessibleSarabanDocumentFile($user, $relative)) {
-            return true;
-        }
-
         return Setting::query()
             ->whereIn('key', ['organization_logo'])
             ->where('value', $stored)
             ->exists();
-    }
-
-    /**
-     * ไฟล์ของหนังสือในงานสารบรรณ (INT-05)
-     *
-     * รับ `$relative` ไม่ใช่ `$stored` เพราะสารบรรณเก็บ path เปล่า ๆ ไม่มีคำนำหน้า
-     * `/storage/` ต่างจากโมดูลเดิมที่เก็บทั้งคำนำหน้าไว้ในฐานข้อมูล
-     * (`SarabanDataModelTest` ตรึงรูปแบบนี้ไว้ — path ที่เก็บต้องไม่ใช่ URL)
-     *
-     * สิทธิ์ตัดสินด้วย `DocumentPolicy` ผ่าน `Gate` ตัวเดียวกับที่หน้าจอและ API ใช้
-     * จึงไม่มีทางที่ไฟล์จะเปิดได้กว้างกว่าตัวหนังสือที่ไฟล์นั้นสังกัดอยู่
-     */
-    private function isAccessibleSarabanDocumentFile(User $user, string $relative): bool
-    {
-        $document = DocumentVersion::query()
-            ->where('pdf_file_path', $relative)
-            ->first()
-            ?->document;
-
-        return $document !== null && Gate::forUser($user)->allows('view', $document);
     }
 
     private function isOwnProfileAsset(User $user, string $stored): bool

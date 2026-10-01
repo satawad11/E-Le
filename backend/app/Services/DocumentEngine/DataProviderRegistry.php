@@ -19,7 +19,6 @@ class DataProviderRegistry
         Providers\LeaveRequestDataProvider::CODE => Providers\LeaveRequestDataProvider::class,
         Providers\LeaveStatisticsDataProvider::CODE => Providers\LeaveStatisticsDataProvider::class,
         Providers\PersonnelProfileDataProvider::CODE => Providers\PersonnelProfileDataProvider::class,
-        Providers\OfficialSarabanDataProvider::CODE => Providers\OfficialSarabanDataProvider::class,
     ];
 
     public function __construct(private readonly Container $container) {}
@@ -72,7 +71,6 @@ class DataProviderRegistry
             Providers\LeaveRequestDataProvider::CODE => 'รายละเอียดใบลา (1 ฉบับ)',
             Providers\LeaveStatisticsDataProvider::CODE => 'สรุปสถิติการลา (หลายรายการ)',
             Providers\PersonnelProfileDataProvider::CODE => 'ข้อมูลบุคลากรและสถานศึกษา',
-            Providers\OfficialSarabanDataProvider::CODE => 'หนังสือราชการและงานสารบรรณ',
             default => $code,
         };
     }

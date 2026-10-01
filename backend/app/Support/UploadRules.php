@@ -49,16 +49,6 @@ final class UploadRules
     }
 
     /**
-     * ไฟล์แนบของหนังสือในงานสารบรรณ (INT-04)
-     *
-     * @return array<int,ValidationRule|string>
-     */
-    public static function sarabanAttachment(?int $maxSizeKb = null): array
-    {
-        return self::rulesFor('saraban_attachments', $maxSizeKb);
-    }
-
-    /**
      * ไฟล์ลายเซ็นอิเล็กทรอนิกส์ที่อัปโหลดเข้ามา (SEC-028)
      *
      * @return array<int,ValidationRule|string>

@@ -73,7 +73,7 @@ class AdminPreflightCheckApiTest extends TestCase
             ]);
 
         $checks = $response->json('data.checks');
-        $this->assertCount(9, $checks);
+        $this->assertCount(7, $checks);
         $ids = collect($checks)->pluck('id')->all();
         $this->assertEquals([
             'org_units',
@@ -83,8 +83,6 @@ class AdminPreflightCheckApiTest extends TestCase
             'work_schedule_and_holidays',
             'document_templates',
             'notification_channels',
-            'saraban_number_series',
-            'saraban_signers',
         ], $ids);
     }
 

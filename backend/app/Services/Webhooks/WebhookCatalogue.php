@@ -16,16 +16,23 @@ namespace App\Services\Webhooks;
  */
 final class WebhookCatalogue
 {
-    public const DOCUMENT_FINALIZED = 'saraban.document.finalized';
+    /**
+     * ว่างโดยตั้งใจ — เหตุการณ์ชุดเดิม (`saraban.document.*`) ถูกถอดไปพร้อมโมดูลสารบรรณ
+     * โครงสร้าง webhook (ปลายทาง คิวส่ง การส่งซ้ำ ธง `system.webhooks`) ยังอยู่ครบ
+     * โมดูลที่ต้องการส่งเหตุการณ์ออกให้เพิ่มชื่อที่นี่พร้อมตัดสินใจเรื่อง payload ก่อน
+     *
+     * @var array<int,string>
+     */
+    public const EVENTS = [];
 
-    public const DOCUMENT_DISTRIBUTED = 'saraban.document.distributed';
-
-    public const DOCUMENT_ACKNOWLEDGED = 'saraban.document.acknowledged';
-
-    /** @var array<int,string> */
-    public const EVENTS = [
-        self::DOCUMENT_FINALIZED,
-        self::DOCUMENT_DISTRIBUTED,
-        self::DOCUMENT_ACKNOWLEDGED,
-    ];
+    /**
+     * รายชื่อที่ปลายทางสมัครรับได้จริง — รายการปิดในโค้ด รวมกับ `webhooks.extra_events`
+     * (ค่าตั้งค่าที่ไม่มีหน้าจอแก้ ใช้กับชุดทดสอบและการทดลองเชื่อมต่อที่ผู้ดูแลระบบตั้งเอง)
+     *
+     * @return array<int,string>
+     */
+    public static function events(): array
+    {
+        return array_values(array_unique([...self::EVENTS, ...(array) config('webhooks.extra_events', [])]));
+    }
 }

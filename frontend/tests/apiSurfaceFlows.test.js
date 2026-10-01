@@ -8,10 +8,7 @@ vi.mock('../src/utils/secureFile', () => ({ fetchObjectUrl: vi.fn(async () => 'b
 const push = vi.hoisted(() => vi.fn())
 vi.mock('vue-router', () => ({ useRouter: () => ({ push }), useRoute: () => ({ params: {} }) }))
 import ConfirmOperation from '../src/components/ui/ConfirmOperation.vue'
-import DocumentTools from '../src/components/saraban/DocumentTools.vue'
-import RetentionPanel from '../src/components/saraban/RetentionPanel.vue'
 import OperationsTools from '../src/components/admin/OperationsTools.vue'
-import SavedViews from '../src/components/saraban/SavedViews.vue'
 import { fetchObjectUrl } from '../src/utils/secureFile'
 const global = {
   stubs: { AppModal: { template: '<div><slot/><slot name="footer"/></div>' }, PdfWorkspace: true, RouterLink: { template: '<a><slot/></a>' } },
@@ -19,15 +16,7 @@ const global = {
 }
 const render = (component, props = {}) => mount(component, { props, global })
 async function click(w, text) { const button = w.findAll('button').find(b => b.text() === text); expect(button, text).toBeTruthy(); await button.trigger('click'); await flushPromises() }
-const doc = { id: 7, status: 'signed', finalized_at: null, versions: [{ id: 10, version_no: 1, pdf_file_path: 'saraban/one.pdf' }, { id: 20, version_no: 2, pdf_file_path: 'saraban/two.pdf' }] }
 beforeEach(() => { for (const fn of Object.values(api)) fn.mockReset(); push.mockReset(); fetchObjectUrl.mockReset().mockResolvedValue('blob:preview'); api.post.mockResolvedValue({ data: {} }); access.allowed = true; URL.revokeObjectURL = vi.fn() })
-
-async function openRedactions(w) {
-  const details = w.findAll('details').at(-1)
-  details.element.open = true
-  await details.trigger('toggle')
-  await flushPromises()
-}
 
 describe('ยืนยันการทำงานที่มีผลต่อเอกสาร', () => {
   it('ไม่ส่งคำขอก่อนยืนยัน และยืนยันรหัสผ่านใหม่เมื่อ server ตอบ 423', async () => {
@@ -56,128 +45,6 @@ describe('ยืนยันการทำงานที่มีผลต่�
   })
 })
 
-describe('เครื่องมือรายฉบับ', () => {
-  it('โหลดและแสดงหลักฐานลายเซ็น', async () => {
-    api.get.mockResolvedValue({ data: { evidences: [{ id: 1, signer_name_snapshot: 'ผู้ลงนามทดสอบ', file_intact: true }] } })
-    const w = render(DocumentTools, { document: doc })
-    await click(w, 'ตรวจหลักฐานการลงนาม')
-    expect(api.get).toHaveBeenCalledWith('/saraban/documents/7/signatures')
-    expect(w.text()).toContain('ผู้ลงนามทดสอบ')
-  })
-  it('ออกฉบับสมบูรณ์หลังยืนยันเท่านั้น', async () => {
-    const w = render(DocumentTools, { document: doc })
-    await click(w, 'ออกฉบับสมบูรณ์พร้อมรหัสตรวจสอบ')
-    expect(api.post).not.toHaveBeenCalled()
-    await click(w, 'ยืนยันออกฉบับสมบูรณ์')
-    expect(api.post).toHaveBeenCalledWith('/saraban/documents/7/finalize')
-    expect(w.emitted('changed')).toHaveLength(1)
-  })
-  it('ร่างยังออกฉบับสมบูรณ์ไม่ได้', () => {
-    const w = render(DocumentTools, { document: { ...doc, status: 'draft' } })
-    expect(w.findAll('button').find(b => b.text() === 'ออกฉบับสมบูรณ์พร้อมรหัสตรวจสอบ').attributes('disabled')).toBeDefined()
-  })
-  /*
-   * เดิมช่องนี้ให้กรอกพิกัดเป็นตัวเลขแล้วยิง endorse ได้ทันทีโดยไม่เห็นเอกสาร
-   * ตอนนี้ต้องพาไปหน้าเกษียนที่เห็นเอกสารจริง และ **ต้องไม่ยิงคำขอเอง**
-   */
-  it('เกษียนต้องพาไปหน้าที่เห็นเอกสารจริง ไม่ยิงคำขอจากแผงเครื่องมือ', async () => {
-    const w = render(DocumentTools, { document: doc })
-    await click(w, 'เปิดหน้าเกษียนหนังสือ')
-    expect(push).toHaveBeenCalledWith({ name: 'saraban-document-endorse', params: { id: 7 } })
-    expect(api.post).not.toHaveBeenCalled()
-  })
-  it('เปรียบเทียบด้วย id ของสองฉบับและแสดงผลจาก server', async () => {
-    api.get.mockResolvedValue({ data: { identical_file: false, file: { left_pages: 1, right_pages: 2 } } })
-    const w = render(DocumentTools, { document: doc })
-    await w.findAll('select')[0].setValue(10); await w.findAll('select')[1].setValue(20)
-    await click(w, 'เปรียบเทียบ')
-    expect(api.get).toHaveBeenCalledWith('/saraban/documents/7/compare', { params: { left: 10, right: 20 } })
-    expect(w.text()).toContain('ไฟล์ทั้งสองแตกต่างกัน')
-  })
-  it('สร้างสำเนาปกปิดจากฉบับที่เลือกพร้อมพื้นที่ ไม่ส่งข้อมูลวัตถุ UI', async () => {
-    api.get.mockResolvedValue({ data: { available: true, redactions: [] } })
-    const w = render(DocumentTools, { document: doc })
-    const details = w.findAll('details').at(-1)
-    details.element.open = true; await details.trigger('toggle'); await flushPromises()
-    await w.findAll('select')[2].setValue(10); await flushPromises()
-    await click(w, 'เพิ่มพื้นที่ปกปิด')
-    await w.findAll('input:not([type])').at(-1).setValue('ปกปิดข้อมูลส่วนบุคคล')
-    await click(w, 'สร้างสำเนาปกปิด'); await click(w, 'ยืนยันสร้างสำเนาปกปิด')
-    expect(api.post).toHaveBeenCalledWith('/saraban/documents/7/redactions', { source_version_id: 10, reason: 'ปกปิดข้อมูลส่วนบุคคล', areas: [{ page: 1, x: 60, y: 100, width: 160, height: 30 }] })
-    w.unmount()
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview')
-  })
-  it('เปิดสำเนาที่ปกปิดแล้วต้องหยุดแก้พื้นที่ของต้นฉบับ', async () => {
-    api.get.mockResolvedValue({ data: { available: true, redactions: [{ id: 3, reason: 'สำเนาทดสอบ', area_count: 1, pdf_file_path: 'saraban/redacted.pdf' }] } })
-    const w = render(DocumentTools, { document: doc })
-    await openRedactions(w)
-    await w.findAll('select')[2].setValue(10); await flushPromises()
-    await click(w, 'เพิ่มพื้นที่ปกปิด')
-    await click(w, 'สำเนาทดสอบ · 1 พื้นที่ — เปิดสำเนา')
-    expect(w.findComponent({ name: 'PdfWorkspace' }).props('editable')).toBe(false)
-    expect(w.findAll('button').find(b => b.text() === 'เพิ่มพื้นที่ปกปิด').attributes('disabled')).toBeDefined()
-    expect(w.findAll('button').find(b => b.text() === 'สร้างสำเนาปกปิด').attributes('disabled')).toBeDefined()
-    expect(api.post).not.toHaveBeenCalled()
-    w.unmount()
-  })
-  it('ไฟล์ฉบับก่อนที่โหลดช้าต้องไม่ทับฉบับที่เลือกใหม่', async () => {
-    api.get.mockResolvedValue({ data: { available: true, redactions: [] } })
-    let finishFirst
-    fetchObjectUrl.mockImplementationOnce(() => new Promise(resolve => { finishFirst = resolve }))
-      .mockResolvedValueOnce('blob:second')
-    const w = render(DocumentTools, { document: doc })
-    await openRedactions(w)
-    await w.findAll('select')[2].setValue(10)
-    expect(w.findAll('button').find(b => b.text() === 'เพิ่มพื้นที่ปกปิด').attributes('disabled')).toBeDefined()
-    await w.findAll('select')[2].setValue(20); await flushPromises()
-    finishFirst('blob:first'); await flushPromises()
-    expect(w.findComponent({ name: 'PdfWorkspace' }).props('source')).toBe('blob:second')
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:first')
-    await click(w, 'เพิ่มพื้นที่ปกปิด')
-    await w.findAll('input:not([type])').at(-1).setValue('ปกปิดฉบับที่สอง')
-    await click(w, 'สร้างสำเนาปกปิด'); await click(w, 'ยืนยันสร้างสำเนาปกปิด')
-    expect(api.post).toHaveBeenCalledWith('/saraban/documents/7/redactions', expect.objectContaining({ source_version_id: 20 }))
-    w.unmount()
-  })
-  it('คืน blob ที่โหลดเสร็จหลังออกจากหน้าจอ', async () => {
-    api.get.mockResolvedValue({ data: { available: true, redactions: [] } })
-    let finish
-    fetchObjectUrl.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
-    const w = render(DocumentTools, { document: doc })
-    await openRedactions(w)
-    await w.findAll('select')[2].setValue(10)
-    w.unmount()
-    finish('blob:late'); await flushPromises()
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:late')
-  })
-})
-
-describe('การเก็บรักษา', () => {
-  it('โหลดรายละเอียดและส่งคำขออายัดพร้อมเหตุผล', async () => {
-    api.get.mockResolvedValue({ data: { holds: [], schedule: null, on_hold: false } })
-    const w = render(RetentionPanel, { documentId: 7 })
-    await click(w, 'ตรวจสอบรายการ')
-    const text = w.findAll('input:not([type])')
-    await text[0].setValue('อ้างอิง-01'); await text[1].setValue('รอตรวจสอบเอกสาร')
-    await click(w, 'อายัดหนังสือ'); await click(w, 'ยืนยันอายัดหนังสือ')
-    expect(api.post).toHaveBeenCalledWith('/saraban/documents/7/holds', { reference: 'อ้างอิง-01', reason: 'รอตรวจสอบเอกสาร' })
-  })
-  it('คิวครบกำหนดแยกอนุมัติกับทำลายและรอการยืนยัน', async () => {
-    api.get.mockResolvedValue({ data: { due: [{ id: 9, status: 'approved', document: { id: 7, subject: 'หนังสือทดสอบ' } }] } })
-    const w = render(RetentionPanel)
-    await click(w, 'ตรวจสอบรายการ'); await click(w, 'ทำลายไฟล์ตามอนุมัติ')
-    expect(api.post).not.toHaveBeenCalled()
-    expect(w.text()).toContain('ย้อนกลับไม่ได้')
-    await click(w, 'ยืนยันทำลายไฟล์')
-    expect(api.post).toHaveBeenCalledWith('/saraban/retention/9/dispose')
-  })
-  it('หนังสือถูกอายัดไม่เปิดปุ่มทำลาย', async () => {
-    api.get.mockResolvedValue({ data: { holds: [], on_hold: true, schedule: { id: 1, status: 'approved' } } })
-    const w = render(RetentionPanel, { documentId: 7 }); await click(w, 'ตรวจสอบรายการ')
-    expect(w.findAll('button').find(b => b.text() === 'ทำลายไฟล์ตามอนุมัติ').attributes('disabled')).toBeDefined()
-  })
-})
-
 describe('ศูนย์ดูแลและมุมมองส่วนตัว', () => {
   it('แสดงผลส่งจริงและสั่งส่งรายการที่เลือกใหม่', async () => {
     api.get.mockImplementation(async url => url.includes('channel-health') ? { data: { channels: [{ channel: 'email', sent: 2, failed: 1, pending: 0 }] } } : { data: { data: [{ id: 4, recipient: 'ผู้รับทดสอบ', channel: 'email' }], meta: { current_page: 1, last_page: 1 } } })
@@ -192,16 +59,5 @@ describe('ศูนย์ดูแลและมุมมองส่วนต�
     const w = render(OperationsTools)
     expect(w.findAll('details')).toHaveLength(0)
     expect(api.get).not.toHaveBeenCalled()
-  })
-  it('บันทึกและนำตัวกรองกลับมาใช้จริง', async () => {
-    api.get.mockResolvedValue({ data: { views: [{ id: 2, name: 'หนังสือร่าง', filters: { status: 'draft' }, is_mine: true }] } })
-    const w = render(SavedViews, { filters: { status: 'draft', direction: '' } })
-    await w.find('input:not([type])').setValue('หนังสือร่าง')
-    await click(w, 'บันทึกมุมมองใหม่')
-    expect(api.post).toHaveBeenCalledWith('/saraban/saved-views', expect.objectContaining({ resource: 'documents', filters: { status: 'draft', direction: '' } }))
-    await click(w, 'หนังสือร่าง')
-    expect(w.emitted('apply')[0][0]).toEqual({ status: 'draft' })
-    await click(w, 'ลบมุมมอง'); await click(w, 'ยืนยันลบมุมมอง')
-    expect(api.delete).toHaveBeenCalledWith('/saraban/saved-views/2')
   })
 })

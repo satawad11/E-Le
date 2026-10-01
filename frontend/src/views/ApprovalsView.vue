@@ -67,12 +67,6 @@
       >
         <span>คำสั่ง OT รออนุมัติ ↗</span>
       </router-link>
-      <router-link
-        to="/saraban/documents/queue"
-        class="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors inline-flex items-center gap-1.5"
-      >
-        <span>งานสารบรรณรอลงนาม/เกษียน ↗</span>
-      </router-link>
     </div>
 
     <div v-if="loading" class="py-8">

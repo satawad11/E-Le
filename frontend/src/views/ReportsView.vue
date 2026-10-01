@@ -55,16 +55,6 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
         <span>๓. เกณฑ์ ก.ค.ศ. (๒๓ วัน) & PA</span>
       </button>
-
-      <button
-        type="button"
-        @click="activeTab = 'saraban'"
-        class="flex-1 min-w-[140px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2"
-        :class="activeTab === 'saraban' ? 'bg-white text-[#800000] shadow-sm' : 'text-gray-600 hover:text-gray-900'"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-        <span>๔. สารบรรณ ๔ ฝ่าย สอศ.</span>
-      </button>
     </nav>
 
     <!-- ========================================== -->
@@ -257,56 +247,6 @@
       </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- TAB 4: รายงานสารบรรณ 4 ฝ่าย สอศ. (SARABAN) -->
-    <!-- ========================================== -->
-    <div v-show="activeTab === 'saraban'" class="space-y-6">
-      <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
-          <div>
-            <h2 class="text-lg font-bold text-gray-900">สมุดทะเบียนและรายงานสารบรรณอิเล็กทรอนิกส์ (๔ ฝ่าย สอศ.)</h2>
-            <p class="text-xs text-gray-500">ทะเบียนรับ ทะเบียนส่ง หนังสือเวียน และบันทึกข้อความภายในตามโครงสร้างสถานศึกษาอาชีวศึกษา</p>
-          </div>
-          <router-link
-            to="/saraban/reports/register"
-            class="px-4 py-2 bg-[#800000] hover:bg-[#660000] text-white text-xs font-bold rounded-xl transition-colors shadow-2xs inline-flex items-center gap-1.5"
-          >
-            <span>เปิดสมุดทะเบียนสารบรรณ</span>
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-          </router-link>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-          <!-- 1. ฝ่ายบริหารทรัพยากร -->
-          <router-link to="/saraban/reports/register?division=resource" class="p-4 rounded-xl border border-gray-100 bg-white hover:border-[#800000] shadow-2xs transition-all group">
-            <h3 class="text-xs font-bold text-[#800000] uppercase mb-1">๑. ฝ่ายบริหารทรัพยากร</h3>
-            <p class="text-sm font-semibold text-gray-800 group-hover:text-[#800000]">งานสารบรรณ/การเงิน/พัสดุ/บุคลากร</p>
-            <p class="text-xs text-gray-400 mt-2">ดูสมุดทะเบียน &rarr;</p>
-          </router-link>
-
-          <!-- 2. ฝ่ายแผนงานและความร่วมมือ -->
-          <router-link to="/saraban/reports/register?division=planning" class="p-4 rounded-xl border border-gray-100 bg-white hover:border-[#800000] shadow-2xs transition-all group">
-            <h3 class="text-xs font-bold text-[#800000] uppercase mb-1">๒. ฝ่ายแผนงานและความร่วมมือ</h3>
-            <p class="text-sm font-semibold text-gray-800 group-hover:text-[#800000]">งานวางแผน/งบประมาณ/วิจัย/ประกันคุณภาพ</p>
-            <p class="text-xs text-gray-400 mt-2">ดูสมุดทะเบียน &rarr;</p>
-          </router-link>
-
-          <!-- 3. ฝ่ายวิชาการ -->
-          <router-link to="/saraban/reports/register?division=academic" class="p-4 rounded-xl border border-gray-100 bg-white hover:border-[#800000] shadow-2xs transition-all group">
-            <h3 class="text-xs font-bold text-[#800000] uppercase mb-1">๓. ฝ่ายวิชาการ</h3>
-            <p class="text-sm font-semibold text-gray-800 group-hover:text-[#800000]">งานพัฒนาหลักสูตร/แผนกวิชา/วิทยบริการ</p>
-            <p class="text-xs text-gray-400 mt-2">ดูสมุดทะเบียน &rarr;</p>
-          </router-link>
-
-          <!-- 4. ฝ่ายพัฒนากิจการนักเรียน นักศึกษา -->
-          <router-link to="/saraban/reports/register?division=student_affairs" class="p-4 rounded-xl border border-gray-100 bg-white hover:border-[#800000] shadow-2xs transition-all group">
-            <h3 class="text-xs font-bold text-[#800000] uppercase mb-1">๔. ฝ่ายพัฒนากิจการฯ</h3>
-            <p class="text-sm font-semibold text-gray-800 group-hover:text-[#800000]">งานกิจกรรม/ปกครอง/แนะแนว/สวัสดิการ</p>
-            <p class="text-xs text-gray-400 mt-2">ดูสมุดทะเบียน &rarr;</p>
-          </router-link>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 

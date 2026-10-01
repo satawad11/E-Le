@@ -8,7 +8,6 @@ use App\Models\IdempotencyKey;
 use App\Models\User;
 use App\Models\WebhookDelivery;
 use App\Models\WebhookEndpoint;
-use App\Services\Webhooks\WebhookCatalogue;
 use App\Services\Webhooks\WebhookDispatcher;
 use App\Services\Webhooks\WebhookSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,25 +34,21 @@ class ApiIdempotencyAndWebhookTest extends TestCase
 {
     use RefreshDatabase;
 
-    // ── พื้นผิว API v1 (SoT §17) ────────────────────────────────────────────
+    /** เหตุการณ์ที่ลงทะเบียนเฉพาะในชุดทดสอบ — แคตตาล็อกจริงว่างหลังถอดโมดูลสารบรรณ */
+    private const EVENT = 'test.document.finalized';
 
-    public function test_every_saraban_route_exists_under_both_prefixes(): void
+    private const OTHER_EVENT = 'test.document.acknowledged';
+
+    protected function setUp(): void
     {
-        $uris = collect(Route::getRoutes()->getRoutes())->map(fn ($route) => $route->uri());
+        parent::setUp();
 
-        $legacy = $uris->filter(fn (string $uri) => str_starts_with($uri, 'api/saraban/'))
-            ->reject(fn (string $uri) => str_contains($uri, '/verify/'))
-            ->map(fn (string $uri) => substr($uri, strlen('api/saraban/')))
-            ->sort()->values();
-
-        $versioned = $uris->filter(fn (string $uri) => str_starts_with($uri, 'api/v1/saraban/'))
-            ->map(fn (string $uri) => substr($uri, strlen('api/v1/saraban/')))
-            ->sort()->values();
-
-        $this->assertSame($legacy->all(), $versioned->all());
+        config(['webhooks.extra_events' => [self::EVENT, self::OTHER_EVENT]]);
     }
 
-    public function test_the_machine_readable_descriptor_reports_abilities_and_step_up(): void
+    // ── พื้นผิว API v1 (SoT §17) ────────────────────────────────────────────
+
+    public function test_the_machine_readable_descriptor_lists_the_v1_surface(): void
     {
         $body = $this->actingAs(User::factory()->create())
             ->getJson('/api/v1/openapi.json')
@@ -62,12 +57,9 @@ class ApiIdempotencyAndWebhookTest extends TestCase
 
         $this->assertSame('v1', $body['info']['version']);
 
-        $finalize = $body['paths']['/api/v1/saraban/documents/{document}/finalize']['post'];
-        $this->assertContains('saraban.signature.sign', $finalize['security']['bearerAuth']);
-        $this->assertTrue($finalize['security']['requires_recent_authentication']);
-
-        $list = $body['paths']['/api/v1/saraban/documents']['get'];
-        $this->assertFalse($list['security']['requires_recent_authentication']);
+        $summary = $body['paths']['/api/v1/reports/vocational/evaluation-summary']['get'];
+        $this->assertFalse($summary['security']['requires_recent_authentication']);
+        $this->assertArrayNotHasKey('/api/v1/saraban/documents', $body['paths']);
     }
 
     // ── กุญแจกันทำซ้ำ · SEC-GAP-04 (SoT §17) ────────────────────────────────
@@ -181,20 +173,20 @@ class ApiIdempotencyAndWebhookTest extends TestCase
     {
         $user = User::factory()->create();
 
-        foreach (['saraban.document.view', 'saraban.document.create'] as $permission) {
+        foreach (['document.template.view', 'document.template.manage'] as $permission) {
             $user->givePermissionTo(Permission::findOrCreate($permission, 'web'));
         }
 
-        $token = $user->fresh()->createToken('service-account', ['saraban.document.view']);
+        $token = $user->fresh()->createToken('service-account', ['document.template.view']);
 
         $this->withHeader('Authorization', 'Bearer '.$token->plainTextToken)
-            ->getJson('/api/v1/saraban/documents')
+            ->getJson('/api/admin/document-engine/templates')
             ->assertOk();
 
         $this->app['auth']->forgetGuards();
 
         $this->withHeader('Authorization', 'Bearer '.$token->plainTextToken)
-            ->postJson('/api/v1/saraban/documents', [])
+            ->postJson('/api/admin/document-engine/templates', [])
             ->assertForbidden();
     }
 
@@ -202,10 +194,10 @@ class ApiIdempotencyAndWebhookTest extends TestCase
     public function test_a_token_scope_cannot_grant_authority_the_user_lacks(): void
     {
         $user = User::factory()->create();
-        $token = $user->createToken('service-account', ['saraban.document.create']);
+        $token = $user->createToken('service-account', ['document.template.manage']);
 
         $this->withHeader('Authorization', 'Bearer '.$token->plainTextToken)
-            ->postJson('/api/v1/saraban/documents', [])
+            ->postJson('/api/admin/document-engine/templates', [])
             ->assertForbidden();
     }
 
@@ -213,9 +205,9 @@ class ApiIdempotencyAndWebhookTest extends TestCase
 
     public function test_refresh_preserves_narrow_empty_and_wildcard_token_scopes(): void
     {
-        foreach ([['saraban.document.view'], [], ['*']] as $abilities) {
+        foreach ([['document.template.view'], [], ['*']] as $abilities) {
             $user = User::factory()->create();
-            foreach (['saraban.document.view', 'saraban.document.create'] as $permission) {
+            foreach (['document.template.view', 'document.template.manage'] as $permission) {
                 $user->givePermissionTo(Permission::findOrCreate($permission, 'web'));
             }
             $token = $user->createToken('review', $abilities);
@@ -226,7 +218,7 @@ class ApiIdempotencyAndWebhookTest extends TestCase
             $this->assertNull(AccessToken::findToken($token->plainTextToken));
             if ($abilities !== ['*']) {
                 $this->app['auth']->forgetGuards();
-                $this->withToken($response->json('access_token'))->postJson('/api/v1/saraban/documents', [])->assertForbidden();
+                $this->withToken($response->json('access_token'))->postJson('/api/admin/document-engine/templates', [])->assertForbidden();
             }
         }
     }
@@ -251,10 +243,10 @@ class ApiIdempotencyAndWebhookTest extends TestCase
     public function test_dispatching_writes_to_the_outbox_before_sending(): void
     {
         Queue::fake();
-        $endpoint = $this->endpointFor([WebhookCatalogue::DOCUMENT_FINALIZED]);
+        $endpoint = $this->endpointFor([self::EVENT]);
 
         $sent = app(WebhookDispatcher::class)->dispatch(
-            WebhookCatalogue::DOCUMENT_FINALIZED,
+            self::EVENT,
             ['document_uuid' => 'abc'],
         );
 
@@ -270,10 +262,10 @@ class ApiIdempotencyAndWebhookTest extends TestCase
     public function test_an_endpoint_only_receives_the_events_it_subscribed_to(): void
     {
         Queue::fake();
-        $this->endpointFor([WebhookCatalogue::DOCUMENT_FINALIZED]);
+        $this->endpointFor([self::EVENT]);
 
         $sent = app(WebhookDispatcher::class)->dispatch(
-            WebhookCatalogue::DOCUMENT_ACKNOWLEDGED,
+            self::OTHER_EVENT,
             ['document_uuid' => 'abc'],
         );
 
@@ -285,10 +277,10 @@ class ApiIdempotencyAndWebhookTest extends TestCase
     {
         Http::fake(['*' => Http::response('', 200)]);
 
-        $endpoint = $this->endpointFor([WebhookCatalogue::DOCUMENT_FINALIZED]);
+        $endpoint = $this->endpointFor([self::EVENT]);
         $delivery = WebhookDelivery::create([
             'webhook_endpoint_id' => $endpoint->id,
-            'event' => WebhookCatalogue::DOCUMENT_FINALIZED,
+            'event' => self::EVENT,
             'payload' => ['document_uuid' => 'abc'],
             'status' => 'pending',
         ]);
@@ -309,10 +301,10 @@ class ApiIdempotencyAndWebhookTest extends TestCase
     {
         Http::fake(['*' => Http::response('nope', 500)]);
 
-        $endpoint = $this->endpointFor([WebhookCatalogue::DOCUMENT_FINALIZED]);
+        $endpoint = $this->endpointFor([self::EVENT]);
         $delivery = WebhookDelivery::create([
             'webhook_endpoint_id' => $endpoint->id,
-            'event' => WebhookCatalogue::DOCUMENT_FINALIZED,
+            'event' => self::EVENT,
             'payload' => [],
             'status' => 'pending',
             'max_attempts' => 2,
@@ -336,7 +328,7 @@ class ApiIdempotencyAndWebhookTest extends TestCase
         $created = $this->actingAs($admin)->postJson('/api/admin/webhooks', [
             'name' => 'ระบบภายนอก',
             'url' => 'https://partner.test/hook',
-            'events' => [WebhookCatalogue::DOCUMENT_FINALIZED],
+            'events' => [self::EVENT],
         ])->assertCreated()->json();
 
         $this->assertNotEmpty($created['secret']);
@@ -350,7 +342,7 @@ class ApiIdempotencyAndWebhookTest extends TestCase
         $this->actingAs($this->administrator())->postJson('/api/admin/webhooks', [
             'name' => 'ไม่ปลอดภัย',
             'url' => 'http://partner.test/hook',
-            'events' => [WebhookCatalogue::DOCUMENT_FINALIZED],
+            'events' => [self::EVENT],
         ])->assertStatus(422);
     }
 
@@ -359,7 +351,7 @@ class ApiIdempotencyAndWebhookTest extends TestCase
         $this->actingAs($this->administrator())->postJson('/api/admin/webhooks', [
             'name' => 'พิมพ์ผิด',
             'url' => 'https://partner.test/hook',
-            'events' => ['saraban.document.finalised'],
+            'events' => ['test.document.finalised'],
         ])->assertStatus(422);
     }
 
