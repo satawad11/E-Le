@@ -107,7 +107,7 @@ class RuntimeSecurityConfigurationTest extends TestCase
     {
         $package = json_decode($this->repoFile('frontend/package.json'), true);
 
-        $this->assertSame('1.19.0', $package['dependencies']['axios'] ?? null, 'axios < 1.19.0 มี advisory ระดับ high หลายรายการ');
+        $this->assertSame('1.20.0', $package['dependencies']['axios'] ?? null, 'axios <= 1.19.0 มี advisory ระดับ high หลายรายการ (รอบล่าสุดประกาศ 2026-09-30)');
         $this->assertSame('3.3.18', $package['overrides']['nanoid'] ?? null, 'nanoid <= 3.3.17 มี advisory (GHSA-28wg-ghj8-5hjv)');
         $this->assertSame('8.5.26', $package['overrides']['postcss'] ?? null, 'postcss <= 8.5.22 มี advisory (GHSA-fxqj-rqcc-2cmp)');
     }
