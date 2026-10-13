@@ -136,7 +136,7 @@
                   </svg>
                   ยกเลิกใบลา
                 </button>
-                <button v-if="leave.status === 'Approved' && (leave.user_id === authStore.user?.id || isAdminOrHR) && leave.cancellation_status === 'None'"
+                <button v-if="leave.status === 'Approved' && (leave.user_id === authStore.user?.id || isAdminOrHR) && leave.cancellation_status !== 'Pending'"
                   @click="confirmCancel(leave)"
                   :disabled="cancelLoading === leave.id"
                   class="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors min-h-[38px]">
@@ -151,7 +151,7 @@
                 </div>
 
                 <!-- Print Cancellation Form (when cancellation is requested or approved or cancelled) -->
-                <div v-if="leave.cancellation_status !== 'None' || leave.status === 'Cancelled'" class="flex gap-2">
+                <div v-if="(leave.cancellation_status && leave.cancellation_status !== 'None') || leave.status === 'Cancelled'" class="flex gap-2">
                   <button @click="downloadCancelPdf(leave)"
                     :disabled="pdfLoading === 'cancel_'+leave.id"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-600 border border-orange-200 rounded-lg hover:bg-orange-50 transition-colors">

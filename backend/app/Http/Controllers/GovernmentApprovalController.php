@@ -6,6 +6,7 @@ use App\Models\ApprovalStep;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveAuditLog;
+use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
 use App\Services\NotificationCenter\NotificationCenter;
 use App\Services\Workflow\ApproverResolverService;
@@ -19,6 +20,7 @@ class GovernmentApprovalController extends Controller
         private LeaveService $service,
         private LeaveWorkflowShadow $shadow,
         private NotificationCenter $notifications,
+        private LeaveRequestNotificationService $leaveNotifications,
     ) {}
 
     /**
@@ -66,7 +68,7 @@ class GovernmentApprovalController extends Controller
         }$legacy = ApprovalStep::where('step_order', $leave->approval_level)->first();
         abort_unless($legacy, 422, ApprovalStep::exists() ? 'ไม่พบขั้นตอนอนุมัติลำดับที่ '.$leave->approval_level.' กรุณาตรวจสอบการตั้งค่าลำดับการอนุมัติ' : 'ยังไม่ได้ตั้งค่าลำดับการอนุมัติในระบบ กรุณาตั้งค่าที่เมนูจัดการลำดับการอนุมัติก่อน');
 
-        return LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'step_order' => $legacy->step_order], ['step_name' => $legacy->name, 'required_role_id' => $legacy->role_id, 'status' => 'Pending']);
+        return LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'step_order' => $legacy->step_order], ['step_name' => $legacy->name, 'required_role_id' => $legacy->role_id, 'approver_type' => $legacy->approver_type ?? ApprovalStep::RESOLVER_ROLE, 'specific_user_id' => $legacy->specific_user_id, 'permission_name' => $legacy->permission_name, 'status' => 'Pending']);
     }
 
     private function authorizeStep(Request $r, LeaveApproval $step, Leave $leave): ?int
@@ -107,6 +109,9 @@ class GovernmentApprovalController extends Controller
         $this->shadow($leave, 'approve', $r, $data['comment'] ?? null, $shadowInstanceId);
         if ($leave->status === 'Approved') {
             $this->notify($leave, 'Approved', $r);
+        } else {
+            // เลื่อนไปขั้นถัดไป — แจ้งผู้มีสิทธิ์ของขั้นนั้น (เดิมไม่มีใครได้รับแจ้ง)
+            $this->leaveNotifications->notifyCurrentStep($leave->load('user'), 'leave.approval_requested', $r->user());
         }
 
         return response()->json(['message' => 'อนุมัติเรียบร้อย', 'status' => $leave->status]);

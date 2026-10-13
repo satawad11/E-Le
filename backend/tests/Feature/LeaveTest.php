@@ -40,7 +40,7 @@ class LeaveTest extends TestCase
         LeaveBalance::create([
             'user_id' => $this->employee->id,
             'leave_type_id' => $this->leaveType->id,
-            'year' => now()->year,
+            'year' => (now()->month >= 10 ? now()->year + 1 : now()->year), // leave_balances.year = fiscal year key
             'quota' => 30,
             'used' => 0,
         ]);
@@ -97,7 +97,10 @@ class LeaveTest extends TestCase
     {
         $response = $this->actingAs($this->employee)->getJson('/api/leaves/balances');
         $response->assertStatus(200)->assertJsonIsArray();
-        $this->assertCount(1, $response->json());
+        // ระบบสร้างยอดตั้งต้นของทุกประเภทลาที่มีนโยบายให้ด้วย — ยอดที่ตั้งไว้ต้องอยู่ครบ
+        $row = collect($response->json())->firstWhere('leave_type_id', $this->leaveType->id);
+        $this->assertNotNull($row);
+        $this->assertEquals(30.0, (float) $row['quota']);
     }
 
     public function test_employee_can_cancel_pending_leave(): void

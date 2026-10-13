@@ -63,33 +63,36 @@ class LeaveService
         return $this->time->workingDaysBetween($start, $end, $user, $departmentId);
     }
 
-    public function createLeaveRequest(array $data, int $userId, ?UploadedFile $attachment): Leave
+    /**
+     * @param  array{skip_timing_rules?: bool}  $options  skip_timing_rules — ฝ่ายบุคคลบันทึกวันลาแทน
+     *                                                    (ส่วนใหญ่เป็นการลาที่ผ่านไปแล้ว) จึงข้ามกฎ "ห้ามลาย้อนหลัง"
+     *                                                    และ "ต้องยื่นล่วงหน้า" แต่กฎอื่นยังบังคับครบ
+     */
+    public function createLeaveRequest(array $data, int $userId, ?UploadedFile $attachment, array $options = []): Leave
     {
-        $leave = DB::transaction(function () use ($data, $userId, $attachment) {
+        $leave = DB::transaction(function () use ($data, $userId, $attachment, $options) {
             $user = User::with(['personnel', 'currentAssignment', 'personnelType', 'profile'])->lockForUpdate()->findOrFail($userId);
             $start = Carbon::parse($data['start_date']);
             $end = Carbon::parse($data['end_date']);
             $policy = $this->policies->resolve($user, (int) $data['leave_type_id'], $start);
             $period = $data['leave_period'] ?? 'full_day';
-            $days = $period === 'full_day'
-                ? $this->calculateTotalDays($start, $end, $policy->exclude_holidays, $user->department_id, $user)
-                : 0.5;
-            if ($days <= 0) {
-                throw ValidationException::withMessages(['start_date' => 'ช่วงวันที่เลือกไม่มีวันทำการ']);
-            }
             if ($period !== 'full_day' && ! $start->isSameDay($end)) {
                 throw ValidationException::withMessages(['leave_period' => 'ลาครึ่งวันต้องเป็นวันเดียวกัน']);
+            }
+            $workingDays = $this->calculateTotalDays($start, $end, $policy->exclude_holidays, $user->department_id, $user);
+            // ลาครึ่งวันต้องตรงกับวันทำการด้วย — เดิมคืน 0.5 เสมอ ลาครึ่งวันในวันเสาร์/วันหยุดจึงถูกหักวันลา
+            $days = $period === 'full_day' ? $workingDays : ($workingDays > 0 ? 0.5 : 0.0);
+            if ($days <= 0) {
+                throw ValidationException::withMessages(['start_date' => 'ช่วงวันที่เลือกไม่มีวันทำการ']);
             }
             if ($policy->requires_substitute && ! ($data['substitute_id'] ?? null)) {
                 throw ValidationException::withMessages(['substitute_id' => 'ต้องระบุผู้ปฏิบัติงานแทน']);
             }
-            $this->policies->assertEligible($user, $policy, $start, $end, $days, $period, (bool) $attachment);
+            $this->policies->assertEligible($user, $policy, $start, $end, $days, $period, (bool) $attachment, (bool) ($options['skip_timing_rules'] ?? false));
             // เงื่อนไขเฉพาะประเภทลาตามระเบียบ เช่น ลาอุปสมบทได้ครั้งเดียวตลอดอายุราชการ
             $this->eligibilityRules->assert($user, $policy, $start);
 
-            $overlap = Leave::where('user_id', $userId)->whereNotIn('status', ['Cancelled', 'Rejected', 'Voided'])
-                ->where('start_date', '<=', $end)->where('end_date', '>=', $start)->lockForUpdate()->exists();
-            if ($overlap) {
+            if ($this->hasOverlap($userId, $start, $end, $period)) {
                 throw ValidationException::withMessages(['start_date' => 'มีใบลาในช่วงเวลานี้อยู่แล้ว']);
             }
 
@@ -138,6 +141,9 @@ class LeaveService
             foreach (ApprovalStep::with('role')->orderBy('step_order')->get() as $step) {
                 LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'step_order' => $step->step_order], [
                     'step_name' => $step->name, 'required_role_id' => $step->role_id, 'status' => 'Pending',
+                    // pin ชนิดผู้อนุมัติด้วย มิฉะนั้นขั้นแบบหัวหน้าหน่วยงาน/ผู้อำนวยการ/รายบุคคลจะไม่มีใครอนุมัติได้
+                    'approver_type' => $step->approver_type ?? ApprovalStep::RESOLVER_ROLE,
+                    'specific_user_id' => $step->specific_user_id, 'permission_name' => $step->permission_name,
                 ]);
             }
             $this->audit->log($leave, 'created', null, $leave->toArray());
@@ -165,6 +171,123 @@ class LeaveService
         }
 
         return $leave;
+    }
+
+    /**
+     * มีใบลาที่ยังมีผลซ้อนช่วงวันนี้อยู่หรือไม่
+     *
+     * ลาครึ่งเช้ากับครึ่งบ่ายของวันเดียวกันไม่ถือว่าซ้อนกัน — เดิมบล็อกทั้งวัน
+     * ทำให้ลาป่วยครึ่งเช้าแล้วลากิจครึ่งบ่ายในวันเดียวกันไม่ได้
+     */
+    public function hasOverlap(int $userId, Carbon $start, Carbon $end, string $period = 'full_day', ?int $ignoreLeaveId = null): bool
+    {
+        return Leave::where('user_id', $userId)
+            ->whereNotIn('status', ['Cancelled', 'Rejected', 'Voided'])
+            ->whereDate('start_date', '<=', $end->toDateString())
+            ->whereDate('end_date', '>=', $start->toDateString())
+            ->when($ignoreLeaveId, fn ($query) => $query->whereKeyNot($ignoreLeaveId))
+            ->lockForUpdate()
+            ->get(['id', 'start_date', 'end_date', 'leave_period'])
+            ->contains(function (Leave $other) use ($start, $end, $period) {
+                $otherPeriod = $other->leave_period ?: 'full_day';
+                $bothHalfSameDay = $period !== 'full_day' && $otherPeriod !== 'full_day'
+                    && $start->isSameDay($end) && $other->start_date->isSameDay($start)
+                    && $other->end_date->isSameDay($start);
+
+                return ! ($bothHalfSameDay && $otherPeriod !== $period);
+            });
+    }
+
+    /**
+     * ปิดใบลาที่ฝ่ายบุคคลบันทึกแทนให้เป็น "อนุมัติแล้ว" อย่างถูกต้อง
+     *
+     * เดิมแค่เปลี่ยน status เป็น Approved — วันลาจึงค้างอยู่ใน reserved ตลอดไป
+     * (ไม่ถูกนับเป็น used) และขั้นตอนอนุมัติทุกขั้นยังเป็น Pending
+     */
+    public function finalizeRecordedLeave(Leave $leave, User $recorder, string $note): Leave
+    {
+        return DB::transaction(function () use ($leave, $recorder, $note) {
+            $leave = Leave::whereKey($leave->id)->lockForUpdate()->firstOrFail();
+            $leave->approvals()->where('status', 'Pending')->update([
+                'status' => 'Approved',
+                'approver_id' => $recorder->id,
+                'approver_name' => $recorder->full_name_with_title,
+                'approver_position' => $recorder->profile?->position,
+                'comment' => $note,
+                'approved_at' => now(),
+                'acted_at' => now(),
+            ]);
+            if (! $this->deductBalance($leave)) {
+                throw ValidationException::withMessages(['leave_type_id' => 'วันลาคงเหลือไม่เพียงพอ']);
+            }
+            $last = $leave->approvals()->max('step_order');
+            $leave->forceFill([
+                'status' => 'Approved',
+                'approval_level' => $last ?: $leave->approval_level,
+                'hr_verified_by' => $recorder->id,
+                'hr_verified_at' => now(),
+            ])->save();
+            $this->audit->log($leave, 'recorded_by_hr', null, ['recorded_by' => $recorder->id, 'note' => $note]);
+
+            return $leave;
+        }, 5);
+    }
+
+    /**
+     * แก้วันที่/ประเภทของใบลาที่ยังรออนุมัติ — คำนวณจำนวนวันและยอดจองใหม่ทั้งหมด
+     *
+     * เดิม `update()` เขียนทับวันที่ตรง ๆ โดยไม่คำนวณ total_days และ reserved ใหม่
+     * ยอดวันลาคงเหลือจึงเพี้ยนทันทีที่ผู้ดูแลแก้ใบลา
+     */
+    public function reschedule(Leave $leave, array $data): Leave
+    {
+        return DB::transaction(function () use ($leave, $data) {
+            $leave = Leave::whereKey($leave->id)->lockForUpdate()->firstOrFail();
+            $user = User::with(['personnel', 'currentAssignment', 'personnelType', 'profile'])->findOrFail($leave->user_id);
+            $start = Carbon::parse($data['start_date']);
+            $end = Carbon::parse($data['end_date']);
+            $period = $data['leave_period'] ?? ($leave->leave_period ?: 'full_day');
+            if ($period !== 'full_day' && ! $start->isSameDay($end)) {
+                throw ValidationException::withMessages(['leave_period' => 'ลาครึ่งวันต้องเป็นวันเดียวกัน']);
+            }
+            $policy = $this->policies->resolve($user, (int) $data['leave_type_id'], $start);
+            $workingDays = $this->calculateTotalDays($start, $end, $policy->exclude_holidays, $user->department_id, $user);
+            $days = $period === 'full_day' ? $workingDays : ($workingDays > 0 ? 0.5 : 0.0);
+            if ($days <= 0) {
+                throw ValidationException::withMessages(['start_date' => 'ช่วงวันที่เลือกไม่มีวันทำการ']);
+            }
+            if ($this->hasOverlap($leave->user_id, $start, $end, $period, $leave->id)) {
+                throw ValidationException::withMessages(['start_date' => 'มีใบลาในช่วงเวลานี้อยู่แล้ว']);
+            }
+
+            $before = $leave->toArray();
+            $this->restoreBalance($leave);
+
+            $balance = $this->policies->balance($user, $policy, $start);
+            $balance = LeaveBalance::whereKey($balance->id)->lockForUpdate()->first();
+            $available = (float) $balance->quota + (float) $balance->carried_forward - (float) $balance->used - (float) $balance->reserved;
+            if ($policy->annual_quota !== null && $available < $days) {
+                throw ValidationException::withMessages(['leave_type_id' => 'วันลาคงเหลือไม่เพียงพอ (รวมรายการรออนุมัติแล้ว)']);
+            }
+            [$paidDays, $unpaidDays] = $this->splitPaidDays($policy, $balance, $days);
+            $reserved = $policy->annual_quota !== null ? $days : 0;
+
+            $leave->fill([
+                'leave_type_id' => $policy->leave_type_id, 'leave_policy_id' => $policy->id,
+                'fiscal_year_id' => $this->policies->fiscalYear($start)?->id,
+                'start_date' => $start, 'end_date' => $end, 'leave_period' => $period,
+                'total_days' => $days, 'paid_days' => $paidDays, 'unpaid_days' => $unpaidDays,
+                'reserved_days' => $reserved, 'reason' => $data['reason'] ?? $leave->reason,
+            ])->save();
+            if ($reserved > 0) {
+                $balance->reserved += $reserved;
+                $balance->leave_policy_id = $policy->id;
+                $balance->save();
+            }
+            $this->audit->log($leave, 'rescheduled', $before, $leave->toArray());
+
+            return $leave;
+        }, 5);
     }
 
     /**
@@ -211,16 +334,24 @@ class LeaveService
         }, 5);
     }
 
-    public function restoreBalance(Leave $leave): void
+    /**
+     * คืนวันลาของใบลาที่ถูกยกเลิก/ปฏิเสธ
+     *
+     * ใบที่ยังรออนุมัติ → คืนยอดที่จองไว้ (reserved)
+     * ใบที่อนุมัติแล้ว → คืนวันที่ใช้ไป (used) — ต้องเรียก **ก่อน** เปลี่ยน status
+     * หรือส่ง $wasApproved มาเอง มิฉะนั้นวันลาจะไม่ถูกคืน
+     */
+    public function restoreBalance(Leave $leave, ?bool $wasApproved = null): void
     {
-        DB::transaction(function () use ($leave) {
+        $wasApproved ??= $leave->status === 'Approved';
+        DB::transaction(function () use ($leave, $wasApproved) {
             $balance = $this->balanceFor($leave, true);
             if (! $balance) {
                 return;
             }
             if ($leave->reserved_days > 0) {
                 $balance->reserved = max(0, (float) $balance->reserved - (float) $leave->reserved_days);
-            } elseif ($leave->status === 'Approved') {
+            } elseif ($wasApproved) {
                 $balance->used = max(0, (float) $balance->used - (float) $leave->total_days);
             }
             $balance->save();

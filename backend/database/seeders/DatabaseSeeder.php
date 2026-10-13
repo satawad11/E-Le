@@ -4,10 +4,10 @@ namespace Database\Seeders;
 
 use App\Models\ApprovalStep;
 use App\Models\Department;
-use App\Models\LeaveBalance;
 use App\Models\LeaveType;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\LeavePolicyService;
 use Faker\Factory;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -42,6 +42,7 @@ class DatabaseSeeder extends Seeder
             SarabanSettingSeeder::class,
             FiscalYearSeeder::class,
             ThaiGovernmentHoliday2569Seeder::class,
+            ThaiGovernmentHoliday2570Seeder::class,
             DocumentTemplateSeeder::class,
             // เดิมสี่ตัวนี้ไม่เคยถูกเรียกเลย ทำให้ติดตั้งใหม่ได้ระบบที่ใช้งานไม่ครบ:
             // ตาราง menus ว่างเปล่า และสิทธิ์ที่ route บังคับใช้จริงไม่ถูกสร้าง
@@ -126,25 +127,12 @@ class DatabaseSeeder extends Seeder
         $docOfficer->assignRole($docOfficerRole);
         $this->seedProfile($docOfficer, $faker, 'สมเกียรติ', 'เจ้าหน้าที่สารบัญ', 'เจ้าหน้าที่สารบัญ', '6666666666666');
 
-        // Seed leave balances for current year
-        $currentYear = (int) date('Y');
-        $quotas = [
-            'ลาป่วย' => 60,
-            'ลากิจส่วนตัว' => 45,
-            'ลาพักผ่อน' => 10,
-            'ลาคลอดบุตร' => 90,
-            'ลาไปช่วยเหลือภริยาที่คลอดบุตร' => 15,
-        ];
-
-        $userIds = [$superAdmin->id, $director->id, $deputy->id, $hrHead->id, $employee->id, $docOfficer->id];
-
-        foreach ($userIds as $userId) {
-            foreach (LeaveType::all() as $lt) {
-                LeaveBalance::firstOrCreate(
-                    ['user_id' => $userId, 'leave_type_id' => $lt->id, 'year' => $currentYear],
-                    ['quota' => $quotas[$lt->name] ?? ($lt->max_days ?? 0), 'used' => 0]
-                );
-            }
+        // ยอดวันลาตั้งต้นของปีงบประมาณปัจจุบัน — สร้างตามนโยบายสิทธิการลา (leave_policies)
+        // เดิม hard-code โควตาไว้ที่นี่ (ลาป่วย 60, ลาคลอด 90) ซึ่งไม่ตรงกับนโยบาย (120, 98)
+        // และใช้ date('Y') เป็นปี ทำให้ตั้งแต่ 1 ต.ค. ยอดที่ seed ไว้เป็นของปีงบที่ปิดไปแล้ว
+        $policies = app(LeavePolicyService::class);
+        foreach ([$superAdmin, $director, $deputy, $hrHead, $employee, $docOfficer] as $seededUser) {
+            $policies->ensureBalances($seededUser->fresh(['personnel', 'currentAssignment', 'profile']), today());
         }
 
         // Seed dynamic approval steps matching the default workflow

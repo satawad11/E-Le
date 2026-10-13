@@ -85,8 +85,14 @@ class LeavePolicyService
         return $leave->policy ? $this->periodYear($leave->policy, $start) : $this->fiscalYearNumber($this->fiscalYear($start), $start);
     }
 
-    public function assertEligible(User $user, LeavePolicy $policy, Carbon $start, Carbon $end, float $days, string $period, bool $hasEvidence): void
+    public function assertEligible(User $user, LeavePolicy $policy, Carbon $start, Carbon $end, float $days, string $period, bool $hasEvidence, bool $skipTimingRules = false): void
     {
+        if ($skipTimingRules) {
+            // ฝ่ายบุคคลบันทึกการลาที่เกิดขึ้นแล้วแทน — กฎเรื่องเวลายื่นไม่เกี่ยว
+            $policy = (clone $policy)->forceFill(['allow_past_dates' => true, 'notice_period_days' => 0]);
+            // ผู้บันทึกแนบหลักฐานแยกได้ภายหลังผ่านหน้าหลักฐานการลา
+            $hasEvidence = true;
+        }
         $startDateVal = $user->personnel?->effective_from
             ? $user->personnel->effective_from->toDateString()
             : ($user->profile?->start_date ? Carbon::parse($user->profile->start_date)->toDateString() : null);
@@ -112,6 +118,23 @@ class LeavePolicyService
     public function balance(User $user, LeavePolicy $policy, Carbon $start): LeaveBalance
     {
         return LeaveBalance::firstOrCreate(['user_id' => $user->id, 'leave_type_id' => $policy->leave_type_id, 'year' => $this->periodYear($policy, $start)], ['quota' => $policy->annual_quota ?? 0, 'used' => 0, 'reserved' => 0, 'carried_forward' => 0, 'leave_policy_id' => $policy->id]);
+    }
+
+    /**
+     * สร้างแถวยอดวันลาของรอบปีที่วันที่นี้อยู่ ให้ครบทุกประเภทลาที่มีนโยบาย
+     *
+     * เดิมแถว leave_balances ถูกสร้างตอนยื่นลาครั้งแรกของรอบปีเท่านั้น
+     * ตั้งแต่ 1 ต.ค. หน้า "วันลาคงเหลือ" จึงว่างเปล่าจนกว่าจะยื่นลา
+     * idempotent — แถวที่มีอยู่แล้วไม่ถูกแตะ
+     */
+    public function ensureBalances(User $user, Carbon $date): void
+    {
+        foreach (LeaveType::orderBy('id')->pluck('id') as $leaveTypeId) {
+            $policy = $this->resolve($user, (int) $leaveTypeId, $date);
+            if ($policy->is_active) {
+                $this->balance($user, $policy, $date);
+            }
+        }
     }
 
     /**

@@ -91,8 +91,10 @@ class DashboardController extends Controller
             ->pluck('count', 'month')
             ->toArray();
 
+        // ปีงบประมาณเริ่ม ต.ค. — เรียงเดือน ต.ค. → ก.ย. ให้ตรงกับช่วงที่กรองไว้
+        $monthOrder = $selectedFY ? [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9] : range(1, 12);
         $monthly = [];
-        for ($m = 1; $m <= 12; $m++) {
+        foreach ($monthOrder as $m) {
             $monthly[] = [
                 'month' => Carbon::create($year, $m)->translatedFormat('M'),
                 'count' => $monthlyCounts[$m] ?? 0,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\HolidayController;
 use App\Http\Controllers\Admin\LeavePolicyController;
 use App\Http\Controllers\Admin\PersonnelTypeController;
 use App\Http\Controllers\Admin\WorkCalendarController;
@@ -52,5 +53,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/work-calendar', [WorkCalendarController::class, 'store']);
         Route::put('/work-calendar/{calendarException}', [WorkCalendarController::class, 'update']);
         Route::delete('/work-calendar/{calendarException}', [WorkCalendarController::class, 'destroy']);
+        Route::get('/holidays', [HolidayController::class, 'index']);
+        Route::post('/holidays', [HolidayController::class, 'store']);
+        Route::put('/holidays/{holiday}', [HolidayController::class, 'update']);
+        Route::delete('/holidays/{holiday}', [HolidayController::class, 'destroy']);
     });
 });

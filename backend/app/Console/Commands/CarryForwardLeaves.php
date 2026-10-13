@@ -6,6 +6,7 @@ use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\User;
 use App\Services\LeavePolicyService;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -53,19 +54,25 @@ class CarryForwardLeaves extends Command
 
         $rows = [];
         $count = 0;
+        $closingDate = Carbon::create($fromYear, 9, 30);
 
-        foreach ($carryPolicies as $policy) {
-            // เพดานที่ทบได้จริง = น้อยที่สุดระหว่างเพดานต่อปี กับ (เพดานสะสมรวม - สิทธิ์ประจำปีของปีใหม่)
-            $cap = $policy->max_carry_forward ?? INF;
-            if ($policy->max_accumulated !== null) {
-                $cap = min($cap, max(0, (float) $policy->max_accumulated - (float) ($policy->annual_quota ?? 0)));
-            }
+        /*
+         * ไล่ตามผู้ใช้แล้วหานโยบายของแต่ละคน (ไม่ใช่ไล่ตาม users.personnel_type_id)
+         * เดิมกรอง User::where('personnel_type_id', ...) ผู้ที่ยังไม่ได้กำหนดประเภทบุคลากร
+         * (ค่าว่าง) จึงไม่เคยได้ทบวันลาเลย ทั้งที่ระบบถือว่าเป็นข้าราชการตอนยื่นลา
+         */
+        $leaveTypeIds = $carryPolicies->pluck('leave_type_id')->unique();
+        $users = User::with(['personnel', 'profile'])->where('is_active', true)->get();
 
-            $userIds = User::where('personnel_type_id', $policy->personnel_type_id)
-                ->where('is_active', true)
-                ->pluck('id');
+        foreach ($users as $user) {
+            foreach ($leaveTypeIds as $leaveTypeId) {
+                $policy = $policies->resolve($user, (int) $leaveTypeId, $closingDate->copy());
+                if (! $policy->is_active || ! $policy->is_carry_forward) {
+                    continue;
+                }
+                $cap = $this->capFor($policy, $user, $closingDate);
+                $userId = $user->id;
 
-            foreach ($userIds as $userId) {
                 $previous = LeaveBalance::where('user_id', $userId)
                     ->where('leave_type_id', $policy->leave_type_id)
                     ->where('year', $fromYear)
@@ -120,5 +127,33 @@ class CarryForwardLeaves extends Command
             : "ทบวันลาเรียบร้อย {$count} รายการ");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * เพดานวันที่ทบได้ = น้อยที่สุดระหว่างเพดานต่อปี กับ (เพดานสะสมรวม - สิทธิ์ประจำปีของปีใหม่)
+     *
+     * ระเบียบฯ ข้อ 28: ข้าราชการที่รับราชการติดต่อกันมาแล้วไม่น้อยกว่า 10 ปี
+     * สะสมรวมกับปีปัจจุบันได้ไม่เกิน 30 วันทำการ (ต่ำกว่า 10 ปี ไม่เกิน 20 วันทำการ)
+     * ตั้งได้ที่ eligibility_rules ของนโยบาย:
+     *   {"long_service_years": 10, "max_accumulated_long_service": 30}
+     */
+    private function capFor(LeavePolicy $policy, User $user, Carbon $on): float
+    {
+        $maxAccumulated = $policy->max_accumulated;
+        $rules = is_array($policy->eligibility_rules) ? $policy->eligibility_rules : [];
+        $longYears = (int) ($rules['long_service_years'] ?? 0);
+        if ($longYears > 0 && isset($rules['max_accumulated_long_service'])) {
+            $serviceStart = $user->personnel?->effective_from ?? ($user->profile?->start_date ? Carbon::parse($user->profile->start_date) : null);
+            if ($serviceStart && Carbon::parse($serviceStart)->diffInYears($on) >= $longYears) {
+                $maxAccumulated = (float) $rules['max_accumulated_long_service'];
+            }
+        }
+
+        $cap = $policy->max_carry_forward !== null ? (float) $policy->max_carry_forward : INF;
+        if ($maxAccumulated !== null) {
+            $cap = min($cap, max(0, (float) $maxAccumulated - (float) ($policy->annual_quota ?? 0)));
+        }
+
+        return $cap;
     }
 }

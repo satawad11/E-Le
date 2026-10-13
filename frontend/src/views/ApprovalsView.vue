@@ -501,6 +501,10 @@ const confirmAction = async () => {
     alertStore.error('กรุณาวาดลายเซ็นก่อนอนุมัติ')
     return
   }
+  if (!modal.isApprove && !modal.comment?.trim()) {
+    alertStore.error('กรุณาระบุเหตุผลที่ไม่อนุมัติ')
+    return
+  }
 
   isProcessingAction.value = true
   try {

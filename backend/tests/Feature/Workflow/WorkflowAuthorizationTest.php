@@ -94,7 +94,7 @@ class WorkflowAuthorizationTest extends TestCase
         LeaveBalance::create([
             'user_id' => $owner->id,
             'leave_type_id' => $this->leaveType->id,
-            'year' => (int) date('Y'),
+            'year' => (now()->month >= 10 ? now()->year + 1 : now()->year),
             'quota' => 30,
             'used' => 0,
             'reserved' => 2,
@@ -136,7 +136,7 @@ class WorkflowAuthorizationTest extends TestCase
         LeaveBalance::create([
             'user_id' => $employee->id,
             'leave_type_id' => $this->leaveType->id,
-            'year' => now()->year,
+            'year' => (now()->month >= 10 ? now()->year + 1 : now()->year),
             'quota' => 30,
             'used' => 0,
             'reserved' => 0,

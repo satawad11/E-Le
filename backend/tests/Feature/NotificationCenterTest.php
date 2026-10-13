@@ -31,8 +31,10 @@ class NotificationCenterTest extends TestCase
             'leave.submitted', 'leave.approval_requested', 'leave.approved',
             'leave.rejected', 'leave.returned', 'attendance.correction',
             'attendance.late', 'attendance.early_leave', 'overtime.approval', 'saraban.task',
+            'leave.cancellation_requested', 'leave.cancellation_approved', 'leave.cancellation_rejected',
+            'leave.substitute_requested', 'leave.substitute_responded',
         ], $codes);
-        $this->assertDatabaseCount('notification_templates', 40);
+        $this->assertDatabaseCount('notification_templates', 60);
     }
 
     public function test_emit_is_atomic_deduplicates_recipients_and_removes_sensitive_payload(): void

@@ -31,6 +31,21 @@ class ReportController extends Controller
      * query ใบลาที่อนุมัติแล้วตามตัวกรองเดียวกันทั้ง 3 รายงาน (สรุป/PDF/Excel)
      * basis=fiscal (ค่าเริ่มต้น) นับตามปีงบประมาณให้ตรงกับระบบสิทธิ์ — 1 ต.ค. ปีก่อน ถึง 30 ก.ย. ปีนั้น
      */
+    /**
+     * ปีตั้งต้นเมื่อไม่ได้ส่ง year มา
+     *
+     * รายงานกรองตามปีงบประมาณเป็นค่าเริ่มต้น (ปีงบ = ค.ศ. ของปีที่สิ้นสุด)
+     * เดิมใช้ now()->year ตั้งแต่ ต.ค. - ธ.ค. รายงานจึงแสดงปีงบประมาณที่ปิดไปแล้ว
+     */
+    private function defaultYear(Request $request): int
+    {
+        if ($request->input('basis', 'fiscal') !== 'fiscal') {
+            return now()->year;
+        }
+
+        return now()->month >= 10 ? now()->year + 1 : now()->year;
+    }
+
     private function reportQuery(Request $request, int $year, ?int $month)
     {
         $query = Leave::with(['user.department', 'type'])->where('status', 'Approved');
@@ -95,7 +110,7 @@ class ReportController extends Controller
             'basis' => 'nullable|in:fiscal,calendar',
         ]);
 
-        $year = (int) $request->input('year', now()->year);
+        $year = (int) $request->input('year', $this->defaultYear($request));
         $month = $request->input('month') ? (int) $request->input('month') : null;
 
         $leaves = $this->reportQuery($request, $year, $month)->get();
@@ -153,7 +168,7 @@ class ReportController extends Controller
             'basis' => 'nullable|in:fiscal,calendar',
         ]);
 
-        $year = (int) $request->input('year', now()->year);
+        $year = (int) $request->input('year', $this->defaultYear($request));
         $month = $request->input('month') ? (int) $request->input('month') : null;
 
         $query = $this->reportQuery($request, $year, $month);
@@ -198,7 +213,7 @@ class ReportController extends Controller
             'basis' => 'nullable|in:fiscal,calendar',
         ]);
 
-        $year = (int) $request->input('year', now()->year);
+        $year = (int) $request->input('year', $this->defaultYear($request));
         $month = $request->input('month') ? (int) $request->input('month') : null;
 
         // เดิมรับ month มาแต่ไม่เคยกรอง ทำให้หัวรายงานบอกเดือนเดียวแต่ข้อมูลออกมาทั้งปี
