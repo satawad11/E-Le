@@ -17,3 +17,4 @@ docs/checkpoints/*/backups/
 .env
 .env.*
 !.env.example
+backups/

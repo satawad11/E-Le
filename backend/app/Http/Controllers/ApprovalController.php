@@ -2,321 +2,46 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ApprovalStep;
 use App\Models\Leave;
-use App\Models\LeaveActionLog;
-use App\Models\LeaveApproval;
-use App\Models\User;
-use App\Models\UserDelegation;
-use App\Services\LeaveService;
-use App\Services\LeaveVisibility;
-use App\Services\NotificationCenter\NotificationCenter;
-use App\Services\Workflow\ApproverResolverService;
+use App\Services\LeaveApprovalFlow;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
+/**
+ * รายการใบลา/คำขอยกเลิกที่รอผู้ใช้คนนี้พิจารณา
+ *
+ * การอนุมัติจริงอยู่ที่ GovernmentApprovalController (routes/leave_government.php)
+ * และการยกเลิกวันลาอยู่ที่ LeaveCancellationController — เมธอด approve/reject
+ * ชุดเก่าที่เคยอยู่ในไฟล์นี้ไม่มี route ชี้มาแล้วจึงถูกลบออก
+ */
 class ApprovalController extends Controller
 {
-    protected LeaveService $leaveService;
+    public function __construct(private LeaveApprovalFlow $flow) {}
 
-    public function __construct(
-        LeaveService $leaveService,
-        private NotificationCenter $notifications,
-        private ApproverResolverService $resolver,
-    ) {
-        $this->leaveService = $leaveService;
-    }
-
-    public function pending(Request $request, LeaveVisibility $visibility)
+    public function pending(Request $request)
     {
         $user = $request->user();
 
-        // LEGACY-04 (04-4): เดิมเช็คชื่อ role ตรง ๆ
-        // Super Admin ยังผ่านได้เหมือนเดิมผ่าน Gate::before และปัจจุบันยังไม่มี
-        // ผู้ใช้รายอื่นถือสิทธิ์นี้ พฤติกรรมจึงเท่าเดิมทุกประการ
-        $canManageAll = $user->can('leave.management.manage');
+        $query = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name'])
+            ->where(function ($query) {
+                $query->where('status', 'Pending')
+                    ->orWhere(fn ($q) => $q->where('status', 'Approved')->where('cancellation_status', 'Pending'));
+            })
+            ->orderBy('created_at', 'asc');
 
-        if ($canManageAll) {
-            $leaves = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name'])
-                ->where(function ($query) {
-                    $query->where('status', 'Pending')
-                        ->orWhere('cancellation_status', 'Pending');
-                })
-                ->orderBy('created_at', 'asc')
-                ->get();
-        } else {
-            /*
-             * LEGACY-04 (04-7): เดิมรวม `users.role_id` (คนละ namespace กับ Spatie)
-             * เข้ากับ role id ของ Spatie ซึ่งเป็นต้นเหตุ DB-RISK-002
-             *
-             * ปัจจุบันคอลัมน์นั้นถูกลบไปแล้วใน LEGACY-03 และ `role_id` กลายเป็น
-             * accessor ที่คืน `roles->first()->id` จึงซ้ำกับบรรทัดข้างล่างพอดี
-             * ตัดออกได้โดยผลลัพธ์ไม่เปลี่ยน
-             */
-            $userRoleIds = $user->roles->pluck('id')->unique()->values()->all();
-
-            // Get user's approval steps
-            $userRoleSteps = ApprovalStep::whereIn('role_id', $userRoleIds)->pluck('step_order')->toArray();
-
-            // Check active delegations
-            $activeDelegations = UserDelegation::where('delegate_id', $user->id)
-                ->where('is_active', true)
-                ->where('start_date', '<=', now())
-                ->where('end_date', '>=', now())
-                ->with('user.roles')
-                ->get();
-
-            foreach ($activeDelegations as $delegation) {
-                if ($delegation->user) {
-                    // LEGACY-04 (04-7): เช่นเดียวกัน — role_id เป็น accessor ของ Spatie แล้ว
-                    $delRoleIds = $delegation->user->roles->pluck('id')->unique()->values()->all();
-                    $delegatorSteps = ApprovalStep::whereIn('role_id', $delRoleIds)->pluck('step_order')->toArray();
-                    $userRoleSteps = array_unique(array_merge($userRoleSteps, $delegatorSteps));
-                }
-            }
-
-            if (empty($userRoleSteps)) {
-                return response()->json([]);
-            }
-
-            $query = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name'])
-                ->where(function ($q) {
-                    $q->where('status', 'Pending')
-                        ->orWhere('cancellation_status', 'Pending');
-                })
-                ->whereIn('approval_level', $userRoleSteps);
-
-            // LEGACY-04 (04-4): เดิมหรี่ขอบเขตด้วยชื่อ role `หัวหน้าแผนกวิชา / หัวหน้าฝ่าย`
-            // ซึ่งไม่มีอยู่จริงในฐานข้อมูล ตรรกะนี้จึงไม่เคยทำงาน
-            // ตอนนี้ใช้ permission_scopes ค่าเริ่มต้น ORGANIZATION จึงให้ผลเท่าเดิม
-            $query = $visibility->applyScope($query, $user);
-
-            $leaves = $query->orderBy('created_at', 'asc')->get();
+        if ($user->can('leave.management.manage')) {
+            return response()->json($query->get());
         }
+
+        /*
+         * เดิมกรองด้วย approval_steps.role_id ของ role ผู้ใช้ ขั้นที่ตั้งผู้อนุมัติเป็น
+         * หัวหน้าหน่วยงาน / ผู้อำนวยการ / รายบุคคล (role_id ว่าง) จึงไม่เคยขึ้นในรายการ
+         * ตอนนี้ถาม ApproverResolverService ผ่าน LeaveApprovalFlow ซึ่งเป็นตัวเดียวกับ
+         * ที่ใช้ตรวจสิทธิ์ตอนกดอนุมัติ — สิ่งที่เห็นในรายการจึงตรงกับสิ่งที่กดได้จริง
+         */
+        $leaves = $query->where('user_id', '!=', $user->id)->get()
+            ->filter(fn (Leave $leave) => $this->flow->canActAtCurrentStep($user, $leave))
+            ->values();
 
         return response()->json($leaves);
-    }
-
-    public function approve(Request $request, Leave $leave)
-    {
-        $user = $request->user();
-        // LEGACY-04 (04-4): เลิกเช็คชื่อ role — Super Admin ยังผ่านทาง Gate::before
-        // และยังไม่มีผู้ใช้รายอื่นถือสิทธิ์นี้ พฤติกรรมจึงเท่าเดิม
-        $isSuperAdmin = $user->can('leave.management.manage');
-
-        // Only pending leaves can be approved
-        if ($leave->status !== 'Pending') {
-            return response()->json(['message' => 'ใบลานี้ไม่อยู่ในสถานะรออนุมัติ'], 422);
-        }
-
-        // Check if substitute has accepted assignment (if substitute is assigned)
-        if ($leave->substitute_id && $leave->substitute_status !== 'Accepted') {
-            return response()->json([
-                'message' => 'ไม่สามารถอนุมัติได้เนื่องจากผู้ปฏิบัติงานแทนยังไม่ได้ตอบรับการมอบหมายงาน',
-            ], 422);
-        }
-
-        $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
-
-        // Check if user is authorized to approve this level
-        if (! $isSuperAdmin) {
-            $isAuthorized = $currentStep && $this->resolver->isAuthorizedApprover($user, $leave->user, $currentStep);
-
-            if (! $isAuthorized) {
-                return response()->json(['message' => 'ไม่มีสิทธิ์อนุมัติในระดับนี้'], 403);
-            }
-        }
-
-        $delegatedFrom = ($currentStep && ! $isSuperAdmin) ? $this->resolver->getDelegatedFromId($user, $leave->user, $currentStep) : null;
-
-        DB::transaction(function () use ($leave, $user, $request, $isSuperAdmin) {
-            $profile = $user->profile;
-            $signaturePath = $profile ? $profile->signature_path : null;
-
-            if ($request->has('signature_base64') && $request->signature_base64) {
-                $base64Image = $request->signature_base64;
-                if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $type)) {
-                    $base64Image = substr($base64Image, strpos($base64Image, ',') + 1);
-                    $type = strtolower($type[1]);
-                    if (in_array($type, ['jpg', 'jpeg', 'png'])) {
-                        $base64Image = base64_decode($base64Image);
-                        $fileName = 'signatures/'.uniqid().'.'.$type;
-                        Storage::disk('private_uploads')->put($fileName, $base64Image);
-                        $signaturePath = '/storage/'.$fileName;
-                    }
-                }
-            }
-
-            LeaveApproval::create([
-                'leave_id' => $leave->id,
-                'approver_id' => $user->id,
-                'approver_name' => $user->full_name_with_title,
-                'approver_position' => $profile ? $profile->position : null,
-                'signature_path' => $signaturePath,
-                'status' => 'Approved',
-                'comment' => $request->comment,
-                'approved_at' => now(),
-            ]);
-
-            LeaveActionLog::create([
-                'leave_id' => $leave->id,
-                'user_id' => $user->id,
-                'action' => 'Step Approved (Level '.$leave->approval_level.')',
-                'details' => $request->has('comment') && $request->comment ? ['comment' => $request->comment] : null,
-            ]);
-
-            // Check if there is a next step
-            $nextStep = null;
-            if (! $isSuperAdmin) {
-                $nextStep = ApprovalStep::where('step_order', '>', $leave->approval_level)
-                    ->orderBy('step_order', 'asc')
-                    ->first();
-            }
-
-            if (! $nextStep) {
-                // Final level reached — check balance then deduct
-                if (! $this->leaveService->hasEnoughBalance($leave)) {
-                    throw new \Exception('วันลาคงเหลือไม่เพียงพอ');
-                }
-                $this->leaveService->deductBalance($leave);
-                $leave->status = 'Approved';
-                if ($isSuperAdmin && ! $leave->hr_verified_at) {
-                    $leave->hr_verified_at = now();
-
-                    // Auto-fill signatures for all approval steps (HR, Deputy, Director)
-                    $steps = ApprovalStep::orderBy('step_order', 'asc')->get();
-                    $roleIds = $steps->pluck('role_id')->filter()->unique();
-                    $stepUsers = User::with('profile')
-                        ->whereHas('roles', fn ($rq) => $rq->whereIn('roles.id', $roleIds))
-                        ->get()
-                        ->mapToGroups(function ($u) {
-                            $roles = $u->roles->pluck('id');
-                            $res = [];
-                            foreach ($roles as $rId) {
-                                if ($rId) {
-                                    $res[] = [$rId => $u];
-                                }
-                            }
-
-                            return $res;
-                        })->flatMap(function ($v) {
-                            return $v;
-                        })->mapToDictionary(function ($v, $k) {
-                            return [$k => $v];
-                        });
-
-                    foreach ($steps as $st) {
-                        $stepUser = $stepUsers->get($st->role_id)?->first();
-
-                        if ($stepUser) {
-                            $stepProfile = $stepUser->profile;
-                            LeaveApproval::firstOrCreate([
-                                'leave_id' => $leave->id,
-                                'approver_id' => $stepUser->id,
-                            ], [
-                                'approver_name' => $stepUser->full_name_with_title ?? $stepUser->name,
-                                'approver_position' => $stepProfile ? $stepProfile->position : null,
-                                'signature_path' => $stepProfile ? $stepProfile->signature_path : null,
-                                'status' => 'Approved',
-                                'comment' => '-',
-                                'approved_at' => now(),
-                            ]);
-
-                            LeaveActionLog::firstOrCreate([
-                                'leave_id' => $leave->id,
-                                'action' => 'Auto-Approved Step (Level '.$st->step_order.')',
-                            ], [
-                                'user_id' => $user->id,
-                                'details' => ['reason' => 'Auto-approved by Super Admin'],
-                            ]);
-                        }
-                    }
-                }
-            } else {
-                // Move to next level
-                $leave->approval_level = $nextStep->step_order;
-            }
-            $leave->save();
-        });
-
-        // Notify user if fully approved
-        if ($leave->status === 'Approved') {
-            $this->notifications->emit('leave.approved', [$leave->user], $leave, [
-                'status' => 'approved',
-            ], $user);
-        }
-
-        return response()->json(['message' => 'อนุมัติเรียบร้อยแล้ว']);
-    }
-
-    public function reject(Request $request, Leave $leave)
-    {
-        $user = $request->user();
-        // LEGACY-04 (04-4): เลิกเช็คชื่อ role — Super Admin ยังผ่านทาง Gate::before
-        // และยังไม่มีผู้ใช้รายอื่นถือสิทธิ์นี้ พฤติกรรมจึงเท่าเดิม
-        $isSuperAdmin = $user->can('leave.management.manage');
-
-        // Only pending leaves can be rejected
-        if ($leave->status !== 'Pending') {
-            return response()->json(['message' => 'ใบลานี้ไม่อยู่ในสถานะรออนุมัติ'], 422);
-        }
-
-        $currentStep = ApprovalStep::where('step_order', $leave->approval_level)->first();
-
-        // Check if user is authorized to reject this level
-        if (! $isSuperAdmin) {
-            $isAuthorized = $currentStep && $this->resolver->isAuthorizedApprover($user, $leave->user, $currentStep);
-
-            if (! $isAuthorized) {
-                return response()->json(['message' => 'ไม่มีสิทธิ์อนุมัติในระดับนี้'], 403);
-            }
-        }
-
-        DB::transaction(function () use ($leave, $user, $request) {
-            $profile = $user->profile;
-            $signaturePath = $profile ? $profile->signature_path : null;
-
-            if ($request->has('signature_base64') && $request->signature_base64) {
-                $base64Image = $request->signature_base64;
-                if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $type)) {
-                    $base64Image = substr($base64Image, strpos($base64Image, ',') + 1);
-                    $type = strtolower($type[1]);
-                    if (in_array($type, ['jpg', 'jpeg', 'png'])) {
-                        $base64Image = base64_decode($base64Image);
-                        $fileName = 'signatures/'.uniqid().'.'.$type;
-                        Storage::disk('private_uploads')->put($fileName, $base64Image);
-                        $signaturePath = '/storage/'.$fileName;
-                    }
-                }
-            }
-
-            LeaveApproval::create([
-                'leave_id' => $leave->id,
-                'approver_id' => $user->id,
-                'approver_name' => $user->full_name_with_title,
-                'approver_position' => $profile ? $profile->position : null,
-                'signature_path' => $signaturePath,
-                'status' => 'Rejected',
-                'comment' => $request->comment,
-                'approved_at' => now(),
-            ]);
-
-            LeaveActionLog::create([
-                'leave_id' => $leave->id,
-                'user_id' => $user->id,
-                'action' => 'Step Rejected (Level '.$leave->approval_level.')',
-                'details' => $request->has('comment') && $request->comment ? ['comment' => $request->comment] : null,
-            ]);
-
-            $leave->status = 'Rejected';
-            $leave->save();
-        });
-
-        $this->notifications->emit('leave.rejected', [$leave->user], $leave, [
-            'status' => 'rejected',
-        ], $user);
-
-        return response()->json(['message' => 'ปฏิเสธการลาเรียบร้อยแล้ว']);
     }
 }

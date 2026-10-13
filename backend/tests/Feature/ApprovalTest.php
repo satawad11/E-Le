@@ -50,7 +50,7 @@ class ApprovalTest extends TestCase
         LeaveBalance::create([
             'user_id' => $this->employee->id,
             'leave_type_id' => $this->leaveType->id,
-            'year' => now()->year,
+            'year' => (now()->month >= 10 ? now()->year + 1 : now()->year), // leave_balances.year = fiscal year key
             'quota' => 10,
             'used' => 0,
         ]);

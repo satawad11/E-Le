@@ -7,11 +7,9 @@ use App\Http\Requests\StoreLeaveRequest;
 use App\Http\Requests\UpdateLeaveRequest;
 use App\Models\Leave;
 use App\Models\LeaveActionLog;
-use App\Models\LeaveType;
 use App\Models\Setting;
 use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -30,35 +28,11 @@ class LeaveRequestController extends Controller
             return response()->json(['message' => 'การลาครึ่งวันต้องเลือกวันที่เริ่มต้นและสิ้นสุดเป็นวันเดียวกัน'], 422);
         }
 
-        $leaveType = LeaveType::find($data['leave_type_id']);
-        $start = Carbon::parse($data['start_date'])->startOfDay();
-        $today = Carbon::now()->startOfDay();
-
-        if (! $leaveType->allow_past_dates && $start->lt($today)) {
-            return response()->json(['message' => 'ประเภทการลานี้ไม่อนุญาตให้ลาล่วงหน้าย้อนหลังได้'], 422);
-        }
-
-        if ($leaveType->notice_period_days > 0) {
-            $diffInDays = $today->diffInDays($start, false);
-            if ($diffInDays < $leaveType->notice_period_days) {
-                return response()->json(['message' => "ต้องยื่นใบลาล่วงหน้าอย่างน้อย {$leaveType->notice_period_days} วัน"], 422);
-            }
-        }
-
-        $overlapCount = Leave::where('user_id', $request->user()->id)
-            ->whereNotIn('status', ['Cancelled', 'Rejected'])
-            ->where(function ($query) use ($data) {
-                $query->whereBetween('start_date', [$data['start_date'], $data['end_date']])
-                    ->orWhereBetween('end_date', [$data['start_date'], $data['end_date']])
-                    ->orWhere(function ($nested) use ($data) {
-                        $nested->where('start_date', '<=', $data['start_date'])
-                            ->where('end_date', '>=', $data['end_date']);
-                    });
-            })
-            ->count();
-        if ($overlapCount > 0) {
-            return response()->json(['message' => 'คุณมีใบลาในช่วงเวลานี้อยู่แล้ว ไม่สามารถยื่นซ้ำได้'], 422);
-        }
+        /*
+         * กฎเรื่องเวลา (ห้ามลาย้อนหลัง / ต้องยื่นล่วงหน้า) และการซ้อนช่วงวัน ตรวจใน LeaveService
+         * จาก leave_policies ซึ่งเป็นแหล่งเดียว — เดิมตรวจซ้ำที่นี่จาก leave_types อีกชุด
+         * ทำให้นโยบายที่ผู้ดูแลตั้งผ่อนปรนไว้ไม่มีผล และใบลาที่ถูก void ยังกันการยื่นใหม่
+         */
 
         $signaturePath = $request->user()->profile->signature_path ?? null;
         if ($request->filled('signature_base64')) {
@@ -90,11 +64,10 @@ class LeaveRequestController extends Controller
     public function storeAsAdmin(StoreLeaveAsAdminRequest $request)
     {
         $data = $request->validated();
-        $data['contact_address'] = 'บันทึกโดยฝ่ายบุคคล';
+        $data['contact_address'] = $data['contact_address'] ?? 'บันทึกโดยฝ่ายบุคคล';
         $data['signature_path'] = null;
-        $leave = $this->leaveService->createLeaveRequest($data, $data['user_id'], null);
-        $leave->status = 'Approved';
-        $leave->save();
+        $leave = $this->leaveService->createLeaveRequest($data, (int) $data['user_id'], null, ['skip_timing_rules' => true]);
+        $leave = $this->leaveService->finalizeRecordedLeave($leave, $request->user(), 'บันทึกวันลาแทนโดยฝ่ายบุคคล');
         LeaveActionLog::create([
             'leave_id' => $leave->id,
             'user_id' => $request->user()->id,
@@ -112,7 +85,20 @@ class LeaveRequestController extends Controller
             return response()->json(['message' => 'ไม่มีสิทธิ์แก้ไขใบลานี้'], 403);
         }
         $data = $request->validated();
-        $leave->update($data);
+        $changesSchedule = (int) $data['leave_type_id'] !== (int) $leave->leave_type_id
+            || $data['start_date'] !== $leave->start_date->toDateString()
+            || $data['end_date'] !== $leave->end_date->toDateString()
+            || (isset($data['leave_period']) && $data['leave_period'] !== ($leave->leave_period ?: 'full_day'));
+
+        if ($changesSchedule) {
+            // ใบที่อนุมัติ/ปิดแล้วห้ามแก้วันที่ตรง ๆ — ต้องขอยกเลิก (ทั้งหมดหรือบางส่วน) ตามระเบียบ
+            if ($leave->status !== 'Pending') {
+                return response()->json(['message' => 'แก้ไขวันที่หรือประเภทการลาได้เฉพาะใบลาที่รออนุมัติ ใบที่อนุมัติแล้วให้ใช้การขอยกเลิกวันลา'], 422);
+            }
+            $leave = $this->leaveService->reschedule($leave, $data);
+        } else {
+            $leave->update(['reason' => $data['reason']]);
+        }
         LeaveActionLog::create(['leave_id' => $leave->id, 'user_id' => $user->id, 'action' => 'Updated', 'details' => $data]);
 
         return response()->json(['message' => 'แก้ไขใบลาเรียบร้อยแล้ว', 'leave' => $leave->load('type')]);

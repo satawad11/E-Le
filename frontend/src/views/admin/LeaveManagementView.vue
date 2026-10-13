@@ -104,6 +104,16 @@
         </div>
 
         <div>
+          <label for="manual-leave-period" class="block text-sm font-medium text-gray-700 mb-1">ช่วงเวลา</label>
+          <select id="manual-leave-period" v-model="manualForm.leave_period" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] p-2.5">
+            <option value="full_day">เต็มวัน</option>
+            <option value="morning">ครึ่งวันเช้า</option>
+            <option value="afternoon">ครึ่งวันบ่าย</option>
+          </select>
+          <p class="mt-1 text-xs text-gray-500">ลาครึ่งวันต้องเลือกวันเริ่มต้นและสิ้นสุดเป็นวันเดียวกัน · บันทึกย้อนหลังได้ ระบบนับเป็นวันที่ใช้ไปและอนุมัติทุกขั้นให้ทันที</p>
+        </div>
+
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">เหตุผลการลา *</label>
           <textarea v-model="manualForm.reason" required rows="3" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] p-2.5" placeholder="กรุณาระบุเหตุผลการลา..."></textarea>
         </div>
@@ -145,6 +155,7 @@ const manualForm = ref({
   leave_type_id: '',
   start_date: '',
   end_date: '',
+  leave_period: 'full_day',
   reason: ''
 })
 const manualLoading = ref(false)
@@ -176,6 +187,7 @@ const handleManualSubmit = async () => {
       leave_type_id: '',
       start_date: '',
       end_date: '',
+      leave_period: 'full_day',
       reason: ''
     }
   } catch (error) {

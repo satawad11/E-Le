@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Leave;
 use App\Models\LeaveActionLog;
+use App\Services\LeaveRequestNotificationService;
 use Illuminate\Http\Request;
 
 class LeaveWorkflowActionController extends Controller
@@ -34,9 +35,17 @@ class LeaveWorkflowActionController extends Controller
         if ($leave->substitute_id !== $request->user()->id) {
             return response()->json(['message' => 'ไม่มีสิทธิ์'], 403);
         }
+        if ($leave->status !== 'Pending') {
+            return response()->json(['message' => 'ใบลานี้ไม่ได้อยู่ระหว่างรออนุมัติแล้ว'], 422);
+        }
         $leave->substitute_status = $status;
         $leave->save();
         $this->log($leave, $request, $action);
+        // แจ้งผู้ยื่น — ถ้าถูกปฏิเสธ ผู้ยื่นต้องยกเลิกแล้วยื่นใหม่พร้อมผู้ปฏิบัติงานแทนคนอื่น
+        app(LeaveRequestNotificationService::class)->notifyRequester($leave->load('user'), 'leave.substitute_responded', $request->user());
+        if ($status === 'Accepted') {
+            app(LeaveRequestNotificationService::class)->notifyCurrentStep($leave, 'leave.approval_requested', $request->user());
+        }
 
         return response()->json(['message' => $message]);
     }

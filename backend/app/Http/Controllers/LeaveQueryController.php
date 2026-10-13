@@ -72,6 +72,13 @@ class LeaveQueryController extends Controller
             $selectedFY ? Carbon::parse($selectedFY->start_date) : today()
         );
 
+        // รอบปีปัจจุบัน/อนาคต: สร้างยอดตั้งต้นตามนโยบายให้ครบก่อน (ปีที่ผ่านไปแล้วไม่สร้างย้อนหลัง)
+        $anchor = $selectedFY ? Carbon::parse($selectedFY->start_date) : today();
+        if (! $selectedFY || Carbon::parse($selectedFY->end_date)->gte(today())) {
+            $user = $request->user()->loadMissing(['personnel', 'currentAssignment', 'profile']);
+            $this->policies->ensureBalances($user, $anchor->lt(today()) ? today() : $anchor);
+        }
+
         $balances = LeaveBalance::with(['type', 'policy'])
             ->where('user_id', $userId)
             ->where('year', $year)
