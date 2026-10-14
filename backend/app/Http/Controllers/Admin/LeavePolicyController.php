@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\LeavePolicy;
 use App\Models\PersonnelType;
+use App\Services\AuditLogger;
 use App\Services\LeavePolicyService;
 use Illuminate\Http\Request;
 
 class LeavePolicyController extends Controller
 {
-    public function __construct(private LeavePolicyService $policies) {}
+    public function __construct(private LeavePolicyService $policies, private AuditLogger $audit) {}
 
     public function index(Request $r)
     {
@@ -25,13 +26,17 @@ class LeavePolicyController extends Controller
     public function store(Request $r)
     {
         $policy = LeavePolicy::create($this->validated($r));
+        $this->audit->log('leave_policy.created', $policy, $policy->id, null, $policy->fresh()->toArray());
 
         return response()->json(['policy' => $policy->load(['personnelType', 'leaveType']), 'sync' => $this->policies->syncBalances($policy)], 201);
     }
 
     public function update(Request $r, LeavePolicy $policy)
     {
+        // สิทธิ์วันลาเปลี่ยนแล้วยอดคงเหลือถูก sync ตาม ต้องย้อนดูได้ว่าใครแก้อะไร
+        $before = $policy->toArray();
         $policy->update($this->validated($r));
+        $this->audit->log('leave_policy.updated', $policy, $policy->id, $before, $policy->fresh()->toArray());
 
         return response()->json(['policy' => $policy->fresh(['personnelType', 'leaveType']), 'sync' => $this->policies->syncBalances($policy)]);
     }

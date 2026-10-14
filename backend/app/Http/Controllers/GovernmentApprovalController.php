@@ -84,6 +84,20 @@ class GovernmentApprovalController extends Controller
         return $resolver->getDelegatedFromId($r->user(), $leave->user, $step);
     }
 
+    /**
+     * ล็อกใบลาแล้วตรวจสถานะซ้ำภายใน lock
+     *
+     * การตรวจก่อนเข้า transaction เห็นค่าที่ route model binding โหลดไว้ ผู้มีสิทธิ์ 2 คน
+     * (หรือดับเบิลคลิก) จึงผ่านพร้อมกันได้ แล้วคำขอที่สองไปหักวันลาซ้ำ หรือปฏิเสธใบที่เพิ่งอนุมัติ
+     */
+    private function lockPending(Leave $leave): Leave
+    {
+        $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
+        abort_unless($locked->status === 'Pending', 422, 'สถานะใบลาเปลี่ยนไปแล้ว กรุณาโหลดหน้าใหม่');
+
+        return $locked;
+    }
+
     public function approve(Request $r, Leave $leave)
     {
         $data = $r->validate(['comment' => 'nullable|string|max:1000']);
@@ -93,7 +107,7 @@ class GovernmentApprovalController extends Controller
             abort_unless($leave->substitute_status === 'Accepted', 422, 'ผู้ปฏิบัติงานแทนยังไม่ตอบรับ');
         }$shadowInstanceId = $this->shadowPrepare($leave);
         DB::transaction(function () use ($r, $leave, $data) {
-            $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
+            $locked = $this->lockPending($leave);
             $step = $this->step($locked);
             $delegatedFrom = $this->authorizeStep($r, $step, $locked);
             $step->update(['approver_id' => $r->user()->id, 'approver_name' => $r->user()->full_name_with_title, 'approver_position' => $r->user()->profile?->position, 'signature_path' => $r->user()->profile?->signature_path, 'status' => 'Approved', 'comment' => $data['comment'] ?? null, 'approved_at' => now(), 'acted_at' => now(), 'delegated_from_user_id' => $delegatedFrom]);
@@ -124,7 +138,7 @@ class GovernmentApprovalController extends Controller
         abort_if($leave->user_id === $r->user()->id, 403, 'ห้ามปฏิเสธใบลาของตนเอง');
         $shadowInstanceId = $this->shadowPrepare($leave);
         DB::transaction(function () use ($r, $leave, $data) {
-            $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
+            $locked = $this->lockPending($leave);
             $step = $this->step($locked);
             $delegatedFrom = $this->authorizeStep($r, $step, $locked);
             $step->update(['approver_id' => $r->user()->id, 'approver_name' => $r->user()->full_name_with_title, 'approver_position' => $r->user()->profile?->position, 'signature_path' => $r->user()->profile?->signature_path, 'status' => 'Rejected', 'comment' => $data['comment'], 'approved_at' => now(), 'acted_at' => now(), 'delegated_from_user_id' => $delegatedFrom]);

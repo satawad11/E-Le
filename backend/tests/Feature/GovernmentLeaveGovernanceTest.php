@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalStep;
+use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveBalance;
@@ -73,6 +74,23 @@ class GovernmentLeaveGovernanceTest extends TestCase
         $this->assertEquals(3.0, (float) $balance->used);
         $this->assertEquals(2.0, (float) $balance->reserved);
         $this->assertEquals(1.0, (float) $balance->carried_forward);
+    }
+
+    public function test_leave_policy_changes_are_audited_with_before_and_after(): void
+    {
+        [, $type, $policy] = $this->setupPolicy();
+        $admin = User::factory()->create();
+        $admin->givePermissionTo(Permission::findOrCreate('leave.policy.manage', 'web'));
+        $payload = ['personnel_type_id' => $policy->personnel_type_id, 'leave_type_id' => $type->id, 'effective_from' => '2025-10-01', 'annual_quota' => 15, 'period_basis' => 'fiscal_year', 'is_active' => true];
+
+        $this->actingAs($admin)->putJson("/api/admin/leave-policies/{$policy->id}", $payload)->assertOk();
+        $createdId = $this->actingAs($admin)->postJson('/api/admin/leave-policies', ['effective_from' => '2027-10-01'] + $payload)->assertCreated()->json('policy.id');
+
+        $updated = AuditLog::where('action', 'leave_policy.updated')->where('resource_id', (string) $policy->id)->firstOrFail();
+        $this->assertSame($admin->id, $updated->actor_id);
+        $this->assertEquals(10, $updated->before['annual_quota']);
+        $this->assertEquals(15, $updated->after['annual_quota']);
+        $this->assertTrue(AuditLog::where('action', 'leave_policy.created')->where('resource_id', (string) $createdId)->exists());
     }
 
     public function test_evidence_storage_is_not_public(): void

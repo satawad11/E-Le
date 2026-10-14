@@ -49,17 +49,26 @@ class LeaveCancellationController extends Controller
 
         if ($leave->status === 'Approved') {
             $request->validate(['cancellation_reason' => 'required|string|max:1000']);
-            if ($leave->cancellation_status === 'Pending') {
+            // ตรวจซ้ำภายใน lock — ส่งคำขอพร้อมกัน 2 ครั้งเดิมผ่านทั้งคู่ และเหตุผลแรกถูกเขียนทับ
+            $leave = DB::transaction(function () use ($leave, $user, $request) {
+                $locked = Leave::whereKey($leave->id)->lockForUpdate()->firstOrFail();
+                if ($locked->status !== 'Approved' || $locked->cancellation_status === 'Pending') {
+                    return null;
+                }
+                $locked->forceFill([
+                    'cancellation_status' => 'Pending',
+                    'cancellation_reason' => $request->cancellation_reason,
+                    'cancellation_date' => now(),
+                    'approval_level' => $this->flow->firstStepOrder($locked),
+                ])->save();
+                LeaveActionLog::create(['leave_id' => $locked->id, 'user_id' => $user->id, 'action' => 'Cancellation Requested', 'details' => ['reason' => $request->cancellation_reason]]);
+                $this->audit($request, $locked, 'cancellation_requested');
+
+                return $locked;
+            }, 5);
+            if (! $leave) {
                 return response()->json(['message' => 'ใบลานี้มีคำขอยกเลิกที่รอพิจารณาอยู่แล้ว'], 422);
             }
-            $leave->forceFill([
-                'cancellation_status' => 'Pending',
-                'cancellation_reason' => $request->cancellation_reason,
-                'cancellation_date' => now(),
-                'approval_level' => $this->flow->firstStepOrder($leave),
-            ])->save();
-            LeaveActionLog::create(['leave_id' => $leave->id, 'user_id' => $user->id, 'action' => 'Cancellation Requested', 'details' => ['reason' => $request->cancellation_reason]]);
-            $this->audit($request, $leave, 'cancellation_requested');
             $this->notifications->notifyCurrentStep($leave->load('user'), 'leave.cancellation_requested', $user);
 
             return response()->json(['message' => 'ส่งคำขอยกเลิกใบลาที่อนุมัติแล้วเรียบร้อย กรุณารอการอนุมัติยกเลิก']);
