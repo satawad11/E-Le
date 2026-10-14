@@ -29,7 +29,8 @@ class LeaveCancellationController extends Controller
     public function cancel(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $isAdminOrHR = $user->can('leave.management.manage') || $user->can('system.user.view');
+        // เดิมพ่วงกับ system.user.view — สิทธิ์ดูรายชื่อผู้ใช้จึงยกเลิกใบลาของใครก็ได้
+        $isAdminOrHR = $user->can('leave.management.manage') || $user->can('leave.request.cancel_others');
         if ($leave->user_id !== $user->id && ! $isAdminOrHR) {
             return response()->json(['message' => 'ไม่มีสิทธิ์ยกเลิกใบลานี้'], 403);
         }

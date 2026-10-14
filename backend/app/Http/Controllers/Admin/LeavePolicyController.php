@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Leave;
 use App\Models\LeavePolicy;
 use App\Models\PersonnelType;
 use App\Services\AuditLogger;
 use App\Services\LeavePolicyService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class LeavePolicyController extends Controller
 {
@@ -31,14 +35,48 @@ class LeavePolicyController extends Controller
         return response()->json(['policy' => $policy->load(['personnelType', 'leaveType']), 'sync' => $this->policies->syncBalances($policy)], 201);
     }
 
+    /**
+     * นโยบายที่ยังไม่มีใบลาอ้างถึง → แก้ทับได้ (เช่น แก้พิมพ์ผิด)
+     * นโยบายที่ใบลาอ้างถึงแล้ว → ห้ามแก้ทับ เพราะใบลาเดิมถูกพิจารณาด้วยกฎชุดนั้น
+     *   ระบบสร้างเวอร์ชันใหม่ตามวันที่มีผล และปิดเวอร์ชันเดิมให้สิ้นสุดก่อนหนึ่งวัน (PROJECT_RULES ข้อ 7)
+     */
     public function update(Request $r, LeavePolicy $policy)
     {
-        // สิทธิ์วันลาเปลี่ยนแล้วยอดคงเหลือถูก sync ตาม ต้องย้อนดูได้ว่าใครแก้อะไร
+        $data = $this->validated($r);
         $before = $policy->toArray();
-        $policy->update($this->validated($r));
-        $this->audit->log('leave_policy.updated', $policy, $policy->id, $before, $policy->fresh()->toArray());
 
-        return response()->json(['policy' => $policy->fresh(['personnelType', 'leaveType']), 'sync' => $this->policies->syncBalances($policy)]);
+        if (! Leave::where('leave_policy_id', $policy->id)->exists()) {
+            // สิทธิ์วันลาเปลี่ยนแล้วยอดคงเหลือถูก sync ตาม ต้องย้อนดูได้ว่าใครแก้อะไร
+            $policy->update($data);
+            $this->audit->log('leave_policy.updated', $policy, $policy->id, $before, $policy->fresh()->toArray());
+
+            return response()->json(['policy' => $policy->fresh(['personnelType', 'leaveType']), 'sync' => $this->policies->syncBalances($policy)]);
+        }
+
+        $from = Carbon::parse($data['effective_from'])->startOfDay();
+        if ((int) $data['personnel_type_id'] !== (int) $policy->personnel_type_id || (int) $data['leave_type_id'] !== (int) $policy->leave_type_id) {
+            throw ValidationException::withMessages(['leave_type_id' => 'นโยบายนี้มีใบลาอ้างถึงแล้ว เปลี่ยนประเภทบุคลากรหรือประเภทลาไม่ได้ กรุณาสร้างนโยบายใหม่']);
+        }
+        if ($from->lte($policy->effective_from)) {
+            throw ValidationException::withMessages(['effective_from' => 'นโยบายนี้มีใบลาอ้างถึงแล้ว จึงแก้ทับไม่ได้ กรุณาระบุวันที่มีผลของเวอร์ชันใหม่ให้หลังวันที่ '.$policy->effective_from->toDateString()]);
+        }
+
+        $version = DB::transaction(function () use ($policy, $data, $from, $before) {
+            if ($policy->effective_to === null || $policy->effective_to->gte($from)) {
+                $policy->update(['effective_to' => $from->copy()->subDay()->toDateString()]);
+            }
+            $version = LeavePolicy::create($data);
+            $this->audit->log('leave_policy.versioned', $version, $version->id, $before, $version->fresh()->toArray(), "แทนนโยบาย #{$policy->id} ตั้งแต่ {$from->toDateString()}");
+
+            return $version;
+        });
+
+        return response()->json([
+            'policy' => $version->load(['personnelType', 'leaveType']),
+            'previous_policy' => $policy->fresh(),
+            'versioned' => true,
+            'sync' => $this->policies->syncBalances($version),
+        ], 201);
     }
 
     private function validated(Request $r): array

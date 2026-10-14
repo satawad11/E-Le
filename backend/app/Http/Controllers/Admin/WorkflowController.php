@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ApprovalStep;
 use App\Models\Role;
 use App\Models\User;
-use App\Services\AuditService;
+use App\Services\AuditLogger;
 use App\Services\Workflow\LeaveWorkflowProvisioner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -96,7 +96,8 @@ class WorkflowController extends Controller
             ], 409);
         }
 
-        $savedSteps = DB::transaction(function () use ($stepDataList, $request) {
+        $before = $currentSteps->map->toArray()->all();
+        $savedSteps = DB::transaction(function () use ($stepDataList, $before) {
             ApprovalStep::query()->delete();
 
             $created = [];
@@ -124,19 +125,14 @@ class WorkflowController extends Controller
                 report($e);
             }
 
-            if (app()->bound(AuditService::class)) {
-                try {
-                    app(AuditService::class)->log(
-                        'approval_workflow_updated',
-                        'ApprovalStep',
-                        null,
-                        ['steps_count' => count($created), 'steps' => $created],
-                        $request->user()
-                    );
-                } catch (\Throwable $e) {
-                    report($e);
-                }
-            }
+            // เดิมเรียก AuditService ซึ่งไม่มีอยู่จริง (ห่อด้วย app()->bound จึงเงียบ) การแก้สายอนุมัติไม่เคยถูก audit
+            app(AuditLogger::class)->log(
+                'approval_workflow.updated',
+                'approval_steps',
+                null,
+                ['steps' => $before],
+                ['steps' => collect($created)->map->toArray()->all()],
+            );
 
             return $created;
         }, 5);

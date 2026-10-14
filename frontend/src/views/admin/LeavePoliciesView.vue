@@ -54,6 +54,8 @@ const save=async()=>{
     const res=form.value.id?await api.put(`/admin/leave-policies/${form.value.id}`,payload):await api.post('/admin/leave-policies',payload);
     const sync=res.data?.sync;
     notice.value=sync?`บันทึกแล้ว — อัปเดตสิทธิ์ผู้ใช้ ${sync.synced} คน (ปี ${sync.year+543})${sync.over_quota?` • เตือน: มี ${sync.over_quota} คนใช้วันลาเกินโควตาใหม่แล้ว`:''}`:'บันทึกแล้ว';
+    // นโยบายที่มีใบลาอ้างถึงแล้วจะไม่ถูกแก้ทับ แต่สร้างเวอร์ชันใหม่และปิดเวอร์ชันเดิม
+    if(res.data?.versioned) notice.value=`สร้างเวอร์ชันใหม่มีผลตั้งแต่ ${date(res.data.policy.effective_from)} (เวอร์ชันเดิมสิ้นสุด ${date(res.data.previous_policy.effective_to)} เพราะมีใบลาอ้างถึงแล้ว) — ${notice.value}`;
     alertStore.success('บันทึกนโยบายสิทธิการลาเรียบร้อยแล้ว');
     show.value=false;
     await load();

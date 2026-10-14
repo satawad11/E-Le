@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\LeaveType;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 
 class LeaveTypeController extends Controller
 {
+    public function __construct(private AuditLogger $audit) {}
+
     /**
      * List all leave types.
      */
@@ -35,6 +38,7 @@ class LeaveTypeController extends Controller
         ]);
 
         $leaveType = LeaveType::create($data);
+        $this->audit->log('leave_type.created', $leaveType, $leaveType->id, null, $leaveType->fresh()->toArray());
 
         return response()->json([
             'message' => 'เพิ่มประเภทการลาเรียบร้อยแล้ว',
@@ -60,7 +64,9 @@ class LeaveTypeController extends Controller
             'counts_toward_promotion' => 'boolean',
         ]);
 
+        $before = $type->toArray();
         $type->update($data);
+        $this->audit->log('leave_type.updated', $type, $type->id, $before, $type->fresh()->toArray());
 
         return response()->json([
             'message' => 'แก้ไขประเภทการลาเรียบร้อยแล้ว',
@@ -81,6 +87,7 @@ class LeaveTypeController extends Controller
             ], 422);
         }
 
+        $this->audit->log('leave_type.deleted', $type, $type->id, $type->toArray(), null);
         $type->delete();
 
         return response()->json(['message' => 'ลบประเภทการลาเรียบร้อยแล้ว']);

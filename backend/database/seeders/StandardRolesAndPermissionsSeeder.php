@@ -21,6 +21,7 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                 'leave.request.create' => 'ยื่นใบลาออนไลน์',
                 'leave.request.view_my' => 'ดูประวัติการลาของตนเอง',
                 'leave.request.cancel' => 'ขอยกเลิกใบลา',
+                'leave.request.cancel_others' => 'ยกเลิกใบลาของผู้อื่น (HR)',
                 'leave.approval.dept' => 'อนุมัติการลาระดับแผนกวิชา/ฝ่าย',
                 'leave.approval.final' => 'อนุมัติการลาขั้นสุดท้าย (ผอ.)',
                 'leave.report.view' => 'ดูรายงานและสถิติการลา',
@@ -137,7 +138,7 @@ class StandardRolesAndPermissionsSeeder extends Seeder
             'เจ้าหน้าที่บุคลากร (HR)' => [
                 'description' => 'เจ้าหน้าที่งานบุคลากร (HR)',
                 'permissions' => [
-                    'leave.request.create', 'leave.request.view_my', 'leave.request.cancel', 'leave.management.manage', 'leave.report.view',
+                    'leave.request.create', 'leave.request.view_my', 'leave.request.cancel', 'leave.request.cancel_others', 'leave.management.manage', 'leave.report.view',
                     'attendance.checkin', 'attendance.view_self', 'attendance.view_all', 'attendance.export', 'attendance.ot', 'attendance.ot_summary',
                     'system.user.view', 'system.user.manage',
                     'view_users', 'edit_users', 'view_all_attendances', 'export_reports',
