@@ -7,6 +7,7 @@ use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveBalance;
 use App\Models\Setting;
+use App\Services\DocumentEngine\LeaveDocumentGateway;
 use App\Services\Export\LeaveWordService;
 use App\Services\LeaveDocumentTemplateResolver;
 use App\Services\LeaveVerificationService;
@@ -20,6 +21,36 @@ use PhpOffice\PhpWord\PhpWord;
 class LeaveDocumentController extends Controller
 {
     /**
+     * แบบฟอร์มที่ต้องใช้พิมพ์ใบลาใบนี้
+     *
+     * เดิมตรงนี้เทียบชื่อไทยของประเภทการลาแบบตายตัว (`'ลาพักผ่อน'`, `'ลาอุปสมบท'` ฯลฯ)
+     * ผู้ดูแลจึงเพิ่ม/เปลี่ยนชื่อประเภทการลาไม่ได้โดยไม่ทำให้พิมพ์ผิดแบบฟอร์ม
+     * ตอนนี้ยึด `leave_types.document_template_code` ที่ตั้งค่าได้จากหน้าผู้ดูแล
+     */
+    /** ชื่อไฟล์เอกสารที่ส่งให้ผู้ใช้ — ใช้ร่วมกันทั้งเส้นทางเดิมและ Document Engine */
+    private function filenameFor(Leave $leave, bool $isCancel, string $extension = 'pdf'): string
+    {
+        $leaveTypeName = $leave->type->name ?? 'การลา';
+        $userName = str_replace(' ', '_', trim((string) $leave->user?->name));
+        $docNumber = $leave->document_number ?? $leave->id;
+
+        $base = str_replace(['/', '\\'], '_', "{$leaveTypeName}_{$userName}_{$docNumber}");
+
+        return ($isCancel ? "cancel_{$base}" : $base).'.'.$extension;
+    }
+
+    private function viewFor(Leave $leave, bool $isCancel): string
+    {
+        if ($isCancel) {
+            return 'pdf.leave_cancel';
+        }
+
+        $templates = app(LeaveDocumentTemplateResolver::class);
+
+        return $templates->viewForCode($templates->templateCodeForLeave($leave)) ?? 'pdf.leave';
+    }
+
+    /**
      * Export a leave as PDF.
      */
     public function exportPdf(Request $request, Leave $leave, ThaiDateService $thaiDateService)
@@ -28,6 +59,26 @@ class LeaveDocumentController extends Controller
         $this->authorize('view', $leave);
 
         $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
+
+        /*
+         * DOC-ENGINE — ถ้าใบลาประเภทนี้ถูกเปิดให้ใช้ Document Engine แล้ว
+         * ให้ engine ออกเอกสารจากแบบฟอร์ม PDF ต้นฉบับ
+         *
+         * gateway คืน null เมื่อธงปิด ยังไม่ได้ผูกแบบฟอร์ม หรือเรนเดอร์ไม่สำเร็จ
+         * ซึ่งแปลว่า "ใช้เส้นทางเดิม" — ผู้ใช้จึงพิมพ์เอกสารได้เสมอไม่ว่าจะเกิดอะไรขึ้น
+         */
+        $engineContent = app(LeaveDocumentGateway::class)->pdfFor(
+            $leave,
+            $request->query('form') === 'cancel',
+            $request->user(),
+        );
+
+        if ($engineContent !== null) {
+            return response($engineContent, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$this->filenameFor($leave, $request->query('form') === 'cancel').'"',
+            ]);
+        }
 
         $lastLeave = Leave::where('user_id', $leave->user_id)
             ->where('leave_type_id', $leave->leave_type_id)
@@ -38,7 +89,7 @@ class LeaveDocumentController extends Controller
 
         $settings = Setting::pluck('value', 'key');
 
-        $approvalSteps = ApprovalStep::with('role')->orderBy('step_order')->get();
+        $approvalSteps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role');
         $roleSettingMap = [
             'HR Head' => 'head_hr_name',
             'Deputy Director' => 'deputy_admin_name',
@@ -90,27 +141,7 @@ class LeaveDocumentController extends Controller
             ];
         }
 
-        $viewName = 'pdf.leave';
-        if ($isCancel) {
-            $viewName = 'pdf.leave_cancel';
-        } elseif ($leave->type) {
-            $tName = $leave->type->name;
-            if ($tName === 'ลาพักผ่อน') {
-                $viewName = 'pdf.leave_vacation';
-            } elseif (str_contains($tName, 'ราชการ') || str_contains($tName, 'เดินทาง')) {
-                $viewName = 'pdf.official_travel';
-            } elseif (str_contains($tName, 'ช่วยเหลือภริยา')) {
-                $viewName = 'pdf.leave_paternity';
-            } elseif ($tName === 'ลาอุปสมบท') {
-                $viewName = 'pdf.leave_ordination';
-            } elseif ($tName === 'ลาไปประกอบพิธีฮัจญ์') {
-                $viewName = 'pdf.leave_hajj';
-            } elseif ($tName === 'ลาติดตามคู่สมรส') {
-                $viewName = 'pdf.leave_spouse';
-            } elseif ($tName === 'ลาไปศึกษาต่อ ดูงาน ฝึกอบรม') {
-                $viewName = 'pdf.leave_study';
-            }
-        }
+        $viewName = $this->viewFor($leave, $isCancel);
 
         $leaveBalance = null;
         if ($viewName === 'pdf.leave_vacation') {
@@ -179,7 +210,7 @@ class LeaveDocumentController extends Controller
 
         $settings = Setting::pluck('value', 'key');
 
-        $approvalSteps = ApprovalStep::with('role')->orderBy('step_order')->get();
+        $approvalSteps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role');
         $roleSettingMap = [
             'HR Head' => 'head_hr_name',
             'Deputy Director' => 'deputy_admin_name',
@@ -231,23 +262,7 @@ class LeaveDocumentController extends Controller
             ];
         }
 
-        $viewName = 'pdf.leave';
-        $isCancel = $request->query('form') === 'cancel';
-        if ($isCancel) {
-            $viewName = 'pdf.leave_cancel';
-        } elseif ($leave->type) {
-            if ($leave->type->name === 'ลาพักผ่อน') {
-                $viewName = 'pdf.leave_vacation';
-            } elseif ($leave->type->name === 'ลาอุปสมบท') {
-                $viewName = 'pdf.leave_ordination';
-            } elseif ($leave->type->name === 'ลาไปประกอบพิธีฮัจญ์') {
-                $viewName = 'pdf.leave_hajj';
-            } elseif ($leave->type->name === 'ลาติดตามคู่สมรส') {
-                $viewName = 'pdf.leave_spouse';
-            } elseif ($leave->type->name === 'ลาไปศึกษาต่อ ดูงาน ฝึกอบรม') {
-                $viewName = 'pdf.leave_study';
-            }
-        }
+        $viewName = $this->viewFor($leave, $isCancel);
 
         $leaveBalance = null;
         if ($viewName === 'pdf.leave_vacation') {

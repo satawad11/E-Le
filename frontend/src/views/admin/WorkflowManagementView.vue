@@ -26,8 +26,21 @@
         </button>
 
         <button
+          @click="openPreview"
+          :disabled="loading || saving || (steps.length === 0 && !isCancellationChain)"
+          class="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl text-sm transition-all shadow-sm disabled:opacity-50 min-h-[44px]"
+          title="ทดลองว่าใครคือผู้อนุมัติจริงของแต่ละขั้น"
+        >
+          <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          ดูตัวอย่างผู้อนุมัติจริง
+        </button>
+
+        <button
           @click="saveWorkflow"
-          :disabled="saving || loading || steps.length === 0"
+          :disabled="saving || loading || (steps.length === 0 && !isCancellationChain)"
           class="flex items-center gap-2 px-5 py-2.5 bg-[#800000] hover:bg-[#600000] text-white font-semibold rounded-xl text-sm transition-all shadow-md hover:shadow-lg disabled:opacity-50 min-h-[44px]"
         >
           <div v-if="saving" class="animate-spin h-4 w-4 rounded-full border-2 border-white border-t-transparent"></div>
@@ -37,6 +50,22 @@
           {{ saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า' }}
         </button>
       </div>
+    </div>
+
+    <!-- Chain switcher -->
+    <div class="mb-6 flex flex-wrap gap-2 border-b border-gray-200">
+      <button
+        v-for="c in chains"
+        :key="c.value"
+        @click="switchChain(c.value)"
+        :disabled="saving"
+        class="px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors min-h-[44px] disabled:opacity-50"
+        :class="activeChain === c.value
+          ? 'border-[#800000] text-[#800000]'
+          : 'border-transparent text-gray-500 hover:text-gray-800'"
+      >
+        {{ c.label }}
+      </button>
     </div>
 
     <!-- Loading State -->
@@ -76,8 +105,27 @@
 
       <!-- Workflow Timeline / Steps Builder -->
       <div class="lg:col-span-2 space-y-4">
+        <!-- สายยกเลิกที่ยังไม่ได้ตั้งค่าแยก = ใช้สายเดียวกับใบลา -->
+        <div v-if="isCancellationChain" class="rounded-2xl border p-4 text-sm"
+          :class="steps.length === 0 ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-white border-gray-100 text-gray-600 shadow-sm'">
+          <p v-if="steps.length === 0">
+            <span class="font-bold">ขณะนี้คำขอยกเลิกใบลาใช้สายอนุมัติเดียวกับใบลา</span> —
+            เพิ่มขั้นตอนด้านล่างเมื่อต้องการให้การยกเลิกใช้สายที่ต่างออกไป เช่นสั้นกว่าหรือเสนอผู้อนุมัติคนละคน
+          </p>
+          <div v-else class="flex flex-wrap items-center justify-between gap-3">
+            <span>คำขอยกเลิกใช้สายอนุมัติเฉพาะของตัวเองตามที่ตั้งค่าไว้ด้านล่าง</span>
+            <button
+              @click="useLeaveChainForCancellation"
+              :disabled="saving"
+              class="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 font-semibold text-xs hover:bg-gray-50 disabled:opacity-50 min-h-[40px]"
+            >
+              กลับไปใช้สายเดียวกับใบลา
+            </button>
+          </div>
+        </div>
+
         <!-- Empty State -->
-        <div v-if="steps.length === 0" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+        <div v-if="steps.length === 0 && !isCancellationChain" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <svg class="mx-auto h-12 w-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
           </svg>
@@ -94,7 +142,7 @@
           </button>
         </div>
 
-        <div v-else class="space-y-4">
+        <div v-if="steps.length > 0 || isCancellationChain" class="space-y-4">
           <!-- Steps Loop -->
           <div
             v-for="(step, index) in steps"
@@ -248,6 +296,81 @@
       </div>
     </div>
 
+    <!-- Approver Preview Modal -->
+    <div
+      v-if="previewModal.show"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      @click.self="previewModal.show = false"
+    >
+      <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+        <div>
+          <h3 class="text-lg font-bold text-gray-900">ดูตัวอย่างผู้อนุมัติจริง</h3>
+          <p class="text-sm text-gray-500 mt-1">
+            เลือกผู้ยื่นคำขอเพื่อดูว่าระบบจะหาใครเป็นผู้อนุมัติในแต่ละขั้น โดยใช้เกณฑ์เดียวกับตอนกดอนุมัติจริง
+            <span v-if="hasUnsavedChanges" class="text-amber-700 font-semibold">(ทดลองจากการตั้งค่าที่ยังไม่ได้บันทึก)</span>
+          </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <select
+            v-model="previewModal.requesterId"
+            class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#800000] text-sm bg-white text-gray-700"
+          >
+            <option value="" disabled>เลือกผู้ยื่นคำขอที่ต้องการทดลอง</option>
+            <option v-for="u in usersList" :key="u.id" :value="u.id">
+              {{ u.personnel?.full_name || u.name }} ({{ u.email }})
+            </option>
+          </select>
+          <button
+            @click="runPreview"
+            :disabled="!previewModal.requesterId || previewModal.loading"
+            class="px-5 py-2.5 rounded-xl bg-[#800000] text-white font-semibold hover:bg-[#600000] text-sm shadow-md transition min-h-[44px] disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            <div v-if="previewModal.loading" class="animate-spin h-4 w-4 rounded-full border-2 border-white border-t-transparent"></div>
+            {{ previewModal.loading ? 'กำลังตรวจสอบ...' : 'ตรวจสอบ' }}
+          </button>
+        </div>
+
+        <div v-if="previewModal.result" class="space-y-3">
+          <div
+            v-for="step in previewModal.result.steps"
+            :key="step.step_order"
+            class="border rounded-2xl p-4"
+            :class="step.warning ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-white'"
+          >
+            <div class="flex items-start gap-3">
+              <div class="w-7 h-7 rounded-full bg-[#800000]/10 text-[#800000] font-bold text-xs flex items-center justify-center flex-shrink-0">
+                {{ step.step_order }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-gray-900 text-sm">{{ step.name }}</p>
+                <p class="text-[11px] text-gray-500 uppercase mt-0.5">{{ resolverLabel(step.approver_type) }}</p>
+
+                <ul v-if="step.approvers.length" class="mt-2 space-y-1">
+                  <li v-for="approver in step.approvers" :key="approver.id" class="text-sm text-gray-700">
+                    • {{ approver.name }}
+                    <span v-if="approver.position" class="text-gray-500">— {{ approver.position }}</span>
+                  </li>
+                </ul>
+
+                <p v-if="step.warning" class="mt-2 text-sm text-amber-800 font-medium">{{ step.warning }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-1">
+          <button
+            type="button"
+            @click="previewModal.show = false"
+            class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 text-sm min-h-[44px]"
+          >
+            ปิด
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Delete Step Confirmation Modal -->
     <div
       v-if="deleteModal.show"
@@ -347,6 +470,41 @@ const conflictModal = ref({
   show: false
 })
 
+const previewModal = ref({
+  show: false,
+  requesterId: '',
+  loading: false,
+  result: null
+})
+
+/*
+ * สายอนุมัติที่กำลังจัดการอยู่
+ *
+ * สายของคำขอยกเลิกที่ "ไม่มีขั้นตอนเลย" หมายถึงใช้สายเดียวกับใบลา ซึ่งเป็นค่าเริ่มต้น
+ * ของระบบ ผู้ดูแลที่ไม่ต้องการแยกสายจึงไม่ต้องตั้งค่าอะไรเพิ่ม
+ */
+const chains = [
+  { value: 'leave', label: 'สายอนุมัติใบลา' },
+  { value: 'cancellation', label: 'สายอนุมัติคำขอยกเลิกใบลา' },
+]
+const activeChain = ref('leave')
+const inheritsLeaveChain = ref(false)
+
+const isCancellationChain = computed(() => activeChain.value === 'cancellation')
+
+const switchChain = async (chain) => {
+  if (chain === activeChain.value) return
+  if (hasUnsavedChanges.value && ! window.confirm('มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก ต้องการสลับสายอนุมัติหรือไม่?')) return
+  activeChain.value = chain
+  await fetchWorkflow()
+}
+
+// ล้างขั้นตอนของสายยกเลิกทั้งหมด = กลับไปใช้สายเดียวกับใบลา
+const useLeaveChainForCancellation = () => {
+  steps.value = []
+  saveWorkflow()
+}
+
 const resolverOptions = [
   { value: 'DEPARTMENT_HEAD', label: 'หัวหน้าแผนกวิชา / หัวหน้างาน (ต้นสังกัดผู้ยื่น)' },
   { value: 'REQUESTER_SUPERVISOR', label: 'ผู้บังคับบัญชาชั้นต้น' },
@@ -356,6 +514,37 @@ const resolverOptions = [
   { value: 'ROLE', label: 'กำหนดตามบทบาทระบบ (System Role)' },
   { value: 'SPECIFIC_USER', label: 'ระบุตัวบุคคลรายคน (Specific User)' },
 ]
+
+const resolverLabel = (value) => {
+  return resolverOptions.find(o => o.value === value)?.label || value || ''
+}
+
+// ทดลองว่าใครคือผู้อนุมัติจริง โดยใช้ขั้นตอนที่กำลังแก้อยู่บนหน้าจอ (รวมที่ยังไม่บันทึก)
+const openPreview = () => {
+  previewModal.value = { show: true, requesterId: '', loading: false, result: null }
+}
+
+const runPreview = async () => {
+  if (!previewModal.value.requesterId) return
+  previewModal.value.loading = true
+  try {
+    const res = await api.post('/admin/workflow-steps/preview', {
+      chain: activeChain.value,
+      requester_id: Number(previewModal.value.requesterId),
+      steps: steps.value.map(s => ({
+        name: (s.name || '').trim(),
+        approver_type: s.approver_type || 'ROLE',
+        role_id: s.role_id ? Number(s.role_id) : null,
+        specific_user_id: s.specific_user_id ? Number(s.specific_user_id) : null
+      }))
+    })
+    previewModal.value.result = res.data
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'ไม่สามารถตรวจสอบผู้อนุมัติได้')
+  } finally {
+    previewModal.value.loading = false
+  }
+}
 
 const roleLabel = (name) => {
   const map = {
@@ -409,7 +598,7 @@ const fetchWorkflow = async () => {
   try {
     const [rolesRes, stepsRes, usersRes] = await Promise.all([
       api.get('/admin/roles'),
-      api.get('/admin/workflow-steps'),
+      api.get('/admin/workflow-steps', { params: { chain: activeChain.value, with_meta: 1 } }),
       api.get('/users/list')
     ])
     roles.value = Array.isArray(rolesRes.data) ? rolesRes.data : (rolesRes.data?.data || [])
@@ -420,6 +609,7 @@ const fetchWorkflow = async () => {
       : (stepsRes.data?.steps || stepsRes.data?.data || [])
 
     currentFingerprint.value = stepsRes.headers?.['x-workflow-fingerprint'] || stepsRes.data?.fingerprint || ''
+    inheritsLeaveChain.value = !!stepsRes.data?.inherits_leave_chain
 
     steps.value = rawSteps.map((s, idx) => ({
       id: s.id,
@@ -518,7 +708,8 @@ const resolveConflictReload = () => {
 }
 
 const saveWorkflow = async () => {
-  if (steps.value.length === 0) {
+  // สายยกเลิกบันทึกว่างได้ = ใช้สายเดียวกับใบลา ส่วนสายใบลาต้องมีอย่างน้อยหนึ่งขั้น
+  if (steps.value.length === 0 && !isCancellationChain.value) {
     alertStore.error('กรุณาระบุขั้นตอนการอนุมัติอย่างน้อย 1 ขั้นตอน')
     return
   }
@@ -544,6 +735,7 @@ const saveWorkflow = async () => {
 
   try {
     const payload = {
+      chain: activeChain.value,
       steps: steps.value.map(s => ({
         role_id: s.role_id ? Number(s.role_id) : null,
         approver_type: s.approver_type || 'ROLE',
@@ -560,18 +752,18 @@ const saveWorkflow = async () => {
     
     currentFingerprint.value = res.headers?.['x-workflow-fingerprint'] || res.data?.fingerprint || ''
     
+    inheritsLeaveChain.value = !!res.data?.inherits_leave_chain
+
     const returnedSteps = res.data?.steps || []
-    if (returnedSteps.length > 0) {
-      steps.value = returnedSteps.map((s, idx) => ({
-        id: s.id,
-        role_id: s.role_id || '',
-        approver_type: s.approver_type || 'ROLE',
-        specific_user_id: s.specific_user_id || '',
-        allow_self_approval: !!s.allow_self_approval,
-        name: s.name,
-        step_order: s.step_order || (idx + 1)
-      }))
-    }
+    steps.value = returnedSteps.map((s, idx) => ({
+      id: s.id,
+      role_id: s.role_id || '',
+      approver_type: s.approver_type || 'ROLE',
+      specific_user_id: s.specific_user_id || '',
+      allow_self_approval: !!s.allow_self_approval,
+      name: s.name,
+      step_order: s.step_order || (idx + 1)
+    }))
 
     reindexSteps()
     initialStepsSnapshot.value = serializeSteps(steps.value)

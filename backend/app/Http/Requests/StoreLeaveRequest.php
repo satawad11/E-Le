@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\LeaveType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreLeaveRequest extends FormRequest
 {
@@ -33,6 +35,37 @@ class StoreLeaveRequest extends FormRequest
             'substitute_reason' => 'nullable|string|max:1000',
             'meta_data' => 'nullable|json',
             'signature_base64' => 'nullable|string',
+            // ช่องกรอกเฉพาะแบบฟอร์มของประเภทการลานั้น (ผู้ดูแลกำหนดเองได้)
+            'extra_fields' => 'nullable|array',
+            'extra_fields.*' => 'nullable|string|max:500',
+        ];
+    }
+
+    /**
+     * บังคับช่องเฉพาะแบบฟอร์มที่ผู้ดูแลตั้งเป็น "จำเป็น" ไว้
+     *
+     * นิยามช่องอยู่ใน `leave_types.extra_fields` จึงตรวจที่นี่แทนการ hard-code
+     * ว่าแบบฟอร์มไหนต้องกรอกอะไร
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $type = LeaveType::find($this->input('leave_type_id'));
+                $submitted = (array) $this->input('extra_fields', []);
+
+                foreach ((array) ($type?->extra_fields ?? []) as $definition) {
+                    $key = $definition['key'] ?? null;
+                    $required = filter_var($definition['required'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+                    if ($key !== null && $required && blank($submitted[$key] ?? null)) {
+                        $validator->errors()->add(
+                            "extra_fields.{$key}",
+                            'กรุณากรอก'.($definition['label'] ?? $key)
+                        );
+                    }
+                }
+            },
         ];
     }
 }

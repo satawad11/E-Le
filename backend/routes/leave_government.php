@@ -21,19 +21,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/leave-services', [LeaveGovernanceWorklistController::class, 'myLeaves']);
     Route::get('/leaves/{leave}/evidences', [LeaveEvidenceController::class, 'index']);
     Route::post('/leaves/{leave}/evidences', [LeaveEvidenceController::class, 'store']);
-    Route::get('/leave-evidences/{evidence}/download', [LeaveEvidenceController::class, 'download'])->middleware('throttle:10,1');
+    Route::get('/leave-evidences/{evidence}/download', [LeaveEvidenceController::class, 'download'])->middleware('throttle:documents');
     Route::put('/leave-evidences/{evidence}/verify', [LeaveEvidenceController::class, 'verify']);
     Route::get('/leaves/{leave}/audit', [LeaveGovernanceController::class, 'audit']);
     Route::post('/leaves/{leave}/void', [LeaveGovernanceController::class, 'void']);
     Route::post('/leaves/{leave}/partial-cancellation', [LeaveAdjustmentController::class, 'store']);
     Route::put('/leave-adjustments/{adjustment}/decision', [LeaveAdjustmentController::class, 'decide']);
     Route::get('/reports/leave-card', [LeaveCardController::class, 'show']);
-    Route::get('/reports/leave-card.pdf', [LeaveCardController::class, 'pdf'])->middleware('throttle:10,1');
+    Route::get('/reports/leave-card.pdf', [LeaveCardController::class, 'pdf'])->middleware('throttle:documents');
     Route::get('/reports/promotion-screening', [PromotionScreeningController::class, 'index']);
-    Route::get('/reports/promotion-screening.csv', [PromotionScreeningController::class, 'csv'])->middleware('throttle:10,1');
+    Route::get('/reports/promotion-screening.csv', [PromotionScreeningController::class, 'csv'])->middleware('throttle:exports');
     Route::get('/reports/government-leave-register', [GovernmentLeaveReportController::class, 'register']);
     Route::get('/reports/government-leave-summary', [GovernmentLeaveReportController::class, 'summary']);
-    Route::get('/reports/government-leave-register.csv', [GovernmentLeaveReportController::class, 'csv'])->middleware('throttle:10,1');
+    Route::get('/reports/government-leave-register.csv', [GovernmentLeaveReportController::class, 'csv'])->middleware('throttle:exports');
     Route::middleware('can:leave.approval.hr')->prefix('admin')->group(function () {
         Route::get('/leave-governance/worklist', [LeaveGovernanceWorklistController::class, 'worklist']);
         Route::get('/leave-governance/adjustments', [LeaveGovernanceWorklistController::class, 'adjustments']);

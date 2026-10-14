@@ -8,7 +8,7 @@
       </div>
       <div class="flex items-center gap-3">
         <button
-          @click="seedDefaults"
+          @click="seedDefaults(false)"
           :disabled="seeding"
           class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium hover:bg-gray-50 text-sm transition-all"
         >
@@ -16,6 +16,14 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.refresh"/>
           </svg>
           {{ seeding ? 'กำลังซิงค์...' : 'ซิงค์แม่แบบตั้งต้น' }}
+        </button>
+        <!-- เขียนทับด้วยแบบฟอร์มราชการชุดล่าสุด — เวอร์ชันเดิมยังถูกเก็บไว้ เอกสารเก่าพิมพ์ซ้ำได้เหมือนเดิม -->
+        <button
+          @click="restoreDefaults"
+          :disabled="seeding"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-300 bg-white text-amber-700 font-medium hover:bg-amber-50 text-sm transition-all"
+        >
+          คืนค่าแบบฟอร์มตั้งต้น
         </button>
         <button
           @click="openModal(null)"
@@ -123,14 +131,23 @@
             </div>
           </div>
 
-          <!-- Variable Tags Palette -->
-          <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-2">
-            <p class="text-xs font-bold text-gray-700">แท็กตัวแปรสำหรับแทรกในเนื้อหา (คลิกเพื่อคัดลอก):</p>
-            <div class="flex flex-wrap gap-1.5 text-xs">
-              <span v-for="tag in availableTags" :key="tag" @click="insertTag(tag)" class="px-2 py-1 bg-white border border-gray-200 rounded-md font-mono text-[11px] hover:bg-[#800000] hover:text-white cursor-pointer transition-colors">
-                {{ tag }}
-              </span>
+          <!--
+            รายการตัวแปรจริงที่ระบบส่งให้แม่แบบ ดึงจาก API (App\Services\LeaveDocumentFields::catalog)
+            เดิมรายการนี้เขียนตายไว้ในหน้าเว็บและไม่ตรงกับตัวแปรที่ส่งจริง แทรกไปก็ได้ค่าว่าง
+          -->
+          <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-3 max-h-64 overflow-y-auto">
+            <p class="text-xs font-bold text-gray-700">ตัวแปรที่ใช้ได้ในแบบฟอร์มใบลา (คลิกเพื่อแทรก):</p>
+            <div v-for="(items, group) in groupedFields" :key="group" class="space-y-1">
+              <p class="text-[11px] font-bold text-gray-500">{{ group }}</p>
+              <div class="flex flex-wrap gap-1.5 text-xs">
+                <span v-for="field in items" :key="field.name" :title="field.label"
+                  @click="insertTag(`{{ $${field.name} }}`)"
+                  class="px-2 py-1 bg-white border border-gray-200 rounded-md font-mono text-[11px] hover:bg-[#800000] hover:text-white cursor-pointer transition-colors">
+                  ${{ field.name }}
+                </span>
+              </div>
             </div>
+            <p v-if="!fieldCatalog.length" class="text-xs text-gray-500">ยังโหลดรายการตัวแปรไม่สำเร็จ</p>
           </div>
 
           <!-- Code Editor & Preview Split -->
@@ -142,6 +159,9 @@
 
         <!-- Modal Footer -->
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+          <button @click="previewWithSampleData" :disabled="previewing" class="px-5 py-2.5 rounded-xl border border-[#800000]/30 bg-white text-[#800000] font-medium text-sm">
+            {{ previewing ? 'กำลังสร้าง...' : 'พรีวิว PDF ด้วยข้อมูลตัวอย่าง' }}
+          </button>
           <button @click="showModal = false" class="px-5 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-sm">ยกเลิก</button>
           <button @click="saveTemplate" :disabled="saving" class="px-6 py-2.5 rounded-xl bg-[#800000] text-white font-medium text-sm hover:bg-[#660000]">
             {{ saving ? 'กำลังบันทึก...' : 'บันทึกแม่แบบ' }}
@@ -199,19 +219,15 @@ const modules = [
   { label: 'เวลาปฏิบัติงาน (Attendance)', value: 'attendance' },
 ]
 
-const availableTags = [
-  '{{ $school_name }}',
-  '{{ $user_name }}',
-  '{{ $position }}',
-  '{{ $department }}',
-  '{{ $leave_type }}',
-  '{{ $start_date }}',
-  '{{ $end_date }}',
-  '{{ $total_days }}',
-  '{{ $reason }}',
-  '{{ $director_name }}',
-  '{{ $director_position }}',
-]
+const fieldCatalog = ref([])
+const previewing = ref(false)
+
+const groupedFields = computed(() => {
+  return fieldCatalog.value.reduce((groups, field) => {
+    (groups[field.group] ||= []).push(field)
+    return groups
+  }, {})
+})
 
 const form = ref({
   code: '',
@@ -312,12 +328,51 @@ const deleteTemplate = async (tpl) => {
   }
 }
 
-const seedDefaults = async () => {
+const fetchFieldCatalog = async () => {
+  try {
+    const res = await axios.get('/api/admin/document-templates/fields')
+    fieldCatalog.value = res.data
+  } catch {
+    fieldCatalog.value = []
+  }
+}
+
+/*
+ * พรีวิวด้วยข้อมูลตัวอย่าง — เรนเดอร์ผ่าน dompdf ตัวเดียวกับตอนพิมพ์จริง
+ * จึงเห็นผลตรงกับเอกสารที่จะออกมา (iframe แบบเดิมไม่ผ่าน Blade จึงเห็นแต่โค้ดตัวแปร)
+ */
+const previewWithSampleData = async () => {
+  previewing.value = true
+  try {
+    const res = await axios.post('/api/admin/document-templates/preview', {
+      content_html: form.value.content_html,
+      paper_size: form.value.paper_size,
+      orientation: form.value.orientation,
+    }, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+    window.open(url, '_blank')
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000)
+  } catch (err) {
+    let detail = err.response?.data?.message
+    if (err.response?.data instanceof Blob) {
+      try {
+        detail = JSON.parse(await err.response.data.text())?.message
+      } catch {
+        detail = null
+      }
+    }
+    alertStore.error(detail || 'สร้างพรีวิวไม่สำเร็จ')
+  } finally {
+    previewing.value = false
+  }
+}
+
+const seedDefaults = async (overwrite = false) => {
   seeding.value = true
   try {
-    await axios.post('/api/admin/document-templates/seed-defaults')
-    message.value = 'ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว'
-    alertStore.success('ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว')
+    await axios.post('/api/admin/document-templates/seed-defaults', { overwrite })
+    message.value = overwrite ? 'คืนค่าแบบฟอร์มตั้งต้นเรียบร้อยแล้ว' : 'ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว'
+    alertStore.success(message.value)
     await fetchTemplates()
   } catch (err) {
     alertStore.error('ซิงค์ล้มเหลว')
@@ -326,11 +381,17 @@ const seedDefaults = async () => {
   }
 }
 
+const restoreDefaults = async () => {
+  if (!confirm('คืนค่าแบบฟอร์มตั้งต้นทั้งหมด? เนื้อหาที่แก้ไว้จะถูกแทนที่ (เวอร์ชันเดิมยังถูกเก็บไว้ และใบลาเก่ายังพิมพ์ได้เหมือนเดิม)')) return
+  await seedDefaults(true)
+}
+
 const previewTemplate = (tpl) => {
   previewTpl.value = tpl
 }
 
 onMounted(() => {
   fetchTemplates()
+  fetchFieldCatalog()
 })
 </script>

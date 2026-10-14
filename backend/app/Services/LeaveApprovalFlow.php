@@ -18,38 +18,48 @@ use Illuminate\Support\Collection;
  * เดิมการอนุมัติใช้ snapshot + ApproverResolverService แต่การยกเลิกวันลาและ
  * รายการรออนุมัติใช้ approval_steps.role_id ตรง ๆ — ขั้นที่ตั้งเป็นหัวหน้าหน่วยงาน
  * ผู้อำนวยการ หรือรายบุคคลจึงไม่ขึ้นในรายการของผู้มีสิทธิ์ และอนุมัติยกเลิกไม่ได้
+ *
+ * ใบลามีสองสาย (PR #2 · LeaveApproval::STAGE_*): สายของการขอลา เดินด้วย approval_level
+ * และสายของคำขอยกเลิกใบที่อนุมัติแล้ว เดินด้วย cancellation_approval_level
+ * "ขั้นปัจจุบัน" จึงขึ้นกับว่าใบลากำลังรอพิจารณาเรื่องไหน
  */
 class LeaveApprovalFlow
 {
     public function __construct(private ApproverResolverService $resolver) {}
 
+    /** ใบลานี้กำลังรอพิจารณา "คำขอยกเลิก" อยู่หรือไม่ (สายอนุมัติของการขอลาจบไปแล้ว) */
+    public function awaitsCancellation(Leave $leave): bool
+    {
+        return $leave->status === 'Approved' && $leave->cancellation_status === 'Pending';
+    }
+
+    /** ขั้นตอนของสายการขอลา — snapshot ตอนยื่นก่อน ใบเก่าที่ไม่มี snapshot ถอยไปใช้สายปัจจุบัน */
     public function stepAt(Leave $leave, int $order): LeaveApproval|ApprovalStep|null
     {
         $snapshot = $leave->relationLoaded('approvals')
             ? $leave->approvals->firstWhere('step_order', $order)
             : $leave->approvals()->where('step_order', $order)->first();
 
-        return $snapshot ?? ApprovalStep::where('step_order', $order)->first();
+        return $snapshot ?? ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->firstWhere('step_order', $order);
+    }
+
+    /** ขั้นตอนของสายคำขอยกเลิก — snapshot ตอนขอยกเลิกก่อน ถ้าไม่มีถอยไปใช้สายยกเลิกปัจจุบัน */
+    public function cancellationStepAt(Leave $leave, int $order): LeaveApproval|ApprovalStep|null
+    {
+        $snapshot = $leave->relationLoaded('cancellationApprovals')
+            ? $leave->cancellationApprovals->firstWhere('step_order', $order)
+            : $leave->cancellationApprovals()->where('step_order', $order)->first();
+
+        return $snapshot ?? ApprovalStep::stepsFor(ApprovalStep::CHAIN_CANCELLATION)->firstWhere('step_order', $order);
     }
 
     public function currentStep(Leave $leave): LeaveApproval|ApprovalStep|null
     {
-        return $this->stepAt($leave, (int) $leave->approval_level);
-    }
-
-    public function firstStepOrder(Leave $leave): int
-    {
-        return (int) ($leave->approvals()->min('step_order') ?? ApprovalStep::min('step_order') ?? 1);
-    }
-
-    public function nextStepOrder(Leave $leave, int $after): ?int
-    {
-        $next = $leave->approvals()->where('step_order', '>', $after)->min('step_order');
-        if ($next === null && ! $leave->approvals()->exists()) {
-            $next = ApprovalStep::where('step_order', '>', $after)->min('step_order');
+        if ($this->awaitsCancellation($leave)) {
+            return $this->cancellationStepAt($leave, (int) ($leave->cancellation_approval_level ?: $leave->approval_level));
         }
 
-        return $next === null ? null : (int) $next;
+        return $this->stepAt($leave, (int) $leave->approval_level);
     }
 
     /**

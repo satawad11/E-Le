@@ -27,7 +27,7 @@ class DepartmentController extends Controller
         $department->load('headOfDepartment');
 
         return response()->json([
-            'message' => 'Department created successfully',
+            'message' => 'สร้างหน่วยงานเรียบร้อยแล้ว',
             'department' => $department,
         ], 201);
     }
@@ -44,7 +44,7 @@ class DepartmentController extends Controller
         $department->load('headOfDepartment');
 
         return response()->json([
-            'message' => 'Department updated successfully',
+            'message' => 'แก้ไขหน่วยงานเรียบร้อยแล้ว',
             'department' => $department,
         ]);
     }
@@ -53,7 +53,7 @@ class DepartmentController extends Controller
     {
         $department->delete();
 
-        return response()->json(['message' => 'Department deleted successfully']);
+        return response()->json(['message' => 'ลบหน่วยงานเรียบร้อยแล้ว']);
     }
 
     public function toggleStatus(Department $department)
@@ -61,7 +61,7 @@ class DepartmentController extends Controller
         $department->update(['is_active' => ! $department->is_active]);
 
         return response()->json([
-            'message' => 'Department status updated successfully',
+            'message' => 'เปลี่ยนสถานะหน่วยงานเรียบร้อยแล้ว',
             'is_active' => $department->is_active,
         ]);
     }
