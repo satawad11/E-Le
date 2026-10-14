@@ -4,6 +4,12 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [AUDIT-PDPA-01] - 2026-10-14 — Mask personal data in user audit log
+#### Security
+- `user.created` / `user.updated` / `user.deleted` audit entries stored `users.phone` (decrypted by its `encrypted` cast), `telegram_chat_id` and `line_user_id` in plaintext in `audit_logs.before/after`. These fields (`User::AUDIT_REDACTED_ATTRIBUTES`) are now written as `[REDACTED]` (null stays null), and `user.updated` lists which of them changed in `after.redacted_changed`. `password` / `remember_token` remain excluded.
+- Existing `audit_logs` rows are not modified (append-only); rows written before this change may still contain plaintext values.
+- Test `CentralAuditLogTest::test_user_audit_never_stores_phone_or_messaging_ids_in_plaintext`.
+
 ### [LEAVE-FIX-01] - 2026-10-13 — Leave lifecycle audit & fix
 #### Fixed
 - Cancelling an approved leave never returned the used days (status was set to `Cancelled` before `restoreBalance()` ran).

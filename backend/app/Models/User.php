@@ -20,6 +20,9 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, HasPublicUuid, HasRoles, Notifiable;
 
+    /** ข้อมูลส่วนบุคคล/ตัวระบุบัญชีส่งข้อความ ที่ห้ามบันทึกค่าลง audit_logs (PDPA) */
+    public const AUDIT_REDACTED_ATTRIBUTES = ['phone', 'telegram_chat_id', 'line_user_id'];
+
     protected function casts(): array
     {
         return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean', 'phone' => 'encrypted'];

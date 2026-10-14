@@ -10,6 +10,7 @@ use App\Models\LeaveAuditLog;
 use App\Models\LeaveType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -48,5 +49,36 @@ class CentralAuditLogTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'attendance.updated', 'resource_type' => 'attendance', 'resource_id' => (string) $attendance->id]);
         $userAudit = AuditLog::where('action', 'user.created')->where('resource_id', (string) $user->id)->firstOrFail();
         $this->assertArrayNotHasKey('password', $userAudit->after);
+    }
+
+    public function test_user_audit_never_stores_phone_or_messaging_ids_in_plaintext(): void
+    {
+        $department = Department::create(['name' => 'Audit PDPA']);
+        $user = User::factory()->create([
+            'department_id' => $department->id,
+            'phone' => '0812345678',
+            'telegram_chat_id' => 'tg-998877',
+            'line_user_id' => 'U-line-445566',
+        ]);
+        $user->update(['phone' => '0899999999', 'name' => 'เปลี่ยนชื่อ']);
+        // users ถูกอ้างโดยประวัติบุคลากร (FK restrict) จึงลบจริงไม่ได้ — ยิง event deleted เพื่อทดสอบ audit hook โดยตรง
+        User::getEventDispatcher()->dispatch('eloquent.deleted: '.User::class, $user->fresh());
+
+        $rows = AuditLog::where('resource_type', 'user')->where('resource_id', (string) $user->id)->get();
+        $this->assertEqualsCanonicalizing(['user.created', 'user.updated', 'user.deleted'], $rows->pluck('action')->all());
+
+        // ตรวจค่าดิบในคอลัมน์ ไม่ผ่าน cast
+        $raw = DB::table('audit_logs')->where('resource_type', 'user')->where('resource_id', (string) $user->id)
+            ->get(['before', 'after'])->map(fn ($row) => $row->before.$row->after)->implode('');
+        foreach (['0812345678', '0899999999', 'tg-998877', 'U-line-445566'] as $secret) {
+            $this->assertStringNotContainsString($secret, $raw);
+        }
+
+        $updated = $rows->firstWhere('action', 'user.updated');
+        $this->assertSame('[REDACTED]', $updated->before['phone']);
+        $this->assertSame('[REDACTED]', $updated->after['phone']);
+        $this->assertSame(['phone'], $updated->after['redacted_changed']);
+        $this->assertSame('เปลี่ยนชื่อ', $updated->after['name']);
+        $this->assertSame('[REDACTED]', $rows->firstWhere('action', 'user.created')->after['telegram_chat_id']);
     }
 }

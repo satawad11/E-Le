@@ -47,9 +47,18 @@ class AppServiceProvider extends ServiceProvider
         UserProfile::observe(UserProfileObserver::class);
         PersonnelAssignment::observe(PersonnelAssignmentObserver::class);
 
-        User::created(fn (User $user) => app(AuditLogger::class)->log('user.created', 'user', $user->id, null, $user->attributesToArray()));
-        User::updated(fn (User $user) => app(AuditLogger::class)->log('user.updated', 'user', $user->id, collect($user->getOriginal())->except(['password', 'remember_token'])->all(), $user->attributesToArray()));
-        User::deleted(fn (User $user) => app(AuditLogger::class)->log('user.deleted', 'user', $user->id, collect($user->getOriginal())->except(['password', 'remember_token'])->all()));
+        // PDPA: audit_logs ห้ามเก็บค่าข้อมูลส่วนบุคคลแบบอ่านออก (phone เป็น encrypted cast จึงถูกถอดรหัส
+        // ใน attributesToArray()/getOriginal()) — บันทึกเพียงว่ามีค่าหรือไม่ และฟิลด์ใดถูกแก้
+        User::created(fn (User $user) => app(AuditLogger::class)->log('user.created', 'user', $user->id, null, self::userAuditSnapshot($user->attributesToArray())));
+        User::updated(function (User $user) {
+            $after = self::userAuditSnapshot($user->attributesToArray());
+            $changed = array_values(array_intersect(array_keys($user->getChanges()), User::AUDIT_REDACTED_ATTRIBUTES));
+            if ($changed !== []) {
+                $after['redacted_changed'] = $changed;
+            }
+            app(AuditLogger::class)->log('user.updated', 'user', $user->id, self::userAuditSnapshot($user->getOriginal()), $after);
+        });
+        User::deleted(fn (User $user) => app(AuditLogger::class)->log('user.deleted', 'user', $user->id, self::userAuditSnapshot($user->getOriginal())));
         /*
          * LEGACY-04 (04-2 / 04-5) — ลำดับ: explicit deny > allow > default deny
          *
@@ -103,5 +112,20 @@ class AppServiceProvider extends ServiceProvider
         } catch (\Throwable $exception) {
             report($exception);
         }
+    }
+
+    /**
+     * ตัด credential ออก และแทนค่าข้อมูลส่วนบุคคลด้วย '[REDACTED]' (null คงเป็น null เพื่อให้รู้ว่ามี/ไม่มีค่า)
+     */
+    private static function userAuditSnapshot(array $attributes): array
+    {
+        $snapshot = collect($attributes)->except(['password', 'remember_token'])->all();
+        foreach (User::AUDIT_REDACTED_ATTRIBUTES as $key) {
+            if (array_key_exists($key, $snapshot) && $snapshot[$key] !== null && $snapshot[$key] !== '') {
+                $snapshot[$key] = '[REDACTED]';
+            }
+        }
+
+        return $snapshot;
     }
 }
