@@ -4,6 +4,19 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [LEAVE-APPROVAL-02] - 2026-10-14 — Self-approval per step & approval bypass fixes
+#### Security
+- A delegate of the director could approve the director's own leave at the director step, in the director's name. Delegation can no longer act for the requester, and a requester can never approve their own leave through a delegation they hold.
+- `POST /admin/leaves` (record leave on someone's behalf — fully approved on creation) accepted the caller's own `user_id`, bypassing the whole chain. Now 403.
+- Holders of `leave.management.manage` / Super Admin no longer bypass step checks on their own leave or their own cancellation request.
+#### Changed
+- Owner decision (ADR-LEAVE-APPROVAL-02): chain HR check → deputy director → director, and each step may let its own approver approve their own leave. The director approves the final step of their own leave; the deputy approves step 2 of theirs; HR verifies step 1 of theirs. Only direct approvers of that step qualify.
+- Own leaves now appear in the approver's pending list at the steps they may approve; cancellation approval follows the same rule. Rejecting one's own leave stays forbidden.
+#### Added
+- Migration `2026_10_14_100000`: `approval_steps.allow_self_approval`, `leave_approvals.allow_self_approval` (pinned at submission) and `leave_approvals.is_self_approval`; switches all existing steps on and backfills open leaves.
+- `ApproverResolverService::canSelfApprove()`; per-step switch in `WorkflowManagementView.vue`; "อนุมัติด้วยตนเอง" badge in `WorkflowTimeline.vue`; `self_approved` in leave audit entries.
+- Tests `Tests\Feature\LeaveSelfApprovalTest` (14 tests) and a per-step switch test in `ApprovalWorkflowManagementTest`.
+
 ### [USER-IMPORT-01] - 2026-10-14 — Restore user CSV import
 #### Fixed
 - `POST /api/admin/users/import` returned 500 on every call: the route and the "นำเข้า CSV" button existed but `UserController::importCsv()` was lost in the LEGACY-00 baseline snapshot (`6139212`). Restored from the unmerged commit `5b1497c`, with these fixes:

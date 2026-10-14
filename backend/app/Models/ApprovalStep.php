@@ -7,10 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'role_id', 'step_order', 'name', 'approver_type',
-    'specific_user_id', 'permission_name',
+    'specific_user_id', 'permission_name', 'allow_self_approval',
 ])]
 class ApprovalStep extends Model
 {
+    protected function casts(): array
+    {
+        return ['allow_self_approval' => 'boolean'];
+    }
+
     public const RESOLVER_HR_OFFICER = 'HR_OFFICER';
 
     public const RESOLVER_REQUESTER_SUPERVISOR = 'REQUESTER_SUPERVISOR';

@@ -136,17 +136,18 @@ class DatabaseSeeder extends Seeder
         }
 
         // Seed dynamic approval steps matching the default workflow
+        // ทุกขั้นอนุมัติใบลาของตนเองได้ ตามมติเจ้าของระบบ 2026-10-14 (LEAVE-APPROVAL-02)
         ApprovalStep::firstOrCreate(
             ['step_order' => 1],
-            ['role_id' => $hrHeadRole->id, 'name' => 'ตรวจสอบโดยหัวหน้าบุคลากร']
+            ['role_id' => $hrHeadRole->id, 'name' => 'ตรวจสอบโดยหัวหน้าบุคลากร', 'allow_self_approval' => true]
         );
         ApprovalStep::firstOrCreate(
             ['step_order' => 2],
-            ['role_id' => $deputyRole->id, 'name' => 'พิจารณาโดยรองผู้อำนวยการ']
+            ['role_id' => $deputyRole->id, 'name' => 'พิจารณาโดยรองผู้อำนวยการ', 'allow_self_approval' => true]
         );
         ApprovalStep::firstOrCreate(
             ['step_order' => 3],
-            ['role_id' => $directorRole->id, 'name' => 'อนุมัติรอบสุดท้ายโดยผู้อำนวยการ']
+            ['role_id' => $directorRole->id, 'name' => 'อนุมัติรอบสุดท้ายโดยผู้อำนวยการ', 'allow_self_approval' => true]
         );
 
         // LEGACY-03: เติม org_units/department_org_unit_map/users.org_unit_id

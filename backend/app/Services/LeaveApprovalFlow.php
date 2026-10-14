@@ -52,12 +52,14 @@ class LeaveApprovalFlow
         return $next === null ? null : (int) $next;
     }
 
-    /** ผู้ใช้คนนี้ทำรายการในขั้นปัจจุบันของใบลานี้ได้หรือไม่ (ไม่รวมสิทธิ์ผู้ดูแลระบบ) */
+    /**
+     * ผู้ใช้คนนี้ทำรายการในขั้นปัจจุบันของใบลานี้ได้หรือไม่ (ไม่รวมสิทธิ์ผู้ดูแลระบบ)
+     *
+     * ใบลาของตนเองผ่านได้เฉพาะขั้นที่เปิด allow_self_approval และตนเป็นผู้อนุมัติขั้นนั้นโดยตรง
+     * — ApproverResolverService::isAuthorizedApprover() ตัดสินที่เดียว
+     */
     public function canActAtCurrentStep(User $actor, Leave $leave): bool
     {
-        if ($actor->id === $leave->user_id) {
-            return false;
-        }
         $step = $this->currentStep($leave);
 
         return $step !== null && $leave->user !== null
@@ -78,7 +80,10 @@ class LeaveApprovalFlow
         if (! $step || ! $leave->user) {
             return collect();
         }
-        $ids = array_diff($this->resolver->resolveEligibleApproverIds($leave->user, $step), [$leave->user_id]);
+        $ids = $this->resolver->resolveEligibleApproverIds($leave->user, $step);
+        if (! $this->resolver->canSelfApprove($leave->user, $step)) {
+            $ids = array_diff($ids, [$leave->user_id]);
+        }
 
         return User::whereIn('id', $ids)->where('is_active', true)->get();
     }
