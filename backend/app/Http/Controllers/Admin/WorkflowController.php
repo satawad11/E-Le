@@ -19,7 +19,7 @@ class WorkflowController extends Controller
      */
     private function computeFingerprint($steps): string
     {
-        return md5($steps->map(fn ($s) => $s->step_order.':'.($s->approver_type ?? 'ROLE').':'.($s->role_id ?? '0').':'.($s->specific_user_id ?? '0').':'.trim($s->name))->implode('|'));
+        return md5($steps->map(fn ($s) => $s->step_order.':'.($s->approver_type ?? 'ROLE').':'.($s->role_id ?? '0').':'.($s->specific_user_id ?? '0').':'.(int) $s->allow_self_approval.':'.trim($s->name))->implode('|'));
     }
 
     public function index(Request $request)
@@ -46,6 +46,7 @@ class WorkflowController extends Controller
             'steps.*.approver_type' => 'nullable|string|in:HR_OFFICER,REQUESTER_SUPERVISOR,DEPARTMENT_HEAD,DIVISION_DIRECTOR,DIRECTOR,ROLE,SPECIFIC_USER',
             'steps.*.role_id' => 'nullable|integer|exists:roles,id',
             'steps.*.specific_user_id' => 'nullable|integer|exists:users,id',
+            'steps.*.allow_self_approval' => 'nullable|boolean',
             'fingerprint' => 'nullable|string',
         ], [
             'steps.required' => 'กรุณาระบุขั้นตอนการอนุมัติอย่างน้อย 1 ขั้นตอน',
@@ -115,6 +116,8 @@ class WorkflowController extends Controller
                     'step_order' => $index + 1,
                     'approver_type' => $approverType,
                     'specific_user_id' => ! empty($stepData['specific_user_id']) ? (int) $stepData['specific_user_id'] : null,
+                    // LEAVE-APPROVAL-02 — ผู้อนุมัติขั้นนี้อนุมัติใบลาของตนเองได้
+                    'allow_self_approval' => (bool) ($stepData['allow_self_approval'] ?? false),
                 ]);
             }
 

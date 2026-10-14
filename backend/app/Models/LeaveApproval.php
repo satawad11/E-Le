@@ -5,12 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['leave_id', 'approver_id', 'approver_name', 'approver_position', 'signature_path', 'status', 'comment', 'approved_at', 'step_order', 'step_name', 'required_role_id', 'approver_type', 'specific_user_id', 'permission_name', 'delegated_from_user_id', 'acted_at'])]
+#[Fillable(['leave_id', 'approver_id', 'approver_name', 'approver_position', 'signature_path', 'status', 'comment', 'approved_at', 'step_order', 'step_name', 'required_role_id', 'approver_type', 'specific_user_id', 'permission_name', 'allow_self_approval', 'delegated_from_user_id', 'is_self_approval', 'acted_at'])]
 class LeaveApproval extends Model
 {
     protected function casts(): array
     {
-        return ['approved_at' => 'datetime', 'acted_at' => 'datetime'];
+        return ['approved_at' => 'datetime', 'acted_at' => 'datetime', 'allow_self_approval' => 'boolean', 'is_self_approval' => 'boolean'];
     }
 
     public function leave()

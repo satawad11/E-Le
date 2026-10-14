@@ -37,8 +37,9 @@ class ApprovalController extends Controller
          * หัวหน้าหน่วยงาน / ผู้อำนวยการ / รายบุคคล (role_id ว่าง) จึงไม่เคยขึ้นในรายการ
          * ตอนนี้ถาม ApproverResolverService ผ่าน LeaveApprovalFlow ซึ่งเป็นตัวเดียวกับ
          * ที่ใช้ตรวจสิทธิ์ตอนกดอนุมัติ — สิ่งที่เห็นในรายการจึงตรงกับสิ่งที่กดได้จริง
+         * ใบลาของตนเองขึ้นเฉพาะขั้นที่อนุมัติของตนเองได้ (LEAVE-APPROVAL-02)
          */
-        $leaves = $query->where('user_id', '!=', $user->id)->get()
+        $leaves = $query->get()
             ->filter(fn (Leave $leave) => $this->flow->canActAtCurrentStep($user, $leave))
             ->values();
 

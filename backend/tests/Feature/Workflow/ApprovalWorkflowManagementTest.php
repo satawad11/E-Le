@@ -163,6 +163,22 @@ class ApprovalWorkflowManagementTest extends TestCase
     }
 
     /**
+     * LEAVE-APPROVAL-02: สวิตช์ "อนุมัติใบลาของตนเองได้" บันทึกรายขั้น และไม่ส่งมาถือว่าปิด
+     */
+    public function test_self_approval_switch_is_saved_per_step(): void
+    {
+        $this->actingAs($this->admin)->postJson('/api/admin/workflow-steps', [
+            'steps' => [
+                ['role_id' => $this->hrRole->id, 'name' => 'ขั้นที่ 1 HR', 'step_order' => 1],
+                ['role_id' => $this->directorRole->id, 'name' => 'ขั้นที่ 2 ผอ.', 'step_order' => 2, 'allow_self_approval' => true],
+            ],
+        ])->assertOk()->assertJsonPath('steps.1.allow_self_approval', true);
+
+        $this->assertDatabaseHas('approval_steps', ['step_order' => 1, 'allow_self_approval' => false]);
+        $this->assertDatabaseHas('approval_steps', ['step_order' => 2, 'allow_self_approval' => true]);
+    }
+
+    /**
      * TEST-06: refresh แล้วยังคงข้อมูล
      */
     public function test_06_refresh_retains_data(): void

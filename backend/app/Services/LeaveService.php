@@ -144,6 +144,7 @@ class LeaveService
                     // pin ชนิดผู้อนุมัติด้วย มิฉะนั้นขั้นแบบหัวหน้าหน่วยงาน/ผู้อำนวยการ/รายบุคคลจะไม่มีใครอนุมัติได้
                     'approver_type' => $step->approver_type ?? ApprovalStep::RESOLVER_ROLE,
                     'specific_user_id' => $step->specific_user_id, 'permission_name' => $step->permission_name,
+                    'allow_self_approval' => (bool) $step->allow_self_approval,
                 ]);
             }
             $this->audit->log($leave, 'created', null, $leave->toArray());

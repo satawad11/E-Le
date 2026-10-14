@@ -81,6 +81,9 @@
               <span v-if="step.isDelegated" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
                 ปฏิบัติหน้าที่แทน
               </span>
+              <span v-if="step.isSelfApproval" class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                อนุมัติด้วยตนเอง
+              </span>
             </div>
             <span v-if="step.actedAt" class="text-slate-400 text-[11px]">
               {{ formatThaiTime(step.actedAt) }}
@@ -358,7 +361,8 @@ const workflowSteps = computed(() => {
         state,
         statusText,
         comment: app.comment || null,
-        isDelegated: Boolean(app.delegated_from_user_id)
+        isDelegated: Boolean(app.delegated_from_user_id),
+        isSelfApproval: Boolean(app.is_self_approval)
       });
     });
   } else {

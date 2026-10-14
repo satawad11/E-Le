@@ -64,6 +64,8 @@ class LeaveRequestController extends Controller
     public function storeAsAdmin(StoreLeaveAsAdminRequest $request)
     {
         $data = $request->validated();
+        // ใบที่บันทึกแทนอนุมัติครบทุกขั้นทันที — ถ้าบันทึกให้ตนเองได้จะข้ามสายอนุมัติทั้งสาย
+        abort_if((int) $data['user_id'] === $request->user()->id, 403, 'ห้ามบันทึกวันลาแทนให้ตนเอง กรุณายื่นใบลาตามปกติ');
         $data['contact_address'] = $data['contact_address'] ?? 'บันทึกโดยฝ่ายบุคคล';
         $data['signature_path'] = null;
         $leave = $this->leaveService->createLeaveRequest($data, (int) $data['user_id'], null, ['skip_timing_rules' => true]);

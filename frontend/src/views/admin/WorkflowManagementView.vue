@@ -177,6 +177,19 @@
                 </svg>
                 <span>ระบบจะค้นหาผู้ดำรงตำแหน่ง/หัวหน้าหน่วยงานของผู้ยื่นคำขออัตโนมัติ</span>
               </div>
+
+              <!-- LEAVE-APPROVAL-02: อนุมัติใบลาของตนเองในขั้นนี้ -->
+              <label class="md:col-span-2 flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  v-model="step.allow_self_approval"
+                  type="checkbox"
+                  class="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#800000] focus:ring-[#800000]"
+                />
+                <span>
+                  ผู้อนุมัติขั้นนี้อนุมัติใบลาของตนเองได้
+                  <span class="block text-xs text-gray-500">บันทึกในใบลาว่า "อนุมัติด้วยตนเอง" · ใช้ไม่ได้ผ่านการมอบอำนาจ</span>
+                </span>
+              </label>
             </div>
 
             <!-- Reorder and actions buttons -->
@@ -374,6 +387,7 @@ const serializeSteps = (stepList) => {
     role_id: Number(s.role_id) || '',
     approver_type: s.approver_type || 'ROLE',
     specific_user_id: Number(s.specific_user_id) || '',
+    allow_self_approval: !!s.allow_self_approval,
     name: (s.name || '').trim(),
     step_order: Number(s.step_order) || 0
   })))
@@ -412,6 +426,7 @@ const fetchWorkflow = async () => {
       role_id: s.role_id || '',
       approver_type: s.approver_type || 'ROLE',
       specific_user_id: s.specific_user_id || '',
+      allow_self_approval: !!s.allow_self_approval,
       name: s.name,
       step_order: s.step_order || (idx + 1)
     }))
@@ -458,6 +473,7 @@ const addStep = () => {
     role_id: '',
     approver_type: 'DEPARTMENT_HEAD',
     specific_user_id: '',
+    allow_self_approval: false,
     name: 'ตรวจสอบโดยหัวหน้างาน',
     step_order: steps.value.length + 1
   })
@@ -532,6 +548,7 @@ const saveWorkflow = async () => {
         role_id: s.role_id ? Number(s.role_id) : null,
         approver_type: s.approver_type || 'ROLE',
         specific_user_id: s.specific_user_id ? Number(s.specific_user_id) : null,
+        allow_self_approval: !!s.allow_self_approval,
         name: s.name.trim(),
         step_order: Number(s.step_order)
       })),
@@ -550,6 +567,7 @@ const saveWorkflow = async () => {
         role_id: s.role_id || '',
         approver_type: s.approver_type || 'ROLE',
         specific_user_id: s.specific_user_id || '',
+        allow_self_approval: !!s.allow_self_approval,
         name: s.name,
         step_order: s.step_order || (idx + 1)
       }))

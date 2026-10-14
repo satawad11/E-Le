@@ -77,7 +77,9 @@ class LeaveCancellationController extends Controller
             $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
             $this->assertActionable($locked, $user);
 
-            $isAdmin = $user->can('leave.management.manage');
+            $isSelf = $locked->user_id === $user->id;
+            // ทางลัดของผู้ดูแลใช้กับคำขอยกเลิกของตนเองไม่ได้ — ต้องเดินทีละขั้นเหมือนผู้อื่น
+            $isAdmin = ! $isSelf && $user->can('leave.management.manage');
             $next = $isAdmin ? null : $this->flow->nextStepOrder($locked, (int) $locked->approval_level);
 
             if ($next === null) {
@@ -92,9 +94,9 @@ class LeaveCancellationController extends Controller
             }
             LeaveActionLog::create([
                 'leave_id' => $locked->id, 'user_id' => $user->id, 'action' => $action,
-                'details' => array_filter(['comment' => $request->comment, 'delegated_from' => $this->flow->delegatedFromId($user, $locked)]) ?: null,
+                'details' => array_filter(['comment' => $request->comment, 'delegated_from' => $this->flow->delegatedFromId($user, $locked), 'self_approved' => $isSelf ?: null]) ?: null,
             ]);
-            $this->audit($request, $locked, $next === null ? 'cancellation_approved' : 'cancellation_step_approved', ['comment' => $request->comment]);
+            $this->audit($request, $locked, $next === null ? 'cancellation_approved' : 'cancellation_step_approved', ['comment' => $request->comment, 'self_approved' => $isSelf]);
 
             return [$locked, $next];
         }, 5);
@@ -137,7 +139,12 @@ class LeaveCancellationController extends Controller
     private function assertActionable(Leave $leave, $user): void
     {
         abort_unless($leave->status === 'Approved' && $leave->cancellation_status === 'Pending', 422, 'ใบลานี้ไม่มีคำขอยกเลิกที่รอพิจารณา');
-        abort_if($leave->user_id === $user->id, 403, 'ห้ามพิจารณาคำขอยกเลิกวันลาของตนเอง');
+        if ($leave->user_id === $user->id) {
+            // LEAVE-APPROVAL-02 — ของตนเองพิจารณาได้เฉพาะขั้นที่เปิด allow_self_approval และตนเป็นผู้อนุมัติขั้นนั้น
+            abort_unless($this->flow->canActAtCurrentStep($user, $leave), 403, 'ขั้นตอนนี้ไม่อนุญาตให้พิจารณาคำขอยกเลิกวันลาของตนเอง');
+
+            return;
+        }
         abort_unless($user->can('leave.management.manage') || $this->flow->canActAtCurrentStep($user, $leave), 403, 'ไม่มีสิทธิ์พิจารณาในขั้นตอนนี้');
     }
 
