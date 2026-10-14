@@ -176,7 +176,8 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import axios from 'axios'
+// ต้องใช้ api (แนบ Bearer token) — เดิม import axios ตรง ๆ ทุกคำขอจึงได้ 401 และหน้าแสดงว่าไม่มีแม่แบบ
+import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 import { ICONS } from '../../utils/icons'
 
@@ -230,10 +231,11 @@ const form = ref({
 const fetchTemplates = async () => {
   loading.value = true
   try {
-    const res = await axios.get('/api/admin/document-templates')
+    const res = await api.get('/admin/document-templates')
     templates.value = res.data
   } catch (err) {
     console.error('Failed to load templates', err)
+    alertStore.error(err.response?.data?.message || 'โหลดรายการแม่แบบเอกสารไม่สำเร็จ')
   } finally {
     loading.value = false
   }
@@ -280,10 +282,10 @@ const saveTemplate = async () => {
   message.value = ''
   try {
     if (editingTpl.value) {
-      await axios.put(`/api/admin/document-templates/${editingTpl.value.id}`, form.value)
+      await api.put(`/admin/document-templates/${editingTpl.value.id}`, form.value)
       message.value = 'ปรับปรุงแม่แบบเอกสารเรียบร้อยแล้ว'
     } else {
-      await axios.post('/api/admin/document-templates', form.value)
+      await api.post('/admin/document-templates', form.value)
       message.value = 'สร้างแม่แบบเอกสารใหม่เรียบร้อยแล้ว'
     }
     showModal.value = false
@@ -303,7 +305,7 @@ const saveTemplate = async () => {
 const deleteTemplate = async (tpl) => {
   if (!confirm(`ต้องการลบแม่แบบ "${tpl.name}" ใช่หรือไม่?`)) return
   try {
-    await axios.delete(`/api/admin/document-templates/${tpl.id}`)
+    await api.delete(`/admin/document-templates/${tpl.id}`)
     message.value = 'ลบแม่แบบเอกสารเรียบร้อยแล้ว'
     alertStore.success('ลบแม่แบบเอกสารเรียบร้อยแล้ว')
     await fetchTemplates()
@@ -315,12 +317,12 @@ const deleteTemplate = async (tpl) => {
 const seedDefaults = async () => {
   seeding.value = true
   try {
-    await axios.post('/api/admin/document-templates/seed-defaults')
+    await api.post('/admin/document-templates/seed-defaults')
     message.value = 'ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว'
     alertStore.success('ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว')
     await fetchTemplates()
   } catch (err) {
-    alertStore.error('ซิงค์ล้มเหลว')
+    alertStore.error(err.response?.data?.message || 'ซิงค์ล้มเหลว')
   } finally {
     seeding.value = false
   }

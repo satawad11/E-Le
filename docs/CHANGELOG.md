@@ -4,6 +4,10 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [DOC-TEMPLATE-FIX-01] - 2026-10-14 — Document template page always empty
+#### Fixed
+- `/admin/document-templates` always showed "no templates (0)": `DocumentTemplatesView.vue` was the only view that called the API with bare `axios` instead of the shared `api` client, so no Bearer token was sent and every request (list, sync defaults, create, update, delete) got 401, which the page silently swallowed. It now uses `api` and shows an error when loading fails. The 7 templates in the database were never lost.
+
 ### [LEAVE-APPROVAL-02] - 2026-10-14 — Self-approval per step & approval bypass fixes
 #### Security
 - A delegate of the director could approve the director's own leave at the director step, in the director's name. Delegation can no longer act for the requester, and a requester can never approve their own leave through a delegation they hold.
