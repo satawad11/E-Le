@@ -10,6 +10,19 @@ All notable changes to the E-la project will be documented in this file.
 - Existing `audit_logs` rows are not modified (append-only); rows written before this change may still contain plaintext values.
 - Test `CentralAuditLogTest::test_user_audit_never_stores_phone_or_messaging_ids_in_plaintext`.
 
+### [USER-IMPORT-01] - 2026-10-14 — Restore user CSV import
+#### Fixed
+- `POST /api/admin/users/import` returned 500 on every call: the route and the "นำเข้า CSV" button existed but `UserController::importCsv()` was lost in the LEGACY-00 baseline snapshot (`6139212`). Restored from the unmerged commit `5b1497c`, with these fixes:
+  - `phone` was written to `user_profiles` and silently dropped; it now goes to `users.phone` (encrypted).
+  - Duplicate national ID numbers (against existing profiles or earlier rows in the same file) are rejected, because ID-card login looks up `id_card_number_hash` and takes the first match. IDs must be 13 digits.
+  - Empty CSV cells are treated as "not provided" instead of empty strings (e.g. `personnel_type_id`).
+#### Changed
+- Import rules: passwords are never read from the file (a random unknown password is set; the user resets it through "ลืมรหัสผ่าน"). Every imported user gets a `personnel_type_id` (default `civil_servant`) and current-fiscal-year leave balances from policy. Bad rows are skipped and reported by line number. One `user.imported` audit entry per import records the counts and created user IDs.
+- Leave balance provisioning moved into `UserController::provisionLeaveBalances()`, which `store()` and `importCsv()` now share.
+- The CSV template in `UsersManagementView.vue` includes an optional `personnel_type_id` column.
+#### Added
+- Tests `Tests\Feature\UserImportTest` (10 tests).
+
 ### [LEAVE-FIX-01] - 2026-10-13 — Leave lifecycle audit & fix
 #### Fixed
 - Cancelling an approved leave never returned the used days (status was set to `Cancelled` before `restoreBalance()` ran).

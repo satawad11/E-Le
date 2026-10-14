@@ -877,8 +877,8 @@ const triggerCsvUpload = () => {
 }
 
 const downloadCsvTemplate = () => {
-  const headers = ['id_card_number', 'name', 'email', 'role_id', 'department_id', 'title', 'first_name', 'last_name', 'gender', 'phone', 'position']
-  const sample = ['1234567890123', 'นายสมชาย ใจดี', 'somchai@example.com', '1', '1', 'นาย', 'สมชาย', 'ใจดี', 'ชาย', '0812345678', 'พนักงานทั่วไป']
+  const headers = ['id_card_number', 'name', 'email', 'role_id', 'department_id', 'title', 'first_name', 'last_name', 'gender', 'phone', 'position', 'personnel_type_id']
+  const sample = ['1234567890123', 'นายสมชาย ใจดี', 'somchai@example.com', '1', '1', 'นาย', 'สมชาย', 'ใจดี', 'ชาย', '0812345678', 'พนักงานทั่วไป', '']
   
   const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + 
     headers.join(",") + "\n" +
