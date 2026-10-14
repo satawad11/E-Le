@@ -69,7 +69,7 @@ class NotificationController extends Controller
             $legacy->markAsRead();
         }
 
-        return response()->json(['message' => 'Marked as read']);
+        return response()->json(['message' => 'ทำเครื่องหมายว่าอ่านแล้ว']);
     }
 
     public function markAllAsRead(Request $request)
@@ -80,7 +80,7 @@ class NotificationController extends Controller
             ->update(['read_at' => now()]);
         $request->user()->unreadNotifications->markAsRead();
 
-        return response()->json(['message' => 'All marked as read']);
+        return response()->json(['message' => 'ทำเครื่องหมายว่าอ่านแล้วทั้งหมด']);
     }
 
     public function preferences(Request $request)
@@ -109,7 +109,7 @@ class NotificationController extends Controller
             : null;
 
         if ($type?->is_mandatory && $validated['channel'] === 'in_app' && ! $validated['enabled']) {
-            return response()->json(['message' => 'Mandatory in-app notifications cannot be disabled.'], 422);
+            return response()->json(['message' => 'การแจ้งเตือนในระบบประเภทนี้เป็นการแจ้งเตือนบังคับ จึงปิดไม่ได้'], 422);
         }
 
         $preference = NotificationPreference::query()->updateOrCreate([

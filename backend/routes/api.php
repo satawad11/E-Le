@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\DocumentEngineController;
+use App\Http\Controllers\Admin\DocumentReportController;
 use App\Http\Controllers\Admin\DocumentTemplateController;
 use App\Http\Controllers\Admin\LeaveTypeController;
 use App\Http\Controllers\Admin\PermissionController;
@@ -41,35 +43,35 @@ use App\Services\Reporting\ReportingDataService;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
-Route::middleware('throttle:60,1')->group(function () {
+Route::middleware('throttle:public-api')->group(function () {
     Route::get('/ping', function () {
         return response()->json(['message' => 'pong']);
     });
 
     // Public Saraban verify routes
-    Route::get('/saraban/verify/{hash}', [SignatureController::class, 'verify'])->middleware('throttle:30,1');
-    Route::get('/saraban/verify/{hash}/qrcode', [SignatureController::class, 'getQrCode'])->middleware('throttle:30,1');
+    Route::get('/saraban/verify/{hash}', [SignatureController::class, 'verify'])->middleware('throttle:verify');
+    Route::get('/saraban/verify/{hash}/qrcode', [SignatureController::class, 'getQrCode'])->middleware('throttle:verify');
 
     // ตรวจสอบใบลาจาก QR บนเอกสารที่พิมพ์ออกไป — จำกัดอัตราเพื่อกันการสุ่มโทเคน
-    Route::middleware('throttle:30,1')->group(function () {
+    Route::middleware('throttle:verify')->group(function () {
         Route::get('/leaves/verify/{hash}', [LeaveVerificationController::class, 'verify']);
         Route::get('/leaves/verify/{hash}/qrcode', [LeaveVerificationController::class, 'qrcode']);
     });
 });
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login');
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
-Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:password');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:password');
 
 // Protected routes
-Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::post('/refresh-token', [AuthController::class, 'refresh'])->middleware('throttle:10,1');
+    Route::post('/refresh-token', [AuthController::class, 'refresh'])->middleware('throttle:token-refresh');
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/users/list', [UserController::class, 'list']);
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile', [ProfileController::class, 'update']);
     // สิทธิขอรับสำเนาข้อมูลส่วนบุคคลของตนเอง (ม.30 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล)
-    Route::get('/profile/personal-data', [PersonalDataController::class, 'export'])->middleware('throttle:10,1');
+    Route::get('/profile/personal-data', [PersonalDataController::class, 'export'])->middleware('throttle:personal-data');
     Route::get('/profile/access-history', [PersonalDataController::class, 'accessHistory']);
     Route::get('/profile/delegations', [ProfileController::class, 'getDelegation']);
     Route::post('/profile/delegations', [ProfileController::class, 'setDelegation']);
@@ -86,8 +88,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::post('/leaves', [LeaveRequestController::class, 'store']);
     Route::get('/leaves/balances', [LeaveQueryController::class, 'balances']);
     Route::get('/leaves/types', [LeaveQueryController::class, 'types']);
-    Route::get('/leaves/{leave}/pdf', [LeaveDocumentController::class, 'exportPdf'])->middleware('throttle:10,1');
-    Route::get('/leaves/{leave}/word', [LeaveDocumentController::class, 'exportWord'])->middleware('throttle:10,1');
+    Route::get('/leaves/{leave}/pdf', [LeaveDocumentController::class, 'exportPdf'])->middleware('throttle:documents');
+    Route::get('/leaves/{leave}/word', [LeaveDocumentController::class, 'exportWord'])->middleware('throttle:documents');
     Route::post('/leaves/{leave}/cancel', [LeaveCancellationController::class, 'cancel']);
     Route::post('/leaves/{leave}/approve-cancellation', [LeaveCancellationController::class, 'approve']);
     Route::post('/leaves/{leave}/reject-cancellation', [LeaveCancellationController::class, 'reject']);
@@ -130,8 +132,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     // Admin attendance — ต้องมีสิทธิ์ view_all
     Route::group(['middleware' => ['can:attendance.view_all']], function () {
         Route::get('/admin/attendances', [AttendanceController::class, 'allRecords']);
-        Route::get('/admin/attendances/export/pdf', [AttendanceController::class, 'exportPdf'])->middleware('throttle:10,1');
-        Route::get('/admin/attendances/export/word', [AttendanceController::class, 'exportWord'])->middleware('throttle:10,1');
+        Route::get('/admin/attendances/export/pdf', [AttendanceController::class, 'exportPdf'])->middleware('throttle:exports');
+        Route::get('/admin/attendances/export/word', [AttendanceController::class, 'exportWord'])->middleware('throttle:exports');
         Route::get('/admin/attendances/summary', [AttendanceController::class, 'summary']);
         Route::post('/admin/attendances/sync-leaves', [AttendanceController::class, 'syncLeaves']);
         Route::post('/admin/attendance-corrections/{correction:uuid}/approve', [AttendanceCorrectionController::class, 'approve']);
@@ -151,15 +153,15 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     // Report routes
     Route::get('/reports/summary', [ReportController::class, 'summary']);
-    Route::get('/reports/export-excel', [ReportController::class, 'exportExcel'])->middleware('throttle:10,1');
-    Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])->middleware('throttle:10,1');
+    Route::get('/reports/export-excel', [ReportController::class, 'exportExcel'])->middleware('throttle:exports');
+    Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])->middleware('throttle:exports');
 
     // Unified, scope-aware reporting layer. Existing Government Report endpoints remain unchanged.
     Route::get('/reporting/evaluation-metrics', [ReportingController::class, 'evaluation']);
     Route::get('/reporting/{report}/export/{format}', [ReportingController::class, 'export'])
         ->whereIn('report', ReportingDataService::REPORTS)
         ->whereIn('format', ['pdf', 'xlsx', 'docx', 'csv'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:exports');
     Route::get('/reporting/{report}', [ReportingController::class, 'show'])
         ->whereIn('report', ReportingDataService::REPORTS);
 
@@ -209,6 +211,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::group(['middleware' => ['can:manage_workflow_steps']], function () {
         Route::get('/admin/workflow-steps', [WorkflowController::class, 'index']);
         Route::post('/admin/workflow-steps', [WorkflowController::class, 'store']);
+        // ทดลองว่าใครคือผู้อนุมัติจริงของแต่ละขั้น ก่อนบันทึกการตั้งค่า
+        Route::post('/admin/workflow-steps/preview', [WorkflowController::class, 'preview']);
     });
 
     // Admin: Leave Types CRUD
@@ -245,15 +249,65 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/admin/document-templates', [DocumentTemplateController::class, 'index']);
         Route::post('/admin/document-templates', [DocumentTemplateController::class, 'store']);
         Route::post('/admin/document-templates/seed-defaults', [DocumentTemplateController::class, 'seedDefaults']);
+        Route::get('/admin/document-templates/fields', [DocumentTemplateController::class, 'fields']);
+        Route::post('/admin/document-templates/preview', [DocumentTemplateController::class, 'preview'])->middleware('throttle:documents');
         Route::get('/admin/document-templates/{template}', [DocumentTemplateController::class, 'show']);
         Route::put('/admin/document-templates/{template}', [DocumentTemplateController::class, 'update']);
         Route::delete('/admin/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
 
         Route::get('/admin/fiscal-years', [FiscalYearController::class, 'index']);
+
         Route::post('/admin/fiscal-years', [FiscalYearController::class, 'store']);
         Route::put('/admin/fiscal-years/{fiscalYear}', [FiscalYearController::class, 'update']);
         Route::delete('/admin/fiscal-years/{fiscalYear}', [FiscalYearController::class, 'destroy']);
     });
+
+    /*
+     * ศูนย์จัดการเอกสารและรายงาน (Document & Report Engine)
+     *
+     * ยอมรับทั้งสิทธิ์เฉพาะชุดใหม่และสิทธิ์ตั้งค่าระบบเดิม เพื่อให้ผู้ดูแลที่ใช้งานอยู่
+     * ไม่ถูกตัดสิทธิ์ในวันที่อัปเกรด แล้วค่อยถอดสิทธิ์เดิมออกเมื่อกำหนดบทบาทใหม่ครบ
+     */
+    Route::middleware('permission:document.template.view|document.template.manage|manage_settings|system.setting.manage')->group(function () {
+        Route::get('/admin/document-engine/overview', [DocumentEngineController::class, 'overview']);
+        Route::get('/admin/document-engine/templates', [DocumentEngineController::class, 'templates']);
+        Route::get('/admin/document-engine/templates/{template}', [DocumentEngineController::class, 'showTemplate']);
+        Route::get('/admin/document-engine/fields', [DocumentEngineController::class, 'fieldDictionary']);
+        Route::get('/admin/document-engine/data-sources', [DocumentEngineController::class, 'dataSources']);
+        Route::get('/admin/document-engine/bindings', [DocumentEngineController::class, 'bindings']);
+        Route::get('/admin/document-engine/calibrations', [DocumentEngineController::class, 'calibrations']);
+        Route::get('/admin/document-engine/versions/{version}/mappings', [DocumentEngineController::class, 'mappings']);
+        Route::get('/admin/document-engine/versions/{version}/pdf', [DocumentEngineController::class, 'pdfFile'])->middleware('throttle:documents');
+        Route::get('/admin/document-engine/versions/{version}/preview', [DocumentEngineController::class, 'previewVersion'])->middleware('throttle:documents');
+        Route::get('/admin/document-engine/generated', [DocumentEngineController::class, 'generatedFiles']);
+    });
+
+    Route::middleware('permission:document.template.manage|manage_settings|system.setting.manage')->group(function () {
+        Route::post('/admin/document-engine/templates', [DocumentEngineController::class, 'storeTemplate']);
+        Route::post('/admin/document-engine/templates/{template}/versions', [DocumentEngineController::class, 'createVersion']);
+        Route::post('/admin/document-engine/versions/{version}/pdf', [DocumentEngineController::class, 'uploadPdf']);
+        Route::post('/admin/document-engine/versions/{version}/publish', [DocumentEngineController::class, 'publishVersion']);
+        Route::post('/admin/document-engine/versions/{version}/retire', [DocumentEngineController::class, 'retireVersion']);
+        Route::delete('/admin/document-engine/versions/{version}', [DocumentEngineController::class, 'deleteVersion']);
+        Route::put('/admin/document-engine/versions/{version}/mappings', [DocumentEngineController::class, 'saveMappings']);
+        Route::post('/admin/document-engine/bindings', [DocumentEngineController::class, 'saveBinding']);
+        Route::delete('/admin/document-engine/bindings/{rule}', [DocumentEngineController::class, 'deleteBinding']);
+        Route::post('/admin/document-engine/calibrations', [DocumentEngineController::class, 'saveCalibration']);
+    });
+
+    Route::middleware('permission:document.report.view|document.report.manage|manage_settings|system.setting.manage')->group(function () {
+        Route::get('/admin/document-reports', [DocumentReportController::class, 'index']);
+        Route::get('/admin/document-reports/{report}/run', [DocumentReportController::class, 'run']);
+        Route::get('/admin/document-reports/{report}/export/{format}', [DocumentReportController::class, 'export'])
+            ->whereIn('format', ['pdf', 'xlsx', 'csv'])
+            ->middleware('throttle:exports');
+    });
+
+    Route::post('/admin/document-reports', [DocumentReportController::class, 'store'])
+        ->middleware('permission:document.report.manage|manage_settings|system.setting.manage');
+
+    Route::get('/admin/document-engine/generated/{file}/download', [DocumentEngineController::class, 'downloadGenerated'])
+        ->middleware(['permission:document.final.download|manage_settings|system.setting.manage', 'throttle:documents']);
 
     // Saraban Document routes.
     // Route-level `permission:` middleware is the coarse gate; DocumentPolicy
@@ -296,9 +350,15 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
             Route::get('/documents/stats', [DocumentController::class, 'stats']);
             Route::get('/documents/{document}', [DocumentController::class, 'show'])
                 ->middleware('saraban.classified');
-            Route::post('/documents/{document}/read', [DocumentController::class, 'read']);
-            Route::post('/documents/{id}/state', [DocumentController::class, 'updateState']);
-            Route::get('/attachments/{attachment}/download', [DocumentController::class, 'downloadAttachment'])->middleware('throttle:10,1');
+            /*
+             * SEC-025 — read/state ใช้ route model binding และผ่านด่านชั้นความลับ
+             * เหมือน `show` เดิม `/documents/{id}/state` รับ id ดิบและไม่ตรวจอะไรเลย
+             */
+            Route::post('/documents/{document}/read', [DocumentController::class, 'read'])
+                ->middleware('saraban.classified');
+            Route::post('/documents/{document}/state', [DocumentController::class, 'updateState'])
+                ->middleware('saraban.classified');
+            Route::get('/attachments/{attachment}/download', [DocumentController::class, 'downloadAttachment'])->middleware('throttle:documents');
         });
 
         Route::post('/documents', [DocumentController::class, 'store'])
@@ -337,7 +397,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         // Saraban Reports
         Route::middleware('permission:saraban.document.report')->group(function () {
             Route::get('/reports/summary', [App\Http\Controllers\Api\Saraban\ReportController::class, 'summary']);
-            Route::get('/reports/export', [App\Http\Controllers\Api\Saraban\ReportController::class, 'exportCsv'])->middleware('throttle:10,1');
+            Route::get('/reports/export', [App\Http\Controllers\Api\Saraban\ReportController::class, 'exportCsv'])->middleware('throttle:exports');
         });
     });
 
@@ -345,7 +405,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     // ดาวน์โหลดไฟล์อัปโหลด — ต้องยืนยันตัวตน (แทน /api/storage/{path} เดิมที่เปิดสาธารณะ)
     Route::get('/files/{path}', [SecureFileController::class, 'show'])
-        ->middleware('throttle:30,1')
+        ->middleware('throttle:files')
         ->where('path', '.*');
 
     // Notifications
@@ -386,18 +446,18 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
  * ย้ายเข้ามาอยู่หลัง authentication แล้วเมื่อ 2026-08-12 และให้หน้าเว็บดาวน์โหลด
  * แบบ authenticated request (blob) แทน window.open
  */
-Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::middleware('can:attendance.view_all')->group(function () {
         Route::get('/admin/attendances/summary/preview', [AttendanceController::class, 'previewSummary']);
-        Route::get('/admin/attendances/summary/export/pdf', [AttendanceController::class, 'exportSummaryPdf'])->middleware('throttle:10,1');
-        Route::get('/admin/attendances/summary/export/word', [AttendanceController::class, 'exportSummaryWord'])->middleware('throttle:10,1');
+        Route::get('/admin/attendances/summary/export/pdf', [AttendanceController::class, 'exportSummaryPdf'])->middleware('throttle:exports');
+        Route::get('/admin/attendances/summary/export/word', [AttendanceController::class, 'exportSummaryWord'])->middleware('throttle:exports');
     });
 
     Route::middleware('can:attendance.ot_summary')->group(function () {
         Route::get('/admin/attendances/ot-summary/preview', [AttendanceController::class, 'previewOTSummary']);
-        Route::get('/admin/attendances/ot-summary/export/pdf', [AttendanceController::class, 'exportOTSummaryPdf'])->middleware('throttle:10,1');
-        Route::get('/admin/attendances/ot-summary/export/word', [AttendanceController::class, 'exportOTSummaryWord'])->middleware('throttle:10,1');
-        Route::get('/admin/attendances/ot-summary/export/excel', [AttendanceController::class, 'exportOTSummaryExcel'])->middleware('throttle:10,1');
+        Route::get('/admin/attendances/ot-summary/export/pdf', [AttendanceController::class, 'exportOTSummaryPdf'])->middleware('throttle:exports');
+        Route::get('/admin/attendances/ot-summary/export/word', [AttendanceController::class, 'exportOTSummaryWord'])->middleware('throttle:exports');
+        Route::get('/admin/attendances/ot-summary/export/excel', [AttendanceController::class, 'exportOTSummaryExcel'])->middleware('throttle:exports');
     });
 });
 

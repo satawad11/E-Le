@@ -92,8 +92,8 @@ export const useLeaveStore = defineStore('leave', {
       }
       await Promise.all([this.fetchLeaves(), this.fetchBalances()]);
     },
-    async approveCancellation(leaveId, comment = '') {
-      await api.post(`/leaves/${leaveId}/approve-cancellation`, { comment });
+    async approveCancellation(leaveId, comment = '', signature_base64 = null) {
+      await api.post(`/leaves/${leaveId}/approve-cancellation`, { comment, signature_base64 });
       await this.fetchLeaves();
     },
     async rejectCancellation(leaveId, comment = '') {

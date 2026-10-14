@@ -522,6 +522,9 @@
             <router-link v-if="authStore.canManageSettings" to="/admin/document-templates" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               จัดการแม่แบบเอกสาร
             </router-link>
+            <router-link v-if="canManageDocuments" to="/admin/document-center" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+              ศูนย์จัดการเอกสารและรายงาน
+            </router-link>
             <router-link v-if="authStore.canManageSettings" to="/admin/modules" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               โมดูลระบบ
             </router-link>
@@ -868,6 +871,9 @@
               <router-link v-if="authStore.canManageSettings" to="/admin/document-templates" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 จัดการแม่แบบเอกสาร
               </router-link>
+              <router-link v-if="canManageDocuments" to="/admin/document-center" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+                ศูนย์จัดการเอกสารและรายงาน
+              </router-link>
               <router-link v-if="authStore.canManageSettings" to="/admin/modules" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 โมดูลระบบ
               </router-link>
@@ -1028,6 +1034,8 @@ const adminMenuOpen = ref(false)
 const sarabanMenuOpen = ref(false)
 const userMenuOpen = ref(false)
 
+const canManageDocuments = computed(() => authStore.canManageDocumentCenter)
+
 const currentRouteTitle = computed(() => {
   if (route.meta?.title) return route.meta.title
   return 'ระบบบริหารสถานศึกษา E-la'
@@ -1050,8 +1058,8 @@ const isAttendanceRouteActive = computed(() => {
 })
 
 const isAdminRouteActive = computed(() => {
-  return ['admin-settings', 'admin-attendance-settings', 'admin-document-templates', 'admin-modules', 'admin-departments', 'admin-workflow', 'admin-leave-types', 'admin-fiscal-years', 'admin-notifications', 'admin-work-calendar', 'admin-leave-policies'].includes(route.name) ||
-    ['/admin/settings', '/admin/attendance-settings', '/admin/document-templates', '/admin/modules', '/admin/departments', '/admin/workflow', '/admin/leave-types', '/admin/fiscal-years', '/admin/notifications', '/admin/work-calendar', '/admin/leave-policies'].includes(route.path)
+  return ['admin-settings', 'admin-attendance-settings', 'admin-document-templates', 'document-center', 'document-designer', 'admin-modules', 'admin-departments', 'admin-workflow', 'admin-leave-types', 'admin-fiscal-years', 'admin-notifications', 'admin-work-calendar', 'admin-leave-policies'].includes(route.name) ||
+    ['/admin/settings', '/admin/attendance-settings', '/admin/document-templates', '/admin/document-center', '/admin/modules', '/admin/departments', '/admin/workflow', '/admin/leave-types', '/admin/fiscal-years', '/admin/notifications', '/admin/work-calendar', '/admin/leave-policies'].includes(route.path)
 })
 
 const isSarabanRouteActive = computed(() => {

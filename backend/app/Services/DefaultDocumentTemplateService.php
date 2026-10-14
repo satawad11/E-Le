@@ -8,14 +8,22 @@ class DefaultDocumentTemplateService
 {
     /**
      * Register the official baseline templates without overwriting local customizations.
+     *
+     * `$overwrite` = "คืนค่าแบบฟอร์มตั้งต้น" จากหน้าผู้ดูแล — เขียนทับเนื้อหาปัจจุบัน
+     * ปลอดภัยเพราะการแก้ไขจะสร้าง version ใหม่เสมอ และใบลาเก่ายัง pin เวอร์ชันเดิมไว้
+     * เอกสารที่พิมพ์ไปแล้วจึงพิมพ์ซ้ำได้เหมือนเดิม
      */
-    public function sync(): void
+    public function sync(bool $overwrite = false): void
     {
         foreach ($this->templates() as $template) {
-            DocumentTemplate::firstOrCreate(
+            $existing = DocumentTemplate::firstOrCreate(
                 ['code' => $template['code']],
                 $template
             );
+
+            if ($overwrite && ! $existing->wasRecentlyCreated) {
+                $existing->update($template);
+            }
         }
     }
 
@@ -59,6 +67,27 @@ class DefaultDocumentTemplateService
                 'pdf.leave_cancel',
                 15.0,
                 20.0
+            ),
+            $this->leaveTemplate(
+                'leave_hajj',
+                'แบบใบลาไปประกอบพิธีฮัจญ์',
+                'pdf.leave_hajj',
+                8.0,
+                12.0
+            ),
+            $this->leaveTemplate(
+                'leave_spouse',
+                'แบบใบลาติดตามคู่สมรส',
+                'pdf.leave_spouse',
+                8.0,
+                12.0
+            ),
+            $this->leaveTemplate(
+                'leave_study',
+                'แบบใบลาไปศึกษาต่อ ฝึกอบรม ดูงาน',
+                'pdf.leave_study',
+                8.0,
+                12.0
             ),
             $this->leaveTemplate(
                 'official_travel',

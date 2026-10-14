@@ -95,7 +95,7 @@ class AuthController extends Controller
             $request->session()->regenerateToken();
         }
 
-        return response()->json(['message' => 'Logged out successfully']);
+        return response()->json(['message' => 'ออกจากระบบเรียบร้อยแล้ว']);
     }
 
     public function refresh(Request $request)

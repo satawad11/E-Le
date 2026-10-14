@@ -56,6 +56,10 @@ jobs:
         run: vendor/bin/pint --test
       - name: Migrate from empty MySQL 8 database
         run: php artisan migrate --force
+      # Document Engine เรนเดอร์แบบฟอร์ม PDF ด้วยฟอนต์ไทยที่สร้างจาก TTF ในโครงการ
+      # ถ้าไม่ติดตั้ง เทสต์ที่เรนเดอร์เอกสารจะล้มด้วยข้อความ "ยังไม่ได้ติดตั้งฟอนต์ไทย"
+      - name: Install document engine Thai fonts
+        run: php artisan document:install-fonts
       - name: Tests
         run: php artisan test
 

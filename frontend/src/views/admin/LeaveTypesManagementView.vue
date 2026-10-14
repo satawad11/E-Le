@@ -116,6 +116,52 @@
               </p>
             </div>
 
+            <!--
+              ผูกประเภทการลาเข้ากับแบบฟอร์มที่ใช้พิมพ์
+              เดิมระบบเดาแบบฟอร์มจากชื่อไทยของประเภทการลาในโค้ด เปลี่ยนชื่อทีเดียวก็พิมพ์ผิดแบบฟอร์ม
+            -->
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">แบบฟอร์มที่ใช้พิมพ์</label>
+              <select v-model="form.document_template_code"
+                class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#800000]/30 focus:border-[#800000]">
+                <option value="">— ยังไม่กำหนด (ใช้แบบฟอร์มลาป่วย/กิจ/คลอด) —</option>
+                <option v-for="template in leaveTemplates" :key="template.code" :value="template.code">{{ template.name }}</option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1.5">
+                แก้ไขเนื้อหาแบบฟอร์มได้ที่
+                <router-link to="/admin/document-templates" class="text-[#800000] font-semibold hover:underline">เมนูแม่แบบเอกสาร →</router-link>
+              </p>
+            </div>
+
+            <!-- ช่องกรอกเฉพาะแบบฟอร์ม เช่น ชื่อวัดของใบลาอุปสมบท -->
+            <div class="border-t border-gray-100 pt-3">
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-sm font-semibold text-gray-700">ช่องกรอกเฉพาะแบบฟอร์ม</label>
+                <button type="button" @click="addExtraField" class="text-xs font-semibold text-[#800000] hover:underline">+ เพิ่มช่อง</button>
+              </div>
+              <p class="text-xs text-gray-500 mb-2">
+                ผู้ยื่นใบลาจะเห็นช่องเหล่านี้ในหน้ายื่นใบลา และค่าที่กรอกจะถูกเติมลงแบบฟอร์มผ่านตัวแปร
+                <code class="px-1 bg-gray-100 rounded">&#123;&#123; $extra['คีย์'] &#125;&#125;</code>
+              </p>
+              <div v-for="(field, index) in form.extra_fields" :key="index" class="grid grid-cols-12 gap-2 mb-2">
+                <input v-model="field.key" placeholder="คีย์ (ภาษาอังกฤษ)" class="col-span-3 border border-gray-200 rounded-lg px-2 py-1.5 text-xs">
+                <input v-model="field.label" placeholder="ชื่อช่องที่ผู้ใช้เห็น" class="col-span-4 border border-gray-200 rounded-lg px-2 py-1.5 text-xs">
+                <select v-model="field.type" class="col-span-2 border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white">
+                  <option value="text">ข้อความ</option>
+                  <option value="textarea">ข้อความยาว</option>
+                  <option value="date">วันที่</option>
+                  <option value="number">ตัวเลข</option>
+                  <option value="select">ตัวเลือก</option>
+                </select>
+                <label class="col-span-2 flex items-center gap-1 text-xs text-gray-600">
+                  <input type="checkbox" v-model="field.required"> จำเป็น
+                </label>
+                <button type="button" @click="form.extra_fields.splice(index, 1)" class="col-span-1 text-red-600 text-xs">ลบ</button>
+                <input v-if="field.type === 'select'" v-model="field.optionsText" placeholder="ตัวเลือก คั่นด้วยเครื่องหมายจุลภาค เช่น ยังไม่เคย, เคย"
+                  class="col-span-12 border border-gray-200 rounded-lg px-2 py-1.5 text-xs">
+              </div>
+            </div>
+
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-1.5">คำอธิบาย</label>
               <textarea v-model="form.description" rows="2" placeholder="รายละเอียดเพิ่มเติม..."
@@ -227,16 +273,33 @@ const form = ref({
   max_carry_forward: null,
   is_prorated: false,
   counts_toward_promotion: true,
+  document_template_code: '',
+  extra_fields: [],
 })
 
+const leaveTemplates = ref([])
+
 const resetForm = () => {
-  form.value = { name: '', code_prefix: '', max_days: 30, description: '', requires_doc: false, is_carry_forward: false, max_carry_forward: null, is_prorated: false, counts_toward_promotion: true }
+  form.value = { name: '', code_prefix: '', max_days: 30, description: '', requires_doc: false, is_carry_forward: false, max_carry_forward: null, is_prorated: false, counts_toward_promotion: true, document_template_code: '', extra_fields: [] }
   formError.value = ''
+}
+
+const addExtraField = () => {
+  form.value.extra_fields.push({ key: '', label: '', type: 'text', required: false, optionsText: '' })
 }
 
 const fetchTypes = async () => {
   const res = await api.get('/admin/leave-types')
   leaveTypes.value = res.data
+}
+
+const fetchTemplates = async () => {
+  try {
+    const res = await api.get('/admin/document-templates', { params: { module: 'leave' } })
+    leaveTemplates.value = res.data
+  } catch {
+    leaveTemplates.value = []
+  }
 }
 
 const openCreate = () => {
@@ -259,6 +322,12 @@ const openEdit = (lt) => {
     max_carry_forward: lt.max_carry_forward ?? null,
     is_prorated: !!lt.is_prorated,
     counts_toward_promotion: lt.counts_toward_promotion ?? true,
+    document_template_code: lt.document_template_code || '',
+    extra_fields: (lt.extra_fields || []).map(field => ({
+      ...field,
+      required: !!field.required,
+      optionsText: (field.options || []).join(', '),
+    })),
   }
   formError.value = ''
   showModal.value = true
@@ -268,12 +337,27 @@ const submitForm = async () => {
   saving.value = true
   formError.value = ''
   try {
+    // แปลงตัวเลือกของช่องแบบ select จากข้อความคั่นจุลภาคเป็น array ตามที่ API รับ
+    const payloadBase = {
+      ...form.value,
+      document_template_code: form.value.document_template_code || null,
+      extra_fields: form.value.extra_fields
+        .filter(field => field.key && field.label)
+        .map(({ optionsText, ...field }) => ({
+          ...field,
+          required: !!field.required,
+          options: field.type === 'select'
+            ? (optionsText || '').split(',').map(option => option.trim()).filter(Boolean)
+            : null,
+        })),
+    }
+
     if (editMode.value) {
       // max_days เป็นค่าตั้งต้นเท่านั้น แก้ไม่ได้หลังสร้าง — สิทธิ์จริงอยู่ที่ leave_policies
-      const { max_days, ...payload } = form.value
+      const { max_days, ...payload } = payloadBase
       await api.put(`/admin/leave-types/${editId.value}`, payload)
     } else {
-      await api.post('/admin/leave-types', form.value)
+      await api.post('/admin/leave-types', payloadBase)
     }
     await fetchTypes()
     showModal.value = false
@@ -309,7 +393,7 @@ const doDelete = async () => {
 
 onMounted(async () => {
   try {
-    await fetchTypes()
+    await Promise.all([fetchTypes(), fetchTemplates()])
   } finally {
     loading.value = false
   }

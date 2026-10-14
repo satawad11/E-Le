@@ -287,6 +287,33 @@
   - [x] Immutable workflow snapshotting and optimistic concurrency control (409 Conflict)
   - [x] Upgrade `WorkflowManagementView.vue` with resolver selection and hardened mobile UX
   - [x] Automated test suite `ApprovalResolverAndWorkflowHardeningTest.php` (3 tests, 15 assertions, 100% PASS)
+- [x] APPROVAL-02 Approval Chain Snapshot & Worklist Alignment — **PASS 2026-08-19** · `docs/DECISION-LOG.md` ADR-APPROVAL-02
+  - [x] Migration เพิ่ม `approver_type`, `specific_user_id`, `permission_name` ใน `leave_approvals` พร้อม backfill ใบลาที่ยังรออนุมัติ
+  - [x] `LeaveService` / `GovernmentApprovalController` คัดลอกวิธีหาตัวผู้อนุมัติลง snapshot ให้ครบ
+  - [x] `ApproverResolverService` เป็น fail-closed เมื่อไม่มีเกณฑ์คัด (ปิดช่องโหว่ให้ผู้ใช้ทุกคนอนุมัติได้)
+  - [x] `Admin\WorkflowController` เลิกเติม role ให้ขั้นตอนอัตโนมัติโดยอัตโนมัติ
+  - [x] รายการรออนุมัติใช้ resolver ตัวเดียวกับการอนุมัติจริง ("เห็น = อนุมัติได้")
+  - [x] สายอนุมัติคำขอยกเลิกใบลาใช้ snapshot + resolver ชุดเดียวกัน และตรวจสถานะ/ห้ามอนุมัติของตนเอง
+  - [x] ลบ `ApprovalController::approve()/reject()` ที่ไม่มี route ชี้ถึงแล้ว
+  - [x] Automated test suite `LeaveApprovalChainSnapshotTest.php` (7 tests, 31 assertions, 100% PASS) + regression 514 tests
+- [x] APPROVAL-03 Approver Preview สำหรับหน้าตั้งค่าสายอนุมัติ — **PASS 2026-08-19**
+  - [x] `POST /api/admin/workflow-steps/preview` ตอบรายชื่อผู้อนุมัติจริงรายขั้นตามผู้ยื่นที่เลือก (รองรับสายที่ยังไม่บันทึก)
+  - [x] เตือนเมื่อขั้นตอนใดไม่มีผู้อนุมัติ หรือได้ผู้ยื่นเป็นผู้อนุมัติของตนเอง
+  - [x] ปุ่ม "ดูตัวอย่างผู้อนุมัติจริง" ใน `WorkflowManagementView.vue`
+  - [x] เทสต์เพิ่ม 3 เคส (รวมชุดเป็น 10 tests, 38 assertions) + regression 517 tests + frontend build
+- [x] APPROVAL-04 สายอนุมัติของคำขอยกเลิกใบลา — **PASS 2026-08-19** · `docs/DECISION-LOG.md` ADR-APPROVAL-04
+  - [x] Migration `leave_approvals.stage` + `leaves.cancellation_approval_level` พร้อม backfill คำขอที่ค้างอยู่
+  - [x] คำขอยกเลิกผนึก snapshot ของตัวเอง ณ วันที่ขอ และเดินระดับแยกจากสายขอลา
+  - [x] บันทึกผู้อนุมัติ/ตำแหน่ง/ลายเซ็น/ความเห็น/ผู้มอบอำนาจ รายขั้น + audit log
+  - [x] แก้บั๊กอนุมัติยกเลิกแล้ววันลาไม่ถูกคืนเข้าสิทธิ์
+  - [x] รายการรออนุมัติตัดสินสิทธิ์ด้วยสายของคำขอยกเลิก และหน้าจอแสดงลำดับการอนุมัติยกเลิก
+  - [x] Automated test suite `LeaveCancellationChainTest.php` (9 tests, 86 assertions) + regression 533 tests
+- [x] APPROVAL-05 ตั้งค่าสายอนุมัติคำขอยกเลิกแยกได้ — **PASS 2026-08-19** · `docs/DECISION-LOG.md` ADR-APPROVAL-05
+  - [x] Migration `approval_steps.chain` (`leave` / `cancellation`)
+  - [x] สายยกเลิกที่ยังไม่ตั้งค่า = ใช้สายเดียวกับใบลา (`ApprovalStep::stepsFor()`)
+  - [x] Admin API + fingerprint + preview แยกตามสาย และบันทึกสายหนึ่งไม่กระทบอีกสาย
+  - [x] แท็บสลับสายในหน้าจัดการลำดับการอนุมัติ พร้อมปุ่มกลับไปใช้สายเดียวกับใบลา
+  - [x] ขยายเทสต์เป็น 14 tests, 122 assertions + regression 538 tests
 
 
 
@@ -345,3 +372,29 @@
 - [ ] PROD-09 Production Deployment
 - [ ] PROD-10 Post-Deployment Verification
 
+
+## LEAVE-FORM-01 — พิมพ์ใบลา / ขอยกเลิก / แบบฟอร์มราชการ ✅ เสร็จ 2026-08-19
+
+- [x] แก้พิมพ์ใบลาไม่ได้ (429) — แยกถัง rate limit เป็น named limiter รายกลุ่ม
+- [x] แก้ปุ่ม "ขอยกเลิก" ใบลาที่อนุมัติแล้วไม่ขึ้นเมื่อคำขอรอบก่อนถูกปฏิเสธ + กันยื่นซ้ำทับคำขอที่ค้าง
+- [x] แสดงสาเหตุจริงเมื่อดาวน์โหลดเอกสารไม่สำเร็จ (อ่าน error body ที่เป็น Blob)
+- [x] ผูกประเภทการลา ↔ แบบฟอร์ม เป็นค่าตั้งค่าได้ (`leave_types.document_template_code`)
+- [x] ชุดตัวแปรกลางของแบบฟอร์ม (`LeaveDocumentFields`) + รายการตัวแปรและพรีวิว PDF ในหน้าผู้ดูแล
+- [x] ช่องกรอกเฉพาะแบบฟอร์มต่อประเภทการลา (`leave_types.extra_fields` → `leaves.meta_data.extra_fields`)
+- [x] เขียนแบบฟอร์มราชการใหม่ 5 ฉบับให้ข้อมูลลงตรงช่อง และดึงชื่อสถานศึกษา/ผู้บริหารจากหน้าตั้งค่าระบบ
+- [ ] กรอกข้อมูลสถานศึกษาในหน้าตั้งค่าระบบ (ชื่อสถานศึกษา / สังกัด / ตำแหน่งผู้อำนวยการ) — ต้องทำโดยผู้ดูแลระบบ
+
+## DOC-ENGINE — Universal Document & Report Engine
+
+- [x] DOC-ENGINE-00 Assessment ระบบเดิม — **PASS 2026-08-19** · `docs/checkpoints/DOC-ENGINE-00-ASSESSMENT.md`
+- [x] DOC-ENGINE-01 Core Database + Models — **PASS 2026-08-20** · migration additive ล้วน + Field Dictionary + Data Source + Binding Rules
+- [x] DOC-ENGINE-02 PDF Renderer + Field Mapping — **PASS 2026-08-20** · FPDI overlay + ฟอนต์ไทยฝังในระบบ + print calibration + feature flag
+- [x] DOC-ENGINE-03 Snapshot + Final Document + Versioning — **PASS 2026-08-20** · sha256 + revision + IMMUTABLE + เอกสารย้อนหลังอ่านจากไฟล์ที่เก็บไว้
+- [x] DOC-ENGINE-04 Admin PDF Designer — **PASS 2026-08-20** · ลาก/ปรับขนาดฟิลด์บนแบบฟอร์มจริง พรีวิว เผยแพร่ จัดการเวอร์ชัน
+- [~] DOC-ENGINE-05 ย้าย Leave Type อื่นเข้า Engine — วางชุดฟิลด์ตั้งต้นให้ครบ 5 แบบฟอร์มแล้ว (`document:scaffold-fields`) เหลือจัดตำแหน่งจริงในหน้าออกแบบ (งานผู้ดูแล)
+- [x] DOC-ENGINE-06 Report Engine — **PASS 2026-08-20** · grouping/subtotal/grand total/aggregate + PDF/Excel/CSV
+- [x] DOC-ENGINE-07 Report Designer — **PASS 2026-08-20** · เลือกแหล่งข้อมูล/คอลัมน์/ผลรวม/จัดกลุ่ม และทดลองประมวลผลได้จากหน้าจอ
+- [x] DOC-ENGINE-08 Security / Audit / Test — **PASS 2026-08-20** · สิทธิ์ document.*, audit ครบทุกการกระทำ, 33 tests เฉพาะ engine + regression 583 tests
+- [x] DOC-ENGINE-REPORT รายงานปิดเฟส — **PASS 2026-08-20** · `docs/checkpoints/DOC-ENGINE-REPORT.md`
+- [ ] วางตำแหน่งฟิลด์บนแบบฟอร์มราชการ 5 ฉบับที่นำเข้าแล้ว แล้วกดเผยแพร่ (ต้องทำโดยผู้ดูแลระบบผ่านหน้า PDF Designer)
+- [x] กรอกข้อมูลสถานศึกษาในหน้าตั้งค่าระบบ — **เสร็จ 2026-08-20 (ผู้ดูแลกรอกแล้ว)**

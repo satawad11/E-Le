@@ -29,7 +29,7 @@ class WorkflowController extends Controller
         $this->workflowService->submitDocument($document, $request->user()->id, $comment, $request->ip());
         $this->auditLog->log('document.submitted', $document, ['comment' => $comment]);
 
-        return response()->json(['message' => 'Document submitted for review successfully.']);
+        return response()->json(['message' => 'ส่งหนังสือเข้าสู่การกลั่นกรองเรียบร้อยแล้ว']);
     }
 
     public function approve(Request $request, $id)
@@ -41,7 +41,7 @@ class WorkflowController extends Controller
         $this->workflowService->approveDocument($document, $request->user()->id, $comment, $request->ip());
         $this->auditLog->log('document.approved', $document, ['comment' => $comment]);
 
-        return response()->json(['message' => 'Document approved successfully.']);
+        return response()->json(['message' => 'อนุมัติหนังสือเรียบร้อยแล้ว']);
     }
 
     public function reject(Request $request, $id)
@@ -56,6 +56,6 @@ class WorkflowController extends Controller
         $this->workflowService->rejectDocument($document, $request->user()->id, $request->input('comment'), $request->ip());
         $this->auditLog->log('document.rejected', $document, ['comment' => $request->input('comment')]);
 
-        return response()->json(['message' => 'Document rejected.']);
+        return response()->json(['message' => 'ไม่อนุมัติหนังสือเรียบร้อยแล้ว']);
     }
 }

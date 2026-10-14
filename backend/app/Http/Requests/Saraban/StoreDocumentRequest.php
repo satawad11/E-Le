@@ -38,9 +38,33 @@ class StoreDocumentRequest extends FormRequest
             'receiver_departments.*' => 'exists:departments,id',
             'links' => 'nullable|array',
             'links.*.title' => 'required_with:links|string|max:255',
-            'links.*.url' => 'required_with:links|url',
+            'links.*.url' => ['required_with:links', 'url:http,https'],
             'files' => 'nullable|array',
-            'files.*' => 'file|max:20480', // max 20MB
+            /*
+             * SEC-023 — ไฟล์แนบต้องผ่านทั้ง allowlist ของชนิดไฟล์จริงและนามสกุล
+             *
+             * `mimetypes:` ตัดสินจากเนื้อไฟล์ (magic bytes) ไม่ใช่ Content-Type
+             * ที่ client ส่งมา ส่วน `extensions:` ตรวจนามสกุลจริงของไฟล์ที่อัปโหลด
+             * กันไฟล์ที่เนื้อในดูปกติแต่ตั้งชื่อเป็น .php/.phtml/.html
+             */
+            'files.*' => [
+                'file',
+                'max:'.(int) config('saraban.attachments.max_size_kb', 20480),
+                'mimetypes:'.implode(',', (array) config('saraban.attachments.allowed_mime_types', [])),
+                'extensions:'.implode(',', (array) config('saraban.attachments.allowed_extensions', [])),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string,string>
+     */
+    public function messages(): array
+    {
+        return [
+            'files.*.mimetypes' => 'ชนิดของไฟล์แนบนี้ไม่ได้รับอนุญาต (อนุญาต: :values)',
+            'files.*.extensions' => 'นามสกุลของไฟล์แนบนี้ไม่ได้รับอนุญาต (อนุญาต: :values)',
+            'files.*.max' => 'ไฟล์แนบต้องมีขนาดไม่เกิน :max กิโลไบต์',
         ];
     }
 }

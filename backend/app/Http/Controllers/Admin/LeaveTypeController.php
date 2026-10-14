@@ -32,6 +32,14 @@ class LeaveTypeController extends Controller
             'max_carry_forward' => 'nullable|integer|min:1|max:365',
             'is_prorated' => 'boolean',
             'counts_toward_promotion' => 'boolean',
+            'document_template_code' => 'nullable|string|max:100|exists:document_templates,code',
+            'extra_fields' => 'nullable|array|max:20',
+            'extra_fields.*.key' => 'required|string|max:50|alpha_dash',
+            'extra_fields.*.label' => 'required|string|max:100',
+            'extra_fields.*.type' => 'required|in:text,textarea,date,number,select',
+            'extra_fields.*.required' => 'boolean',
+            'extra_fields.*.options' => 'nullable|array|max:20',
+            'extra_fields.*.options.*' => 'string|max:100',
         ]);
 
         $leaveType = LeaveType::create($data);
@@ -58,6 +66,14 @@ class LeaveTypeController extends Controller
             'max_carry_forward' => 'nullable|integer|min:1|max:365',
             'is_prorated' => 'boolean',
             'counts_toward_promotion' => 'boolean',
+            'document_template_code' => 'nullable|string|max:100|exists:document_templates,code',
+            'extra_fields' => 'nullable|array|max:20',
+            'extra_fields.*.key' => 'required|string|max:50|alpha_dash',
+            'extra_fields.*.label' => 'required|string|max:100',
+            'extra_fields.*.type' => 'required|in:text,textarea,date,number,select',
+            'extra_fields.*.required' => 'boolean',
+            'extra_fields.*.options' => 'nullable|array|max:20',
+            'extra_fields.*.options.*' => 'string|max:100',
         ]);
 
         $type->update($data);
