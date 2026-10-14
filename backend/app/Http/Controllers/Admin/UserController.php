@@ -9,10 +9,15 @@ use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\PersonnelType;
 use App\Models\User;
+use App\Models\UserProfile;
+use App\Services\AuditLogger;
 use App\Services\LeavePolicyService;
 use App\Services\PersonalDataAccessLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -92,28 +97,7 @@ class UserController extends Controller
             }
             $user->profile()->create($profileData);
 
-            // สร้างสิทธิ์ปีปัจจุบันจาก "นโยบายสิทธิการลา" ตามประเภทบุคลากร
-            // (เดิมอ่านจาก leave_types.max_days ทำให้ได้ตัวเลขคนละชุดกับที่ระบบใช้ตัดสิทธิ์)
-            $policies = app(LeavePolicyService::class);
-            $today = today();
-            $year = $policies->fiscalYearNumber(FiscalYear::current(), $today);
-
-            $activePolicies = LeavePolicy::where('personnel_type_id', $user->personnel_type_id)
-                ->where('is_active', true)
-                ->whereDate('effective_from', '<=', $today)
-                ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $today))
-                ->orderByDesc('effective_from')
-                ->get()
-                ->groupBy('leave_type_id');
-
-            foreach (LeaveType::all() as $lt) {
-                $policy = $activePolicies->get($lt->id)?->first();
-
-                LeaveBalance::firstOrCreate(
-                    ['user_id' => $user->id, 'leave_type_id' => $lt->id, 'year' => $year],
-                    ['quota' => $policy?->annual_quota ?? 0, 'used' => 0, 'reserved' => 0, 'carried_forward' => 0, 'leave_policy_id' => $policy?->id]
-                );
-            }
+            $this->provisionLeaveBalances($user);
 
             return $user;
         });
@@ -122,6 +106,143 @@ class UserController extends Controller
             'message' => 'สร้างผู้ใช้เรียบร้อยแล้ว',
             'user' => $user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
         ], 201);
+    }
+
+    /**
+     * นำเข้าผู้ใช้จากไฟล์ CSV
+     *
+     * ปุ่มนำเข้าในหน้าจัดการผู้ใช้มีมาตลอด แต่เมธอดนี้หายไปใน baseline snapshot (LEGACY-00)
+     * route จึงชี้ไปยังเมธอดที่ไม่มีอยู่และตอบ 500 ทุกครั้ง
+     *
+     * ข้อกำหนดของการนำเข้าชุดนี้:
+     *   - ไม่รับรหัสผ่านจากไฟล์ ระบบสุ่มรหัสผ่านที่ไม่มีใครรู้ให้ และไม่ส่งกลับ
+     *     ผู้ใช้ใหม่ต้องตั้งรหัสผ่านเองผ่าน "ลืมรหัสผ่าน"
+     *   - แถวใดผิดพลาดให้ข้ามแถวนั้นและรายงานเลขบรรทัด ไม่ล้มทั้งไฟล์
+     *   - เลขบัตรประชาชนซ้ำกับที่มีอยู่ไม่ได้ เพราะการเข้าสู่ระบบด้วยเลขบัตรค้นจาก hash
+     *     แล้วหยิบแถวแรกที่เจอ ถ้าซ้ำจะเข้าบัญชีผิดคน
+     *   - บทบาทที่กำหนดได้เท่ากับที่ store() กำหนดได้ (สิทธิ์ route เดียวกัน)
+     */
+    public function importCsv(Request $request)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
+        ]);
+
+        $handle = fopen($request->file('file')->getRealPath(), 'r');
+        abort_if($handle === false, 422, 'เปิดไฟล์ที่อัปโหลดไม่ได้');
+
+        $header = fgetcsv($handle);
+        if ($header === false || $header === [null]) {
+            fclose($handle);
+
+            throw ValidationException::withMessages(['file' => ['ไฟล์ว่างเปล่า']]);
+        }
+
+        // ตัด BOM ของ Excel ออกจากหัวคอลัมน์แรก ไม่งั้นชื่อคอลัมน์แรกจะไม่ตรง
+        $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $header[0]);
+        $header = array_map(fn ($column) => trim((string) $column), $header);
+
+        $missing = array_diff(['name', 'email', 'role_id', 'department_id'], $header);
+        if ($missing !== []) {
+            fclose($handle);
+
+            throw ValidationException::withMessages([
+                'file' => ['ไฟล์ขาดคอลัมน์ที่จำเป็น: '.implode(', ', $missing)],
+            ]);
+        }
+
+        $profileColumns = ['id_card_number', 'title', 'first_name', 'last_name', 'gender', 'position'];
+        $importedIds = [];
+        $errors = [];
+        $line = 1;
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $line++;
+            if ($row === [null] || $row === []) {
+                continue;
+            }
+
+            $values = array_pad(array_slice($row, 0, count($header)), count($header), null);
+            // ช่องว่างในไฟล์ถือเป็น "ไม่ระบุ" ไม่ใช่สตริงว่าง
+            $data = array_map(fn ($value) => filled($value) ? trim((string) $value) : null, array_combine($header, $values));
+
+            $validator = Validator::make($data, [
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users,email',
+                'role_id' => 'required|exists:roles,id',
+                'department_id' => 'required|exists:departments,id',
+                'personnel_type_id' => 'nullable|exists:personnel_types,id',
+                'phone' => 'nullable|string|max:20',
+                'id_card_number' => 'nullable|digits:13',
+                'title' => 'nullable|string|max:255',
+                'first_name' => 'nullable|string|max:255',
+                'last_name' => 'nullable|string|max:255',
+                'gender' => 'nullable|string|max:255',
+                'position' => 'nullable|string|max:255',
+            ]);
+
+            $validator->after(function ($validator) use ($data) {
+                if (filled($data['id_card_number'] ?? null) && UserProfile::where(
+                    'id_card_number_hash',
+                    hash('sha256', $data['id_card_number'].config('app.key'))
+                )->exists()) {
+                    $validator->errors()->add('id_card_number', 'เลขบัตรประชาชนนี้มีในระบบแล้ว');
+                }
+            });
+
+            if ($validator->fails()) {
+                $errors[] = "บรรทัดที่ {$line}: ".implode(' ', $validator->errors()->all());
+
+                continue;
+            }
+
+            $valid = $validator->validated();
+
+            $importedIds[] = DB::transaction(function () use ($valid, $profileColumns) {
+                $user = User::create([
+                    'name' => $valid['name'],
+                    'email' => $valid['email'],
+                    // phone อยู่บนตาราง users (เข้ารหัสด้วย cast) ไม่ใช่ user_profiles
+                    'phone' => $valid['phone'] ?? null,
+                    // รหัสผ่านสุ่มที่ไม่มีใครรู้ — เจ้าตัวต้องตั้งเองผ่าน "ลืมรหัสผ่าน"
+                    'password' => bcrypt(Str::password(24)),
+                    'department_id' => $valid['department_id'],
+                    // ต้องมีประเภทบุคลากรเสมอ ไม่งั้นนโยบายสิทธิการลาจะหาไม่เจอ
+                    'personnel_type_id' => ($valid['personnel_type_id'] ?? null)
+                        ?: PersonnelType::where('code', 'civil_servant')->value('id'),
+                ]);
+
+                if ($role = Role::find($valid['role_id'])) {
+                    $user->syncRoles([$role->name]);
+                }
+
+                // id_card_number เข้ารหัสด้วย cast และ UserProfile::saving() เติม id_card_number_hash ให้
+                $user->profile()->create(array_filter(
+                    array_intersect_key($valid, array_flip($profileColumns)),
+                    fn ($value) => filled($value)
+                ));
+
+                $this->provisionLeaveBalances($user);
+
+                return $user->id;
+            });
+        }
+
+        fclose($handle);
+
+        app(AuditLogger::class)->log('user.imported', 'user', null, after: [
+            'imported' => count($importedIds),
+            'rejected' => count($errors),
+            'user_ids' => $importedIds,
+        ]);
+
+        return response()->json([
+            'message' => 'นำเข้าผู้ใช้สำเร็จ '.count($importedIds).' รายการ'
+                .($errors === [] ? '' : ' · ข้าม '.count($errors).' รายการ')
+                .' — ผู้ใช้ใหม่ต้องตั้งรหัสผ่านเองผ่านเมนู "ลืมรหัสผ่าน"',
+            'imported' => count($importedIds),
+            'errors' => $errors,
+        ]);
     }
 
     public function show(Request $request, User $user)
@@ -195,6 +316,36 @@ class UserController extends Controller
             'message' => 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว',
             'user' => $user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
         ]);
+    }
+
+    /**
+     * สร้างสิทธิ์วันลาปีปัจจุบันจาก "นโยบายสิทธิการลา" ตามประเภทบุคลากร
+     *
+     * เดิมอ่านจาก `leave_types.max_days` ทำให้ได้ตัวเลขคนละชุดกับที่ระบบใช้ตัดสิทธิ์
+     * ใช้ร่วมกันระหว่าง store() และ importCsv()
+     */
+    private function provisionLeaveBalances(User $user): void
+    {
+        $policies = app(LeavePolicyService::class);
+        $today = today();
+        $year = $policies->fiscalYearNumber(FiscalYear::current(), $today);
+
+        $activePolicies = LeavePolicy::where('personnel_type_id', $user->personnel_type_id)
+            ->where('is_active', true)
+            ->whereDate('effective_from', '<=', $today)
+            ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $today))
+            ->orderByDesc('effective_from')
+            ->get()
+            ->groupBy('leave_type_id');
+
+        foreach (LeaveType::all() as $leaveType) {
+            $policy = $activePolicies->get($leaveType->id)?->first();
+
+            LeaveBalance::firstOrCreate(
+                ['user_id' => $user->id, 'leave_type_id' => $leaveType->id, 'year' => $year],
+                ['quota' => $policy?->annual_quota ?? 0, 'used' => 0, 'reserved' => 0, 'carried_forward' => 0, 'leave_policy_id' => $policy?->id]
+            );
+        }
     }
 
     public function destroy(User $user)
