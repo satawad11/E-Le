@@ -42,21 +42,26 @@ class LeaveDocumentGateway
             && filled($version->pdf_file_path);
     }
 
-    /** ใบลาใบนี้ออกเอกสารด้วย engine ใหม่ได้หรือไม่ */
-    public function handles(Leave $leave): bool
+    /**
+     * ใบลาใบนี้ออกเอกสารด้วย engine ใหม่ได้หรือไม่
+     *
+     *   1. ธง DOCUMENT_ENGINE_ENABLED ปิด = ไม่ใช้เลย (สวิตช์ฉุกเฉิน)
+     *   2. ประเภทการลาอยู่ใน DOCUMENT_ENGINE_LEAVE_TYPES (การตั้งค่าแบบเดิม)
+     *   3. ผู้ดูแลเปิด "ใช้แบบฟอร์มที่ออกแบบ" ของประเภทการลานี้ไว้ และแบบฟอร์มเผยแพร่แล้ว
+     */
+    public function handles(Leave $leave, bool $isCancel = false): bool
     {
         if (! config('document_engine.enabled', false)) {
             return false;
         }
 
-        $allowed = (array) config('document_engine.entities.leave_types', []);
+        $allowed = array_map('strval', (array) config('document_engine.entities.leave_types', []));
 
-        if ($allowed === []) {
-            return false;
+        if (in_array('*', $allowed, true) || in_array((string) $leave->leave_type_id, $allowed, true)) {
+            return true;
         }
 
-        return in_array('*', $allowed, true)
-            || in_array((string) $leave->leave_type_id, array_map('strval', $allowed), true);
+        return app(LeaveTypeForms::class)->enabledVersion($leave->leave_type_id, $isCancel) !== null;
     }
 
     /**
@@ -67,7 +72,7 @@ class LeaveDocumentGateway
      */
     public function pdfFor(Leave $leave, bool $isCancel = false, ?User $actor = null): ?string
     {
-        if (! $this->handles($leave)) {
+        if (! $this->handles($leave, $isCancel)) {
             return null;
         }
 

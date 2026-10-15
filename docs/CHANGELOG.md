@@ -4,6 +4,30 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [DOC-DESIGNER-01] - 2026-10-15 — Leave forms designed per leave type in the Visual Designer
+#### Added
+- **Leave forms tab** in the Document Center: one row per leave type (+ the cancellation form) with *Create form*, *Design*, publish status, and a *Use this form* switch. Admins no longer edit `.env` to turn the engine on for a leave type.
+- `document:generate-leave-forms` / `POST /admin/document-engine/leave-type-forms/{type}/generate`: builds a `designer_<code>` draft for each of the 9 system forms — a blank A4 background (no organisation or person names baked in) with every field already placed. Positions are measured from dompdf's own layout of the form (marker values for text, one render per checkbox/signature), not estimated.
+- `LeaveFormFieldMap`: one field catalogue for the designer — date parts, signer blocks by role (checker / commander / authorizer: name, position, comment, date, signature, approve/reject boxes), statistics cells, vacation balance, previous leave, cancellation fields, and every leave type's own form fields (`extra.<key>`, plus one checkbox per option of select fields). Values come from the same data as the HTML forms.
+- The field dictionary re-syncs whenever the designer loads it, so fields added to a leave type appear immediately; legacy HTML-template variables are hidden.
+- Designer preview uses realistic sample values instead of field codes.
+
+#### Changed
+- `DOCUMENT_ENGINE_ENABLED` now defaults to `true` and acts as an emergency kill switch; per-leave-type use is controlled from the admin page. `DOCUMENT_ENGINE_LEAVE_TYPES` still works as a forced override.
+- New leaves of a type whose designed form is enabled pin that PDF version at submission; earlier leaves keep the form they were pinned to.
+- HTML forms: name/position/date lines use fixed-width dotted fill boxes; composite lines use `organization_line` / `affiliation_line`; signer dates go through `App\Support\FormDate`; "เคย/ยังไม่เคย" and expense boxes stay unticked when unknown.
+
+#### Fixed
+- `PdfOverlayRenderer` crashed on any ticked checkbox (it switched to a Helvetica font file that the engine's font folder does not contain).
+- Leaves always pinned the HTML form version, so a published PDF form was never used for new leaves.
+
+#### Removed
+- Old "จัดการแม่แบบเอกสาร" page and menu entry — `/admin/document-templates` now redirects to the Document Center ("แบบฟอร์มใบลา" tab). The read-only template API stays for the leave-type settings page.
+- `document:import-forms`, `document:scaffold-fields` and the five PDFs in `resources/document-templates` (another college's Word forms with its name baked in and placeholder field positions) — superseded by `document:generate-leave-forms`. Tests now generate their own sample PDF.
+
+#### Tests
+- `LeaveFormDesignerTest` (11). `DocumentEngineTest` default-state test updated for the new kill-switch default.
+
 ### [TPL-01] - 2026-10-15 — Leave form templates: security, data and layout
 #### Security
 - **Remote code execution via document templates (TPL-SEC-01).** `LeaveDocumentTemplateResolver::render()` passed admin-editable `document_templates.content_html` to `Blade::render()`, and `POST /api/admin/document-templates/preview` rendered HTML sent in the request body the same way — anyone with the settings permission could run PHP on the server (`@php … @endphp`). HTML leave forms now always render from the code-owned blade files. The HTML template create/update/delete and HTML-preview endpoints were removed; preview is `GET /api/admin/document-templates/{template}/preview` rendering the code view with sample data. Admin form design goes through the Document Engine (field placement on the official PDF).

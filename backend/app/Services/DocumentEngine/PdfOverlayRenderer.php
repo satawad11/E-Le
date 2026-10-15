@@ -156,8 +156,11 @@ class PdfOverlayRenderer
 
         $mark = (string) ($mapping->options['mark'] ?? '/');
 
-        // เครื่องหมายถูกวาดด้วยฟอนต์มาตรฐาน เพราะ cp874 ไม่มีอักขระ ✓
-        $pdf->SetFont('Helvetica', 'B', (float) $mapping->font_size);
+        /*
+         * เครื่องหมายเป็นอักขระ ASCII (/ หรือ X) จึงใช้ฟอนต์ไทยตัวหนาที่ติดตั้งไว้แล้ว
+         * เดิมใช้ Helvetica ซึ่งไม่มีไฟล์ในโฟลเดอร์ฟอนต์ของ engine — ติ๊กช่องใดก็ตามจะทำให้ออกเอกสารล้ม
+         */
+        $pdf->SetFont(self::FONT_BOLD, '', (float) $mapping->font_size + 4);
         $pdf->SetXY($x, $y);
         $pdf->Cell((float) $mapping->width, (float) $mapping->height, $mark, 0, 0, 'C');
     }

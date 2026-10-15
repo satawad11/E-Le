@@ -51,6 +51,14 @@ class LeaveFormExtraFieldSeeder extends Seeder
                 ['key' => 'country', 'label' => 'ประเทศ', 'type' => 'text', 'required' => false],
                 ['key' => 'funding', 'label' => 'ทุนที่ใช้', 'type' => 'text', 'required' => false],
             ],
+            'official_travel' => [
+                ['key' => 'destination', 'label' => 'สถานที่ไปราชการ', 'type' => 'text', 'required' => true],
+                ['key' => 'ref_doc_no', 'label' => 'ตามหนังสือที่', 'type' => 'text', 'required' => false],
+                ['key' => 'expense_type', 'label' => 'การเบิกค่าใช้จ่าย', 'type' => 'select', 'required' => true, 'options' => ['เบิกตามสิทธิ', 'ไม่เบิกค่าใช้จ่าย', 'เบิกเฉพาะค่ายานพาหนะ']],
+                ['key' => 'companion_1', 'label' => 'ผู้ร่วมเดินทาง 1', 'type' => 'text', 'required' => false],
+                ['key' => 'companion_2', 'label' => 'ผู้ร่วมเดินทาง 2', 'type' => 'text', 'required' => false],
+                ['key' => 'companion_3', 'label' => 'ผู้ร่วมเดินทาง 3', 'type' => 'text', 'required' => false],
+            ],
         ];
 
         foreach ($defaults as $templateCode => $fields) {

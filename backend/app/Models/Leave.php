@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
+use App\Services\DocumentEngine\LeaveTypeForms;
 use App\Services\LeaveDocumentTemplateResolver;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +33,20 @@ class Leave extends Model
              * ประเภทการลาเลย ใบลาพักผ่อนจึง pin แบบฟอร์มลาป่วยไว้
              * การ pin จึงไม่ได้ป้องกันอะไร เพราะเวอร์ชันที่ pin ไม่ใช่ตัวที่ใช้พิมพ์
              */
+            /*
+             * แบบฟอร์มที่ผู้ดูแลออกแบบและเปิดใช้งานกับประเภทการลานี้ไว้ — pin เวอร์ชัน PDF
+             * เพื่อให้ใบนี้พิมพ์ด้วยแบบฟอร์มนี้ตลอดไป แม้ภายหลังจะออกเวอร์ชันใหม่หรือปิดการใช้งาน
+             */
+            if (config('document_engine.enabled', false)) {
+                $designed = app(LeaveTypeForms::class)->enabledVersion($leave->leave_type_id);
+
+                if ($designed !== null) {
+                    $leave->document_template_version_id = $designed->id;
+
+                    return;
+                }
+            }
+
             $resolver = app(LeaveDocumentTemplateResolver::class);
             $code = $resolver->templateCodeForLeave($leave);
 

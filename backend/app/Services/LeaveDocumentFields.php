@@ -44,6 +44,7 @@ class LeaveDocumentFields
                 'written_at' => 'สถานที่เขียน — (เขียนที่)',
                 'director_name' => 'ชื่อผู้อำนวยการ',
                 'director_position' => 'ตำแหน่งผู้อำนวยการ — ใช้ในบรรทัด "เรียน"',
+                'organization_line' => 'ชื่อสถานศึกษาและสังกัดในบรรทัดเดียว — ใช้ในบรรทัด "ส่วนราชการ/สังกัด"',
             ],
             'เอกสาร' => [
                 'doc_number' => 'เลขที่เอกสารใบลา',
@@ -59,6 +60,7 @@ class LeaveDocumentFields
                 'level' => 'ระดับ/วิทยฐานะ (มาจากช่องเฉพาะแบบฟอร์มคีย์ level)',
                 'division' => 'แผนก/งาน',
                 'department' => 'สังกัดของผู้ลา',
+                'affiliation_line' => 'แผนก/งาน และชื่อสถานศึกษาในบรรทัดเดียว — ใช้ในบรรทัด "สังกัด"',
                 'phone' => 'หมายเลขโทรศัพท์',
                 'birth_date_thai' => 'วันเกิด (แบบไทย)',
                 'hired_date_thai' => 'วันเข้ารับราชการ (แบบไทย)',
@@ -91,6 +93,7 @@ class LeaveDocumentFields
                 'last_end_date_thai' => 'วันสิ้นสุดการลาครั้งก่อน',
                 'last_total_days' => 'จำนวนวันลาครั้งก่อน',
                 'previous_same_type_count' => 'จำนวนครั้งที่เคยได้รับอนุมัติให้ลาประเภทนี้มาก่อน (ทุกปี)',
+                'done_before' => 'เคยลา (อุปสมบท/ฮัจย์) มาก่อนหรือไม่ — true/false หรือ null เมื่อไม่ทราบ',
             ],
             'สถิติการลาในปีงบประมาณ' => [
                 'stats' => 'ตารางสถิติ — stats[ชื่อประเภท][before|current|total|times_before|times_current|times_total]',
@@ -144,6 +147,7 @@ class LeaveDocumentFields
             'level' => 'ชำนาญการ',
             'division' => 'แผนกวิชาช่างยนต์',
             'department' => 'แผนกวิชาช่างยนต์',
+            'affiliation_line' => 'แผนกวิชาช่างยนต์',
             'phone' => '08X-XXX-XXXX',
             'birth_date_thai' => $this->thaiDate($today->copy()->subYears(40)),
             'hired_date_thai' => $this->thaiDate($today->copy()->subYears(10)),
@@ -170,6 +174,7 @@ class LeaveDocumentFields
             'last_end_date_thai' => $this->thaiDate($today->copy()->subMonth()->addDay()),
             'last_total_days' => 2,
             'previous_same_type_count' => 0,
+            'done_before' => false,
             'stats' => [
                 'ป่วย' => ['before' => 3, 'current' => 2, 'total' => 5, 'times_before' => 2, 'times_current' => 1, 'times_total' => 3],
                 'กิจส่วนตัว' => ['before' => 1, 'current' => '', 'total' => 1, 'times_before' => 1, 'times_current' => '', 'times_total' => 1],
@@ -231,6 +236,7 @@ class LeaveDocumentFields
             'level' => (string) ($extra['level'] ?? ''),
             'division' => $user?->department?->name ?? '',
             'department' => $user?->department?->name ?? '',
+            'affiliation_line' => trim(($user?->department?->name ?? '').' '.(string) ($settings['institution_name'] ?? $settings['school_name'] ?? '')),
             'phone' => (string) ($user?->phone ?? ''),
             'birth_date_thai' => $profile?->date_of_birth ? $this->thaiDate($profile->date_of_birth) : '',
             'hired_date_thai' => $profile?->start_date ? $this->thaiDate($profile->start_date) : '',
@@ -264,6 +270,7 @@ class LeaveDocumentFields
                 ->where('id', '<', (int) $leave->id)
                 ->count(),
 
+            'done_before' => $this->doneBefore($extra, $leave),
             'stats' => $this->stats($leave),
             // ปีงบประมาณ (พ.ศ.) ของวันเริ่มลา — 1 ต.ค. 2569 ขึ้นไปคือปีงบ 2570 ไม่ใช่ปีปฏิทิน
             'fiscal_year' => $this->fiscalRange(Carbon::parse($leave->start_date ?? $createdAt))[1]->year + 543,
@@ -414,6 +421,29 @@ class LeaveDocumentFields
         ];
     }
 
+    /**
+     * "เคย/ยังไม่เคย" ของแบบฟอร์มอุปสมบทและฮัจย์
+     *
+     * ใช้คำตอบที่ผู้ลากรอกในช่องเฉพาะแบบฟอร์มก่อน ไม่มีคำตอบจึงดูจากประวัติการลาประเภทเดียวกันที่อนุมัติแล้ว
+     *
+     * @param  array<string, mixed>  $extra
+     */
+    private function doneBefore(array $extra, Leave $leave): bool
+    {
+        foreach (['ordained_before', 'hajj_before'] as $key) {
+            $answer = (string) ($extra[$key] ?? '');
+            if ($answer !== '') {
+                return in_array($answer, ['เคย', 'yes', '1', 'true'], true);
+            }
+        }
+
+        return Leave::where('user_id', $leave->user_id)
+            ->where('leave_type_id', $leave->leave_type_id)
+            ->where('status', 'Approved')
+            ->where('id', '<', (int) $leave->id)
+            ->exists();
+    }
+
     /** ใบลา $row เริ่มก่อนใบลา $leave หรือไม่ (วันเดียวกันใช้ลำดับการยื่น) */
     private function isEarlier(Leave $row, Leave $leave): bool
     {
@@ -453,6 +483,7 @@ class LeaveDocumentFields
             'written_at' => (string) ($settings['document_written_at'] ?? $schoolName),
             'director_name' => (string) ($settings['director_name'] ?? ''),
             'director_position' => (string) ($settings['director_position'] ?? ($schoolName !== '' ? 'ผู้อำนวยการ'.$schoolName : '')),
+            'organization_line' => trim($schoolName.' '.(string) ($settings['school_affiliation'] ?? '')),
         ];
     }
 

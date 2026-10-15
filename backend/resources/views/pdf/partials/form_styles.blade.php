@@ -25,4 +25,5 @@
     .box { display: inline-block; width: 10px; height: 10px; border: 1px solid #000; margin-right: 3px; }
     .checked { background-color: #000; }
     .sign-img { height: 32px; }
+    .fill { display: inline-block; border-bottom: 1px dotted #000; text-align: center; vertical-align: bottom; min-height: 16px; }
 </style>

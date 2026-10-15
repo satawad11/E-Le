@@ -5,6 +5,8 @@ namespace App\Services\DocumentEngine\Providers;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Services\DocumentEngine\DocumentDataProvider;
+use App\Services\DocumentEngine\LeaveFormFieldMap;
+use App\Services\LeaveApproverBlocks;
 use App\Services\LeaveDocumentFields;
 
 /**
@@ -21,7 +23,11 @@ class LeaveRequestDataProvider implements DocumentDataProvider
 {
     public const CODE = 'LEAVE_REQUEST_DETAIL';
 
-    public function __construct(private readonly LeaveDocumentFields $fields) {}
+    public function __construct(
+        private readonly LeaveDocumentFields $fields,
+        private readonly LeaveFormFieldMap $fieldMap,
+        private readonly LeaveApproverBlocks $approverBlocks,
+    ) {}
 
     public function code(): string
     {
@@ -48,7 +54,17 @@ class LeaveRequestDataProvider implements DocumentDataProvider
         $stage = $context['stage'] ?? LeaveApproval::STAGE_REQUEST;
         $legacy = $this->fields->build($leave);
 
-        return array_merge($legacy, $this->canonical($leave, $legacy, $stage));
+        /*
+         * ฟิลด์ของหน้าออกแบบ (LeaveFormFieldMap) คำนวณจากชุดตัวแปรเดียวกับแบบฟอร์ม HTML
+         * รวมผู้ลงนามตามบทบาทบนแบบฟอร์ม — ทับคีย์ชุดเก่าที่ชื่อซ้ำ (approval.authorizer.*)
+         * เพื่อให้แบบฟอร์ม PDF กับแบบฟอร์ม HTML พิมพ์ข้อมูลเดียวกัน
+         */
+        $designer = $this->fieldMap->values($legacy + [
+            'leave' => $leave,
+            'approverBlocks' => $this->approverBlocks->for($leave, $stage === LeaveApproval::STAGE_CANCELLATION),
+        ]);
+
+        return array_merge($legacy, $this->canonical($leave, $legacy, $stage), $designer);
     }
 
     /**
@@ -153,8 +169,16 @@ class LeaveRequestDataProvider implements DocumentDataProvider
             ['organization.director_position', 'ตำแหน่งผู้อำนวยการ', 'สถานศึกษา', 'TEXT'],
         ];
 
-        return array_map(fn (array $row) => [
-            'code' => $row[0], 'label_th' => $row[1], 'group_th' => $row[2], 'data_type' => $row[3],
-        ], $rows);
+        $catalog = [];
+        foreach ($rows as $row) {
+            $catalog[$row[0]] = ['code' => $row[0], 'label_th' => $row[1], 'group_th' => $row[2], 'data_type' => $row[3]];
+        }
+
+        // ฟิลด์ของหน้าออกแบบ (รวมช่องเฉพาะแบบฟอร์มของทุกประเภทการลา) — ชื่อซ้ำใช้คำอธิบายชุดใหม่
+        foreach ($this->fieldMap->definitions() as $definition) {
+            $catalog[$definition['code']] = array_intersect_key($definition, array_flip(['code', 'label_th', 'group_th', 'data_type']));
+        }
+
+        return array_values($catalog);
     }
 }

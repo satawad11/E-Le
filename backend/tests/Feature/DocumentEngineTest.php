@@ -16,6 +16,7 @@ use App\Services\DocumentEngine\DocumentEngine;
 use App\Services\DocumentEngine\LeaveDocumentGateway;
 use App\Services\DocumentEngine\Providers\LeaveRequestDataProvider;
 use App\Services\DocumentEngine\TemplateResolver;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Database\Seeders\DocumentEngineSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -46,13 +47,18 @@ class DocumentEngineTest extends TestCase
         return $admin;
     }
 
-    /** แบบฟอร์ม PDF ต้นฉบับที่โครงการใช้จริง */
-    private function sourceForm(string $file = 'leave_vacation.pdf'): string
+    /**
+     * แบบฟอร์ม PDF ตัวอย่างสำหรับทดสอบ — สร้างด้วย dompdf ครั้งเดียวต่อการรันทดสอบ
+     *
+     * เดิมใช้ PDF ในโฟลเดอร์ resources/document-templates ซึ่งเป็นแบบฟอร์มของหน่วยงานอื่นที่ฝังชื่อไว้
+     * ระบบสร้างแบบฟอร์มเปล่าเองแล้ว (document:generate-leave-forms) จึงลบไฟล์ชุดนั้นออก
+     */
+    private function sourceForm(): string
     {
-        $path = resource_path('document-templates/'.$file);
+        $path = sys_get_temp_dir().'/document-engine-test-form.pdf';
 
         if (! is_file($path)) {
-            $this->markTestSkipped('ไม่พบแบบฟอร์มต้นฉบับ '.$file);
+            file_put_contents($path, Pdf::loadHTML('<p>แบบฟอร์มทดสอบ</p>')->setPaper('a4')->output());
         }
 
         return $path;
@@ -392,11 +398,15 @@ class DocumentEngineTest extends TestCase
 
     // ─────────────────────────── Legacy compatibility ───────────────────────────
 
-    public function test_the_engine_is_off_by_default_and_leaves_the_old_path_untouched(): void
+    /**
+     * engine เปิดเป็นค่าเริ่มต้นแล้ว (สวิตช์ฉุกเฉิน) แต่ประเภทการลาที่ผู้ดูแลยังไม่เปิดใช้แบบฟอร์มที่ออกแบบ
+     * ต้องเดินเส้นทางเดิมทุกประการ — ดู LeaveFormDesignerTest
+     */
+    public function test_leave_types_without_an_enabled_form_keep_the_old_path(): void
     {
         [$leave] = $this->approvedLeave();
 
-        $this->assertFalse(config('document_engine.enabled'));
+        $this->assertTrue(config('document_engine.enabled'));
         $this->assertFalse(app(LeaveDocumentGateway::class)->handles($leave));
         $this->assertNull(app(LeaveDocumentGateway::class)->pdfFor($leave));
     }

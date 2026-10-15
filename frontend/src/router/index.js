@@ -318,10 +318,9 @@ const router = createRouter({
       meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'การแจ้งเตือน', parent: 'ตั้งค่าระบบ' }
     },
     {
+      // หน้าแม่แบบเอกสารเดิมรวมเข้ากับศูนย์จัดการเอกสารแล้ว (แท็บ "แบบฟอร์มใบลา")
       path: '/admin/document-templates',
-      name: 'admin-document-templates',
-      component: () => import('../views/admin/DocumentTemplatesView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'จัดการแม่แบบเอกสาร', parent: 'ตั้งค่าระบบ' }
+      redirect: '/admin/document-center',
     },
     // === ศูนย์จัดการเอกสารและรายงาน (Document & Report Engine) ===
     {

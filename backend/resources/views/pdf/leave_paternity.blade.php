@@ -35,6 +35,7 @@
         .box { display: inline-block; width: 10px; height: 10px; border: 1px solid #000; margin-right: 3px; }
         .checked { background-color: #000; }
         .sign-img { height: 32px; }
+        .fill { display: inline-block; border-bottom: 1px dotted #000; text-align: center; vertical-align: bottom; min-height: 16px; }
         .note { font-size: 13pt; }
     </style>
 </head>
@@ -88,7 +89,7 @@
         <td width="7%">ระดับ</td>
         <td width="45%" class="dot-left">&nbsp;{{ $level ?? '' }}</td>
         <td width="7%" class="text-center">สังกัด</td>
-        <td width="41%" class="dot-left">&nbsp;{{ trim(($division ?? '').' '.($school_name ?? '')) }}</td>
+        <td width="41%" class="dot-left">&nbsp;{{ $affiliation_line ?? '' }}</td>
     </tr>
 </table>
 
@@ -137,8 +138,8 @@
     @endif
     <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px;">&nbsp;</span>
 </div>
-<div class="text-center">( {{ $commander['name'] ?? '' }} )</div>
-<div class="text-center">วันที่ {{ ! empty($commander['date']) ? $commander['date']->format('d/m/').($commander['date']->year + 543) : '........./........./.........' }}</div>
+<div class="text-center">(<span class="fill" style="width: 190px;">{{ $commander['name'] ?? '' }}</span>)</div>
+<div class="text-center">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($commander['date'] ?? null) }}</span></div>
 
 <div class="bold underline" style="margin-top: 8px;">คำสั่ง</div>
 <div style="margin-left: 40px;">
@@ -154,9 +155,9 @@
     @endif
     <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px;">&nbsp;</span>
 </div>
-<div class="text-center">( {{ $order['name'] ?? '' }} )</div>
-<div class="text-center">{{ $order['position'] ?? ($director_position ?? '') }}</div>
-<div class="text-center">วันที่ {{ ! empty($order['date']) ? $order['date']->format('d/m/').($order['date']->year + 543) : '........./........./.........' }}</div>
+<div class="text-center">(<span class="fill" style="width: 190px;">{{ $order['name'] ?? '' }}</span>)</div>
+<div class="text-center"><span class="fill" style="width: 190px;">{{ $order['position'] ?? ($director_position ?? '') }}</span></div>
+<div class="text-center">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($order['date'] ?? null) }}</span></div>
 
 <div class="note" style="margin-top: 8px;"><span class="bold">หมายเหตุ :</span> ให้แนบสำเนาทะเบียนสมรส และสำเนาสูติบัตรเพื่อประกอบการพิจารณา</div>
 

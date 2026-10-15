@@ -15,8 +15,8 @@
 <body>
 
 @php
-    $answer = (string) ($extra['hajj_before'] ?? '');
-    $hasBeen = $answer !== '' ? in_array($answer, ['เคย', 'yes', '1', 'true'], true) : (($previous_same_type_count ?? 0) > 0);
+    // true = เคย, false = ยังไม่เคย, null = ไม่ทราบ (ไม่ติ๊กช่องใด) — ดู LeaveDocumentFields::doneBefore()
+    $hasBeen = $done_before ?? null;
 @endphp
 
 @include('pdf.partials.form_header', ['formTitle' => 'แบบใบลาไปประกอบพิธีฮัจย์', 'formSubject' => 'ขอลาไปประกอบพิธีฮัจย์'])
@@ -33,7 +33,7 @@
 <table class="row">
     <tr>
         <td width="6%">สังกัด</td>
-        <td width="94%" class="dot-left">&nbsp;{{ trim(($division ?? '').' '.($school_name ?? '')) }}</td>
+        <td width="94%" class="dot-left">&nbsp;{{ $affiliation_line ?? '' }}</td>
     </tr>
 </table>
 <table class="row">
@@ -47,9 +47,9 @@
 
 <div style="margin-top: 6px;">
     ข้าพเจ้า
-    <span class="box {{ $hasBeen ? '' : 'checked' }}"></span>ยังไม่เคย
+    <span class="box {{ $hasBeen === false ? 'checked' : '' }}"></span>ยังไม่เคย
     &nbsp;&nbsp;
-    <span class="box {{ $hasBeen ? 'checked' : '' }}"></span>เคย
+    <span class="box {{ $hasBeen === true ? 'checked' : '' }}"></span>เคย
     &nbsp;ไปประกอบพิธีฮัจย์
 </div>
 

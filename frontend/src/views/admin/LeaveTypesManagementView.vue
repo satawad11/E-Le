@@ -128,8 +128,8 @@
                 <option v-for="template in leaveTemplates" :key="template.code" :value="template.code">{{ template.name }}</option>
               </select>
               <p class="text-xs text-gray-500 mt-1.5">
-                แก้ไขเนื้อหาแบบฟอร์มได้ที่
-                <router-link to="/admin/document-templates" class="text-[#800000] font-semibold hover:underline">เมนูแม่แบบเอกสาร →</router-link>
+                ออกแบบแบบฟอร์มของประเภทการลานี้ได้ที่
+                <router-link to="/admin/document-center" class="text-[#800000] font-semibold hover:underline">ศูนย์จัดการเอกสาร → แบบฟอร์มใบลา</router-link>
               </p>
             </div>
 
@@ -296,7 +296,8 @@ const fetchTypes = async () => {
 const fetchTemplates = async () => {
   try {
     const res = await api.get('/admin/document-templates', { params: { module: 'leave' } })
-    leaveTemplates.value = res.data
+    // เฉพาะแบบฟอร์มในระบบ — แบบฟอร์มที่ออกแบบ (designer_*) ผูกจากแท็บ "แบบฟอร์มใบลา" ไม่ใช่ที่นี่
+    leaveTemplates.value = res.data.filter((template) => template.has_preview)
   } catch {
     leaveTemplates.value = []
   }

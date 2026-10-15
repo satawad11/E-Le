@@ -14,6 +14,9 @@ use App\Models\LeaveType;
 use App\Services\AuditLogger;
 use App\Services\DocumentEngine\DataProviderRegistry;
 use App\Services\DocumentEngine\DocumentEngine;
+use App\Services\DocumentEngine\FieldDictionary;
+use App\Services\DocumentEngine\LeaveTypeForms;
+use App\Services\DocumentEngine\TemplateVersionPublisher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -220,33 +223,9 @@ class DocumentEngineController extends Controller
     {
         abort_if($version->status === DocumentTemplateVersion::STATUS_ACTIVE, 422, 'เวอร์ชันนี้เผยแพร่อยู่แล้ว');
 
-        DB::transaction(function () use ($version, $request) {
-            // เวอร์ชันที่ใช้อยู่เดิมถูกปลดเป็น RETIRED (ไม่ลบ) เอกสารเก่าที่อ้างอยู่จึงยังพิมพ์ได้
-            DocumentTemplateVersion::where('document_template_id', $version->document_template_id)
-                ->where('id', '!=', $version->id)
-                ->where('status', DocumentTemplateVersion::STATUS_ACTIVE)
-                ->update([
-                    'status' => DocumentTemplateVersion::STATUS_RETIRED,
-                    'is_active' => false,
-                    'effective_to' => now()->subDay()->toDateString(),
-                ]);
+        $version = app(TemplateVersionPublisher::class)->publish($version, $request->user()?->id);
 
-            $version->update([
-                'status' => DocumentTemplateVersion::STATUS_ACTIVE,
-                'is_active' => true,
-                'effective_from' => now()->toDateString(),
-                'effective_to' => null,
-                'published_by' => $request->user()?->id,
-                'published_at' => now(),
-            ]);
-
-            // แม่แบบสะท้อนวิธีเรนเดอร์ของเวอร์ชันที่ใช้งานอยู่ (saveQuietly กัน hook ออกเวอร์ชันเปล่า)
-            $version->template->forceFill(['render_mode' => $version->render_mode])->saveQuietly();
-        }, 5);
-
-        $this->audit->log('document_version_published', 'DocumentTemplateVersion', $version->id, after: ['version' => $version->version]);
-
-        return response()->json(['message' => 'เผยแพร่เวอร์ชันเรียบร้อยแล้ว', 'version' => $version->fresh()]);
+        return response()->json(['message' => 'เผยแพร่เวอร์ชันเรียบร้อยแล้ว', 'version' => $version]);
     }
 
     /**
@@ -379,6 +358,9 @@ class DocumentEngineController extends Controller
 
     public function fieldDictionary(Request $request)
     {
+        // ซิงก์ก่อนเสมอ — ช่องกรอกที่เพิ่งเพิ่มให้ประเภทการลาจะขึ้นในหน้าออกแบบทันที
+        app(FieldDictionary::class)->sync();
+
         return response()->json(
             DocumentFieldDefinition::query()
                 ->when($request->filled('module'), fn ($query) => $query->where('module', $request->string('module')))
@@ -394,6 +376,49 @@ class DocumentEngineController extends Controller
         $this->providers->sync();
 
         return response()->json(DocumentDataSource::where('is_active', true)->orderBy('module')->orderBy('code')->get());
+    }
+
+    // ───────────────────────────── แบบฟอร์มรายประเภทการลา ─────────────────────────────
+
+    /** แบบฟอร์มที่ออกแบบได้ของแต่ละประเภทการลา พร้อมสถานะการเผยแพร่และการเปิดใช้งาน */
+    public function leaveTypeForms(LeaveTypeForms $forms)
+    {
+        return response()->json($forms->rows());
+    }
+
+    /** สร้างแบบฟอร์มฉบับร่างจากแบบฟอร์มในระบบ (วางฟิลด์ให้ครบทุกช่องแล้ว) */
+    public function generateLeaveTypeForm(Request $request, LeaveTypeForms $forms, string $target)
+    {
+        // เรนเดอร์แบบฟอร์มหลายรอบเพื่อหาตำแหน่งช่องติ๊ก/ลายเซ็น — ใช้เวลาราวครึ่งนาทีต่อแบบฟอร์ม
+        set_time_limit(180);
+
+        try {
+            $version = $forms->generate($target, $request->user()?->id);
+        } catch (\DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => 'สร้างแบบฟอร์มฉบับร่างเรียบร้อยแล้ว — ตรวจตำแหน่งในหน้าออกแบบแล้วกดเผยแพร่',
+            'template_id' => $version->document_template_id,
+            'version' => $version->only(['id', 'version', 'status']),
+        ], 201);
+    }
+
+    /** เปิด/ปิด "ใช้แบบฟอร์มที่ออกแบบ" ของประเภทการลา */
+    public function setLeaveTypeForm(Request $request, LeaveTypeForms $forms, string $target)
+    {
+        $data = $request->validate(['enabled' => 'required|boolean']);
+
+        try {
+            $forms->setActive($target, $data['enabled'], $request->user()?->id);
+        } catch (\DomainException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => $data['enabled'] ? 'เปิดใช้แบบฟอร์มที่ออกแบบแล้ว — ใบลาที่ยื่นต่อจากนี้จะใช้แบบฟอร์มนี้' : 'ปิดการใช้แบบฟอร์มที่ออกแบบแล้ว',
+        ]);
     }
 
     // ───────────────────────────── กติกาผูกแม่แบบ ─────────────────────────────

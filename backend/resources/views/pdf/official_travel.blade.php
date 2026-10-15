@@ -30,9 +30,15 @@
     $garuda = $garudaSetting ? \App\Support\StoredFile::path($garudaSetting) : null;
     $garuda = $garuda && is_file($garuda) ? $garuda : null;
 
-    $expense = $field('expense_type') ?: 'budget';
+    // รองรับค่าที่เก็บแบบเดิม (budget/no_budget/vehicle_only) และค่าภาษาไทยจากช่องกรอกของประเภทการลา
+    $expense = match ($field('expense_type')) {
+        'budget', 'เบิกตามสิทธิ' => 'budget',
+        'no_budget', 'ไม่เบิกค่าใช้จ่าย' => 'no_budget',
+        'vehicle_only', 'เบิกเฉพาะค่ายานพาหนะ' => 'vehicle_only',
+        default => '',
+    };
     $companions = collect(range(1, 6))->map(fn ($i) => $field('companion_'.$i));
-    $thaiShort = fn ($date) => ! empty($date) ? $date->format('d/m/').($date->year + 543) : '........./........./.........';
+    $thaiShort = fn ($date) => \App\Support\FormDate::short($date);
 @endphp
 
 <table class="row">
@@ -49,7 +55,7 @@
 <table class="row" style="margin-top: 6px;">
     <tr>
         <td width="11%" class="bold">ส่วนราชการ</td>
-        <td width="89%" class="dot-left">&nbsp;{{ trim(($school_name ?? '').' '.($school_affiliation ?? '')) }}</td>
+        <td width="89%" class="dot-left">&nbsp;{{ $organization_line ?? '' }}</td>
     </tr>
 </table>
 <table class="row">
@@ -166,8 +172,8 @@
                             @endif
                             <span style="border-bottom: 1px dotted #000; display: inline-block; width: 170px;">&nbsp;</span>
                         </div>
-                        <div style="margin-left: 30px;">( {{ $block['name'] ?? '' }} )</div>
-                        <div style="margin-left: 30px;">วันที่ {{ $thaiShort($block['date'] ?? null) }}</div>
+                        <div style="margin-left: 30px;">(<span class="fill" style="width: 190px;">{{ $block['name'] ?? '' }}</span>)</div>
+                        <div style="margin-left: 30px;">วันที่ <span class="fill" style="width: 110px;">{{ $thaiShort($block['date'] ?? null) }}</span></div>
                     </td>
                 @endforeach
                 @if ($pair->count() === 1)

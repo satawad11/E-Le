@@ -37,6 +37,7 @@
         table.stats { border-collapse: collapse; font-size: 13pt; }
         table.stats th, table.stats td { border: 1px solid #000; padding: 3px 8px; text-align: center; }
         .sign-img { height: 32px; }
+        .fill { display: inline-block; border-bottom: 1px dotted #000; text-align: center; vertical-align: bottom; min-height: 16px; }
         .panel { width: 100%; border-collapse: collapse; }
     </style>
 </head>
@@ -92,7 +93,7 @@
         <td width="10%">แผนก/งาน</td>
         <td width="50%" class="dot-left">&nbsp;{{ $division ?? '' }}</td>
         <td width="7%" class="text-center">สังกัด</td>
-        <td width="33%" class="dot-left">&nbsp;{{ trim(($school_name ?? '').' '.($school_affiliation ?? '')) }}</td>
+        <td width="33%" class="dot-left">&nbsp;{{ $organization_line ?? '' }}</td>
     </tr>
 </table>
 
@@ -148,8 +149,8 @@
                 @endif
                 <span style="border-bottom: 1px dotted #000; display: inline-block; width: 140px;">&nbsp;</span> ผู้ตรวจสอบ
             </div>
-            <div class="text-center" style="width: 260px;">( {{ $checker['name'] ?? '' }} )</div>
-            <div class="text-center" style="width: 260px;">วันที่ {{ ! empty($checker['date']) ? $checker['date']->format('d/m/').($checker['date']->year + 543) : '........./........./.........' }}</div>
+            <div class="text-center" style="width: 260px;">(<span class="fill" style="width: 190px;">{{ $checker['name'] ?? '' }}</span>)</div>
+            <div class="text-center" style="width: 260px;">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($checker['date'] ?? null) }}</span></div>
         </td>
         <td width="10%"></td>
         <td width="45%" style="vertical-align: top;">
@@ -165,8 +166,8 @@
                 @endif
                 <span style="border-bottom: 1px dotted #000; display: inline-block; width: 170px;">&nbsp;</span>
             </div>
-            <div class="text-center" style="width: 280px;">( {{ $commander['name'] ?? '' }} )</div>
-            <div class="text-center" style="width: 280px;">วันที่ {{ ! empty($commander['date']) ? $commander['date']->format('d/m/').($commander['date']->year + 543) : '........./........./.........' }}</div>
+            <div class="text-center" style="width: 280px;">(<span class="fill" style="width: 190px;">{{ $commander['name'] ?? '' }}</span>)</div>
+            <div class="text-center" style="width: 280px;">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($commander['date'] ?? null) }}</span></div>
 
             <div class="bold underline" style="margin-top: 8px;">คำสั่ง</div>
             <div style="margin-left: 20px;">
@@ -182,9 +183,9 @@
                 @endif
                 <span style="border-bottom: 1px dotted #000; display: inline-block; width: 170px;">&nbsp;</span>
             </div>
-            <div class="text-center" style="width: 280px;">( {{ $order['name'] ?? '' }} )</div>
-            <div class="text-center" style="width: 280px;">{{ $order['position'] ?? ($director_position ?? '') }}</div>
-            <div class="text-center" style="width: 280px;">วันที่ {{ ! empty($order['date']) ? $order['date']->format('d/m/').($order['date']->year + 543) : '........./........./.........' }}</div>
+            <div class="text-center" style="width: 280px;">(<span class="fill" style="width: 190px;">{{ $order['name'] ?? '' }}</span>)</div>
+            <div class="text-center" style="width: 280px;"><span class="fill" style="width: 190px;">{{ $order['position'] ?? ($director_position ?? '') }}</span></div>
+            <div class="text-center" style="width: 280px;">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($order['date'] ?? null) }}</span></div>
         </td>
     </tr>
 </table>

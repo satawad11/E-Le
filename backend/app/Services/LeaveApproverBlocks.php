@@ -34,7 +34,7 @@ class LeaveApproverBlocks
     private const BLANK_NAME = '........................................................';
 
     /**
-     * @return array<int, array{name: string, date: ?Carbon, signature: ?string, comment: ?string, status: ?string, position: string, role_name: string}>
+     * @return array<int, array{name: string, date: ?Carbon, signature: ?string, signature_path: ?string, comment: ?string, status: ?string, position: string, role_name: string}>
      */
     public function for(Leave $leave, bool $isCancel = false): array
     {
@@ -55,6 +55,8 @@ class LeaveApproverBlocks
                 // วันที่/ลายเซ็น/ความเห็นแสดงเฉพาะขั้นที่ลงนามแล้ว — ขั้นที่ยังรออยู่ต้องเป็นช่องว่าง
                 'date' => $acted ? Carbon::parse($approval->acted_at ?? $approval->approved_at ?? $approval->updated_at) : null,
                 'signature' => $acted && $approval->signature_path ? StoredFile::path($approval->signature_path) : null,
+                // path ตามที่เก็บ (ไม่ใช่ path บนดิสก์) — Document Engine อ่านรูปผ่าน disk ของระบบเอง
+                'signature_path' => $acted ? $approval->signature_path : null,
                 'comment' => $acted ? $approval->comment : null,
                 'status' => $approval?->status,
                 'position' => (string) ($approval?->approver_position ?: ($step->role?->description ?? $step->name)),
@@ -91,6 +93,7 @@ class LeaveApproverBlocks
             'name' => $log->user->full_name_with_title ?: (string) $log->user->name,
             'date' => Carbon::parse($log->created_at),
             'signature' => $log->user->profile?->signature_path ? StoredFile::path($log->user->profile->signature_path) : null,
+            'signature_path' => $log->user->profile?->signature_path,
             'comment' => $log->details['comment'] ?? null,
             'status' => $log->action === 'Cancellation Approved' ? 'Approved' : 'Rejected',
             'position' => (string) ($log->user->profile?->position ?? ''),

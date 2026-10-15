@@ -35,6 +35,7 @@
         .box { display: inline-block; width: 10px; height: 10px; border: 1px solid #000; margin-right: 3px; }
         .checked { background-color: #000; }
         .sign-img { height: 32px; }
+        .fill { display: inline-block; border-bottom: 1px dotted #000; text-align: center; vertical-align: bottom; min-height: 16px; }
     </style>
 </head>
 <body>
@@ -43,8 +44,8 @@
     $blocks = collect($approverBlocks ?? []);
     $order = $blocks->last();
     $commander = $blocks->filter(fn ($b) => $b !== $order)->last() ?? $order;
-    $ordainedBefore = filter_var($extra['ordained_before'] ?? false, FILTER_VALIDATE_BOOLEAN)
-        || in_array($extra['ordained_before'] ?? '', ['เคย', 'yes', '1'], true);
+    // true = เคย, false = ยังไม่เคย, null = ไม่ทราบ (ไม่ติ๊กช่องใด) — ดู LeaveDocumentFields::doneBefore()
+    $ordainedBefore = $done_before ?? null;
 @endphp
 
 <div class="text-center bold underline" style="font-size: 18pt;">แบบใบลาอุปสมบท</div>
@@ -89,7 +90,7 @@
         <td width="10%">แผนก/งาน</td>
         <td width="50%" class="dot-left">&nbsp;{{ $division ?? '' }}</td>
         <td width="7%" class="text-center">สังกัด</td>
-        <td width="33%" class="dot-left">&nbsp;{{ trim(($school_name ?? '').' '.($school_affiliation ?? '')) }}</td>
+        <td width="33%" class="dot-left">&nbsp;{{ $organization_line ?? '' }}</td>
     </tr>
     <tr>
         <td width="9%">เกิดวันที่</td>
@@ -101,9 +102,9 @@
 
 <div style="margin-top: 6px;">
     ข้าพเจ้า
-    <span class="box {{ $ordainedBefore ? '' : 'checked' }}"></span>ยังไม่เคย
+    <span class="box {{ $ordainedBefore === false ? 'checked' : '' }}"></span>ยังไม่เคย
     &nbsp;&nbsp;
-    <span class="box {{ $ordainedBefore ? 'checked' : '' }}"></span>เคย
+    <span class="box {{ $ordainedBefore === true ? 'checked' : '' }}"></span>เคย
     &nbsp;อุปสมบท
 </div>
 
@@ -152,8 +153,8 @@
     @endif
     <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px;">&nbsp;</span>
 </div>
-<div class="text-center">( {{ $commander['name'] ?? '' }} )</div>
-<div class="text-center">วันที่ {{ ! empty($commander['date']) ? $commander['date']->format('d/m/').($commander['date']->year + 543) : '........./........./.........' }}</div>
+<div class="text-center">(<span class="fill" style="width: 190px;">{{ $commander['name'] ?? '' }}</span>)</div>
+<div class="text-center">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($commander['date'] ?? null) }}</span></div>
 
 <div class="bold underline" style="margin-top: 8px;">คำสั่ง</div>
 <div style="margin-left: 40px;">
@@ -169,9 +170,9 @@
     @endif
     <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px;">&nbsp;</span>
 </div>
-<div class="text-center">( {{ $order['name'] ?? '' }} )</div>
-<div class="text-center">{{ $order['position'] ?? ($director_position ?? '') }}</div>
-<div class="text-center">วันที่ {{ ! empty($order['date']) ? $order['date']->format('d/m/').($order['date']->year + 543) : '........./........./.........' }}</div>
+<div class="text-center">(<span class="fill" style="width: 190px;">{{ $order['name'] ?? '' }}</span>)</div>
+<div class="text-center"><span class="fill" style="width: 190px;">{{ $order['position'] ?? ($director_position ?? '') }}</span></div>
+<div class="text-center">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($order['date'] ?? null) }}</span></div>
 
 @includeIf('pdf.partials.verification_qr')
 
