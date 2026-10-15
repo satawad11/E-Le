@@ -86,17 +86,26 @@
         <td width="8%" class="text-center">ตำแหน่ง</td>
         <td width="30%" class="dot-left">&nbsp;{{ $position ?? '' }}</td>
     </tr>
+</table>
+<table class="row">
     <tr>
         <td width="10%">แผนก/งาน</td>
-        <td width="50%" class="dot-left">&nbsp;{{ $division ?? '' }}</td>
-        <td width="7%" class="text-center">สังกัด</td>
-        <td width="33%" class="dot-left">&nbsp;{{ $organization_line ?? '' }}</td>
+        <td width="90%" class="dot-left">&nbsp;{{ $division ?? '' }}</td>
     </tr>
+</table>
+{{-- สังกัดอยู่บรรทัดของตัวเอง — ชื่อสถานศึกษาและหน่วยงานต้นสังกัดยาวเกินช่องครึ่งบรรทัด --}}
+<table class="row">
+    <tr>
+        <td width="7%">สังกัด</td>
+        <td width="93%" class="dot-left">&nbsp;{{ $organization_line ?? '' }}</td>
+    </tr>
+</table>
+<table class="row">
     <tr>
         <td width="9%">เกิดวันที่</td>
-        <td width="26%" class="dot">{{ $birth_date_thai ?? '' }}</td>
-        <td width="18%" class="text-center">เข้ารับราชการเมื่อวันที่</td>
-        <td width="47%" class="dot" colspan="2">{{ $hired_date_thai ?? '' }}</td>
+        <td width="30%" class="dot">{{ $birth_date_thai ?? '' }}</td>
+        <td width="20%" class="text-center">เข้ารับราชการเมื่อวันที่</td>
+        <td width="41%" class="dot">{{ $hired_date_thai ?? '' }}</td>
     </tr>
 </table>
 

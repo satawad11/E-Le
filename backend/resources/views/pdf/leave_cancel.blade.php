@@ -83,15 +83,24 @@
         <td width="8%" class="text-center">ตำแหน่ง</td>
         <td width="30%" class="dot-left">&nbsp;{{ $position ?? '' }}</td>
     </tr>
+</table>
+<table class="row">
     <tr>
         <td width="10%">แผนก/งาน</td>
-        <td width="50%" class="dot-left">&nbsp;{{ $division ?? '' }}</td>
-        <td width="7%" class="text-center">สังกัด</td>
-        <td width="33%" class="dot-left">&nbsp;{{ $organization_line ?? '' }}</td>
+        <td width="90%" class="dot-left">&nbsp;{{ $division ?? '' }}</td>
     </tr>
+</table>
+{{-- สังกัดอยู่บรรทัดของตัวเอง — ชื่อสถานศึกษาและหน่วยงานต้นสังกัดยาวเกินช่องครึ่งบรรทัด --}}
+<table class="row">
+    <tr>
+        <td width="7%">สังกัด</td>
+        <td width="93%" class="dot-left">&nbsp;{{ $organization_line ?? '' }}</td>
+    </tr>
+</table>
+<table class="row">
     <tr>
         <td width="14%">ได้รับอนุญาตให้ลา</td>
-        <td width="86%" class="dot-left" colspan="4">&nbsp;{{ $leave_type ?? '' }}</td>
+        <td width="86%" class="dot-left">&nbsp;{{ $leave_type ?? '' }}</td>
     </tr>
 </table>
 
@@ -107,15 +116,20 @@
     </tr>
 </table>
 
+{{-- แต่ละบรรทัดเป็นตารางของตัวเอง — dompdf กำหนดความกว้างคอลัมน์จากแถวแรก แถวที่จำนวนช่องต่างกันจะเพี้ยน --}}
 <table class="row" style="margin-top: 6px;">
     <tr>
         <td width="14%"></td>
         <td width="9%">เนื่องจาก</td>
         <td width="77%" class="dot-left">&nbsp;{{ $cancel_reason ?? '' }}</td>
     </tr>
+</table>
+<table class="row">
     <tr>
-        <td width="100%" class="dot-left" colspan="3">&nbsp;</td>
+        <td width="100%" class="dot-left">&nbsp;</td>
     </tr>
+</table>
+<table class="row">
     <tr>
         <td width="14%">จึงขอยกเลิกวันลา</td>
         <td width="63%" class="dot-left">&nbsp;{{ $cancelled_leave_text ?? '' }}</td>

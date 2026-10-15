@@ -89,11 +89,18 @@
         <td width="8%" class="text-center">ตำแหน่ง</td>
         <td width="30%" class="dot-left">&nbsp;{{ $position ?? '' }}</td>
     </tr>
+</table>
+<table class="row">
     <tr>
         <td width="10%">แผนก/งาน</td>
-        <td width="50%" class="dot-left">&nbsp;{{ $division ?? '' }}</td>
-        <td width="7%" class="text-center">สังกัด</td>
-        <td width="33%" class="dot-left">&nbsp;{{ $organization_line ?? '' }}</td>
+        <td width="90%" class="dot-left">&nbsp;{{ $division ?? '' }}</td>
+    </tr>
+</table>
+{{-- สังกัดอยู่บรรทัดของตัวเอง — ชื่อสถานศึกษาและหน่วยงานต้นสังกัดยาวเกินช่องครึ่งบรรทัด --}}
+<table class="row">
+    <tr>
+        <td width="7%">สังกัด</td>
+        <td width="93%" class="dot-left">&nbsp;{{ $organization_line ?? '' }}</td>
     </tr>
 </table>
 
