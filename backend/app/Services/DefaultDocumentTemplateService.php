@@ -96,13 +96,6 @@ class DefaultDocumentTemplateService
                 8.0,
                 12.0
             ),
-            [
-                'code' => 'hr_employment_certificate',
-                'name' => 'หนังสือรับรองการปฏิบัติงานบุคลากร (ตัวอย่าง HR)',
-                'module' => 'hr',
-                'content_html' => '<div class="text-center"><h2>หนังสือรับรองการปฏิบัติงาน</h2><p>ขอรับรองว่า {{ $user_name }} สังกัด {{ $department }}</p></div>',
-                'is_active' => true,
-            ],
         ];
     }
 
