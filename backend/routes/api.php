@@ -246,14 +246,12 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/admin/export-settings', [SecureExportSettingController::class, 'update']);
         Route::post('/admin/export-settings/upload-logo', [SecureExportSettingController::class, 'uploadLogo']);
 
+        // TPL-SEC-01: แบบฟอร์ม HTML อ่านอย่างเดียว — ไม่มี endpoint รับ HTML จากผู้ใช้ไปเรนเดอร์อีกแล้ว
         Route::get('/admin/document-templates', [DocumentTemplateController::class, 'index']);
-        Route::post('/admin/document-templates', [DocumentTemplateController::class, 'store']);
         Route::post('/admin/document-templates/seed-defaults', [DocumentTemplateController::class, 'seedDefaults']);
         Route::get('/admin/document-templates/fields', [DocumentTemplateController::class, 'fields']);
-        Route::post('/admin/document-templates/preview', [DocumentTemplateController::class, 'preview'])->middleware('throttle:documents');
         Route::get('/admin/document-templates/{template}', [DocumentTemplateController::class, 'show']);
-        Route::put('/admin/document-templates/{template}', [DocumentTemplateController::class, 'update']);
-        Route::delete('/admin/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
+        Route::get('/admin/document-templates/{template}/preview', [DocumentTemplateController::class, 'preview'])->middleware('throttle:documents');
 
         Route::get('/admin/fiscal-years', [FiscalYearController::class, 'index']);
 

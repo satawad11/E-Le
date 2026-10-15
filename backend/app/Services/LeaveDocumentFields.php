@@ -6,6 +6,7 @@ use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveBalance;
 use App\Models\Setting;
+use App\Support\StoredFile;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -61,6 +62,7 @@ class LeaveDocumentFields
                 'phone' => 'หมายเลขโทรศัพท์',
                 'birth_date_thai' => 'วันเกิด (แบบไทย)',
                 'hired_date_thai' => 'วันเข้ารับราชการ (แบบไทย)',
+                'requester_signature' => 'ลายเซ็นผู้ลา (ไฟล์ที่แนบตอนยื่นใบลา) — ว่างเมื่อไม่มี',
             ],
             'การลาครั้งนี้' => [
                 'leave_type' => 'ประเภทการลา',
@@ -74,6 +76,9 @@ class LeaveDocumentFields
                 'end_year' => 'ปีที่สิ้นสุดการลา (พ.ศ.)',
                 'end_date_thai' => 'วันสิ้นสุดการลาแบบเต็ม',
                 'total_days' => 'จำนวนวันลา',
+                'duration_years' => 'ระยะเวลาลา — จำนวนปี (แบบฟอร์มลาระยะยาว)',
+                'duration_months' => 'ระยะเวลาลา — จำนวนเดือน',
+                'duration_days' => 'ระยะเวลาลา — จำนวนวัน',
                 'contact_address' => 'ที่อยู่ติดต่อระหว่างลา',
                 'is_sick' => 'ติ๊กช่อง "ป่วย" หรือไม่ (true/false)',
                 'is_personal' => 'ติ๊กช่อง "กิจส่วนตัว" หรือไม่',
@@ -85,6 +90,7 @@ class LeaveDocumentFields
                 'last_start_date_thai' => 'วันเริ่มลาครั้งก่อน',
                 'last_end_date_thai' => 'วันสิ้นสุดการลาครั้งก่อน',
                 'last_total_days' => 'จำนวนวันลาครั้งก่อน',
+                'previous_same_type_count' => 'จำนวนครั้งที่เคยได้รับอนุมัติให้ลาประเภทนี้มาก่อน (ทุกปี)',
             ],
             'สถิติการลาในปีงบประมาณ' => [
                 'stats' => 'ตารางสถิติ — stats[ชื่อประเภท][before|current|total|times_before|times_current|times_total]',
@@ -141,6 +147,7 @@ class LeaveDocumentFields
             'phone' => '08X-XXX-XXXX',
             'birth_date_thai' => $this->thaiDate($today->copy()->subYears(40)),
             'hired_date_thai' => $this->thaiDate($today->copy()->subYears(10)),
+            'requester_signature' => '',
             'leave_type' => 'ลาป่วย',
             'reason' => 'มีอาการไข้ ต้องพักรักษาตัวตามคำแนะนำแพทย์',
             'start_day' => $today->day,
@@ -152,6 +159,7 @@ class LeaveDocumentFields
             'end_year' => $today->copy()->addDay()->year + 543,
             'end_date_thai' => $this->thaiDate($today->copy()->addDay()),
             'total_days' => 2,
+            ...$this->duration($today, $today->copy()->addDay()),
             'contact_address' => 'บ้านเลขที่ 99 ถนนตัวอย่าง',
             'is_sick' => true,
             'is_personal' => false,
@@ -161,6 +169,7 @@ class LeaveDocumentFields
             'last_start_date_thai' => $this->thaiDate($today->copy()->subMonth()),
             'last_end_date_thai' => $this->thaiDate($today->copy()->subMonth()->addDay()),
             'last_total_days' => 2,
+            'previous_same_type_count' => 0,
             'stats' => [
                 'ป่วย' => ['before' => 3, 'current' => 2, 'total' => 5, 'times_before' => 2, 'times_current' => 1, 'times_total' => 3],
                 'กิจส่วนตัว' => ['before' => 1, 'current' => '', 'total' => 1, 'times_before' => 1, 'times_current' => '', 'times_total' => 1],
@@ -225,6 +234,7 @@ class LeaveDocumentFields
             'phone' => (string) ($user?->phone ?? ''),
             'birth_date_thai' => $profile?->date_of_birth ? $this->thaiDate($profile->date_of_birth) : '',
             'hired_date_thai' => $profile?->start_date ? $this->thaiDate($profile->start_date) : '',
+            'requester_signature' => $leave->signature_path ? (string) StoredFile::path($leave->signature_path) : '',
 
             'leave_type' => $typeName,
             'reason' => (string) $leave->reason,
@@ -237,6 +247,7 @@ class LeaveDocumentFields
             'end_year' => $leave->end_date ? Carbon::parse($leave->end_date)->year + 543 : '',
             'end_date_thai' => $leave->end_date ? $this->thaiDate($leave->end_date) : '',
             'total_days' => $this->number($leave->total_days),
+            ...$this->duration($leave->start_date, $leave->end_date),
             'contact_address' => (string) $leave->contact_address,
             'is_sick' => str_contains($typeName, 'ป่วย'),
             'is_personal' => str_contains($typeName, 'กิจ'),
@@ -247,9 +258,15 @@ class LeaveDocumentFields
             'last_start_date_thai' => $lastLeave ? $this->thaiDate($lastLeave->start_date) : '',
             'last_end_date_thai' => $lastLeave ? $this->thaiDate($lastLeave->end_date) : '',
             'last_total_days' => $lastLeave ? $this->number($lastLeave->total_days) : '',
+            'previous_same_type_count' => Leave::where('user_id', $leave->user_id)
+                ->where('leave_type_id', $leave->leave_type_id)
+                ->where('status', 'Approved')
+                ->where('id', '<', (int) $leave->id)
+                ->count(),
 
             'stats' => $this->stats($leave),
-            'fiscal_year' => Carbon::parse($leave->start_date ?? $createdAt)->year + 543,
+            // ปีงบประมาณ (พ.ศ.) ของวันเริ่มลา — 1 ต.ค. 2569 ขึ้นไปคือปีงบ 2570 ไม่ใช่ปีปฏิทิน
+            'fiscal_year' => $this->fiscalRange(Carbon::parse($leave->start_date ?? $createdAt))[1]->year + 543,
 
             'vacation_accumulated' => $vacation['accumulated'],
             'vacation_entitled' => $vacation['entitled'],
@@ -313,10 +330,16 @@ class LeaveDocumentFields
 
         $stats = [];
         foreach ($rows as $row) {
+            // "ลามาแล้ว" นับเฉพาะใบที่ลาก่อนใบนี้ — ใบที่ลาทีหลังต้องไม่ย้อนมาโผล่ในเอกสารฉบับเก่า
+            $isCurrent = $row->id === $leave->id;
+            if (! $isCurrent && ! $this->isEarlier($row, $leave)) {
+                continue;
+            }
+
             $name = $row->type->name ?? 'อื่น ๆ';
             $stats[$name] ??= ['before' => 0, 'current' => 0, 'total' => 0, 'times_before' => 0, 'times_current' => 0, 'times_total' => 0];
 
-            $bucket = $row->id === $leave->id ? 'current' : 'before';
+            $bucket = $isCurrent ? 'current' : 'before';
             $stats[$name][$bucket] += (float) $row->total_days;
             $stats[$name]['times_'.$bucket] += 1;
         }
@@ -348,7 +371,9 @@ class LeaveDocumentFields
      */
     private function vacation(Leave $leave): array
     {
-        $year = Carbon::parse($leave->start_date ?? now())->year;
+        // leave_balances.year เป็น "ค.ศ. ของปีที่ปีงบประมาณสิ้นสุด" (ดู LeavePolicyService::fiscalYearNumber)
+        // เดิมใช้ปีปฏิทินของวันเริ่มลา ใบลา ต.ค.–ธ.ค. จึงไปอ่านยอดของปีงบที่ปิดไปแล้ว
+        $year = $this->fiscalRange(Carbon::parse($leave->start_date ?? now()))[1]->year;
 
         $balance = LeaveBalance::where('user_id', $leave->user_id)
             ->where('leave_type_id', $leave->leave_type_id)
@@ -367,6 +392,35 @@ class LeaveDocumentFields
             'entitled' => $this->number(max(0, $quota - $accumulated)),
             'total' => $this->number($quota),
         ];
+    }
+
+    /**
+     * ระยะเวลาลาเป็น ปี/เดือน/วัน นับรวมวันแรกและวันสุดท้าย — แบบฟอร์มลาระยะยาวเขียนแบบนี้
+     *
+     * @return array{duration_years: int|string, duration_months: int|string, duration_days: int|string}
+     */
+    private function duration($start, $end): array
+    {
+        if (blank($start) || blank($end)) {
+            return ['duration_years' => '', 'duration_months' => '', 'duration_days' => ''];
+        }
+
+        $diff = Carbon::parse($start)->startOfDay()->diff(Carbon::parse($end)->startOfDay()->addDay());
+
+        return [
+            'duration_years' => $diff->y ?: '-',
+            'duration_months' => $diff->m ?: '-',
+            'duration_days' => $diff->d ?: '-',
+        ];
+    }
+
+    /** ใบลา $row เริ่มก่อนใบลา $leave หรือไม่ (วันเดียวกันใช้ลำดับการยื่น) */
+    private function isEarlier(Leave $row, Leave $leave): bool
+    {
+        $rowStart = Carbon::parse($row->start_date);
+        $leaveStart = Carbon::parse($leave->start_date ?? $leave->created_at ?? now());
+
+        return $rowStart->lt($leaveStart) || ($rowStart->eq($leaveStart) && $leave->id !== null && $row->id < $leave->id);
     }
 
     /**

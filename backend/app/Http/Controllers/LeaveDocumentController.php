@@ -2,31 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ApprovalStep;
 use App\Models\Leave;
-use App\Models\LeaveActionLog;
-use App\Models\LeaveBalance;
 use App\Models\Setting;
 use App\Services\DocumentEngine\LeaveDocumentGateway;
 use App\Services\Export\LeaveWordService;
+use App\Services\LeaveApproverBlocks;
 use App\Services\LeaveDocumentTemplateResolver;
 use App\Services\LeaveVerificationService;
 use App\Services\ThaiDateService;
-use App\Support\StoredFile;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use PhpOffice\PhpWord\PhpWord;
 
 class LeaveDocumentController extends Controller
 {
-    /**
-     * แบบฟอร์มที่ต้องใช้พิมพ์ใบลาใบนี้
-     *
-     * เดิมตรงนี้เทียบชื่อไทยของประเภทการลาแบบตายตัว (`'ลาพักผ่อน'`, `'ลาอุปสมบท'` ฯลฯ)
-     * ผู้ดูแลจึงเพิ่ม/เปลี่ยนชื่อประเภทการลาไม่ได้โดยไม่ทำให้พิมพ์ผิดแบบฟอร์ม
-     * ตอนนี้ยึด `leave_types.document_template_code` ที่ตั้งค่าได้จากหน้าผู้ดูแล
-     */
     /** ชื่อไฟล์เอกสารที่ส่งให้ผู้ใช้ — ใช้ร่วมกันทั้งเส้นทางเดิมและ Document Engine */
     private function filenameFor(Leave $leave, bool $isCancel, string $extension = 'pdf'): string
     {
@@ -39,6 +28,12 @@ class LeaveDocumentController extends Controller
         return ($isCancel ? "cancel_{$base}" : $base).'.'.$extension;
     }
 
+    /**
+     * แบบฟอร์มที่ต้องใช้พิมพ์ใบลาใบนี้
+     *
+     * ยึด `leave_types.document_template_code` ที่ตั้งค่าได้จากหน้าผู้ดูแล
+     * (เดิมเทียบชื่อไทยของประเภทการลาแบบตายตัว)
+     */
     private function viewFor(Leave $leave, bool $isCancel): string
     {
         if ($isCancel) {
@@ -51,6 +46,32 @@ class LeaveDocumentController extends Controller
     }
 
     /**
+     * ตัวแปรของแบบฟอร์ม HTML — ใช้ร่วมกันระหว่าง PDF และ Word
+     *
+     * ค่ามาตรฐานของแบบฟอร์ม (ชื่อ ตำแหน่ง วันที่ สถิติ ยอดวันลาพักผ่อน ฯลฯ) มาจาก
+     * `LeaveDocumentFields` ผ่าน resolver ที่นี่เหลือเฉพาะของที่แบบฟอร์มรุ่นเก่ายังอ่านตรง
+     *
+     * @return array<string, mixed>
+     */
+    private function formData(Leave $leave, bool $isCancel, ThaiDateService $thaiDateService): array
+    {
+        $lastLeave = Leave::where('user_id', $leave->user_id)
+            ->where('leave_type_id', $leave->leave_type_id)
+            ->where('status', 'Approved')
+            ->where('id', '<', $leave->id)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        return [
+            'leave' => $leave,
+            'thaiDateService' => $thaiDateService,
+            'lastLeave' => $lastLeave,
+            'settings' => Setting::pluck('value', 'key'),
+            'approverBlocks' => app(LeaveApproverBlocks::class)->for($leave, $isCancel),
+        ];
+    }
+
+    /**
      * Export a leave as PDF.
      */
     public function exportPdf(Request $request, Leave $leave, ThaiDateService $thaiDateService)
@@ -59,6 +80,7 @@ class LeaveDocumentController extends Controller
         $this->authorize('view', $leave);
 
         $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
+        $isCancel = $request->query('form') === 'cancel';
 
         /*
          * DOC-ENGINE — ถ้าใบลาประเภทนี้ถูกเปิดให้ใช้ Document Engine แล้ว
@@ -67,128 +89,37 @@ class LeaveDocumentController extends Controller
          * gateway คืน null เมื่อธงปิด ยังไม่ได้ผูกแบบฟอร์ม หรือเรนเดอร์ไม่สำเร็จ
          * ซึ่งแปลว่า "ใช้เส้นทางเดิม" — ผู้ใช้จึงพิมพ์เอกสารได้เสมอไม่ว่าจะเกิดอะไรขึ้น
          */
-        $engineContent = app(LeaveDocumentGateway::class)->pdfFor(
-            $leave,
-            $request->query('form') === 'cancel',
-            $request->user(),
-        );
+        $engineContent = app(LeaveDocumentGateway::class)->pdfFor($leave, $isCancel, $request->user());
 
         if ($engineContent !== null) {
             return response($engineContent, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="'.$this->filenameFor($leave, $request->query('form') === 'cancel').'"',
+                'Content-Disposition' => 'attachment; filename="'.$this->filenameFor($leave, $isCancel).'"',
             ]);
-        }
-
-        $lastLeave = Leave::where('user_id', $leave->user_id)
-            ->where('leave_type_id', $leave->leave_type_id)
-            ->where('status', 'Approved')
-            ->where('id', '<', $leave->id)
-            ->orderBy('id', 'desc')
-            ->first();
-
-        $settings = Setting::pluck('value', 'key');
-
-        $approvalSteps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role');
-        $roleSettingMap = [
-            'HR Head' => 'head_hr_name',
-            'Deputy Director' => 'deputy_admin_name',
-            'Director' => 'director_name',
-        ];
-        $isCancel = $request->query('form') === 'cancel';
-        $cancelLog = null;
-        if ($isCancel) {
-            $cancelLog = LeaveActionLog::with('user.profile')
-                ->where('leave_id', $leave->id)
-                ->whereIn('action', ['Cancellation Approved', 'Cancellation Rejected'])
-                ->orderBy('id', 'desc')
-                ->first();
-        }
-
-        $approverBlocks = [];
-        foreach ($approvalSteps as $step) {
-            $roleName = $step->role ? $step->role->name : '';
-
-            if ($isCancel && $roleName === 'Director' && $cancelLog) {
-                $status = $cancelLog->action === 'Cancellation Approved' ? 'Approved' : 'Rejected';
-                $approverBlocks[] = [
-                    'name' => $cancelLog->user->full_name_with_title ?? $cancelLog->user->name,
-                    'date' => Carbon::parse($cancelLog->created_at),
-                    'signature' => $cancelLog->user->profile && $cancelLog->user->profile->signature_path ? StoredFile::path($cancelLog->user->profile->signature_path) : null,
-                    'comment' => $cancelLog->details['comment'] ?? null,
-                    'status' => $status,
-                    'position' => $cancelLog->user->profile->position ?? ($step->role->description ?? $step->name),
-                    'role_name' => $roleName,
-                ];
-
-                continue;
-            }
-
-            $approval = $leave->approvals->filter(fn ($a) => $a->approver && $a->approver->role_id === $step->role_id)->first();
-            $settingKey = $roleSettingMap[$roleName] ?? '';
-            $defaultName = $settingKey && isset($settings[$settingKey]) ? $settings[$settingKey] : '........................................................';
-
-            $positionTitle = $step->role ? ($step->role->description ?? $step->name) : $step->name;
-
-            $approverBlocks[] = [
-                'name' => $approval ? ($approval->approver_name ?: $approval->approver->name) : $defaultName,
-                'date' => $approval ? Carbon::parse($approval->updated_at) : null,
-                'signature' => $approval && $approval->signature_path ? StoredFile::path($approval->signature_path) : null,
-                'comment' => $approval ? $approval->comment : null,
-                'status' => $approval ? $approval->status : null,
-                'position' => $positionTitle,
-                'role_name' => $roleName,
-            ];
         }
 
         $viewName = $this->viewFor($leave, $isCancel);
 
-        $leaveBalance = null;
-        if ($viewName === 'pdf.leave_vacation') {
-            $year = Carbon::parse($leave->start_date)->year;
-            $leaveBalance = LeaveBalance::where('user_id', $leave->user_id)
-                ->where('leave_type_id', $leave->leave_type_id)
-                ->where('year', $year)
-                ->first();
-        }
-
-        // Calculate 2 Fiscal Semesters Stats for Standard Leave Form
-        $statSem1 = ['ป่วย' => ['used_times' => '', 'used_days' => ''], 'กิจ' => ['used_times' => '', 'used_days' => ''], 'คลอด' => ['used_times' => '', 'used_days' => '']];
-        $statSem2 = ['ป่วย' => ['used_times' => '', 'used_days' => ''], 'กิจ' => ['used_times' => '', 'used_days' => ''], 'คลอด' => ['used_times' => '', 'used_days' => '']];
-
         // QR ตรวจสอบเอกสาร ฝังเป็น data URI เพราะ dompdf โหลดรูปจาก URL ภายนอกไม่ได้
         $verification = app(LeaveVerificationService::class);
         $verificationHash = $verification->ensureHash($leave);
-        $verificationQr = $verification->qrCodeDataUri($verificationHash);
-        $verificationUrl = $verification->verificationUrl($verificationHash);
 
         /*
-         * LEGACY-07 · 07-1 — เรนเดอร์จากเวอร์ชันเทมเพลตที่ใบลานี้ pin ไว้
-         *
-         * ใบลาที่อนุมัติไปแล้วต้องพิมพ์ออกมาเหมือนเดิมเสมอ แม้ผู้ดูแลจะแก้เทมเพลต
-         * ภายหลัง — เป็นข้อกำหนดของ ACCEPTANCE-CRITERIA และ `docs/14`
+         * LEGACY-07 · 07-1 — เวอร์ชันแบบฟอร์มที่ใบลานี้ pin ไว้กำหนดขนาดกระดาษ
+         * เนื้อหาแบบฟอร์มมาจากไฟล์ blade ในโค้ดเสมอ (TPL-SEC-01)
          */
         $templates = app(LeaveDocumentTemplateResolver::class);
         $paper = $templates->paperFor($leave, $viewName) ?? ['paper' => 'a4', 'orientation' => 'portrait'];
 
-        $html = $templates->render($leave, $viewName, compact(
-            'leave', 'thaiDateService', 'lastLeave', 'leaveBalance', 'settings',
-            'approverBlocks', 'statSem1', 'statSem2',
-            'verificationQr', 'verificationUrl', 'verificationHash'
-        ));
+        $html = $templates->render($leave, $viewName, array_merge($this->formData($leave, $isCancel, $thaiDateService), [
+            'verificationHash' => $verificationHash,
+            'verificationQr' => $verification->qrCodeDataUri($verificationHash),
+            'verificationUrl' => $verification->verificationUrl($verificationHash),
+        ]));
 
-        $pdf = Pdf::loadHTML($html)->setPaper($paper['paper'], $paper['orientation']);
-
-        $leaveTypeName = $leave->type->name ?? 'การลา';
-        $userName = str_replace(' ', '_', trim($leave->user->name));
-        $docNumber = $leave->document_number ?? $leave->id;
-
-        $baseFilename = "{$leaveTypeName}_{$userName}_{$docNumber}";
-        $baseFilename = str_replace(['/', '\\'], '_', $baseFilename);
-
-        $filename = $isCancel ? "cancel_{$baseFilename}.pdf" : "{$baseFilename}.pdf";
-
-        return $pdf->download($filename);
+        return Pdf::loadHTML($html)
+            ->setPaper($paper['paper'], $paper['orientation'])
+            ->download($this->filenameFor($leave, $isCancel));
     }
 
     /**
@@ -200,134 +131,21 @@ class LeaveDocumentController extends Controller
         $this->authorize('view', $leave);
 
         $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
-
-        $lastLeave = Leave::where('user_id', $leave->user_id)
-            ->where('leave_type_id', $leave->leave_type_id)
-            ->where('status', 'Approved')
-            ->where('id', '<', $leave->id)
-            ->orderBy('id', 'desc')
-            ->first();
-
-        $settings = Setting::pluck('value', 'key');
-
-        $approvalSteps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role');
-        $roleSettingMap = [
-            'HR Head' => 'head_hr_name',
-            'Deputy Director' => 'deputy_admin_name',
-            'Director' => 'director_name',
-        ];
         $isCancel = $request->query('form') === 'cancel';
-        $cancelLog = null;
-        if ($isCancel) {
-            $cancelLog = LeaveActionLog::with('user.profile')
-                ->where('leave_id', $leave->id)
-                ->whereIn('action', ['Cancellation Approved', 'Cancellation Rejected'])
-                ->orderBy('id', 'desc')
-                ->first();
-        }
-
-        $approverBlocks = [];
-        foreach ($approvalSteps as $step) {
-            $roleName = $step->role ? $step->role->name : '';
-
-            if ($isCancel && $roleName === 'Director' && $cancelLog) {
-                $status = $cancelLog->action === 'Cancellation Approved' ? 'Approved' : 'Rejected';
-                $approverBlocks[] = [
-                    'name' => $cancelLog->user->full_name_with_title ?? $cancelLog->user->name,
-                    'date' => Carbon::parse($cancelLog->created_at),
-                    'signature' => $cancelLog->user->profile && $cancelLog->user->profile->signature_path ? StoredFile::path($cancelLog->user->profile->signature_path) : null,
-                    'comment' => $cancelLog->details['comment'] ?? null,
-                    'status' => $status,
-                    'position' => $cancelLog->user->profile->position ?? ($step->role->description ?? $step->name),
-                    'role_name' => $roleName,
-                ];
-
-                continue;
-            }
-
-            $approval = $leave->approvals->filter(fn ($a) => $a->approver && $a->approver->role_id === $step->role_id)->first();
-            $settingKey = $roleSettingMap[$roleName] ?? '';
-            $defaultName = $settingKey && isset($settings[$settingKey]) ? $settings[$settingKey] : '........................................................';
-
-            $positionTitle = $step->role ? ($step->role->description ?? $step->name) : $step->name;
-
-            $approverBlocks[] = [
-                'name' => $approval ? ($approval->approver_name ?: $approval->approver->name) : $defaultName,
-                'date' => $approval ? Carbon::parse($approval->updated_at) : null,
-                'signature' => $approval && $approval->signature_path ? StoredFile::path($approval->signature_path) : null,
-                'comment' => $approval ? $approval->comment : null,
-                'status' => $approval ? $approval->status : null,
-                'position' => $positionTitle,
-                'role_name' => $roleName,
-            ];
-        }
-
-        $viewName = $this->viewFor($leave, $isCancel);
-
-        $leaveBalance = null;
-        if ($viewName === 'pdf.leave_vacation') {
-            $year = Carbon::parse($leave->start_date)->year;
-            $leaveBalance = LeaveBalance::where('user_id', $leave->user_id)
-                ->where('leave_type_id', $leave->leave_type_id)
-                ->where('year', $year)
-                ->first();
-        }
-
-        $year = Carbon::parse($leave->start_date)->year;
-        $balancesQuery = LeaveBalance::with('type')
-            ->where('user_id', $leave->user_id)
-            ->where('year', $year)
-            ->get();
-
-        $statBalances = [];
-        foreach ($balancesQuery as $b) {
-            if (! $b->type) {
-                continue;
-            }
-            $typeName = $b->type->name;
-            $used = $b->used;
-            if ($leave->status === 'Approved' && ($leave->type->name ?? '') === $typeName) {
-                $usedBefore = max(0, $used - $leave->total_days);
-                $total = $used;
-            } else {
-                $usedBefore = $used;
-                $total = $used + (($leave->type->name ?? '') === $typeName ? $leave->total_days : 0);
-            }
-            $statBalances[$typeName] = [
-                'used_before' => $usedBefore > 0 ? $usedBefore : '',
-                'total' => $total > 0 ? $total : '',
-            ];
-        }
-
-        $leaveTypeName = $leave->type->name ?? 'การลา';
-        $userName = str_replace(' ', '_', trim($leave->user->name));
-        $docNumber = $leave->document_number ?? $leave->id;
-
-        $baseFilename = "{$leaveTypeName}_{$userName}_{$docNumber}";
-        $baseFilename = str_replace(['/', '\\'], '_', $baseFilename);
+        $data = $this->formData($leave, $isCancel, $thaiDateService);
 
         if (class_exists(PhpWord::class)) {
-            $wordService = app(LeaveWordService::class);
-            $tempFile = $wordService->generateLeaveDocx($leave, $settings->toArray(), $approverBlocks);
-            $filename = $isCancel ? "cancel_{$baseFilename}.docx" : "{$baseFilename}.docx";
+            $tempFile = app(LeaveWordService::class)->generateLeaveDocx($leave, $data['settings']->toArray(), $data['approverBlocks']);
 
-            return response()->download($tempFile, $filename)->deleteFileAfterSend(true);
+            return response()->download($tempFile, $this->filenameFor($leave, $isCancel, 'docx'))->deleteFileAfterSend(true);
         }
 
-        $statSem1 = ['ป่วย' => ['used_times' => '', 'used_days' => ''], 'กิจ' => ['used_times' => '', 'used_days' => ''], 'คลอด' => ['used_times' => '', 'used_days' => '']];
-        $statSem2 = ['ป่วย' => ['used_times' => '', 'used_days' => ''], 'กิจ' => ['used_times' => '', 'used_days' => ''], 'คลอด' => ['used_times' => '', 'used_days' => '']];
-
-        // LEGACY-07 · 07-1 — เรนเดอร์จากเวอร์ชันเทมเพลตที่ใบลานี้ pin ไว้
-        $html = app(LeaveDocumentTemplateResolver::class)->render(
-            $leave,
-            $viewName,
-            compact('leave', 'thaiDateService', 'lastLeave', 'leaveBalance', 'settings', 'approverBlocks', 'statSem1', 'statSem2'),
-        );
+        // LEGACY-07 · 07-1 — แบบฟอร์มเดียวกับ PDF
+        $html = app(LeaveDocumentTemplateResolver::class)->render($leave, $this->viewFor($leave, $isCancel), $data);
         $content = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>'.$html.'</body></html>';
-        $filename = $isCancel ? "cancel_{$baseFilename}.doc" : "{$baseFilename}.doc";
 
         return response($content)
             ->header('Content-Type', 'application/vnd.ms-word')
-            ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
+            ->header('Content-Disposition', 'attachment; filename="'.$this->filenameFor($leave, $isCancel, 'doc').'"');
     }
 }

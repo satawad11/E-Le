@@ -1,194 +1,89 @@
 <template>
-  <div class="max-w-7xl mx-auto space-y-8 pb-12">
+  <div class="max-w-7xl mx-auto space-y-6 pb-12">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 tracking-tight">ระบบจัดการและออกแบบแม่แบบเอกสาร</h1>
-        <p class="text-sm text-gray-500 mt-1">ออกแบบ ปรับแต่งโครงสร้าง และสร้างแม่แบบเอกสารใหม่สำหรับทุกโมดูลในระบบ</p>
+        <h1 class="text-2xl font-bold text-gray-900 tracking-tight">แบบฟอร์มใบลาในระบบ</h1>
+        <p class="text-sm text-gray-500 mt-1">ดูแบบฟอร์มที่ใช้พิมพ์ใบลาแต่ละประเภท และพรีวิวด้วยข้อมูลตัวอย่าง</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         <button
-          @click="seedDefaults(false)"
+          @click="seedDefaults"
           :disabled="seeding"
           class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium hover:bg-gray-50 text-sm transition-all"
         >
-          <svg v-if="!seeding" class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.refresh"/>
           </svg>
-          {{ seeding ? 'กำลังซิงค์...' : 'ซิงค์แม่แบบตั้งต้น' }}
+          {{ seeding ? 'กำลังซิงค์...' : 'ลงทะเบียนแบบฟอร์มที่ขาด' }}
         </button>
-        <!-- เขียนทับด้วยแบบฟอร์มราชการชุดล่าสุด — เวอร์ชันเดิมยังถูกเก็บไว้ เอกสารเก่าพิมพ์ซ้ำได้เหมือนเดิม -->
-        <button
-          @click="restoreDefaults"
-          :disabled="seeding"
-          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-300 bg-white text-amber-700 font-medium hover:bg-amber-50 text-sm transition-all"
+        <router-link
+          v-if="authStore.canManageDocumentCenter"
+          to="/admin/document-center"
+          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#800000] text-white font-medium hover:bg-[#660000] transition-all shadow-sm text-sm"
         >
-          คืนค่าแบบฟอร์มตั้งต้น
-        </button>
-        <button
-          @click="openModal(null)"
-          class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#800000] text-white font-medium hover:bg-[#660000] active:scale-[0.98] transition-all shadow-sm cursor-pointer"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          <span>สร้างแม่แบบเอกสารใหม่</span>
-        </button>
+          ออกแบบแบบฟอร์มบน PDF ต้นฉบับ
+        </router-link>
       </div>
     </div>
 
-    <!-- Alert message -->
-    <div v-if="message" class="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm flex items-center justify-between">
-      <span>{{ message }}</span>
-      <button @click="message = ''" class="text-green-600 font-semibold text-xs">ปิด</button>
+    <!-- อธิบายว่าปรับแบบฟอร์มที่ไหน -->
+    <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-sm space-y-1">
+      <p class="font-semibold">แบบฟอร์มในหน้านี้เป็นแบบฟอร์มมาตรฐานของระบบ และแก้ไขจากหน้านี้ไม่ได้</p>
+      <p>
+        ถ้าต้องการปรับแบบฟอร์มให้ตรงกับของหน่วยงาน ให้ใช้ <strong>ศูนย์จัดการเอกสาร</strong>: อัปโหลดแบบฟอร์ม PDF ต้นฉบับ
+        วางตำแหน่งช่องข้อมูล แล้วเผยแพร่ ระบบจะใช้แบบฟอร์มนั้นแทนให้อัตโนมัติ
+      </p>
+      <p>ส่วนการเลือกว่าประเภทการลาใดใช้แบบฟอร์มใด ตั้งค่าได้ที่หน้า <router-link to="/admin/leave-types" class="underline font-semibold">ประเภทการลา</router-link></p>
     </div>
 
-    <!-- Module Filters -->
-    <div class="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
-      <button
-        v-for="m in modules"
-        :key="m.value"
-        @click="activeModule = m.value"
-        :class="['px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer', activeModule === m.value ? 'bg-[#800000] text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200']"
-      >
-        {{ m.label }} ({{ countByModule(m.value) }})
-      </button>
+    <div v-if="loading" class="text-center py-12 text-gray-500 text-sm">กำลังโหลดแบบฟอร์ม...</div>
+    <div v-else-if="loadError" class="text-center py-12 bg-white rounded-2xl border border-red-100 text-red-600 text-sm">
+      {{ loadError }}
     </div>
-
-    <!-- Template Cards Grid -->
-    <div v-if="loading" class="text-center py-12 text-gray-500 text-sm">กำลังโหลดแม่แบบเอกสาร...</div>
-    <div v-else-if="filteredTemplates.length === 0" class="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm text-gray-400">
-      ไม่พบแม่แบบเอกสารในโมดูลนี้ กดปุ่ม "ซิงค์แม่แบบตั้งต้น" หรือ "สร้างแม่แบบเอกสารใหม่"
+    <div v-else-if="leaveTemplates.length === 0" class="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm text-gray-400 text-sm">
+      ยังไม่มีแบบฟอร์มใบลาในระบบ กดปุ่ม "ลงทะเบียนแบบฟอร์มที่ขาด"
     </div>
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <div
-        v-for="tpl in filteredTemplates"
+        v-for="tpl in leaveTemplates"
         :key="tpl.id"
-        class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+        class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col justify-between"
       >
         <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#800000]/10 text-[#800000] uppercase">
-              {{ tpl.module }}
+          <div class="flex items-center justify-between gap-2">
+            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
+              :class="tpl.render_mode === 'pdf_overlay' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'">
+              {{ tpl.render_mode === 'pdf_overlay' ? 'แบบฟอร์ม PDF' : 'แบบฟอร์มมาตรฐาน' }}
             </span>
-            <span class="text-xs font-mono text-gray-400">Code: {{ tpl.code }}</span>
+            <span class="text-xs font-mono text-gray-400">{{ tpl.code }}</span>
           </div>
           <h3 class="font-bold text-gray-900 text-base leading-snug">{{ tpl.name }}</h3>
-          <p class="text-xs text-gray-500 line-clamp-2">ขนาดกระดาษ: {{ tpl.paper_size }} {{ tpl.orientation }} (ระยะขอบ: {{ tpl.margin_top }}cm)</p>
+          <div>
+            <p class="text-xs text-gray-500 mb-1">ใช้กับประเภทการลา</p>
+            <div v-if="tpl.leave_types?.length" class="flex flex-wrap gap-1.5">
+              <span v-for="type in tpl.leave_types" :key="type.id" class="px-2 py-0.5 rounded-md bg-[#800000]/5 text-[#800000] text-xs">
+                {{ type.name }}
+              </span>
+            </div>
+            <p v-else class="text-xs text-amber-700">ยังไม่มีประเภทการลาที่ใช้แบบฟอร์มนี้</p>
+          </div>
         </div>
 
-        <div class="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between gap-2">
-          <button @click="previewTemplate(tpl)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-lg">
+        <div class="mt-5 pt-4 border-t border-gray-100">
+          <button
+            v-if="tpl.has_preview"
+            @click="preview(tpl)"
+            :disabled="previewingId === tpl.id"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-lg"
+          >
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.eye"/>
             </svg>
-            พรีวิว A4
+            {{ previewingId === tpl.id ? 'กำลังสร้างพรีวิว...' : 'พรีวิว PDF ด้วยข้อมูลตัวอย่าง' }}
           </button>
-          <div class="flex gap-2">
-            <button @click="openModal(tpl)" class="px-3 py-1.5 text-xs font-semibold text-[#800000] hover:bg-[#800000]/5 rounded-lg border border-[#800000]/20">
-              แก้ไข
-            </button>
-
-            <button @click="deleteTemplate(tpl)" class="px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg">
-              ลบ
-            </button>
-          </div>
+          <p v-else class="text-xs text-gray-400">พรีวิวแบบฟอร์มนี้ได้ที่ศูนย์จัดการเอกสาร</p>
         </div>
-      </div>
-    </div>
-
-    <!-- Template Editor Modal -->
-    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-8 overflow-hidden flex flex-col max-h-[90vh]">
-        <!-- Modal Header -->
-        <div class="px-6 py-4 bg-[#800000] text-white flex items-center justify-between">
-          <h3 class="font-bold text-base">{{ editingTpl ? 'แก้ไขแม่แบบเอกสาร' : 'สร้างแม่แบบเอกสารใหม่' }}</h3>
-          <button @click="showModal = false" aria-label="ปิด" class="text-white/80 hover:text-white">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.x"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Modal Body -->
-        <div class="p-6 overflow-y-auto space-y-6 flex-1">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label class="block text-xs font-semibold text-gray-700 mb-1">รหัสแม่แบบ (Code Key)</label>
-              <input v-model="form.code" :disabled="!!editingTpl" type="text" placeholder="เช่น hr_certificate" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm">
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-gray-700 mb-1">ชื่อแม่แบบเอกสาร</label>
-              <input v-model="form.name" type="text" placeholder="เช่น หนังสือรับรองเงินเดือน" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm">
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-gray-700 mb-1">สังกัดโมดูล</label>
-              <select v-model="form.module" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm">
-                <option value="leave">การลา (E-Leave)</option>
-                <option value="hr">งานบุคลากร (HR)</option>
-                <option value="saraban">งานสารบรรณ (Saraban)</option>
-                <option value="attendance">เวลาปฏิบัติงาน (Attendance)</option>
-                <option value="custom">แบบฟอร์มอื่นๆ (Custom)</option>
-              </select>
-            </div>
-          </div>
-
-          <!--
-            รายการตัวแปรจริงที่ระบบส่งให้แม่แบบ ดึงจาก API (App\Services\LeaveDocumentFields::catalog)
-            เดิมรายการนี้เขียนตายไว้ในหน้าเว็บและไม่ตรงกับตัวแปรที่ส่งจริง แทรกไปก็ได้ค่าว่าง
-          -->
-          <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-3 max-h-64 overflow-y-auto">
-            <p class="text-xs font-bold text-gray-700">ตัวแปรที่ใช้ได้ในแบบฟอร์มใบลา (คลิกเพื่อแทรก):</p>
-            <div v-for="(items, group) in groupedFields" :key="group" class="space-y-1">
-              <p class="text-[11px] font-bold text-gray-500">{{ group }}</p>
-              <div class="flex flex-wrap gap-1.5 text-xs">
-                <span v-for="field in items" :key="field.name" :title="field.label"
-                  @click="insertTag(`{{ $${field.name} }}`)"
-                  class="px-2 py-1 bg-white border border-gray-200 rounded-md font-mono text-[11px] hover:bg-[#800000] hover:text-white cursor-pointer transition-colors">
-                  ${{ field.name }}
-                </span>
-              </div>
-            </div>
-            <p v-if="!fieldCatalog.length" class="text-xs text-gray-500">ยังโหลดรายการตัวแปรไม่สำเร็จ</p>
-          </div>
-
-          <!-- Code Editor & Preview Split -->
-          <div class="space-y-2">
-            <label class="block text-xs font-semibold text-gray-700">โค้ดโครงร่าง HTML / Blade Template</label>
-            <textarea v-model="form.content_html" rows="12" class="w-full p-4 rounded-xl border border-gray-300 font-mono text-xs bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#800000] resize-y" placeholder="<div class='text-center'>...</div>"></textarea>
-          </div>
-        </div>
-
-        <!-- Modal Footer -->
-        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-          <button @click="previewWithSampleData" :disabled="previewing" class="px-5 py-2.5 rounded-xl border border-[#800000]/30 bg-white text-[#800000] font-medium text-sm">
-            {{ previewing ? 'กำลังสร้าง...' : 'พรีวิว PDF ด้วยข้อมูลตัวอย่าง' }}
-          </button>
-          <button @click="showModal = false" class="px-5 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 font-medium text-sm">ยกเลิก</button>
-          <button @click="saveTemplate" :disabled="saving" class="px-6 py-2.5 rounded-xl bg-[#800000] text-white font-medium text-sm hover:bg-[#660000]">
-            {{ saving ? 'กำลังบันทึก...' : 'บันทึกแม่แบบ' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Live A4 Preview Modal -->
-    <div v-if="previewTpl" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="bg-gray-200 rounded-2xl shadow-2xl w-full max-w-4xl p-6 relative max-h-[90vh] flex flex-col">
-        <div class="flex justify-between items-center mb-4 text-gray-800">
-          <h3 class="font-bold text-base">พรีวิวแม่แบบกระดาษ A4: {{ previewTpl.name }}</h3>
-          <button @click="previewTpl = null" class="inline-flex items-center gap-1.5 px-3 py-1 bg-white rounded-lg text-sm font-bold shadow-sm">
-            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.x"/>
-            </svg>
-            ปิด
-          </button>
-        </div>
-        <!-- Simulated A4 Paper -->
-        <iframe
-          :srcdoc="previewTpl.content_html"
-          sandbox=""
-          title="ตัวอย่างแม่แบบเอกสาร"
-          class="bg-white mx-auto shadow-xl flex-1 w-full max-w-[210mm] min-h-[297mm] rounded-sm"
-        ></iframe>
       </div>
     </div>
   </div>
@@ -196,164 +91,51 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import axios from 'axios'
+import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import { useAuthStore } from '../../stores/auth'
 import { ICONS } from '../../utils/icons'
+import { getErrorMessage } from '../../utils/errorHandler'
 
+/*
+ * TPL-SEC-01 — หน้านี้อ่านอย่างเดียว
+ *
+ * เดิมหน้านี้ให้แก้โค้ด HTML/Blade ของแบบฟอร์ม และเซิร์ฟเวอร์รันโค้ดนั้นจริง
+ * ซึ่งเท่ากับให้รัน PHP บนเซิร์ฟเวอร์ได้ จึงปิดไป การออกแบบแบบฟอร์มย้ายไปที่ศูนย์จัดการเอกสาร
+ */
 const alertStore = useAlertStore()
+const authStore = useAuthStore()
+
 const templates = ref([])
 const loading = ref(true)
-const saving = ref(false)
+const loadError = ref('')
 const seeding = ref(false)
-const message = ref('')
-const activeModule = ref('all')
-const showModal = ref(false)
-const editingTpl = ref(null)
-const previewTpl = ref(null)
+const previewingId = ref(null)
 
-const modules = [
-  { label: 'ทั้งหมด', value: 'all' },
-  { label: 'การลา (E-Leave)', value: 'leave' },
-  { label: 'งานบุคลากร (HR)', value: 'hr' },
-  { label: 'งานสารบรรณ (Saraban)', value: 'saraban' },
-  { label: 'เวลาปฏิบัติงาน (Attendance)', value: 'attendance' },
-]
-
-const fieldCatalog = ref([])
-const previewing = ref(false)
-
-const groupedFields = computed(() => {
-  return fieldCatalog.value.reduce((groups, field) => {
-    (groups[field.group] ||= []).push(field)
-    return groups
-  }, {})
-})
-
-const form = ref({
-  code: '',
-  name: '',
-  module: 'leave',
-  paper_size: 'A4',
-  orientation: 'portrait',
-  margin_top: 8.0,
-  margin_bottom: 8.0,
-  margin_left: 12.0,
-  margin_right: 12.0,
-  content_html: '',
-  is_active: true,
-})
+const leaveTemplates = computed(() => templates.value.filter((tpl) => tpl.module === 'leave'))
 
 const fetchTemplates = async () => {
   loading.value = true
+  loadError.value = ''
   try {
-    const res = await axios.get('/api/admin/document-templates')
+    const res = await api.get('/admin/document-templates', { params: { module: 'leave' } })
     templates.value = res.data
   } catch (err) {
-    console.error('Failed to load templates', err)
+    loadError.value = getErrorMessage(err, 'โหลดรายการแบบฟอร์มไม่สำเร็จ')
   } finally {
     loading.value = false
   }
 }
 
-const countByModule = (mod) => {
-  if (mod === 'all') return templates.value.length
-  return templates.value.filter(t => t.module === mod).length
-}
-
-const filteredTemplates = computed(() => {
-  if (activeModule.value === 'all') return templates.value
-  return templates.value.filter(t => t.module === activeModule.value)
-})
-
-const openModal = (tpl) => {
-  editingTpl.value = tpl
-  if (tpl) {
-    form.value = { ...tpl }
-  } else {
-    form.value = {
-      code: '',
-      name: '',
-      module: 'leave',
-      paper_size: 'A4',
-      orientation: 'portrait',
-      margin_top: 8.0,
-      margin_bottom: 8.0,
-      margin_left: 12.0,
-      margin_right: 12.0,
-      content_html: '<div class="text-center font-bold" style="font-size:18pt;">แบบฟอร์มเอกสารใหม่</div>',
-      is_active: true,
-    }
-  }
-  showModal.value = true
-}
-
-const insertTag = (tag) => {
-  form.value.content_html += ' ' + tag
-}
-
-const saveTemplate = async () => {
-  saving.value = true
-  message.value = ''
+const preview = async (tpl) => {
+  previewingId.value = tpl.id
   try {
-    if (editingTpl.value) {
-      await axios.put(`/api/admin/document-templates/${editingTpl.value.id}`, form.value)
-      message.value = 'ปรับปรุงแม่แบบเอกสารเรียบร้อยแล้ว'
-    } else {
-      await axios.post('/api/admin/document-templates', form.value)
-      message.value = 'สร้างแม่แบบเอกสารใหม่เรียบร้อยแล้ว'
-    }
-    showModal.value = false
-    await fetchTemplates()
-  } catch (err) {
-    const errors = err.response?.data?.errors
-    if (errors) {
-      alertStore.error(Object.values(errors).flat().join(' | '))
-    } else {
-      alertStore.error(err.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกแม่แบบเอกสาร')
-    }
-  } finally {
-    saving.value = false
-  }
-}
-
-const deleteTemplate = async (tpl) => {
-  if (!confirm(`ต้องการลบแม่แบบ "${tpl.name}" ใช่หรือไม่?`)) return
-  try {
-    await axios.delete(`/api/admin/document-templates/${tpl.id}`)
-    message.value = 'ลบแม่แบบเอกสารเรียบร้อยแล้ว'
-    alertStore.success('ลบแม่แบบเอกสารเรียบร้อยแล้ว')
-    await fetchTemplates()
-  } catch (err) {
-    alertStore.error(err.response?.data?.message || 'เกิดข้อผิดพลาดในการลบแม่แบบ')
-  }
-}
-
-const fetchFieldCatalog = async () => {
-  try {
-    const res = await axios.get('/api/admin/document-templates/fields')
-    fieldCatalog.value = res.data
-  } catch {
-    fieldCatalog.value = []
-  }
-}
-
-/*
- * พรีวิวด้วยข้อมูลตัวอย่าง — เรนเดอร์ผ่าน dompdf ตัวเดียวกับตอนพิมพ์จริง
- * จึงเห็นผลตรงกับเอกสารที่จะออกมา (iframe แบบเดิมไม่ผ่าน Blade จึงเห็นแต่โค้ดตัวแปร)
- */
-const previewWithSampleData = async () => {
-  previewing.value = true
-  try {
-    const res = await axios.post('/api/admin/document-templates/preview', {
-      content_html: form.value.content_html,
-      paper_size: form.value.paper_size,
-      orientation: form.value.orientation,
-    }, { responseType: 'blob' })
+    const res = await api.get(`/admin/document-templates/${tpl.id}/preview`, { responseType: 'blob' })
     const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
     window.open(url, '_blank')
     setTimeout(() => window.URL.revokeObjectURL(url), 60000)
   } catch (err) {
-    let detail = err.response?.data?.message
+    let detail = null
     if (err.response?.data instanceof Blob) {
       try {
         detail = JSON.parse(await err.response.data.text())?.message
@@ -363,35 +145,22 @@ const previewWithSampleData = async () => {
     }
     alertStore.error(detail || 'สร้างพรีวิวไม่สำเร็จ')
   } finally {
-    previewing.value = false
+    previewingId.value = null
   }
 }
 
-const seedDefaults = async (overwrite = false) => {
+const seedDefaults = async () => {
   seeding.value = true
   try {
-    await axios.post('/api/admin/document-templates/seed-defaults', { overwrite })
-    message.value = overwrite ? 'คืนค่าแบบฟอร์มตั้งต้นเรียบร้อยแล้ว' : 'ซิงค์แม่แบบตั้งต้นเรียบร้อยแล้ว'
-    alertStore.success(message.value)
+    const res = await api.post('/admin/document-templates/seed-defaults')
+    alertStore.success(res.data.message || 'ลงทะเบียนแบบฟอร์มเรียบร้อยแล้ว')
     await fetchTemplates()
   } catch (err) {
-    alertStore.error('ซิงค์ล้มเหลว')
+    alertStore.error(getErrorMessage(err, 'ลงทะเบียนแบบฟอร์มไม่สำเร็จ'))
   } finally {
     seeding.value = false
   }
 }
 
-const restoreDefaults = async () => {
-  if (!confirm('คืนค่าแบบฟอร์มตั้งต้นทั้งหมด? เนื้อหาที่แก้ไว้จะถูกแทนที่ (เวอร์ชันเดิมยังถูกเก็บไว้ และใบลาเก่ายังพิมพ์ได้เหมือนเดิม)')) return
-  await seedDefaults(true)
-}
-
-const previewTemplate = (tpl) => {
-  previewTpl.value = tpl
-}
-
-onMounted(() => {
-  fetchTemplates()
-  fetchFieldCatalog()
-})
+onMounted(fetchTemplates)
 </script>

@@ -46,14 +46,15 @@ class LeaveWordService
         $section->addText("แบบใบ{$leaveTypeName}", ['bold' => true, 'size' => 18], 'HeaderP');
 
         // Document Details Table / Info
-        $section->addText('เขียนที่ '.($settings['school_name'] ?? 'วิทยาลัยเทคนิคดอนเมือง'), ['size' => 16], ['alignment' => Jc::RIGHT]);
+        // ห้าม hard-code ชื่อสถานศึกษา — ใช้ค่าจากหน้าตั้งค่าระบบเท่านั้น
+        $section->addText('เขียนที่ '.($settings['document_written_at'] ?? ($settings['institution_name'] ?? ($settings['school_name'] ?? ''))), ['size' => 16], ['alignment' => Jc::RIGHT]);
 
         $dateStr = $leave->created_at ? $this->thaiDateService->toThaiFullDate($leave->created_at->format('Y-m-d')) : '—';
         $section->addText("วันที่ {$dateStr}", ['size' => 16], ['alignment' => Jc::RIGHT]);
 
         $section->addTextBreak(1);
 
-        $directorName = $settings['director_name'] ?? 'ผู้อำนวยการวิทยาลัยเทคนิคดอนเมือง';
+        $directorName = $settings['director_position'] ?? ($settings['director_name'] ?? '');
         $section->addText("เรื่อง  ขอ{$leaveTypeName}", ['bold' => true, 'size' => 16]);
         $section->addText("เรียน  {$directorName}", ['bold' => true, 'size' => 16]);
 
