@@ -433,9 +433,12 @@ class LeaveModernizationTest extends TestCase
             'content_html' => 'ฉบับใหม่', 'effective_from' => '2026-08-17', 'is_active' => true,
         ]);
 
-        $html = app(LeaveDocumentTemplateResolver::class)->render($leave->fresh(), 'pdf.leave', ['leave' => $leave]);
-
-        $this->assertSame('ฉบับเดิม', $html, 'ใบลาเดิมต้องพิมพ์จากเวอร์ชันที่ pin ไว้');
+        // TPL-SEC-01: เนื้อหา HTML มาจากไฟล์ blade ในโค้ดแล้ว — สิ่งที่ต้องคงเดิมคือ "ใบลานี้ผูกกับเวอร์ชันใด"
+        $this->assertSame(
+            $version->id,
+            app(LeaveDocumentTemplateResolver::class)->versionFor($leave->fresh(), 'pdf.leave')?->id,
+            'ใบลาเดิมต้องยังอ้างเวอร์ชันที่ pin ไว้',
+        );
     }
 
     // ------------------------------------------ 07-3 จำนวนครั้ง vs จำนวนวัน

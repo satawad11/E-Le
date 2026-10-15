@@ -3,18 +3,34 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Department;
 use App\Models\DocumentTemplate;
+use App\Models\Leave;
+use App\Models\LeaveType;
+use App\Models\User;
+use App\Models\UserProfile;
+use App\Services\AuditLogger;
 use App\Services\DefaultDocumentTemplateService;
 use App\Services\LeaveDocumentFields;
+use App\Services\LeaveDocumentTemplateResolver;
+use App\Services\ThaiDateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
+/**
+ * แบบฟอร์ม HTML ของใบลา (เส้นทางเดิมก่อน Document Engine)
+ *
+ * TPL-SEC-01 — หน้านี้เป็นแบบอ่านอย่างเดียว
+ *
+ * เดิมผู้ดูแลแก้ `content_html` ได้ และระบบส่งข้อความนั้นเข้า `Blade::render()`
+ * ทั้งตอนพิมพ์ใบลาและตอนพรีวิว ซึ่งเท่ากับให้รันโค้ด PHP บนเซิร์ฟเวอร์ได้
+ * ตอนนี้แบบฟอร์ม HTML มาจากไฟล์ blade ในโค้ดเท่านั้น และพรีวิวคือการเรนเดอร์
+ * ไฟล์นั้นด้วยข้อมูลตัวอย่าง — การปรับแบบฟอร์มโดยผู้ดูแลให้ทำผ่าน Document Engine
+ */
 class DocumentTemplateController extends Controller
 {
-    /**
-     * List all document templates.
-     */
     public function index(Request $request)
     {
         $query = DocumentTemplate::query();
@@ -24,98 +40,45 @@ class DocumentTemplateController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where('name', 'like', "%{$request->search}%")
-                ->orWhere('code', 'like', "%{$request->search}%");
+            $search = $request->search;
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%"));
         }
 
-        return response()->json($query->orderBy('module')->orderBy('id')->get());
+        $resolver = app(LeaveDocumentTemplateResolver::class);
+        $leaveTypes = LeaveType::query()->orderBy('id')->get(['id', 'name', 'document_template_code']);
+
+        $templates = $query->orderBy('module')->orderBy('id')
+            ->get(['id', 'code', 'name', 'module', 'document_type', 'render_mode', 'paper_size', 'orientation', 'is_active', 'updated_at'])
+            ->map(function (DocumentTemplate $template) use ($resolver, $leaveTypes) {
+                $template->setAttribute('has_preview', $resolver->viewForCode($template->code) !== null);
+                $template->setAttribute('leave_types', $leaveTypes
+                    ->filter(fn (LeaveType $type) => ($type->document_template_code ?: $resolver->templateCodeForLeaveType($type->name)) === $template->code)
+                    ->map(fn (LeaveType $type) => ['id' => $type->id, 'name' => $type->name])
+                    ->values());
+
+                return $template;
+            });
+
+        return response()->json($templates);
     }
 
-    /**
-     * Store a new custom document template.
-     */
-    public function store(Request $request)
-    {
-        $data = $request->validate([
-            'code' => 'required|string|max:100|unique:document_templates,code',
-            'name' => 'required|string|max:255',
-            'module' => 'required|string|max:50',
-            'paper_size' => 'nullable|string|max:20',
-            'orientation' => 'nullable|string|max:20',
-            'margin_top' => 'nullable|numeric',
-            'margin_bottom' => 'nullable|numeric',
-            'margin_left' => 'nullable|numeric',
-            'margin_right' => 'nullable|numeric',
-            'content_html' => 'required|string',
-            'is_active' => 'boolean',
-        ]);
-
-        $template = DocumentTemplate::create($data);
-
-        return response()->json([
-            'message' => 'สร้างแม่แบบเอกสารใหม่เรียบร้อยแล้ว',
-            'template' => $template,
-        ], 201);
-    }
-
-    /**
-     * Show document template detail.
-     */
     public function show(DocumentTemplate $template)
     {
-        return response()->json($template);
+        return response()->json($template->makeHidden('content_html'));
     }
 
     /**
-     * Update an existing document template.
+     * ลงทะเบียนแบบฟอร์มตั้งต้นที่ยังไม่มีในฐานข้อมูล
+     *
+     * แถวในตารางนี้ใช้ pin "ใบลาฉบับนี้ออกด้วยแบบฟอร์มใด" ไม่ได้ใช้เป็นเนื้อหาที่พิมพ์
      */
-    public function update(Request $request, DocumentTemplate $template)
+    public function seedDefaults(DefaultDocumentTemplateService $templates)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'module' => 'required|string|max:50',
-            'paper_size' => 'nullable|string|max:20',
-            'orientation' => 'nullable|string|max:20',
-            'margin_top' => 'nullable|numeric',
-            'margin_bottom' => 'nullable|numeric',
-            'margin_left' => 'nullable|numeric',
-            'margin_right' => 'nullable|numeric',
-            'content_html' => 'required|string',
-            'is_active' => 'boolean',
-        ]);
+        $templates->sync();
 
-        $template->update($data);
+        app(AuditLogger::class)->log('document_template.defaults_synced', 'document_template');
 
-        return response()->json([
-            'message' => 'ปรับปรุงแม่แบบเอกสารเรียบร้อยแล้ว',
-            'template' => $template,
-        ]);
-    }
-
-    /**
-     * Delete a document template.
-     */
-    public function destroy(DocumentTemplate $template)
-    {
-        $template->delete();
-
-        return response()->json(['message' => 'ลบแม่แบบเอกสารเรียบร้อยแล้ว']);
-    }
-
-    /**
-     * Seed default document templates if empty.
-     */
-    public function seedDefaults(Request $request, DefaultDocumentTemplateService $templates)
-    {
-        $overwrite = $request->boolean('overwrite');
-
-        $templates->sync($overwrite);
-
-        return response()->json([
-            'message' => $overwrite
-                ? 'คืนค่าแบบฟอร์มตั้งต้นเรียบร้อยแล้ว (เวอร์ชันเดิมยังถูกเก็บไว้ เอกสารเก่าพิมพ์ซ้ำได้เหมือนเดิม)'
-                : 'ซิงค์แม่แบบเอกสารตั้งต้นเรียบร้อยแล้ว',
-        ]);
+        return response()->json(['message' => 'ซิงค์แม่แบบเอกสารตั้งต้นเรียบร้อยแล้ว']);
     }
 
     /**
@@ -127,32 +90,69 @@ class DocumentTemplateController extends Controller
     }
 
     /**
-     * พรีวิวแม่แบบด้วยข้อมูลตัวอย่าง — ไม่แตะข้อมูลจริงและไม่ต้องมีใบลา
+     * พรีวิวแบบฟอร์มด้วยข้อมูลตัวอย่าง — เรนเดอร์จากไฟล์ blade ในโค้ด ไม่รับ HTML จากผู้ใช้
      */
-    public function preview(Request $request, LeaveDocumentFields $fields)
+    public function preview(DocumentTemplate $template, LeaveDocumentFields $fields, LeaveDocumentTemplateResolver $resolver, ThaiDateService $thaiDateService)
     {
-        $data = $request->validate([
-            'content_html' => 'required|string',
-            'paper_size' => 'nullable|string|max:20',
-            'orientation' => 'nullable|string|max:20',
-        ]);
+        $view = $resolver->viewForCode($template->code);
 
-        try {
-            $html = Blade::render($data['content_html'], array_merge($fields->sample(), [
-                'approverBlocks' => $this->sampleApproverBlocks(),
-            ]));
-        } catch (\Throwable $exception) {
-            return response()->json([
-                'message' => 'แม่แบบมีข้อผิดพลาด: '.$exception->getMessage(),
-            ], 422);
+        if ($view === null) {
+            return response()->json(['message' => 'แบบฟอร์มนี้ไม่มีไฟล์แบบฟอร์ม HTML ในระบบ จึงพรีวิวจากหน้านี้ไม่ได้'], 422);
         }
 
-        $pdf = Pdf::loadHTML($html)->setPaper(
-            strtolower($data['paper_size'] ?? 'a4'),
-            strtolower($data['orientation'] ?? 'portrait')
-        );
+        try {
+            $html = view($view, array_merge($fields->sample(), [
+                'leave' => $this->sampleLeave(),
+                'thaiDateService' => $thaiDateService,
+                'lastLeave' => null,
+                'leaveBalance' => null,
+                'settings' => collect(),
+                'approverBlocks' => $this->sampleApproverBlocks(),
+                'statSem1' => [],
+                'statSem2' => [],
+                'verificationQr' => null,
+                'verificationUrl' => null,
+                'verificationHash' => 'ตัวอย่าง',
+            ]))->render();
+        } catch (\Throwable $exception) {
+            Log::warning('document_template.preview_failed', ['code' => $template->code, 'error' => $exception->getMessage()]);
 
-        return $pdf->stream('preview.pdf');
+            return response()->json(['message' => 'พรีวิวแบบฟอร์มนี้ด้วยข้อมูลตัวอย่างไม่สำเร็จ'], 422);
+        }
+
+        return Pdf::loadHTML($html)
+            ->setPaper(strtolower($template->paper_size ?: 'a4'), strtolower($template->orientation ?: 'portrait'))
+            ->stream('preview.pdf');
+    }
+
+    /**
+     * ใบลาตัวอย่างที่ไม่บันทึกลงฐานข้อมูล สำหรับแบบฟอร์มที่ยังอ่านค่าจากโมเดลโดยตรง
+     */
+    private function sampleLeave(): Leave
+    {
+        $today = Carbon::today();
+
+        $user = new User(['name' => 'นายตัวอย่าง ทดสอบระบบ', 'phone' => '08X-XXX-XXXX']);
+        $user->setRelation('department', new Department(['name' => 'แผนกวิชาช่างยนต์']));
+        $user->setRelation('profile', new UserProfile(['title' => 'นาย', 'first_name' => 'ตัวอย่าง', 'last_name' => 'ทดสอบระบบ', 'position' => 'ครู']));
+        $user->setRelation('roles', collect());
+
+        $leave = new Leave([
+            'document_number' => 'ตัวอย่าง 0001/'.($today->year + 543),
+            'start_date' => $today,
+            'end_date' => $today->copy()->addDays(14),
+            'total_days' => 15,
+            'reason' => 'ตัวอย่างเหตุผลการลา',
+            'contact_address' => 'บ้านเลขที่ 99 ถนนตัวอย่าง',
+            'status' => 'Approved',
+            'meta_data' => [],
+        ]);
+        $leave->created_at = $today;
+        $leave->setRelation('user', $user);
+        $leave->setRelation('type', new LeaveType(['name' => 'ตัวอย่างประเภทการลา']));
+        $leave->setRelation('substitute', null);
+
+        return $leave;
     }
 
     /**

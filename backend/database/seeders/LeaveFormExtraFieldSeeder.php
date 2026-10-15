@@ -31,6 +31,26 @@ class LeaveFormExtraFieldSeeder extends Seeder
                 ['key' => 'childbirth_date', 'label' => 'วันที่ภริยาคลอดบุตร', 'type' => 'date', 'required' => true],
                 ['key' => 'level', 'label' => 'ระดับ/วิทยฐานะ', 'type' => 'text', 'required' => false],
             ],
+            'leave_hajj' => [
+                ['key' => 'hajj_before', 'label' => 'เคยไปประกอบพิธีฮัจย์แล้วหรือไม่', 'type' => 'select', 'required' => false, 'options' => ['ยังไม่เคย', 'เคย']],
+            ],
+            'leave_spouse' => [
+                ['key' => 'level', 'label' => 'ระดับ/วิทยฐานะ', 'type' => 'text', 'required' => false],
+                ['key' => 'spouse_name', 'label' => 'ชื่อ-สกุลคู่สมรส', 'type' => 'text', 'required' => true],
+                ['key' => 'spouse_position', 'label' => 'ตำแหน่งของคู่สมรส', 'type' => 'text', 'required' => false],
+                ['key' => 'spouse_level', 'label' => 'ระดับของคู่สมรส', 'type' => 'text', 'required' => false],
+                ['key' => 'spouse_affiliation', 'label' => 'สังกัดของคู่สมรส', 'type' => 'text', 'required' => false],
+                ['key' => 'spouse_country', 'label' => 'ประเทศที่คู่สมรสไปปฏิบัติราชการ/ปฏิบัติงาน', 'type' => 'text', 'required' => true],
+            ],
+            'leave_study' => [
+                ['key' => 'level', 'label' => 'ระดับ/วิทยฐานะ', 'type' => 'text', 'required' => false],
+                ['key' => 'study_kind', 'label' => 'ลาไปเพื่อ', 'type' => 'select', 'required' => true, 'options' => ['ศึกษา', 'ฝึกอบรม', 'ปฏิบัติการวิจัย', 'ดูงาน']],
+                ['key' => 'course', 'label' => 'วิชา/หลักสูตร', 'type' => 'text', 'required' => true],
+                ['key' => 'degree', 'label' => 'ขั้นปริญญา', 'type' => 'text', 'required' => false],
+                ['key' => 'institution', 'label' => 'สถานศึกษา/หน่วยงานที่ไป', 'type' => 'text', 'required' => true],
+                ['key' => 'country', 'label' => 'ประเทศ', 'type' => 'text', 'required' => false],
+                ['key' => 'funding', 'label' => 'ทุนที่ใช้', 'type' => 'text', 'required' => false],
+            ],
         ];
 
         foreach ($defaults as $templateCode => $fields) {

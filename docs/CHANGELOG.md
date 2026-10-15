@@ -4,6 +4,27 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [TPL-01] - 2026-10-15 — Leave form templates: security, data and layout
+#### Security
+- **Remote code execution via document templates (TPL-SEC-01).** `LeaveDocumentTemplateResolver::render()` passed admin-editable `document_templates.content_html` to `Blade::render()`, and `POST /api/admin/document-templates/preview` rendered HTML sent in the request body the same way — anyone with the settings permission could run PHP on the server (`@php … @endphp`). HTML leave forms now always render from the code-owned blade files. The HTML template create/update/delete and HTML-preview endpoints were removed; preview is `GET /api/admin/document-templates/{template}/preview` rendering the code view with sample data. Admin form design goes through the Document Engine (field placement on the official PDF).
+
+#### Fixed
+- Signature blocks matched approvals by `approver->role_id === step->role_id`, so approvers found by a resolver (department head, direct supervisor, specific user) printed as blank. Blocks now come from the `leave_approvals` snapshot by `step_order` (`App\Services\LeaveApproverBlocks`); pending steps show no date/comment. The cancellation form uses the cancellation chain (falls back to the old action log for cancellations decided before that chain existed).
+- Vacation balance on the form read `leave_balances` by calendar year; balances are keyed by fiscal year, so leaves from October–December printed the closed year's balance. The printed fiscal year was the calendar year too.
+- "ลามาแล้ว" counted approved leaves taken *after* the leave being printed.
+- Sick/personal/maternity form overflowed to a second page (dompdf cannot split a table row); the bottom panel now uses floated columns. All 9 forms fit on one A4 page.
+- Requester signature line printed the typed name; it now shows the signature attached at submission, or a blank line to sign by hand (`pdf.partials.requester_signature`).
+- Form title "แบบลาป่วย…" → official "แบบใบลาป่วย ลาคลอดบุตร ลากิจส่วนตัว".
+- Hajj, follow-spouse and study forms rebuilt on the shared field set: position was empty, a statistics table not on the official forms was shown, and the Hajj form had a stray "ถึงวันที่ - มีกำหนด -" line and no birth / service-start dates.
+- Official-travel memo layout was scrambled, showed a broken garuda image, hard-coded the college name and four real administrators' names as fallbacks, and hard-coded division names. Rewritten on the shared fields; the opinion section is generated from the configured approval chain.
+- Word export no longer falls back to a hard-coded college name.
+- Template admin page used plain `axios` without the auth token, so it never loaded; it is now a read-only list (forms, bound leave types, PDF preview, link to the Document Center).
+
+#### Added
+- Fields `requester_signature`, `previous_same_type_count`, `duration_years|months|days` in `LeaveDocumentFields`.
+- Default form fields for the Hajj, follow-spouse and study leave types in `LeaveFormExtraFieldSeeder` (only for types with none yet).
+- Tests `DocumentTemplateSecurityTest` (5), `LeaveFormDataTest` (8).
+
 ### [MERGE-PR2] - 2026-10-14 — Merge Document & Report Engine / cancellation chain (PR #2) into main
 #### Changed
 - PR #2 (document engine, leave-type form binding, separate cancellation approval chain) merged on top of LEAVE-FIX-01, USER-IMPORT-01 and LEAVE-APPROVAL-02. Conflicts resolved with LEAVE-APPROVAL-02 rules taking precedence.

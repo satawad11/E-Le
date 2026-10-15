@@ -6,7 +6,6 @@ use App\Models\DocumentTemplateVersion;
 use App\Models\Leave;
 use App\Models\LeaveType;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Blade;
 
 /**
  * LEGACY-07 · 07-1 — เลือกและเรนเดอร์แบบฟอร์มใบลาจาก **เวอร์ชันที่ใบลานั้น pin ไว้**
@@ -29,7 +28,13 @@ use Illuminate\Support\Facades\Blade;
  *     ลาไปช่วยภริยา และลาศึกษาต่อ ยังไม่มีแถวในตารางเทมเพลต จึงต้องไม่พัง
  *
  * `content_html` เป็นสำเนาของไฟล์ blade แบบตรงตัว (ดู `DefaultDocumentTemplateService`)
- * การเรนเดอร์ผ่าน `Blade::render()` จึงให้ผลเหมือนเดิมทุกประการ
+ *
+ * TPL-SEC-01 — **ไม่เรนเดอร์ `content_html` จากฐานข้อมูลอีกต่อไป**
+ * การส่งข้อความที่ผู้ดูแลแก้ได้เข้า `Blade::render()` คือการให้รันโค้ด PHP บนเซิร์ฟเวอร์
+ * (`@php ... @endphp`, `{{ system(...) }}`) แก่ทุกคนที่มีสิทธิ์ตั้งค่า
+ * แบบฟอร์ม HTML จึงมาจากไฟล์ blade ในโค้ดเท่านั้น (ผ่าน code review)
+ * ส่วนการออกแบบแบบฟอร์มโดยผู้ดูแลให้ใช้ Document Engine (วางฟิลด์บน PDF ต้นฉบับ)
+ * เวอร์ชันที่ pin ไว้ยังใช้กำหนดขนาดกระดาษ และบอกว่าใบลานั้นออกด้วยแบบฟอร์มใด
  */
 class LeaveDocumentTemplateResolver
 {
@@ -97,24 +102,16 @@ class LeaveDocumentTemplateResolver
     }
 
     /**
-     * เรนเดอร์แบบฟอร์มเป็น HTML
-     *
-     * ใช้ `content_html` ของเวอร์ชันที่ pin ไว้เมื่อหาได้ มิฉะนั้นใช้ blade เดิม
+     * เรนเดอร์แบบฟอร์มเป็น HTML จากไฟล์ blade ในโค้ดเสมอ — ดู TPL-SEC-01 ด้านบน
      *
      * @param  array<string,mixed>  $data
      */
     public function render(Leave $leave, string $viewName, array $data): string
     {
-        // ตัวแปรมาตรฐานของแบบฟอร์ม (ดู LeaveDocumentFields) ต้องมีให้ทั้ง blade และเทมเพลตในฐานข้อมูล
+        // ตัวแปรมาตรฐานของแบบฟอร์ม (ดู LeaveDocumentFields)
         $data = array_merge(app(LeaveDocumentFields::class)->build($leave), $data);
 
-        $version = $this->versionFor($leave, $viewName);
-
-        if ($version === null || blank($version->content_html)) {
-            return view($viewName, $data)->render();
-        }
-
-        return Blade::render($version->content_html, $data);
+        return view($viewName, $data)->render();
     }
 
     /**

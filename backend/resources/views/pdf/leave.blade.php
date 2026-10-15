@@ -1,11 +1,11 @@
 {{--
-    แบบลาป่วย ลาคลอดบุตร ลากิจส่วนตัว
+    แบบใบลาป่วย ลาคลอดบุตร ลากิจส่วนตัว
 
     ทุกค่าที่เติมลงช่องว่างมาจากชุดตัวแปรกลาง `App\Services\LeaveDocumentFields`
     ไม่มีชื่อสถานศึกษาหรือชื่อผู้บริหารเขียนตายในไฟล์ — ทั้งหมดมาจากหน้าตั้งค่าระบบ
 
-    ไฟล์นี้เป็น "ค่าตั้งต้น" ที่ถูกคัดลอกลงตาราง `document_templates`
-    ผู้ดูแลแก้ไขต่อได้จากเมนูแม่แบบเอกสาร โดยไม่ต้องแก้โค้ด
+    ไฟล์นี้คือแบบฟอร์มที่พิมพ์จริง (TPL-SEC-01: ระบบไม่เรนเดอร์ HTML จากฐานข้อมูล)
+    ผู้ดูแลที่ต้องการปรับแบบฟอร์มให้ใช้ Document Engine วางฟิลด์บน PDF ต้นฉบับ
 --}}
 <!DOCTYPE html>
 <html lang="th">
@@ -26,7 +26,7 @@
             src: url("{{ public_path('fonts/THSarabunNew/THSarabunNew Bold.ttf') }}") format('truetype');
         }
         @page { margin: 8mm 12mm; size: A4 portrait; }
-        body { font-family: 'THSarabunNew', sans-serif; font-size: 14pt; line-height: 1.15; color: #000; }
+        body { font-family: 'THSarabunNew', sans-serif; font-size: 14pt; line-height: 1.05; color: #000; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .bold { font-weight: bold; }
@@ -41,8 +41,10 @@
         table.stats { border-collapse: collapse; font-size: 13pt; width: 100%; }
         table.stats th, table.stats td { border: 1px solid #000; padding: 2px 4px; text-align: center; }
         .sign-img { height: 32px; }
-        .panel { width: 100%; border-collapse: collapse; }
-        .panel > tr > td { vertical-align: top; }
+        /* สองคอลัมน์ล่างใช้ float แทนตาราง — dompdf ตัดแถวตารางข้ามหน้าไม่ได้ จึงดันทั้งส่วนไปหน้า 2 */
+        .panel-left { float: left; width: 45%; }
+        .panel-right { float: right; width: 50%; }
+        .clear { clear: both; }
     </style>
 </head>
 <body>
@@ -55,7 +57,7 @@
     $commander = $blocks->filter(fn ($b) => $b !== $checker && $b !== $order)->first() ?? $order;
 @endphp
 
-<div class="text-center bold underline" style="font-size: 18pt;">แบบลาป่วย ลาคลอดบุตร ลากิจส่วนตัว</div>
+<div class="text-center bold underline" style="font-size: 18pt;">แบบใบลาป่วย ลาคลอดบุตร ลากิจส่วนตัว</div>
 
 <table class="row" style="margin-top: 5px;">
     <tr>
@@ -163,9 +165,8 @@
 
 <div style="margin-top: 5px; margin-left: 40px;">จึงเรียนมาเพื่อโปรดพิจารณา</div>
 
-<table class="panel" style="margin-top: 6px;">
-    <tr>
-        <td width="45%">
+<div style="margin-top: 6px;">
+        <div class="panel-left">
             <div class="text-center bold underline">สถิติการลาในปีงบประมาณนี้</div>
             <table class="stats" style="margin-top: 4px;">
                 <tr>
@@ -206,17 +207,10 @@
             </div>
             <div class="text-center" style="width: 260px;">( {{ $checker['name'] ?? '' }} )</div>
             <div class="text-center" style="width: 260px;">วันที่ {{ ! empty($checker['date']) ? $checker['date']->format('d/m/').($checker['date']->year + 543) : '........./........./.........' }}</div>
-        </td>
-        <td width="10%"></td>
-        <td width="45%">
+        </div>
+        <div class="panel-right">
             <div class="text-center">ขอแสดงความนับถือ</div>
-            <div style="margin-top: 8px;">
-                (ลงชื่อ)
-                <span style="border-bottom: 1px dotted #000; display: inline-block; width: 190px; text-align: center;">
-                    {{ $user_name ?? '' }}
-                </span>
-            </div>
-            <div class="text-center" style="width: 280px;">( {{ $user_name ?? '' }} )</div>
+            @include('pdf.partials.requester_signature', ['signWidth' => 190])
 
             <div class="bold underline" style="margin-top: 10px;">ความเห็นผู้บังคับบัญชา</div>
             <div style="border-bottom: 1px dotted #000; min-height: 18px;">{{ $commander['comment'] ?? '' }}</div>
@@ -247,9 +241,9 @@
             <div class="text-center" style="width: 280px;">( {{ $order['name'] ?? '' }} )</div>
             <div class="text-center" style="width: 280px;">{{ $order['position'] ?? ($director_position ?? '') }}</div>
             <div class="text-center" style="width: 280px;">วันที่ {{ ! empty($order['date']) ? $order['date']->format('d/m/').($order['date']->year + 543) : '........./........./.........' }}</div>
-        </td>
-    </tr>
-</table>
+        </div>
+        <div class="clear"></div>
+</div>
 
 @includeIf('pdf.partials.verification_qr')
 

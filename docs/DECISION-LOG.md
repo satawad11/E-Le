@@ -250,3 +250,20 @@
   - เพิ่มแบบฟอร์ม/เวอร์ชัน/รายงานใหม่ได้จากหน้าผู้ดูแลโดยไม่ต้องแก้โค้ด
   - Engine ไม่ผูกกับ E-Leave — โมดูลอื่นใช้ได้ด้วยการเพิ่ม provider + binding rule
   - ยังต้องทำต่อ: ย้าย leave type ที่เหลือเข้า engine (DOC-ENGINE-05) และหน้าออกแบบรายงานแบบลากคอลัมน์ (DOC-ENGINE-07)
+
+## ADR-TPL-SEC-01: HTML leave forms are code-owned; admins design forms only through the Document Engine
+
+- **Status**: Accepted
+- **Date**: 2026-10-15
+- **Context**:
+  The legacy template page let admins edit `document_templates.content_html`, which was rendered with `Blade::render()` both when printing a leave and in a preview endpoint that accepted raw HTML. Blade compiles to PHP, so this gave every holder of the settings permission arbitrary code execution on the server. A safe sandboxed HTML engine would require rewriting all forms and HR staff would still have to edit HTML. The Document Engine (ADR-DOC-ENGINE-01) already offers safe, structured design: whitelisted data providers and field coordinates on the official PDF.
+- **Decision**:
+  1. HTML forms render only from `resources/views/pdf/*.blade.php` (reviewed code). `content_html` is kept as data but never executed.
+  2. Remove HTML template create/update/delete and the HTML preview endpoint; preview renders the code view with sample data.
+  3. Admin-side form customization happens in the Document Center (upload official PDF, place fields, publish), per leave type.
+  4. Pinned `document_template_version_id` still records which form a leave was issued with and sets paper size; immutability of issued documents comes from the Document Engine's finalized files.
+- **Consequences**:
+  - Closes the code-execution path. No schema change.
+  - Changing an HTML form layout now requires a code change and review.
+  - An HTML form change applies to reprints of older leaves that are not served from a finalized Document Engine file.
+

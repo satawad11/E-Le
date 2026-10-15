@@ -140,11 +140,7 @@
     </tr>
 </table>
 
-<div class="text-center" style="margin-top: 10px;">
-    (ลงชื่อ)
-    <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px; text-align: center;">{{ $user_name ?? '' }}</span>
-</div>
-<div class="text-center">( {{ $user_name ?? '' }} )</div>
+@include('pdf.partials.requester_signature')
 
 <div class="bold underline" style="margin-top: 8px;">ความเห็นผู้บังคับบัญชา</div>
 <div style="border-bottom: 1px dotted #000; min-height: 16px;">{{ $commander['comment'] ?? '' }}</div>

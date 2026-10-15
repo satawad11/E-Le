@@ -1,229 +1,184 @@
+{{--
+    บันทึกข้อความ ขออนุญาตเดินทางไปราชการ
+
+    ทุกค่ามาจากชุดตัวแปรกลาง `App\Services\LeaveDocumentFields` และหน้าตั้งค่าระบบ
+    ไม่มีชื่อสถานศึกษา ชื่อฝ่าย หรือชื่อผู้บริหารเขียนตายในไฟล์ (PROJECT_RULES: ห้าม hard-code)
+    ช่องความเห็นสร้างจากสายอนุมัติที่ตั้งค่าไว้ (approverBlocks) ตามลำดับขั้น
+
+    ช่องเฉพาะแบบฟอร์ม (หน้าตั้งค่าประเภทการลา): destination, ref_doc_no, expense_type,
+    companion_1 … companion_6 — รองรับค่าที่เก็บไว้แบบเดิมใน meta_data ด้วย
+--}}
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
     <title>บันทึกข้อความ ขออนุญาตเดินทางไปราชการ</title>
+    @include('pdf.partials.form_styles')
     <style>
-        @font-face {
-            font-family: 'THSarabunNew';
-            font-style: normal;
-            font-weight: normal;
-            src: url("{{ public_path('fonts/THSarabunNew/THSarabunNew.ttf') }}") format('truetype');
-        }
-        @font-face {
-            font-family: 'THSarabunNew';
-            font-style: normal;
-            font-weight: bold;
-            src: url("{{ public_path('fonts/THSarabunNew/THSarabunNew Bold.ttf') }}") format('truetype');
-        }
-        @page {
-            margin: 15mm 20mm;
-            size: A4 portrait;
-        }
-        body { 
-            font-family: 'THSarabunNew', sans-serif; 
-            font-size: 16pt; 
-            line-height: 1.2;
-            color: #000; 
-        }
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .font-bold { font-weight: bold; }
-        
-        .dot-line {
-            border-bottom: 1px dotted #000;
-            display: inline-block;
-        }
-
-        .checkbox {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border: 1px solid #000;
-            margin-right: 6px;
-            vertical-align: middle;
-        }
-        .checkbox.checked {
-            background-color: #000;
-        }
-        
-        table.layout {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table.layout td {
-            vertical-align: bottom;
-            padding: 1px 0;
-        }
+        .memo-title { font-size: 26pt; font-weight: bold; line-height: 1; }
+        .approvals { width: 100%; border-collapse: collapse; font-size: 13pt; margin-top: 8px; }
+        .approvals td { width: 50%; vertical-align: top; padding: 0 6px 6px 0; }
     </style>
 </head>
 <body>
-    <!-- Top Header with Garuda Crest -->
-    <table class="layout">
-        <tr>
-            <td width="15%" style="vertical-align: top;">
-                @if(!empty($settings['garuda_logo_url']) && file_exists(\App\Support\StoredFile::path($settings['garuda_logo_url'])))
-                    <img src="{{ \App\Support\StoredFile::path($settings['garuda_logo_url']) }}" style="width: 2.8cm; height: auto;">
-                @else
-                    <img src="{{ public_path('images/garuda.png') }}" style="width: 2.8cm; height: auto;">
+
+@php
+    $meta = is_array($leave->meta_data ?? null) ? $leave->meta_data : [];
+    $field = fn (string $key) => (string) (($extra[$key] ?? '') !== '' ? $extra[$key] : ($meta[$key] ?? ''));
+
+    $garudaSetting = $settings['saraban_garuda_logo'] ?? ($settings['garuda_logo_url'] ?? null);
+    $garuda = $garudaSetting ? \App\Support\StoredFile::path($garudaSetting) : null;
+    $garuda = $garuda && is_file($garuda) ? $garuda : null;
+
+    $expense = $field('expense_type') ?: 'budget';
+    $companions = collect(range(1, 6))->map(fn ($i) => $field('companion_'.$i));
+    $thaiShort = fn ($date) => ! empty($date) ? $date->format('d/m/').($date->year + 543) : '........./........./.........';
+@endphp
+
+<table class="row">
+    <tr>
+        <td width="16%" style="vertical-align: bottom;">
+            @if ($garuda)
+                <img src="{{ $garuda }}" alt="" style="width: 1.5cm; height: auto;">
+            @endif
+        </td>
+        <td width="84%" class="memo-title" style="vertical-align: bottom;">บันทึกข้อความ</td>
+    </tr>
+</table>
+
+<table class="row" style="margin-top: 6px;">
+    <tr>
+        <td width="11%" class="bold">ส่วนราชการ</td>
+        <td width="89%" class="dot-left">&nbsp;{{ trim(($school_name ?? '').' '.($school_affiliation ?? '')) }}</td>
+    </tr>
+</table>
+<table class="row">
+    <tr>
+        <td width="4%" class="bold">ที่</td>
+        <td width="44%" class="dot-left">&nbsp;{{ $doc_number ?? '' }}</td>
+        <td width="7%" class="bold text-right">วันที่&nbsp;</td>
+        <td width="45%" class="dot-left">&nbsp;{{ $doc_date_thai ?? '' }}</td>
+    </tr>
+    <tr>
+        <td width="4%" class="bold">เรื่อง</td>
+        <td width="96%" colspan="3">ขออนุญาตเดินทางไปราชการ</td>
+    </tr>
+    <tr>
+        <td width="4%" class="bold">เรียน</td>
+        <td width="96%" colspan="3">{{ $director_position ?? '' }}</td>
+    </tr>
+</table>
+
+<table class="row" style="margin-top: 6px;">
+    <tr>
+        <td width="14%"></td>
+        <td width="8%">ข้าพเจ้า</td>
+        <td width="40%" class="dot-left">&nbsp;{{ $user_name ?? '' }}</td>
+        <td width="8%" class="text-center">ตำแหน่ง</td>
+        <td width="30%" class="dot-left">&nbsp;{{ $position ?? '' }}</td>
+    </tr>
+</table>
+<table class="row">
+    <tr>
+        <td width="13%">แผนกวิชา/งาน</td>
+        <td width="87%" class="dot-left">&nbsp;{{ $division ?? '' }}</td>
+    </tr>
+</table>
+
+@if ($companions->filter()->isNotEmpty())
+    <div style="margin-top: 4px;">พร้อมด้วย</div>
+    <table class="row">
+        @foreach ($companions->chunk(2) as $pair)
+            <tr>
+                @foreach ($pair as $index => $name)
+                    <td width="4%">{{ $index + 1 }})</td>
+                    <td width="46%" class="dot-left">&nbsp;{{ $name }}</td>
+                @endforeach
+            </tr>
+        @endforeach
+    </table>
+@endif
+
+<table class="row" style="margin-top: 4px;">
+    <tr>
+        <td width="22%">ขออนุญาตเดินทางไปราชการ ณ</td>
+        <td width="78%" class="dot-left">&nbsp;{{ $field('destination') }}</td>
+    </tr>
+    <tr>
+        <td width="22%">เพื่อ</td>
+        <td width="78%" class="dot-left">&nbsp;{{ $reason ?? '' }}</td>
+    </tr>
+    <tr>
+        <td width="22%">ตามหนังสือที่</td>
+        <td width="78%" class="dot-left">&nbsp;{{ $field('ref_doc_no') ?: '-' }}</td>
+    </tr>
+</table>
+<table class="row">
+    <tr>
+        <td width="10%">ตั้งแต่วันที่</td>
+        <td width="28%" class="dot">{{ $start_date_thai ?? '' }}</td>
+        <td width="8%" class="text-center">ถึงวันที่</td>
+        <td width="28%" class="dot">{{ $end_date_thai ?? '' }}</td>
+        <td width="10%" class="text-center">มีกำหนด</td>
+        <td width="8%" class="dot">{{ $total_days ?? '' }}</td>
+        <td width="8%" class="text-center">วัน</td>
+    </tr>
+</table>
+
+<div style="margin-top: 6px;">
+    <div><span class="box {{ $expense === 'budget' ? 'checked' : '' }}"></span> ขออนุมัติเบิกค่าใช้จ่ายในการเดินทางไปราชการตามสิทธิ</div>
+    <div><span class="box {{ $expense === 'no_budget' ? 'checked' : '' }}"></span> ไม่ขอเบิกค่าใช้จ่ายในการเดินทางไปราชการ</div>
+    <div><span class="box {{ $expense === 'vehicle_only' ? 'checked' : '' }}"></span> ขอเบิกเฉพาะค่ายานพาหนะ ไม่เบิกค่าเบี้ยเลี้ยง</div>
+    <div>
+        <span class="box {{ ! empty($leave->substitute_id) ? 'checked' : '' }}"></span>
+        ได้มอบหมายให้ <span style="border-bottom: 1px dotted #000; display: inline-block; min-width: 200px;">&nbsp;{{ $leave->substitute?->full_name_with_title ?: ($leave->substitute?->name ?? '') }}</span>
+        ปฏิบัติราชการแทน/สอนแทนแล้ว
+    </div>
+</div>
+
+<div style="margin-top: 6px; text-indent: 14%;">จึงเรียนมาเพื่อโปรดพิจารณา</div>
+<div style="margin-left: 50%;">
+    @include('pdf.partials.requester_signature', ['signWidth' => 180])
+</div>
+
+@php $blocks = collect($approverBlocks ?? [])->values(); @endphp
+@if ($blocks->isNotEmpty())
+    <table class="approvals">
+        @foreach ($blocks->chunk(2) as $pair)
+            <tr>
+                @foreach ($pair as $index => $block)
+                    @php $isLast = $index === $blocks->count() - 1; @endphp
+                    <td>
+                        <div class="bold">({{ $index + 1 }}) ความเห็น{{ $block['position'] ?? '' }}</div>
+                        <div>
+                            @unless ($isLast)
+                                <span class="box {{ ($block['status'] ?? '') === 'Approved' ? 'checked' : '' }}"></span>เพื่อโปรดพิจารณา&nbsp;
+                            @else
+                                <span class="box {{ ($block['status'] ?? '') === 'Approved' ? 'checked' : '' }}"></span>อนุญาต&nbsp;
+                            @endunless
+                            <span class="box {{ ($block['status'] ?? '') === 'Rejected' ? 'checked' : '' }}"></span>ไม่{{ $isLast ? 'อนุญาต' : 'เห็นชอบ' }}
+                        </div>
+                        <div style="border-bottom: 1px dotted #000; min-height: 15px;">{{ $block['comment'] ?? '' }}</div>
+                        <div style="margin-top: 4px;">
+                            ลงชื่อ
+                            @if (! empty($block['signature']))
+                                <img class="sign-img" src="{{ $block['signature'] }}" alt="">
+                            @endif
+                            <span style="border-bottom: 1px dotted #000; display: inline-block; width: 170px;">&nbsp;</span>
+                        </div>
+                        <div style="margin-left: 30px;">( {{ $block['name'] ?? '' }} )</div>
+                        <div style="margin-left: 30px;">วันที่ {{ $thaiShort($block['date'] ?? null) }}</div>
+                    </td>
+                @endforeach
+                @if ($pair->count() === 1)
+                    <td></td>
                 @endif
-            </td>
-            <td width="85%" style="vertical-align: bottom; padding-left: 10px;">
-                <div class="font-bold" style="font-size: 26pt; line-height: 1;">บันทึกข้อความ</div>
-            </td>
-        </tr>
+            </tr>
+        @endforeach
     </table>
+@endif
 
-    <table class="layout" style="margin-top: 5px;">
-        <tr>
-            <td width="10%" class="font-bold">ส่วนราชการ</td>
-            <td width="90%">{{ $settings['school_name'] ?? 'วิทยาลัยเทคนิคดอนเมือง' }} {{ $settings['school_affiliation'] ?? 'สำนักงานคณะกรรมการการอาชีวศึกษา' }}</td>
-        </tr>
-    </table>
+@includeIf('pdf.partials.verification_qr')
 
-    @php
-        $thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        $createdDay = $leave->created_at ? \Carbon\Carbon::parse($leave->created_at)->day : '';
-        $createdMonth = $leave->created_at ? \Carbon\Carbon::parse($leave->created_at)->month : '';
-        $createdYear = $leave->created_at ? \Carbon\Carbon::parse($leave->created_at)->year + 543 : '';
-
-        $meta = is_array($leave->meta_data) ? $leave->meta_data : json_decode($leave->meta_data ?? '[]', true);
-    @endphp
-
-    <table class="layout">
-        <tr>
-            <td width="5%" class="font-bold">ที่</td>
-            <td width="45%" class="dot-line">{{ $leave->document_number ?? ($settings['doc_number_prefix'] ?? 'ศธ 0584.1') }}</td>
-            <td width="8%" class="font-bold text-right">วันที่&nbsp;</td>
-            <td width="42%" class="dot-line">{{ $createdDay }} {{ $createdMonth ? $thaiMonths[$createdMonth] : '' }} {{ $createdYear }}</td>
-        </tr>
-        <tr>
-            <td width="5%" class="font-bold">เรื่อง</td>
-            <td width="95%" colspan="3" class="font-bold">ขออนุญาตเดินทางไปราชการ</td>
-        </tr>
-        <tr>
-            <td width="5%" class="font-bold">เรียน</td>
-            <td width="95%" colspan="3">{{ $settings['director_position'] ?? 'ผู้อำนวยการวิทยาลัยเทคนิคดอนเมือง' }}</td>
-        </tr>
-    </table>
-
-    <div style="margin-top: 8px;">
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ข้าพเจ้า (นาย/นาง/นางสาว) <span class="dot-line" style="width: 55%;">{{ $leave->user->name ?? '' }}</span> พร้อมด้วย
-    </div>
-
-    <!-- Companion List 1 to 6 -->
-    <table class="layout" style="margin-top: 3px;">
-        <tr>
-            <td width="50%">1) <span class="dot-line" style="width: 85%;">{{ $meta['companion_1'] ?? '' }}</span></td>
-            <td width="50%">2) <span class="dot-line" style="width: 85%;">{{ $meta['companion_2'] ?? '' }}</span></td>
-        </tr>
-        <tr>
-            <td width="50%">3) <span class="dot-line" style="width: 85%;">{{ $meta['companion_3'] ?? '' }}</span></td>
-            <td width="50%">4) <span class="dot-line" style="width: 85%;">{{ $meta['companion_4'] ?? '' }}</span></td>
-        </tr>
-        <tr>
-            <td width="50%">5) <span class="dot-line" style="width: 85%;">{{ $meta['companion_5'] ?? '' }}</span></td>
-            <td width="50%">6) <span class="dot-line" style="width: 85%;">{{ $meta['companion_6'] ?? '' }}</span></td>
-        </tr>
-    </table>
-
-    <table class="layout" style="margin-top: 4px;">
-        <tr>
-            <td width="15%">แผนกวิชา/งาน</td>
-            <td width="35%" class="dot-line">{{ $leave->user->department->name ?? '' }}</td>
-            <td width="20%" class="text-right">ขออนุญาตไปราชการ ณ&nbsp;</td>
-            <td width="30%" class="dot-line">{{ $leave->contact_address ?? ($meta['destination'] ?? '') }}</td>
-        </tr>
-        <tr>
-            <td width="5%">เรื่อง</td>
-            <td width="45%" class="dot-line">{{ $leave->reason }}</td>
-            <td width="15%" class="text-right">ตามหนังสือที่&nbsp;</td>
-            <td width="35%" class="dot-line">{{ $meta['ref_doc_no'] ?? '-' }}</td>
-        </tr>
-    </table>
-
-    @php
-        $startDay = $leave->start_date ? \Carbon\Carbon::parse($leave->start_date)->day : '';
-        $startMonth = $leave->start_date ? \Carbon\Carbon::parse($leave->start_date)->month : '';
-        $startYear = $leave->start_date ? \Carbon\Carbon::parse($leave->start_date)->year + 543 : '';
-        
-        $endDay = $leave->end_date ? \Carbon\Carbon::parse($leave->end_date)->day : '';
-        $endMonth = $leave->end_date ? \Carbon\Carbon::parse($leave->end_date)->month : '';
-        $endYear = $leave->end_date ? \Carbon\Carbon::parse($leave->end_date)->year + 543 : '';
-
-        $expenseType = $meta['expense_type'] ?? 'budget';
-    @endphp
-
-    <table class="layout" style="margin-top: 4px;">
-        <tr>
-            <td width="10%">ตั้งแต่วันที่</td>
-            <td width="30%" class="dot-line text-center">{{ $startDay }} {{ $startMonth ? $thaiMonths[$startMonth] : '' }} {{ $startYear }}</td>
-            <td width="8%" class="text-center">ถึงวันที่</td>
-            <td width="30%" class="dot-line text-center">{{ $endDay }} {{ $endMonth ? $thaiMonths[$endMonth] : '' }} {{ $endYear }}</td>
-            <td width="10%" class="text-center">มีกำหนด</td>
-            <td width="12%" class="dot-line text-center">{{ $leave->total_days }} วัน</td>
-        </tr>
-    </table>
-
-    <!-- Expense Option Checkboxes -->
-    <div style="margin-top: 6px; font-size: 15pt;">
-        <div><span class="checkbox {{ $expenseType === 'budget' ? 'checked' : '' }}"></span> โดยขออนุมัติให้เบิกค่าใช้จ่ายในการเดินทางไปราชการตามสิทธิ์</div>
-        <div><span class="checkbox {{ $expenseType === 'no_budget' ? 'checked' : '' }}"></span> โดยไม่ขอเบิกค่าใช้จ่ายในการเดินทางไปราชการ</div>
-        <div><span class="checkbox {{ $expenseType === 'vehicle_only' ? 'checked' : '' }}"></span> โดยขออนุญาตให้เบิกค่ายานพาหนะแต่ไม่เบิกค่าเบี้ยเลี้ยงในการเดินทางไปราชการ</div>
-        <div><span class="checkbox {{ $expenseType === 'substitute' || !empty($leave->substitute_id) ? 'checked' : '' }}"></span> ได้มอบหมายให้ <span class="dot-line" style="width: 35%;">{{ $leave->substitute ? $leave->substitute->name : '-' }}</span> จัดการสอนแทนแล้ว / ปฏิบัติราชการแทน</div>
-    </div>
-
-    <!-- Applicant Signature -->
-    <div class="text-right" style="margin-top: 15px; margin-right: 30px;">
-        ลงชื่อ........................................................ผู้ขอไปราชการ<br>
-        ( {{ $leave->user->name ?? '' }} )
-    </div>
-
-    <!-- Multi-level 6 Approvals Layout -->
-    <table width="100%" style="margin-top: 10px; font-size: 13pt;">
-        <tr>
-            <!-- Column 1: Levels (1) to (3) -->
-            <td width="50%" style="vertical-align: top; padding-right: 10px;">
-                <div><strong>(1) ความเห็นหัวหน้าแผนกวิชา/งาน</strong></div>
-                ....................................................................................<br>
-                ลงชื่อ........................................................<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(........................................................)<br><br>
-
-                <div><strong>(2) ความเห็นรองผู้อำนวยการฝ่ายที่สังกัด</strong></div>
-                [ &nbsp; ] ฝ่ายแผนงานและความร่วมมือ<br>
-                [ &nbsp; ] ฝ่ายพัฒนากิจการนักเรียน นักศึกษา<br>
-                ( &nbsp; ) เพื่อโปรดพิจารณา ( &nbsp; ) อนุญาต ( &nbsp; ) ไม่อนุญาต<br>
-                ลงชื่อ........................................................<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(........................................................)<br><br>
-
-                <div><strong>(3) ความเห็นรองผู้อำนวยการฝ่ายวิชาการ</strong></div>
-                ( &nbsp; ) เพื่อโปรดพิจารณา ( &nbsp; ) อนุญาต ( &nbsp; ) ไม่อนุญาต<br>
-                ลงชื่อ........................................................<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;( {{ $settings['deputy_academic_name'] ?? 'ว่าที่ร้อยตรีไชยา ทับวิธร' }} )
-            </td>
-
-            <!-- Column 2: Levels (4) to (6) -->
-            <td width="50%" style="vertical-align: top; padding-left: 10px;">
-                <div><strong>(4) ความเห็นหัวหน้างานบุคลากร</strong></div>
-                ....................................................................................<br>
-                ลงชื่อ........................................................<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;( {{ $settings['head_hr_name'] ?? 'นายอภินันท์ ก้อนมณี' }} )<br><br>
-
-                <div><strong>(5) ความเห็นรองผู้อำนวยการฝ่ายบริหารทรัพยากร</strong></div>
-                ( &nbsp; ) เพื่อโปรดพิจารณา ( &nbsp; ) อนุญาต ( &nbsp; ) ไม่อนุญาต<br>
-                ....................................................................................<br>
-                ลงชื่อ........................................................<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;( {{ $settings['deputy_admin_name'] ?? 'นายพัฒนพงษ์ พริ้วไธสง' }} )<br><br>
-
-                <div><strong>(6) ความเห็นผู้อำนวยการวิทยาลัยเทคนิคดอนเมือง</strong></div>
-                ( &nbsp; ) อนุญาต ( &nbsp; ) ไม่อนุญาต<br>
-                ....................................................................................<br>
-                ลงชื่อ........................................................<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;( {{ $settings['director_name'] ?? 'นายบรรจง พลขันธ์' }} )<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ผู้อำนวยการวิทยาลัยเทคนิคดอนเมือง
-            </td>
-        </tr>
-    </table>
-@include('pdf.partials.verification_qr')
 </body>
 </html>

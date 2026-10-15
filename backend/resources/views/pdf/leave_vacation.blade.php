@@ -154,11 +154,7 @@
         <td width="10%"></td>
         <td width="45%" style="vertical-align: top;">
             <div class="text-center">ขอแสดงความนับถือ</div>
-            <div style="margin-top: 14px;">
-                (ลงชื่อ)
-                <span style="border-bottom: 1px dotted #000; display: inline-block; width: 190px; text-align: center;">{{ $user_name ?? '' }}</span>
-            </div>
-            <div class="text-center" style="width: 280px;">( {{ $user_name ?? '' }} )</div>
+            @include('pdf.partials.requester_signature', ['signWidth' => 190])
 
             <div class="bold underline" style="margin-top: 10px;">ความเห็นผู้บังคับบัญชา</div>
             <div style="border-bottom: 1px dotted #000; min-height: 18px;">{{ $commander['comment'] ?? '' }}</div>
