@@ -52,6 +52,10 @@ class LeaveFormFieldMap
         'spouse_affiliation' => 'สังกัดของคู่สมรส', 'spouse_country' => 'ประเทศที่คู่สมรสไปปฏิบัติงาน',
         'course' => 'วิชา/หลักสูตร', 'degree' => 'ขั้นปริญญา', 'institution' => 'สถานศึกษา/หน่วยงานที่ไป', 'country' => 'ประเทศ', 'funding' => 'ทุนที่ใช้',
         'destination' => 'สถานที่ไปราชการ', 'ref_doc_no' => 'ตามหนังสือที่',
+        'summons_issuer' => 'หมายเรียกของ (หน่วยงาน)', 'summons_number' => 'เลขที่หมายเรียก', 'summons_date' => 'วันที่ของหมายเรียก',
+        'report_place' => 'สถานที่ไปรายงานตัว',
+        'organization_name' => 'ชื่อองค์การระหว่างประเทศ', 'assigned_position' => 'ตำแหน่งที่ไปปฏิบัติงาน',
+        'injury_cause' => 'สาเหตุการบาดเจ็บ/เจ็บป่วยจากการปฏิบัติราชการ', 'injury_date' => 'วันที่บาดเจ็บ/เจ็บป่วย',
         'companion_1' => 'ผู้ร่วมเดินทาง 1', 'companion_2' => 'ผู้ร่วมเดินทาง 2', 'companion_3' => 'ผู้ร่วมเดินทาง 3',
         'companion_4' => 'ผู้ร่วมเดินทาง 4', 'companion_5' => 'ผู้ร่วมเดินทาง 5', 'companion_6' => 'ผู้ร่วมเดินทาง 6',
     ];
@@ -59,6 +63,7 @@ class LeaveFormFieldMap
     /** ตัวเลือกของช่องแบบเลือกที่แบบฟอร์มในระบบใช้ติ๊กช่อง @var array<string, array<int, string>> */
     private const KNOWN_CHOICES = [
         'study_kind' => ['ศึกษา', 'ฝึกอบรม', 'ปฏิบัติการวิจัย', 'ดูงาน'],
+        'call_kind' => ['เข้ารับการตรวจเลือก', 'เข้ารับการเตรียมพล'],
         'expense_type' => ['เบิกตามสิทธิ', 'ไม่เบิกค่าใช้จ่าย', 'เบิกเฉพาะค่ายานพาหนะ'],
     ];
 
@@ -317,6 +322,7 @@ class LeaveFormFieldMap
         }
         $fields['study_kind']['label'] = 'ลาไปเพื่อ (ศึกษา/ฝึกอบรม/วิจัย/ดูงาน)';
         $fields['expense_type']['label'] = 'การเบิกค่าใช้จ่ายเดินทางไปราชการ';
+        $fields['call_kind']['label'] = 'รายงานลาเพื่อ (ตรวจเลือก/เตรียมพล)';
 
         foreach (LeaveType::query()->whereNotNull('extra_fields')->get(['id', 'name', 'extra_fields']) as $type) {
             foreach ((array) $type->extra_fields as $definition) {

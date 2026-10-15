@@ -51,6 +51,28 @@ class LeaveFormExtraFieldSeeder extends Seeder
                 ['key' => 'country', 'label' => 'ประเทศ', 'type' => 'text', 'required' => false],
                 ['key' => 'funding', 'label' => 'ทุนที่ใช้', 'type' => 'text', 'required' => false],
             ],
+            'leave_military' => [
+                ['key' => 'level', 'label' => 'ระดับ/วิทยฐานะ', 'type' => 'text', 'required' => false],
+                ['key' => 'call_kind', 'label' => 'รายงานลาเพื่อ', 'type' => 'select', 'required' => true, 'options' => ['เข้ารับการตรวจเลือก', 'เข้ารับการเตรียมพล']],
+                ['key' => 'summons_issuer', 'label' => 'หมายเรียกของ (หน่วยงาน)', 'type' => 'text', 'required' => true],
+                ['key' => 'summons_number', 'label' => 'เลขที่หมายเรียก', 'type' => 'text', 'required' => false],
+                ['key' => 'summons_date', 'label' => 'วันที่ของหมายเรียก', 'type' => 'date', 'required' => false],
+                ['key' => 'report_place', 'label' => 'สถานที่ไปรายงานตัว', 'type' => 'text', 'required' => true],
+            ],
+            'leave_international' => [
+                ['key' => 'level', 'label' => 'ระดับ/วิทยฐานะ', 'type' => 'text', 'required' => false],
+                ['key' => 'organization_name', 'label' => 'ชื่อองค์การระหว่างประเทศ', 'type' => 'text', 'required' => true],
+                ['key' => 'assigned_position', 'label' => 'ตำแหน่งที่ไปปฏิบัติงาน', 'type' => 'text', 'required' => false],
+                ['key' => 'country', 'label' => 'ประเทศ', 'type' => 'text', 'required' => true],
+                ['key' => 'funding', 'label' => 'ได้รับค่าตอบแทนจาก', 'type' => 'text', 'required' => false],
+            ],
+            'leave_rehabilitation' => [
+                ['key' => 'level', 'label' => 'ระดับ/วิทยฐานะ', 'type' => 'text', 'required' => false],
+                ['key' => 'injury_cause', 'label' => 'สาเหตุการบาดเจ็บ/เจ็บป่วยจากการปฏิบัติราชการ', 'type' => 'text', 'required' => true],
+                ['key' => 'injury_date', 'label' => 'วันที่บาดเจ็บ/เจ็บป่วย', 'type' => 'date', 'required' => false],
+                ['key' => 'course', 'label' => 'หลักสูตรฟื้นฟูสมรรถภาพ', 'type' => 'text', 'required' => true],
+                ['key' => 'institution', 'label' => 'สถานที่ฝึกอบรม', 'type' => 'text', 'required' => false],
+            ],
             'official_travel' => [
                 ['key' => 'destination', 'label' => 'สถานที่ไปราชการ', 'type' => 'text', 'required' => true],
                 ['key' => 'ref_doc_no', 'label' => 'ตามหนังสือที่', 'type' => 'text', 'required' => false],

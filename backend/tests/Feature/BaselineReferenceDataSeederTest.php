@@ -54,8 +54,8 @@ class BaselineReferenceDataSeederTest extends TestCase
         DocumentTemplate::query()->where('code', 'leave_vacation')->update(['content_html' => '<p>custom</p>']);
         $this->seed(DocumentTemplateSeeder::class);
 
-        // 9 แบบฟอร์มใบลา (รวมฮัจญ์ ติดตามคู่สมรส ศึกษาต่อ) — แม่แบบตัวอย่าง HR ถูกถอดออกเพราะไม่มีส่วนใดของระบบใช้
-        $this->assertSame(9, DocumentTemplate::query()->count());
+        // 12 แบบฟอร์มใบลา — ครบทุกประเภทการลาตามระเบียบ + ใบขอยกเลิก + บันทึกไปราชการ
+        $this->assertSame(12, DocumentTemplate::query()->count());
         $this->assertSame('<p>custom</p>', DocumentTemplate::query()->where('code', 'leave_vacation')->value('content_html'));
     }
 }

@@ -56,6 +56,9 @@ class LeaveDocumentTemplateResolver
         'pdf.leave_hajj' => 'leave_hajj',
         'pdf.leave_spouse' => 'leave_spouse',
         'pdf.leave_study' => 'leave_study',
+        'pdf.leave_military' => 'leave_military',
+        'pdf.leave_international' => 'leave_international',
+        'pdf.leave_rehabilitation' => 'leave_rehabilitation',
     ];
 
     /**
@@ -181,6 +184,9 @@ class LeaveDocumentTemplateResolver
             str_contains($name, 'ฮัจญ์') => 'leave_hajj',
             str_contains($name, 'ติดตามคู่สมรส') => 'leave_spouse',
             str_contains($name, 'ศึกษาต่อ') => 'leave_study',
+            str_contains($name, 'ตรวจเลือก'), str_contains($name, 'เตรียมพล') => 'leave_military',
+            str_contains($name, 'องค์การระหว่างประเทศ') => 'leave_international',
+            str_contains($name, 'ฟื้นฟูสมรรถภาพ') => 'leave_rehabilitation',
             str_contains($name, 'ไปราชการ') => 'official_travel',
             str_contains($name, 'ป่วย'), str_contains($name, 'กิจ'), str_contains($name, 'คลอด') => 'leave_sick_personal',
             default => null,
