@@ -392,11 +392,15 @@ class DocumentEngineTest extends TestCase
 
     // ─────────────────────────── Legacy compatibility ───────────────────────────
 
-    public function test_the_engine_is_off_by_default_and_leaves_the_old_path_untouched(): void
+    /**
+     * engine เปิดเป็นค่าเริ่มต้นแล้ว (สวิตช์ฉุกเฉิน) แต่ประเภทการลาที่ผู้ดูแลยังไม่เปิดใช้แบบฟอร์มที่ออกแบบ
+     * ต้องเดินเส้นทางเดิมทุกประการ — ดู LeaveFormDesignerTest
+     */
+    public function test_leave_types_without_an_enabled_form_keep_the_old_path(): void
     {
         [$leave] = $this->approvedLeave();
 
-        $this->assertFalse(config('document_engine.enabled'));
+        $this->assertTrue(config('document_engine.enabled'));
         $this->assertFalse(app(LeaveDocumentGateway::class)->handles($leave));
         $this->assertNull(app(LeaveDocumentGateway::class)->pdfFor($leave));
     }

@@ -30,11 +30,10 @@
         {{ overview.engine_enabled ? 'Document Engine เปิดใช้งานอยู่' : 'Document Engine ปิดอยู่ (ระบบใช้เส้นทางพิมพ์เอกสารเดิม)' }}
       </span>
       <span v-if="overview.engine_enabled">
-        ประเภทการลาที่เปิด: {{ overview.enabled_leave_types.length ? overview.enabled_leave_types.join(', ') : 'ยังไม่ได้ระบุ' }}
+        เปิด/ปิดแบบฟอร์มที่ออกแบบรายประเภทการลาได้ที่แท็บ "แบบฟอร์มใบลา"
       </span>
       <span v-else class="text-amber-800">
-        เปิดได้ที่ไฟล์ตั้งค่า <code class="bg-white/70 px-1.5 py-0.5 rounded">DOCUMENT_ENGINE_ENABLED=true</code>
-        และระบุประเภทการลาที่ <code class="bg-white/70 px-1.5 py-0.5 rounded">DOCUMENT_ENGINE_LEAVE_TYPES</code>
+        ถูกปิดด้วยสวิตช์ฉุกเฉิน <code class="bg-white/70 px-1.5 py-0.5 rounded">DOCUMENT_ENGINE_ENABLED=false</code> ในไฟล์ตั้งค่า
       </span>
     </div>
 
@@ -65,8 +64,11 @@
     </div>
 
     <template v-else>
+      <!-- แบบฟอร์มใบลารายประเภท -->
+      <LeaveTypeFormsPanel v-if="activeTab === 'leave-forms'" />
+
       <!-- แบบฟอร์มเอกสาร -->
-      <section v-if="activeTab === 'templates'" class="space-y-4">
+      <section v-else-if="activeTab === 'templates'" class="space-y-4">
         <div class="flex justify-end">
           <button
             @click="showCreate = true"
@@ -480,13 +482,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
+import LeaveTypeFormsPanel from '../../components/admin/LeaveTypeFormsPanel.vue'
 
 const router = useRouter()
 const alertStore = useAlertStore()
 
 const loading = ref(false)
 const saving = ref(false)
-const activeTab = ref('templates')
+const activeTab = ref('leave-forms')
 const showCreate = ref(false)
 
 const overview = ref(null)
@@ -503,6 +506,7 @@ const unboundLeaveTypes = ref([])
 const bindingForm = ref({ id: null, module: 'LEAVE', entity_type: 'LEAVE_TYPE', entity_id: null, document_template_id: null })
 
 const tabs = [
+  { value: 'leave-forms', label: 'แบบฟอร์มใบลา' },
   { value: 'templates', label: 'แบบฟอร์มเอกสาร' },
   { value: 'bindings', label: 'การผูกแบบฟอร์ม' },
   { value: 'fields', label: 'Field Dictionary' },

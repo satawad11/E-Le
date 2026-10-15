@@ -8,7 +8,7 @@
     $signBlocks = collect($approverBlocks ?? []);
     $order = $signBlocks->last();
     $commander = $signBlocks->filter(fn ($b) => $b !== $order)->last() ?? $order;
-    $thaiShort = fn ($date) => ! empty($date) ? $date->format('d/m/').($date->year + 543) : '........./........./.........';
+    $thaiShort = fn ($date) => \App\Support\FormDate::short($date);
 @endphp
 
 <div class="bold underline" style="margin-top: 8px;">ความเห็นผู้บังคับบัญชา</div>
@@ -21,9 +21,9 @@
     @endif
     <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px;">&nbsp;</span>
 </div>
-<div class="text-center">( {{ $commander['name'] ?? '' }} )</div>
-<div class="text-center">ตำแหน่ง {{ $commander['position'] ?? '' }}</div>
-<div class="text-center">วันที่ {{ $thaiShort($commander['date'] ?? null) }}</div>
+<div class="text-center">(<span class="fill" style="width: 190px;">{{ $commander['name'] ?? '' }}</span>)</div>
+<div class="text-center">ตำแหน่ง <span class="fill" style="width: 190px;">{{ $commander['position'] ?? '' }}</span></div>
+<div class="text-center">วันที่ <span class="fill" style="width: 110px;">{{ $thaiShort($commander['date'] ?? null) }}</span></div>
 
 <div class="bold underline" style="margin-top: 8px;">คำสั่ง</div>
 <div style="margin-left: 40px;">
@@ -39,6 +39,6 @@
     @endif
     <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px;">&nbsp;</span>
 </div>
-<div class="text-center">( {{ $order['name'] ?? '' }} )</div>
-<div class="text-center">ตำแหน่ง {{ $order['position'] ?? ($director_position ?? '') }}</div>
-<div class="text-center">วันที่ {{ $thaiShort($order['date'] ?? null) }}</div>
+<div class="text-center">(<span class="fill" style="width: 190px;">{{ $order['name'] ?? '' }}</span>)</div>
+<div class="text-center">ตำแหน่ง <span class="fill" style="width: 190px;">{{ $order['position'] ?? ($director_position ?? '') }}</span></div>
+<div class="text-center">วันที่ <span class="fill" style="width: 110px;">{{ $thaiShort($order['date'] ?? null) }}</span></div>

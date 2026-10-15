@@ -168,10 +168,14 @@ class DocumentEngine
     /** ตัวอย่างเอกสารสำหรับหน้าออกแบบ — ใช้ค่าตัวอย่างของแต่ละฟิลด์ ไม่แตะข้อมูลจริง */
     public function preview(DocumentTemplateVersion $version): string
     {
+        // แบบฟอร์มใบลาใช้ค่าตัวอย่างที่สมจริง (ชื่อ วันที่ สถิติ ผู้ลงนาม) — ฟิลด์อื่นแสดงรหัสฟิลด์
+        $samples = $version->template?->module === 'leave' ? app(LeaveFormFieldMap::class)->sampleValues() : [];
         $values = [];
 
         foreach ($version->fieldMappings as $mapping) {
-            $values[$mapping->field_code] = $this->sampleValue($mapping);
+            $values[$mapping->field_code] = array_key_exists($mapping->field_code, $samples)
+                ? $samples[$mapping->field_code]
+                : $this->sampleValue($mapping);
         }
 
         return $this->renderer->render($version, $values);

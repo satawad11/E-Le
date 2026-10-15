@@ -39,7 +39,7 @@
         <td width="6%">ระดับ</td>
         <td width="24%" class="dot-left">&nbsp;{{ $level ?? '' }}</td>
         <td width="7%" class="text-center">สังกัด</td>
-        <td width="63%" class="dot-left">&nbsp;{{ trim(($division ?? '').' '.($school_name ?? '')) }}</td>
+        <td width="63%" class="dot-left">&nbsp;{{ $affiliation_line ?? '' }}</td>
     </tr>
 </table>
 <table class="row">

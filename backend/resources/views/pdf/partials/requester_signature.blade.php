@@ -12,4 +12,4 @@
     @endif
     <span style="border-bottom: 1px dotted #000; display: inline-block; width: {{ $signWidth }}px;">&nbsp;</span>
 </div>
-<div style="text-align: {{ $align ?? 'center' }};">( {{ $user_name ?? '' }} )</div>
+<div style="text-align: {{ $align ?? 'center' }};">(<span class="fill" style="width: 190px;">{{ $user_name ?? '' }}</span>)</div>

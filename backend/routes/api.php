@@ -273,6 +273,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/admin/document-engine/fields', [DocumentEngineController::class, 'fieldDictionary']);
         Route::get('/admin/document-engine/data-sources', [DocumentEngineController::class, 'dataSources']);
         Route::get('/admin/document-engine/bindings', [DocumentEngineController::class, 'bindings']);
+        Route::get('/admin/document-engine/leave-type-forms', [DocumentEngineController::class, 'leaveTypeForms']);
         Route::get('/admin/document-engine/calibrations', [DocumentEngineController::class, 'calibrations']);
         Route::get('/admin/document-engine/versions/{version}/mappings', [DocumentEngineController::class, 'mappings']);
         Route::get('/admin/document-engine/versions/{version}/pdf', [DocumentEngineController::class, 'pdfFile'])->middleware('throttle:documents');
@@ -289,6 +290,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::delete('/admin/document-engine/versions/{version}', [DocumentEngineController::class, 'deleteVersion']);
         Route::put('/admin/document-engine/versions/{version}/mappings', [DocumentEngineController::class, 'saveMappings']);
         Route::post('/admin/document-engine/bindings', [DocumentEngineController::class, 'saveBinding']);
+        Route::post('/admin/document-engine/leave-type-forms/{target}/generate', [DocumentEngineController::class, 'generateLeaveTypeForm'])
+            ->where('target', '[0-9]+|cancel')->middleware('throttle:documents');
+        Route::put('/admin/document-engine/leave-type-forms/{target}', [DocumentEngineController::class, 'setLeaveTypeForm'])
+            ->where('target', '[0-9]+|cancel');
         Route::delete('/admin/document-engine/bindings/{rule}', [DocumentEngineController::class, 'deleteBinding']);
         Route::post('/admin/document-engine/calibrations', [DocumentEngineController::class, 'saveCalibration']);
     });

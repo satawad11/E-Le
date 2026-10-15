@@ -267,3 +267,20 @@
   - Changing an HTML form layout now requires a code change and review.
   - An HTML form change applies to reprints of older leaves that are not served from a finalized Document Engine file.
 
+## ADR-DOC-DESIGNER-01: Leave forms are designed per leave type on generated, organisation-neutral backgrounds
+
+- **Status**: Accepted
+- **Date**: 2026-10-15
+- **Context**:
+  The owner wants every leave type's form designed in the Document Engine's Visual Designer. The five PDFs in `resources/document-templates` are another college's Word forms with its name baked in and no usable text layer, field positions were placeholders, four leave types had no PDF at all, enabling the engine required editing `.env`, leaves never pinned PDF versions, and ticked checkboxes crashed the renderer.
+- **Decision**:
+  1. Generate a blank background for each of the 9 system forms from the code-owned HTML forms; organisation, director and all data are overlay fields filled from settings and the leave.
+  2. Place fields automatically by rendering the form with marker values (and one render per checkbox/signature) and reading the boxes from dompdf's layout — the background is rendered with invisible values so both layouts are identical.
+  3. One field catalogue (`LeaveFormFieldMap`) feeds both the designer and the engine's values, from the same data as the HTML forms.
+  4. Per-leave-type activation = an active binding of the type to its `designer_<code>` template with a published version, switched from the admin page. `DOCUMENT_ENGINE_ENABLED` (default true) remains the global kill switch.
+  5. New leaves pin the enabled PDF version at submission; earlier leaves keep their pinned form.
+- **Consequences**:
+  - Admins can still upload their own official PDF in the designer and re-place fields.
+  - Generation re-renders a form ~20–30 times (~15–30 s per form).
+  - Leave types without a system form (military call-up, international organisation, vocational rehabilitation) still need a PDF uploaded by the admin.
+
