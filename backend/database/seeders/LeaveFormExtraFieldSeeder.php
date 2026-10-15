@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Services\LeaveDocumentTemplateResolver;
 use Illuminate\Database\Seeder;
 
 /**
@@ -83,11 +85,18 @@ class LeaveFormExtraFieldSeeder extends Seeder
             ],
         ];
 
-        foreach ($defaults as $templateCode => $fields) {
-            LeaveType::where('document_template_code', $templateCode)
-                ->whereNull('extra_fields')
-                ->get()
-                ->each(fn (LeaveType $type) => $type->update(['extra_fields' => $fields]));
-        }
+        /*
+         * จับคู่แบบฟอร์มเหมือนตอนพิมพ์จริง — ใช้ document_template_code ถ้าตั้งไว้ ไม่เช่นนั้นเดาจากชื่อประเภทการลา
+         * (ประเภทการลาที่ยังไม่ได้เลือกแบบฟอร์มในหน้าตั้งค่าก็ได้ช่องกรอกของแบบฟอร์มที่จะพิมพ์จริง)
+         */
+        $resolver = app(LeaveDocumentTemplateResolver::class);
+
+        LeaveType::whereNull('extra_fields')->get()->each(function (LeaveType $type) use ($defaults, $resolver) {
+            $code = $resolver->templateCodeForLeave((new Leave)->setRelation('type', $type));
+
+            if ($code !== null && isset($defaults[$code])) {
+                $type->update(['extra_fields' => $defaults[$code]]);
+            }
+        });
     }
 }

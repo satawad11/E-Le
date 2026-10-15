@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\DefaultDocumentTemplateService;
 use App\Services\LeaveApproverBlocks;
 use App\Services\LeaveDocumentFields;
+use Database\Seeders\LeaveFormExtraFieldSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -202,5 +203,20 @@ class LeaveFormDataTest extends TestCase
                 $this->assertStringNotContainsString($needle, $content, basename($file));
             }
         }
+    }
+
+    /**
+     * ช่องกรอกตั้งต้นต้องลงที่ประเภทการลาที่ยังไม่ได้เลือกแบบฟอร์มด้วย — จับคู่ด้วยชื่อเหมือนตอนพิมพ์
+     * และไม่ทับช่องกรอกที่ผู้ดูแลตั้งไว้เอง
+     */
+    public function test_default_form_fields_follow_the_form_the_leave_type_prints_with(): void
+    {
+        $rehab = LeaveType::create(['name' => 'ลาไปฟื้นฟูสมรรถภาพด้านอาชีพทดสอบ']);
+        $custom = LeaveType::create(['name' => 'ลาเข้ารับการตรวจเลือกทดสอบ', 'extra_fields' => [['key' => 'own', 'label' => 'ของเดิม', 'type' => 'text']]]);
+
+        $this->seed(LeaveFormExtraFieldSeeder::class);
+
+        $this->assertContains('injury_cause', array_column($rehab->fresh()->extra_fields, 'key'));
+        $this->assertSame(['own'], array_column($custom->fresh()->extra_fields, 'key'));
     }
 }
