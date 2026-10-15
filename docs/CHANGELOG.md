@@ -4,6 +4,11 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [LEAVE-FORMS-03] - 2026-10-15 — Long affiliation line on vacation, cancellation and ordination forms
+#### Fixed
+- "สังกัด" sat in a third-of-a-line cell, so a real school name + parent agency (e.g. "วิทยาลัยเทคนิคดอนเมือง สำนักงานคณะกรรมการการอาชีวศึกษา") shrank to unreadable size. It now has its own full-width line.
+- Rows with different column counts shared one table (dompdf sizes columns from the first row), which squeezed the "ข้าพเจ้า" line and overlapped "เกิดวันที่ / เข้ารับราชการ" on the ordination form; each line is now its own table. Cancellation form: tidied the "เนื่องจาก" and "จำนวน … วัน" lines.
+
 ### [LEAVE-FORMS-02] - 2026-10-15 — Forms for the three remaining leave types
 #### Added
 - Forms for every leave type in the regulation that had none (they printed on the sick/personal/maternity form):
