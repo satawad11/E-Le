@@ -115,7 +115,12 @@
           </div>
           <div class="md:col-span-2">
             <label class="block text-xs text-gray-700 mb-1">รหัสผ่านใหม่ <span class="text-gray-400 font-normal">(เว้นว่างหากไม่ต้องการเปลี่ยน)</span></label>
-            <input v-model="form.password" type="password" placeholder="••••••••" class="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+            <input v-model="form.password" type="password" autocomplete="new-password" placeholder="••••••••" class="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+          </div>
+          <div v-if="form.password" class="md:col-span-2">
+            <label class="block text-xs text-gray-700 mb-1">รหัสผ่านปัจจุบัน <span class="text-red-500">*</span> <span class="text-gray-400 font-normal">(ยืนยันตัวตนก่อนเปลี่ยนรหัสผ่าน)</span></label>
+            <input v-model="form.current_password" type="password" autocomplete="current-password" placeholder="••••••••" class="w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+            <p class="text-xs text-gray-500 mt-1">เมื่อเปลี่ยนรหัสผ่านแล้ว ระบบจะออกจากระบบทุกอุปกรณ์ กรุณาเข้าสู่ระบบใหม่ด้วยรหัสผ่านใหม่</p>
           </div>
 
           <div class="md:col-span-2">
@@ -231,12 +236,14 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useAlertStore } from '../stores/alert'
 import api from '../axios'
 import { ICONS } from '../utils/icons'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const alertStore = useAlertStore()
 
 const loading = ref(true)
@@ -288,6 +295,7 @@ const form = reactive({
   line_user_id: '',
   notification_channel: 'both',
   password: '',
+  current_password: '',
   role: null,
   department: null,
   profile: {}
@@ -455,8 +463,10 @@ const submitProfile = async () => {
     }
 
 
-    if (form.password) {
+    const passwordChanged = !!form.password
+    if (passwordChanged) {
       formData.append('password', form.password)
+      formData.append('current_password', form.current_password || '')
     }
 
     if (imageFile.value) {
@@ -473,6 +483,15 @@ const submitProfile = async () => {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     
+    if (passwordChanged) {
+      // เซิร์ฟเวอร์ยกเลิก token ทุกตัวเมื่อเปลี่ยนรหัสผ่าน จึงต้องเข้าสู่ระบบใหม่
+      // ล้าง token ก่อน logout() เพื่อไม่ให้ยิง /logout ด้วย token ที่ถูกยกเลิกแล้ว (401 จะ reload หน้าและข้อความแจ้งเตือนหาย)
+      alertStore.success('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว กรุณาเข้าสู่ระบบใหม่ด้วยรหัสผ่านใหม่')
+      authStore.token = null
+      authStore.logout()
+      router.push('/login')
+      return
+    }
     alertStore.success(res.data.message || 'อัปเดตโปรไฟล์เรียบร้อยแล้ว')
     // Update local auth user state if needed
     authStore.fetchUser()
