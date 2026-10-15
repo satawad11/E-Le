@@ -88,7 +88,7 @@ class SignatureController extends Controller
                 'hash' => $hash,
             ]);
 
-            return response()->json(['message' => 'Document signed successfully.', 'hash' => $hash]);
+            return response()->json(['message' => 'ลงนามหนังสือเรียบร้อยแล้ว', 'hash' => $hash]);
         } catch (\Exception $e) {
             report($e);
 
@@ -107,7 +107,7 @@ class SignatureController extends Controller
             ->first();
 
         if (! $signature || ! $signature->document) {
-            return response()->json(['message' => 'Signature not found or invalid.'], 404);
+            return response()->json(['message' => 'ไม่พบลายเซ็นนี้ หรือลายเซ็นไม่ถูกต้อง'], 404);
         }
 
         $document = $signature->document;

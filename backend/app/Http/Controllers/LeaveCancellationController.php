@@ -2,21 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ApprovalStep;
 use App\Models\Leave;
 use App\Models\LeaveActionLog;
+use App\Models\LeaveApproval;
 use App\Models\LeaveAuditLog;
+use App\Models\User;
 use App\Services\LeaveApprovalFlow;
 use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
+use App\Services\Workflow\ApproverResolverService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * ยกเลิกวันลา (แบบใบขอยกเลิกวันลา)
  *
  * - ใบที่ยังรออนุมัติ: ผู้ยื่นยกเลิกเองได้ทันที คืนยอดที่จองไว้
- * - ใบที่อนุมัติแล้ว: ต้องยื่นคำขอยกเลิก แล้วผ่านสายอนุมัติเดียวกับตอนขอลา
+ * - ใบที่อนุมัติแล้ว: ต้องยื่นคำขอยกเลิก แล้วเดินสายอนุมัติของคำขอยกเลิก
+ *   (ตั้งแยกได้ที่หน้าจัดการลำดับการอนุมัติ ถ้ายังไม่ตั้งใช้สายของการขอลา)
  *   เมื่อขั้นสุดท้ายอนุมัติ ใบลาเป็น Cancelled และคืนวันลาที่ใช้ไป
+ *
+ * สายของคำขอยกเลิกผนึก snapshot ของตัวเอง (stage = cancellation) ณ วันที่ขอ
+ * และเดินระดับผ่าน `leaves.cancellation_approval_level` — ไม่ทับ approval_level
+ * ซึ่งเป็นร่องรอยว่าใบลาเดิมผ่านอนุมัติมาถึงขั้นไหน
  */
 class LeaveCancellationController extends Controller
 {
@@ -24,6 +34,7 @@ class LeaveCancellationController extends Controller
         private LeaveService $leaveService,
         private LeaveApprovalFlow $flow,
         private LeaveRequestNotificationService $notifications,
+        private ApproverResolverService $resolver,
     ) {}
 
     public function cancel(Request $request, Leave $leave)
@@ -49,18 +60,51 @@ class LeaveCancellationController extends Controller
 
         if ($leave->status === 'Approved') {
             $request->validate(['cancellation_reason' => 'required|string|max:1000']);
-            if ($leave->cancellation_status === 'Pending') {
-                return response()->json(['message' => 'ใบลานี้มีคำขอยกเลิกที่รอพิจารณาอยู่แล้ว'], 422);
+
+            // สายของคำขอยกเลิกโดยเฉพาะ — ถ้าผู้ดูแลยังไม่ได้ตั้งค่าไว้ จะได้สายของใบลามาแทน
+            $steps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_CANCELLATION);
+            if ($steps->isEmpty()) {
+                return response()->json(['message' => 'ยังไม่ได้ตั้งค่าลำดับการอนุมัติในระบบ กรุณาตั้งค่าที่เมนูจัดการลำดับการอนุมัติก่อน'], 422);
             }
-            $leave->forceFill([
-                'cancellation_status' => 'Pending',
-                'cancellation_reason' => $request->cancellation_reason,
-                'cancellation_date' => now(),
-                'approval_level' => $this->flow->firstStepOrder($leave),
-            ])->save();
-            LeaveActionLog::create(['leave_id' => $leave->id, 'user_id' => $user->id, 'action' => 'Cancellation Requested', 'details' => ['reason' => $request->cancellation_reason]]);
-            $this->audit($request, $leave, 'cancellation_requested');
-            $this->notifications->notifyCurrentStep($leave->load('user'), 'leave.cancellation_requested', $user);
+
+            $locked = DB::transaction(function () use ($leave, $user, $request, $steps) {
+                $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
+                abort_unless($locked->status === 'Approved', 422, 'สถานะใบลาเปลี่ยนไปแล้ว กรุณาโหลดหน้าใหม่');
+                // กันการยื่นซ้ำทับคำขอเดิมที่ยังรอพิจารณาอยู่ (เหตุผลและวันที่จะถูกเขียนทับ)
+                abort_if($locked->cancellation_status === 'Pending', 422, 'ใบลานี้มีคำขอยกเลิกที่รอพิจารณาอยู่แล้ว');
+
+                /*
+                 * ล้างของรอบก่อนทิ้งได้ เพราะจะมาถึงบรรทัดนี้ได้ก็ต่อเมื่อคำขอรอบก่อน
+                 * ถูกปฏิเสธไปแล้ว และประวัติการตัดสินยังอยู่ครบใน leave_action_logs / leave_audit_logs
+                 */
+                $locked->cancellationApprovals()->delete();
+                foreach ($steps as $step) {
+                    LeaveApproval::create([
+                        'leave_id' => $locked->id,
+                        'stage' => LeaveApproval::STAGE_CANCELLATION,
+                        'step_order' => $step->step_order,
+                        'step_name' => $step->name,
+                        'required_role_id' => $step->role_id,
+                        'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
+                        'specific_user_id' => $step->specific_user_id,
+                        'permission_name' => $step->permission_name,
+                        'allow_self_approval' => (bool) $step->allow_self_approval,
+                        'status' => 'Pending',
+                    ]);
+                }
+
+                $locked->forceFill([
+                    'cancellation_status' => 'Pending',
+                    'cancellation_reason' => $request->cancellation_reason,
+                    'cancellation_date' => now(),
+                    'cancellation_approval_level' => $steps->first()->step_order,
+                ])->save();
+                LeaveActionLog::create(['leave_id' => $locked->id, 'user_id' => $user->id, 'action' => 'Cancellation Requested', 'details' => ['reason' => $request->cancellation_reason]]);
+                $this->audit($request, $locked, 'cancellation_requested');
+
+                return $locked;
+            }, 5);
+            $this->notifications->notifyCurrentStep($locked->fresh(['user']), 'leave.cancellation_requested', $user);
 
             return response()->json(['message' => 'ส่งคำขอยกเลิกใบลาที่อนุมัติแล้วเรียบร้อย กรุณารอการอนุมัติยกเลิก']);
         }
@@ -70,82 +114,185 @@ class LeaveCancellationController extends Controller
 
     public function approve(Request $request, Leave $leave)
     {
-        $request->validate(['comment' => 'nullable|string|max:1000']);
-        $user = $request->user();
-
-        $result = DB::transaction(function () use ($request, $leave, $user) {
-            $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
-            $this->assertActionable($locked, $user);
-
-            $isAdmin = $user->can('leave.management.manage');
-            $next = $isAdmin ? null : $this->flow->nextStepOrder($locked, (int) $locked->approval_level);
-
-            if ($next === null) {
-                // คืนวันลา **ก่อน** เปลี่ยนสถานะ — เดิมเปลี่ยนเป็น Cancelled ก่อน
-                // restoreBalance จึงไม่รู้ว่าเป็นใบที่อนุมัติแล้ว และไม่คืนวันลาเลย
-                $this->leaveService->restoreBalance($locked, true);
-                $locked->forceFill(['cancellation_status' => 'Approved', 'status' => 'Cancelled'])->save();
-                $action = 'Cancellation Approved';
-            } else {
-                $locked->forceFill(['approval_level' => $next])->save();
-                $action = 'Cancellation Step Approved';
-            }
-            LeaveActionLog::create([
-                'leave_id' => $locked->id, 'user_id' => $user->id, 'action' => $action,
-                'details' => array_filter(['comment' => $request->comment, 'delegated_from' => $this->flow->delegatedFromId($user, $locked)]) ?: null,
-            ]);
-            $this->audit($request, $locked, $next === null ? 'cancellation_approved' : 'cancellation_step_approved', ['comment' => $request->comment]);
-
-            return [$locked, $next];
-        }, 5);
-
-        [$locked, $next] = $result;
-        if ($next === null) {
-            $this->notifications->notifyRequester($locked, 'leave.cancellation_approved', $user);
-        } else {
-            $this->notifications->notifyCurrentStep($locked, 'leave.cancellation_requested', $user);
-        }
-
-        return response()->json(['message' => $next === null ? 'อนุมัติการยกเลิกใบลาเรียบร้อยแล้ว คืนวันลาให้ผู้ยื่นแล้ว' : 'อนุมัติการยกเลิกในขั้นนี้แล้ว ส่งต่อขั้นถัดไป']);
+        return $this->act($request, $leave, 'Approved');
     }
 
     public function reject(Request $request, Leave $leave)
     {
-        $request->validate(['comment' => 'required|string|max:1000']);
-        $user = $request->user();
-
-        $locked = DB::transaction(function () use ($request, $leave, $user) {
-            $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
-            $this->assertActionable($locked, $user);
-            $locked->forceFill(['cancellation_status' => 'Rejected'])->save();
-            LeaveActionLog::create(['leave_id' => $locked->id, 'user_id' => $user->id, 'action' => 'Cancellation Rejected', 'details' => ['comment' => $request->comment]]);
-            $this->audit($request, $locked, 'cancellation_rejected', ['comment' => $request->comment]);
-
-            return $locked;
-        }, 5);
-        $this->notifications->notifyRequester($locked, 'leave.cancellation_rejected', $user);
-
-        return response()->json(['message' => 'ปฏิเสธการยกเลิกใบลาเรียบร้อยแล้ว']);
+        return $this->act($request, $leave, 'Rejected');
     }
 
     /**
-     * ต้องมีคำขอยกเลิกที่รอพิจารณาจริง และผู้ทำรายการต้องมีสิทธิ์ในขั้นปัจจุบัน
+     * เดินสายอนุมัติของคำขอยกเลิกหนึ่งขั้น
      *
-     * เดิมไม่ตรวจ cancellation_status เลย — ผู้อนุมัติกด "อนุมัติยกเลิก" กับใบที่ยัง
-     * รออนุมัติได้ ซึ่งไปเลื่อน approval_level ข้ามขั้นอนุมัติการลาของตนเองไป
+     * อนุมัติ → ไปขั้นถัดไป หรือจบสาย (คืนวันลาแล้วปิดใบลาเป็น Cancelled) เมื่อเป็นขั้นสุดท้าย
+     * ไม่อนุมัติ → จบสายทันที ใบลาเดิมยังคงสถานะ Approved
      */
-    private function assertActionable(Leave $leave, $user): void
+    private function act(Request $request, Leave $leave, string $decision)
     {
-        abort_unless($leave->status === 'Approved' && $leave->cancellation_status === 'Pending', 422, 'ใบลานี้ไม่มีคำขอยกเลิกที่รอพิจารณา');
-        abort_if($leave->user_id === $user->id, 403, 'ห้ามพิจารณาคำขอยกเลิกวันลาของตนเอง');
-        abort_unless($user->can('leave.management.manage') || $this->flow->canActAtCurrentStep($user, $leave), 403, 'ไม่มีสิทธิ์พิจารณาในขั้นตอนนี้');
+        $isApprove = $decision === 'Approved';
+        $data = $request->validate([
+            'comment' => $isApprove ? 'nullable|string|max:1000' : 'required|string|max:1000',
+            'signature_base64' => 'nullable|string',
+        ]);
+        $user = $request->user();
+
+        [$locked, $next] = DB::transaction(function () use ($request, $leave, $user, $data, $decision, $isApprove) {
+            $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
+            abort_unless($this->flow->awaitsCancellation($locked), 422, 'ใบลานี้ไม่มีคำขอยกเลิกที่รอพิจารณา');
+
+            $step = $this->currentStep($locked);
+            abort_if($step === null, 422, 'ไม่พบขั้นตอนอนุมัติของคำขอยกเลิก กรุณาตรวจสอบการตั้งค่าลำดับการอนุมัติ');
+
+            $isSelf = $locked->user_id === $user->id;
+            $delegatedFrom = $this->authorizeStep($user, $locked, $step, $isSelf, $isApprove);
+
+            $step->update([
+                'approver_id' => $user->id,
+                'approver_name' => $user->full_name_with_title,
+                'approver_position' => $user->profile?->position,
+                'signature_path' => $this->resolveSignature($user, $data['signature_base64'] ?? null),
+                'status' => $decision,
+                'comment' => $data['comment'] ?? null,
+                'approved_at' => now(),
+                'acted_at' => now(),
+                'delegated_from_user_id' => $delegatedFrom,
+                'is_self_approval' => $isSelf,
+            ]);
+
+            $next = $isApprove
+                ? $locked->cancellationApprovals()->where('step_order', '>', $step->step_order)->orderBy('step_order')->first()
+                : null;
+
+            if (! $isApprove) {
+                $locked->forceFill(['cancellation_status' => 'Rejected'])->save();
+                $action = 'Cancellation Rejected';
+            } elseif ($next) {
+                $locked->forceFill(['cancellation_approval_level' => $next->step_order])->save();
+                $action = 'Cancellation Step Approved';
+            } else {
+                // คืนวันลา **ก่อน** เปลี่ยนสถานะ — ถ้าปิดใบเป็น Cancelled ก่อน restoreBalance
+                // จะไม่รู้ว่าเป็นใบที่อนุมัติแล้ว และไม่คืนวันลาเลย
+                $this->leaveService->restoreBalance($locked, true);
+                $locked->forceFill(['cancellation_status' => 'Approved', 'status' => 'Cancelled'])->save();
+                $action = 'Cancellation Approved';
+            }
+
+            LeaveActionLog::create([
+                'leave_id' => $locked->id, 'user_id' => $user->id, 'action' => $action.' (Level '.$step->step_order.')',
+                'details' => array_filter(['comment' => $data['comment'] ?? null, 'delegated_from' => $delegatedFrom, 'self_approved' => $isSelf ?: null]) ?: null,
+            ]);
+            $this->audit($request, $locked, match (true) {
+                ! $isApprove => 'cancellation_rejected',
+                $next !== null => 'cancellation_step_approved',
+                default => 'cancellation_approved',
+            }, ['step' => $step->step_order, 'final' => $next === null, 'comment' => $data['comment'] ?? null, 'self_approved' => $isSelf]);
+
+            return [$locked, $next];
+        }, 5);
+
+        if (! $isApprove) {
+            $this->notifications->notifyRequester($locked, 'leave.cancellation_rejected', $user);
+        } elseif ($next === null) {
+            $this->notifications->notifyRequester($locked, 'leave.cancellation_approved', $user);
+        } else {
+            $this->notifications->notifyCurrentStep($locked->fresh(['user']), 'leave.cancellation_requested', $user);
+        }
+
+        return response()->json([
+            'message' => match (true) {
+                ! $isApprove => 'ปฏิเสธการยกเลิกใบลาเรียบร้อยแล้ว',
+                $next === null => 'อนุมัติการยกเลิกใบลาเรียบร้อยแล้ว คืนวันลาให้ผู้ยื่นแล้ว',
+                default => 'อนุมัติการยกเลิกในขั้นนี้แล้ว ส่งต่อขั้นถัดไป',
+            },
+            'cancellation_status' => $locked->cancellation_status,
+        ]);
+    }
+
+    /**
+     * ผู้ทำรายการพิจารณาขั้นปัจจุบันของคำขอยกเลิกได้หรือไม่ — คืนผู้มอบอำนาจถ้าทำแทน
+     *
+     * - คำขอของตนเอง: อนุมัติได้เฉพาะขั้นที่เปิด allow_self_approval และตนเป็นผู้อนุมัติขั้นนั้นโดยตรง
+     *   สิทธิ์ผู้ดูแลและการรับมอบอำนาจใช้ไม่ได้ · ปฏิเสธคำขอของตนเองไม่ได้ (LEAVE-APPROVAL-02)
+     * - ผู้ถือ leave.management.manage พิจารณาคำขอของผู้อื่นได้ทุกขั้น ทีละขั้น
+     */
+    private function authorizeStep(User $user, Leave $leave, LeaveApproval $step, bool $isSelf, bool $isApprove): ?int
+    {
+        if ($isSelf) {
+            abort_unless($isApprove, 403, 'ห้ามปฏิเสธคำขอยกเลิกใบลาของตนเอง');
+            abort_unless($this->resolver->canSelfApprove($leave->user, $step), 403, 'ขั้นตอนนี้ไม่อนุญาตให้พิจารณาคำขอยกเลิกวันลาของตนเอง');
+
+            return null;
+        }
+
+        if ($user->can('leave.management.manage')) {
+            return null;
+        }
+
+        abort_unless($leave->user && $this->resolver->isAuthorizedApprover($user, $leave->user, $step), 403, 'ไม่มีสิทธิ์พิจารณาในขั้นตอนนี้');
+
+        return $this->resolver->getDelegatedFromId($user, $leave->user, $step);
+    }
+
+    /**
+     * ขั้นตอนปัจจุบันของสายอนุมัติคำขอยกเลิก
+     *
+     * คำขอที่ยื่นไว้ก่อนระบบมีสายอนุมัติของตัวเอง จะถูกสร้าง snapshot ย้อนหลังจาก
+     * สายอนุมัติปัจจุบัน เพื่อให้คำขอที่ค้างอยู่เดินต่อได้โดยไม่ต้องยื่นใหม่
+     */
+    private function currentStep(Leave $leave): ?LeaveApproval
+    {
+        $level = (int) ($leave->cancellation_approval_level ?: $leave->approval_level);
+
+        $step = $leave->cancellationApprovals()->where('step_order', $level)->first();
+        if ($step) {
+            return $step;
+        }
+
+        $legacy = ApprovalStep::stepsFor(ApprovalStep::CHAIN_CANCELLATION)->firstWhere('step_order', $level);
+        if ($legacy === null) {
+            return null;
+        }
+
+        return LeaveApproval::firstOrCreate([
+            'leave_id' => $leave->id,
+            'stage' => LeaveApproval::STAGE_CANCELLATION,
+            'step_order' => $legacy->step_order,
+        ], [
+            'step_name' => $legacy->name,
+            'required_role_id' => $legacy->role_id,
+            'approver_type' => $legacy->approver_type ?: ApprovalStep::RESOLVER_ROLE,
+            'specific_user_id' => $legacy->specific_user_id,
+            'permission_name' => $legacy->permission_name,
+            'allow_self_approval' => (bool) $legacy->allow_self_approval,
+            'status' => 'Pending',
+        ]);
+    }
+
+    /** ลายเซ็นที่จะประทับบนขั้นตอนนี้ — ที่วาดสดมาก่อน ถ้าไม่มีใช้ลายเซ็นในโปรไฟล์ */
+    private function resolveSignature(User $user, ?string $base64): ?string
+    {
+        if (! $base64 || ! preg_match('/^data:image\/(\w+);base64,/', $base64, $matches)) {
+            return $user->profile?->signature_path;
+        }
+
+        $type = strtolower($matches[1]);
+        if (! in_array($type, ['jpg', 'jpeg', 'png'], true)) {
+            return $user->profile?->signature_path;
+        }
+
+        $binary = base64_decode(substr($base64, strpos($base64, ',') + 1));
+        $fileName = 'signatures/'.uniqid().'.'.$type;
+        Storage::disk('private_uploads')->put($fileName, $binary);
+
+        return '/storage/'.$fileName;
     }
 
     private function audit(Request $request, Leave $leave, string $action, array $after = []): void
     {
         LeaveAuditLog::create([
             'leave_id' => $leave->id, 'user_id' => $request->user()->id, 'action' => $action,
-            'after' => $after + ['status' => $leave->status, 'cancellation_status' => $leave->cancellation_status, 'approval_level' => $leave->approval_level],
+            'after' => $after + ['status' => $leave->status, 'cancellation_status' => $leave->cancellation_status, 'approval_level' => $leave->approval_level, 'cancellation_approval_level' => $leave->cancellation_approval_level],
             'ip_address' => $request->ip(), 'user_agent' => $request->userAgent(),
         ]);
     }

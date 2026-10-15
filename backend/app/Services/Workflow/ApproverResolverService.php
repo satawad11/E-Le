@@ -47,14 +47,14 @@ class ApproverResolverService
      */
     public function isAuthorizedApprover(User $actor, User $requester, ApprovalStep|LeaveApproval|array $step, ?string $on = null): bool
     {
-        // 1. Super Admin ผ่านทุกข้อ
-        if ($actor->can('system.manage') || $actor->roles->contains('name', 'Super Admin') || $actor->roles->contains('name', 'SuperAdmin')) {
-            return true;
+        // 1. ใบลาของตนเอง — ผ่านได้ทางเดียวคือ canSelfApprove() สิทธิ์ผู้ดูแลระบบและการรับมอบอำนาจใช้ไม่ได้
+        if ($actor->id === $requester->id) {
+            return $this->canSelfApprove($requester, $step, $on);
         }
 
-        // 2. ห้ามอนุมัติใบลาของตนเอง
-        if ($actor->id === $requester->id) {
-            return false;
+        // 2. Super Admin ผ่านทุกข้อ (เฉพาะใบลาของผู้อื่น)
+        if ($actor->can('system.manage') || $actor->roles->contains('name', 'Super Admin') || $actor->roles->contains('name', 'SuperAdmin')) {
+            return true;
         }
 
         $date = $on ?? now()->toDateString();
@@ -70,12 +70,35 @@ class ApproverResolverService
     }
 
     /**
+     * ผู้ยื่นอนุมัติขั้นนี้ของใบลาตนเองได้หรือไม่ (LEAVE-APPROVAL-02)
+     *
+     * ต้องครบทั้งสองข้อ:
+     *   - ขั้นนั้นเปิด allow_self_approval (ตั้งรายขั้นที่หน้าจัดการลำดับการอนุมัติ / pin ไว้กับใบลา)
+     *   - ผู้ยื่นเป็นผู้อนุมัติของขั้นนั้นโดยตรง — ไม่นับสิทธิ์ผู้ดูแลระบบ `leave.management.manage`
+     *     หรือการรับมอบอำนาจ เช่น รองผู้อำนวยการอนุมัติขั้นที่ 2 ของตนเองได้ แต่ขั้นผู้อำนวยการไม่ได้
+     */
+    public function canSelfApprove(User $requester, ApprovalStep|LeaveApproval|array $step, ?string $on = null): bool
+    {
+        $allowed = is_array($step) ? (bool) ($step['allow_self_approval'] ?? false) : (bool) $step->allow_self_approval;
+
+        return $allowed && in_array($requester->id, $this->resolveEligibleApproverIds($requester, $step, $on), true);
+    }
+
+    /**
      * หา User ID ของผู้มอบอำนาจในกรณีที่ทำหน้าที่แทน
      */
     public function getDelegatedFromId(User $actor, User $requester, ApprovalStep|LeaveApproval|array $step, ?string $on = null): ?int
     {
+        // ใบลาของตนเองไม่อนุมัติผ่านการรับมอบอำนาจ — มิฉะนั้นผู้ที่ได้รับมอบจากใครก็ได้ในขั้นนั้น
+        // จะอนุมัติขั้นที่ตนไม่มีสิทธิ์ให้ใบลาของตนเอง
+        if ($actor->id === $requester->id) {
+            return null;
+        }
+
         $date = $on ?? now()->toDateString();
-        $eligibleIds = $this->resolveEligibleApproverIds($requester, $step, $date);
+        // ผู้ยื่นมอบอำนาจให้คนอื่นมาอนุมัติใบลาของผู้ยื่นในนามผู้ยื่นไม่ได้ (LEAVE-APPROVAL-02)
+        // ถ้าขั้นนั้นอนุญาตให้อนุมัติของตนเอง ผู้ยื่นต้องกดเองเพื่อให้บันทึกเป็น "อนุมัติด้วยตนเอง"
+        $eligibleIds = array_values(array_diff($this->resolveEligibleApproverIds($requester, $step, $date), [$requester->id]));
 
         if (empty($eligibleIds) || ! Schema::hasTable('user_delegations')) {
             return null;
@@ -184,6 +207,17 @@ class ApproverResolverService
 
     private function resolveByRoleIdOrPermission(?int $roleId, ?string $permissionName = null, array $roleNameFallbacks = []): array
     {
+        /*
+         * ไม่มีเกณฑ์คัดเลย = ไม่มีใครมีสิทธิ์ (fail-closed)
+         *
+         * เดิมกรณีนี้ปล่อยให้ query เหลือแค่ `is_active = true` ซึ่งคืนผู้ใช้ที่ยัง
+         * ใช้งานอยู่ "ทุกคน" เป็นผู้มีสิทธิ์อนุมัติ — เกิดขึ้นจริงกับขั้นตอนแบบ
+         * ผู้ใช้เจาะจงที่ไม่มี role กำกับ ทำให้ใครก็ได้อนุมัติใบลาแทนผู้อำนวยการได้
+         */
+        if ($roleId === null && $permissionName === null && empty($roleNameFallbacks)) {
+            return [];
+        }
+
         $query = User::query()->where('is_active', true);
 
         $query->where(function ($sub) use ($roleId, $permissionName, $roleNameFallbacks) {

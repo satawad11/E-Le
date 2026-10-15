@@ -49,6 +49,31 @@
         </div>
 
 
+        <!--
+          ช่องกรอกเฉพาะแบบฟอร์มของประเภทการลา
+          นิยามมาจากหน้าตั้งค่าประเภทการลา (leave_types.extra_fields)
+          ค่าที่กรอกจะถูกเติมลงช่องว่างของแบบฟอร์มราชการตอนพิมพ์ โดยไม่ต้องแก้โค้ด
+        -->
+        <div v-if="extraFieldDefinitions.length" class="space-y-4 rounded-xl border border-gray-200 p-4">
+          <h2 class="text-sm font-bold text-gray-700">ข้อมูลเพิ่มเติมสำหรับแบบฟอร์ม{{ selectedLeaveTypeName }}</h2>
+          <div v-for="field in extraFieldDefinitions" :key="field.key">
+            <label :for="`extra-${field.key}`" class="block text-sm font-semibold text-gray-700 mb-1.5">
+              {{ field.label }}
+              <span v-if="field.required" class="text-red-500">*</span>
+            </label>
+            <select v-if="field.type === 'select'" :id="`extra-${field.key}`" v-model="extraValues[field.key]" :required="!!field.required"
+              class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-900 focus:outline-none focus:border-[#800000] bg-white">
+              <option value="">เลือก...</option>
+              <option v-for="option in field.options || []" :key="option" :value="option">{{ option }}</option>
+            </select>
+            <textarea v-else-if="field.type === 'textarea'" :id="`extra-${field.key}`" v-model="extraValues[field.key]" :required="!!field.required" rows="2"
+              class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-900 focus:outline-none focus:border-[#800000]"></textarea>
+            <ThaiDatePicker v-else-if="field.type === 'date'" v-model="extraValues[field.key]" :id="`extra-${field.key}`" />
+            <input v-else :id="`extra-${field.key}`" v-model="extraValues[field.key]" :type="field.type === 'number' ? 'number' : 'text'" :required="!!field.required"
+              class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-900 focus:outline-none focus:border-[#800000]">
+          </div>
+        </div>
+
         <!-- Dates -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -389,7 +414,17 @@ const unpaidWarningDays = computed(() => {
   return Math.max(0, calculatedDays.value - b.paid_remaining)
 })
 
+// ช่องกรอกเฉพาะแบบฟอร์มของประเภทการลาที่เลือก — ผู้ดูแลกำหนดเองได้ ไม่ผูกกับโค้ด
+const extraFieldDefinitions = computed(() => {
+  const type = leaveStore.types.find(t => t.id === form.leave_type_id)
+  return Array.isArray(type?.extra_fields) ? type.extra_fields : []
+})
+
+const extraValues = reactive({})
+
 const onLeaveTypeChange = () => {
+  Object.keys(extraValues).forEach(key => delete extraValues[key])
+  extraFieldDefinitions.value.forEach(field => { extraValues[field.key] = '' })
   // Reset date calculation if needed
   calcDays()
 }
@@ -585,6 +620,13 @@ const handleSubmit = async () => {
     if (specializedTypes.includes(selectedLeaveTypeName.value)) {
       formData.append('meta_data', JSON.stringify(form.meta_data))
     }
+
+    extraFieldDefinitions.value.forEach(field => {
+      const value = extraValues[field.key]
+      if (value !== undefined && value !== null && value !== '') {
+        formData.append(`extra_fields[${field.key}]`, value)
+      }
+    })
 
     if (selectedFile.value) formData.append('attachment', selectedFile.value)
 

@@ -1,3 +1,8 @@
+{{--
+    แบบใบขอยกเลิกวันลา
+
+    ใช้ตอนพิมพ์ด้วย `?form=cancel` — ค่าทั้งหมดมาจาก `App\Services\LeaveDocumentFields`
+--}}
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -16,173 +21,148 @@
             font-weight: bold;
             src: url("{{ public_path('fonts/THSarabunNew/THSarabunNew Bold.ttf') }}") format('truetype');
         }
-        @page {
-            margin: 15mm 20mm;
-            size: A4 portrait;
-        }
-        body { 
-            font-family: 'THSarabunNew', sans-serif; 
-            font-size: 16pt; 
-            line-height: 1.25;
-            color: #000; 
-        }
+        @page { margin: 8mm 14mm; size: A4 portrait; }
+        body { font-family: 'THSarabunNew', sans-serif; font-size: 14pt; line-height: 1.1; color: #000; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
-        .font-bold { font-weight: bold; }
-        
-        .dot-line {
-            border-bottom: 1px dotted #000;
-            display: inline-block;
-        }
-
-        .checkbox {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border: 1px solid #000;
-            margin-right: 6px;
-            vertical-align: middle;
-        }
-        .checkbox.checked {
-            background-color: #000;
-        }
-        
-        table.layout {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table.layout td {
-            vertical-align: bottom;
-            padding: 2px 0;
-        }
+        .bold { font-weight: bold; }
+        .underline { text-decoration: underline; }
+        table.row { width: 100%; border-collapse: collapse; }
+        table.row td { vertical-align: bottom; padding: 1px 0; white-space: nowrap; }
+        td.dot { border-bottom: 1px dotted #000; text-align: center; }
+        td.dot-left { border-bottom: 1px dotted #000; text-align: left; white-space: normal; }
+        .box { display: inline-block; width: 10px; height: 10px; border: 1px solid #000; margin-right: 3px; }
+        .checked { background-color: #000; }
+        .sign-img { height: 32px; }
     </style>
 </head>
 <body>
-    <div class="text-center font-bold" style="font-size: 20pt; margin-bottom: 15px;">
-        แบบใบขอยกเลิกวันลา
-    </div>
-    
-    <table class="layout">
-        <tr>
-            <td width="55%"></td>
-            <td width="8%">(เขียนที่)</td>
-            <td width="37%" class="dot-line text-center">{{ $settings['school_name'] ?? 'วิทยาลัยเทคนิคดอนเมือง' }}</td>
-        </tr>
-    </table>
-    
-    @php
-        $thaiMonths = ['', 'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-        $createdDay = $leave->created_at ? \Carbon\Carbon::parse($leave->created_at)->day : '';
-        $createdMonth = $leave->created_at ? \Carbon\Carbon::parse($leave->created_at)->month : '';
-        $createdYear = $leave->created_at ? \Carbon\Carbon::parse($leave->created_at)->year + 543 : '';
 
-        $startDay = $leave->start_date ? \Carbon\Carbon::parse($leave->start_date)->day : '';
-        $startMonth = $leave->start_date ? \Carbon\Carbon::parse($leave->start_date)->month : '';
-        $startYear = $leave->start_date ? \Carbon\Carbon::parse($leave->start_date)->year + 543 : '';
-        
-        $endDay = $leave->end_date ? \Carbon\Carbon::parse($leave->end_date)->day : '';
-        $endMonth = $leave->end_date ? \Carbon\Carbon::parse($leave->end_date)->month : '';
-        $endYear = $leave->end_date ? \Carbon\Carbon::parse($leave->end_date)->year + 543 : '';
-    @endphp
+@php
+    $blocks = collect($approverBlocks ?? []);
+    $order = $blocks->last();
+    $commander = $blocks->filter(fn ($b) => $b !== $order)->last() ?? $order;
+@endphp
 
-    <table class="layout">
-        <tr>
-            <td width="45%"></td>
-            <td width="5%" class="text-right">วันที่&nbsp;</td>
-            <td width="10%" class="dot-line text-center">{{ $createdDay }}</td>
-            <td width="7%" class="text-center">เดือน</td>
-            <td width="18%" class="dot-line text-center">{{ $createdMonth ? $thaiMonths[$createdMonth] : '' }}</td>
-            <td width="5%" class="text-center">พ.ศ.</td>
-            <td width="10%" class="dot-line text-center">{{ $createdYear }}</td>
-        </tr>
-    </table>
+<div class="text-center bold underline" style="font-size: 18pt;">แบบใบขอยกเลิกวันลา</div>
 
-    <table class="layout" style="margin-top: 10px;">
-        <tr>
-            <td width="6%" class="font-bold">เรื่อง</td>
-            <td width="94%" class="font-bold">ขอยกเลิกวันลา</td>
-        </tr>
-        <tr>
-            <td width="6%" class="font-bold">เรียน</td>
-            <td width="94%">{{ $settings['director_position'] ?? 'ผู้อำนวยการวิทยาลัยเทคนิคดอนเมือง' }}</td>
-        </tr>
-    </table>
+<table class="row" style="margin-top: 6px;">
+    <tr>
+        <td width="48%"></td>
+        <td width="12%" class="text-right">(เขียนที่)&nbsp;</td>
+        <td width="40%" class="dot">{{ $written_at ?? '' }}</td>
+    </tr>
+    <tr>
+        <td width="48%"></td>
+        <td width="7%" class="text-right">วันที่&nbsp;</td>
+        <td width="8%" class="dot">{{ $doc_day ?? '' }}</td>
+        <td width="6%" class="text-center">เดือน</td>
+        <td width="18%" class="dot">{{ $doc_month ?? '' }}</td>
+        <td width="5%" class="text-center">พ.ศ.</td>
+        <td width="8%" class="dot">{{ $doc_year ?? '' }}</td>
+    </tr>
+</table>
 
-    <table class="layout" style="margin-top: 10px;">
-        <tr>
-            <td width="12%"></td>
-            <td width="10%">ตามที่ข้าพเจ้า</td>
-            <td width="40%" class="dot-line text-center">{{ $leave->user->name ?? '' }}</td>
-            <td width="8%" class="text-center">ตำแหน่ง</td>
-            <td width="30%" class="dot-line text-center">{{ $leave->user->profile->position ?? ($leave->user->role->description ?? '') }}</td>
-        </tr>
-        <tr>
-            <td width="10%">แผนก/งาน</td>
-            <td width="35%" class="dot-line text-center">{{ $leave->user->department->name ?? '' }}</td>
-            <td width="10%" class="text-center">สังกัด</td>
-            <td width="45%" class="dot-line text-center">{{ $settings['school_name'] ?? 'วิทยาลัยเทคนิคดอนเมือง' }}</td>
-        </tr>
-        <tr>
-            <td width="18%">ได้รับอนุญาตให้ลา</td>
-            <td width="82%" class="dot-line">&nbsp;{{ $leave->type->name ?? 'พักผ่อน' }}</td>
-        </tr>
-    </table>
+<table class="row" style="margin-top: 6px;">
+    <tr>
+        <td width="7%" class="bold">เรื่อง</td>
+        <td width="93%">ขอยกเลิกวันลา</td>
+    </tr>
+    <tr>
+        <td width="7%" class="bold">เรียน</td>
+        <td width="93%">{{ $director_position ?? '' }}</td>
+    </tr>
+</table>
 
-    <table class="layout">
-        <tr>
-            <td width="10%">ตั้งแต่วันที่</td>
-            <td width="30%" class="dot-line text-center">{{ $startDay }} {{ $startMonth ? $thaiMonths[$startMonth] : '' }} {{ $startYear }}</td>
-            <td width="8%" class="text-center">ถึงวันที่</td>
-            <td width="30%" class="dot-line text-center">{{ $endDay }} {{ $endMonth ? $thaiMonths[$endMonth] : '' }} {{ $endYear }}</td>
-            <td width="5%" class="text-center">รวม</td>
-            <td width="10%" class="dot-line text-center">{{ $leave->total_days }}</td>
-            <td width="7%" class="text-right">วัน นั้น</td>
-        </tr>
-    </table>
+<table class="row" style="margin-top: 6px;">
+    <tr>
+        <td width="14%"></td>
+        <td width="12%">ตามที่ข้าพเจ้า</td>
+        <td width="36%" class="dot-left">&nbsp;{{ $user_name ?? '' }}</td>
+        <td width="8%" class="text-center">ตำแหน่ง</td>
+        <td width="30%" class="dot-left">&nbsp;{{ $position ?? '' }}</td>
+    </tr>
+    <tr>
+        <td width="10%">แผนก/งาน</td>
+        <td width="50%" class="dot-left">&nbsp;{{ $division ?? '' }}</td>
+        <td width="7%" class="text-center">สังกัด</td>
+        <td width="33%" class="dot-left">&nbsp;{{ trim(($school_name ?? '').' '.($school_affiliation ?? '')) }}</td>
+    </tr>
+    <tr>
+        <td width="14%">ได้รับอนุญาตให้ลา</td>
+        <td width="86%" class="dot-left" colspan="4">&nbsp;{{ $leave_type ?? '' }}</td>
+    </tr>
+</table>
 
-    <table class="layout" style="margin-top: 6px;">
-        <tr>
-            <td width="10%">เนื่องจาก</td>
-            <td width="90%" class="dot-line">{{ $leave->cancellation_reason ?? 'มีความจำเป็นต้องปฏิบัติราชการ' }}</td>
-        </tr>
-        <tr>
-            <td width="15%">จึงขอยกเลิกวันลา</td>
-            <td width="50%" class="dot-line">&nbsp;{{ $leave->type->name ?? 'พักผ่อน' }}</td>
-            <td width="10%" class="text-center">จำนวน</td>
-            <td width="15%" class="dot-line text-center">{{ $leave->total_days }}</td>
-            <td width="10%" class="text-right">วัน</td>
-        </tr>
-    </table>
+<table class="row">
+    <tr>
+        <td width="10%">ตั้งแต่วันที่</td>
+        <td width="27%" class="dot">{{ $start_date_thai ?? '' }}</td>
+        <td width="8%" class="text-center">ถึงวันที่</td>
+        <td width="27%" class="dot">{{ $end_date_thai ?? '' }}</td>
+        <td width="6%" class="text-center">รวม</td>
+        <td width="12%" class="dot">{{ $total_days ?? '' }}</td>
+        <td width="10%" class="text-center">วัน นั้น</td>
+    </tr>
+</table>
 
-    <!-- Applicant Signature -->
-    <div class="text-right" style="margin-top: 30px; margin-right: 40px;">
-        ขอแสดงความนับถือ<br><br>
-        (ลงชื่อ)........................................................<br>
-        ( {{ $leave->user->name ?? '' }} )
-    </div>
+<table class="row" style="margin-top: 6px;">
+    <tr>
+        <td width="14%"></td>
+        <td width="9%">เนื่องจาก</td>
+        <td width="77%" class="dot-left">&nbsp;{{ $cancel_reason ?? '' }}</td>
+    </tr>
+    <tr>
+        <td width="100%" class="dot-left" colspan="3">&nbsp;</td>
+    </tr>
+    <tr>
+        <td width="14%">จึงขอยกเลิกวันลา</td>
+        <td width="63%" class="dot-left">&nbsp;{{ $cancelled_leave_text ?? '' }}</td>
+        <td width="8%" class="text-center">จำนวน</td>
+        <td width="8%" class="dot">{{ $cancel_days ?? '' }}</td>
+        <td width="7%" class="text-center">วัน</td>
+    </tr>
+</table>
 
-    <!-- Approvals & Order -->
-    <div style="margin-top: 35px;">
-        <div class="font-bold"><u>ความเห็นผู้บังคับบัญชา</u></div>
-        ........................................................................................................................................................................................<br>
-        ........................................................................................................................................................................................
-        <div class="text-center" style="margin-top: 15px; margin-left: 200px;">
-            (ลงชื่อ)........................................................<br>
-            (........................................................)<br>
-            วันที่......../................/............
-        </div>
-    </div>
+<div class="text-center" style="margin-top: 8px;">ขอแสดงความนับถือ</div>
+<div class="text-center" style="margin-top: 6px;">
+    (ลงชื่อ)
+    <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px; text-align: center;">{{ $user_name ?? '' }}</span>
+</div>
+<div class="text-center">( {{ $user_name ?? '' }} )</div>
 
-    <div style="margin-top: 30px;">
-        <div class="font-bold"><u>คำสั่ง</u> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="checkbox"></span> อนุญาต &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="checkbox"></span> ไม่อนุญาต</div>
-        ........................................................................................................................................................................................<br>
-        ........................................................................................................................................................................................
-        <div class="text-center" style="margin-top: 15px; margin-left: 200px;">
-            (ลงชื่อ)........................................................<br>
-            ( {{ $settings['director_name'] ?? '........................................................' }} )<br>
-            วันที่......../................/............
-        </div>
-    </div>
-@include('pdf.partials.verification_qr')
+<div class="bold underline" style="margin-top: 8px;">ความเห็นผู้บังคับบัญชา</div>
+<div style="border-bottom: 1px dotted #000; min-height: 16px;">{{ $commander['comment'] ?? '' }}</div>
+<div style="border-bottom: 1px dotted #000; min-height: 16px;">&nbsp;</div>
+<div class="text-center" style="margin-top: 6px;">
+    (ลงชื่อ)
+    @if (! empty($commander['signature']))
+        <img class="sign-img" src="{{ $commander['signature'] }}" alt="">
+    @endif
+    <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px;">&nbsp;</span>
+</div>
+<div class="text-center">( {{ $commander['name'] ?? '' }} )</div>
+<div class="text-center">วันที่ {{ ! empty($commander['date']) ? $commander['date']->format('d/m/').($commander['date']->year + 543) : '........./........./.........' }}</div>
+
+<div class="bold underline" style="margin-top: 8px;">คำสั่ง</div>
+<div style="margin-left: 40px;">
+    <span class="box {{ ($order['status'] ?? '') === 'Approved' ? 'checked' : '' }}"></span>อนุญาต
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <span class="box {{ ($order['status'] ?? '') === 'Rejected' ? 'checked' : '' }}"></span>ไม่อนุญาต
+</div>
+<div style="border-bottom: 1px dotted #000; min-height: 16px;">{{ $order['comment'] ?? '' }}</div>
+<div class="text-center" style="margin-top: 6px;">
+    (ลงชื่อ)
+    @if (! empty($order['signature']))
+        <img class="sign-img" src="{{ $order['signature'] }}" alt="">
+    @endif
+    <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px;">&nbsp;</span>
+</div>
+<div class="text-center">( {{ $order['name'] ?? '' }} )</div>
+<div class="text-center">{{ $order['position'] ?? ($director_position ?? '') }}</div>
+<div class="text-center">วันที่ {{ ! empty($order['date']) ? $order['date']->format('d/m/').($order['date']->year + 543) : '........./........./.........' }}</div>
+
+@includeIf('pdf.partials.verification_qr')
+
 </body>
 </html>

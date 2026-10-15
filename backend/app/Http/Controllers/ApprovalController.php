@@ -7,7 +7,7 @@ use App\Services\LeaveApprovalFlow;
 use Illuminate\Http\Request;
 
 /**
- * รายการใบลา/คำขอยกเลิกที่รอผู้ใช้คนนี้พิจารณา
+ * รายการใบลา/คำขอยกเลิกที่รอผู้ใช้คนนี้พิจารณา — กติกาข้อเดียว: เห็น = อนุมัติได้
  *
  * การอนุมัติจริงอยู่ที่ GovernmentApprovalController (routes/leave_government.php)
  * และการยกเลิกวันลาอยู่ที่ LeaveCancellationController — เมธอด approve/reject
@@ -21,7 +21,7 @@ class ApprovalController extends Controller
     {
         $user = $request->user();
 
-        $query = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name'])
+        $query = Leave::with(['user.profile', 'user.department', 'type:id,name', 'approvals.approver:id,name', 'cancellationApprovals.approver:id,name'])
             ->where(function ($query) {
                 $query->where('status', 'Pending')
                     ->orWhere(fn ($q) => $q->where('status', 'Approved')->where('cancellation_status', 'Pending'));
@@ -37,8 +37,14 @@ class ApprovalController extends Controller
          * หัวหน้าหน่วยงาน / ผู้อำนวยการ / รายบุคคล (role_id ว่าง) จึงไม่เคยขึ้นในรายการ
          * ตอนนี้ถาม ApproverResolverService ผ่าน LeaveApprovalFlow ซึ่งเป็นตัวเดียวกับ
          * ที่ใช้ตรวจสิทธิ์ตอนกดอนุมัติ — สิ่งที่เห็นในรายการจึงตรงกับสิ่งที่กดได้จริง
+         * ใบที่รอคำขอยกเลิกถามสายของคำขอยกเลิก ไม่ใช่สายของการขอลาที่อนุมัติจบไปแล้ว
+         * ใบลาของตนเองขึ้นเฉพาะขั้นที่อนุมัติของตนเองได้ (LEAVE-APPROVAL-02)
+         *
+         * ไม่หรี่ด้วยขอบเขตหน่วยงาน (LeaveVisibility) โดยตั้งใจ — ขอบเขตหน่วยงานตอบว่า
+         * "เปิดดูใบลาของใครได้" ส่วนหน้านี้ตอบว่า "ต้องอนุมัติใบไหน" ถ้าครอบซ้ำ
+         * ผู้อนุมัติข้ามสายงาน (เช่น ผอ. หรือผู้ที่ถูกระบุเป็นผู้อนุมัติเฉพาะราย) จะไม่เห็นงานของตน
          */
-        $leaves = $query->where('user_id', '!=', $user->id)->get()
+        $leaves = $query->get()
             ->filter(fn (Leave $leave) => $this->flow->canActAtCurrentStep($user, $leave))
             ->values();
 

@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentTemplate;
 use App\Services\DefaultDocumentTemplateService;
+use App\Services\LeaveDocumentFields;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 
 class DocumentTemplateController extends Controller
 {
@@ -102,10 +105,74 @@ class DocumentTemplateController extends Controller
     /**
      * Seed default document templates if empty.
      */
-    public function seedDefaults(DefaultDocumentTemplateService $templates)
+    public function seedDefaults(Request $request, DefaultDocumentTemplateService $templates)
     {
-        $templates->sync();
+        $overwrite = $request->boolean('overwrite');
 
-        return response()->json(['message' => 'ซิงค์แม่แบบเอกสารตั้งต้นเรียบร้อยแล้ว']);
+        $templates->sync($overwrite);
+
+        return response()->json([
+            'message' => $overwrite
+                ? 'คืนค่าแบบฟอร์มตั้งต้นเรียบร้อยแล้ว (เวอร์ชันเดิมยังถูกเก็บไว้ เอกสารเก่าพิมพ์ซ้ำได้เหมือนเดิม)'
+                : 'ซิงค์แม่แบบเอกสารตั้งต้นเรียบร้อยแล้ว',
+        ]);
+    }
+
+    /**
+     * รายการตัวแปรที่ใช้ในแม่แบบใบลาได้ พร้อมคำอธิบายไทย
+     */
+    public function fields()
+    {
+        return response()->json(LeaveDocumentFields::catalog());
+    }
+
+    /**
+     * พรีวิวแม่แบบด้วยข้อมูลตัวอย่าง — ไม่แตะข้อมูลจริงและไม่ต้องมีใบลา
+     */
+    public function preview(Request $request, LeaveDocumentFields $fields)
+    {
+        $data = $request->validate([
+            'content_html' => 'required|string',
+            'paper_size' => 'nullable|string|max:20',
+            'orientation' => 'nullable|string|max:20',
+        ]);
+
+        try {
+            $html = Blade::render($data['content_html'], array_merge($fields->sample(), [
+                'approverBlocks' => $this->sampleApproverBlocks(),
+            ]));
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'message' => 'แม่แบบมีข้อผิดพลาด: '.$exception->getMessage(),
+            ], 422);
+        }
+
+        $pdf = Pdf::loadHTML($html)->setPaper(
+            strtolower($data['paper_size'] ?? 'a4'),
+            strtolower($data['orientation'] ?? 'portrait')
+        );
+
+        return $pdf->stream('preview.pdf');
+    }
+
+    /**
+     * บล็อกผู้ลงนามตัวอย่างสำหรับพรีวิว
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function sampleApproverBlocks(): array
+    {
+        return collect(['HR Head' => 'หัวหน้างานบุคลากร', 'Deputy Director' => 'รองผู้อำนวยการ', 'Director' => 'ผู้อำนวยการ'])
+            ->map(fn (string $position, string $role) => [
+                'name' => 'ตัวอย่าง ผู้ลงนาม',
+                'date' => now(),
+                'signature' => null,
+                'comment' => 'เห็นควรอนุญาต',
+                'status' => 'Approved',
+                'position' => $position,
+                'role_name' => $role,
+            ])
+            ->values()
+            ->all();
     }
 }

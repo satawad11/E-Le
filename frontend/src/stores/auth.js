@@ -199,6 +199,19 @@ export const useAuthStore = defineStore('auth', {
       return perms.includes('manage_settings') || perms.includes('system.setting.manage');
     },
 
+    /*
+     * สิทธิ์เข้าศูนย์จัดการเอกสารและรายงาน
+     *
+     * รับทั้งสิทธิ์ชุดใหม่ (document.*) และสิทธิ์ตั้งค่าระบบเดิม เพื่อให้ผู้ดูแลที่ใช้งานอยู่
+     * ไม่หลุดจากเมนูในวันที่อัปเกรด — ตรงกับที่ route ฝั่งเซิร์ฟเวอร์ยอมรับ
+     */
+    canManageDocumentCenter: (state) => {
+      if (isSuperAdminUser(state)) return true;
+      const documentPerms = ['document.template.view', 'document.template.manage', 'document.report.view', 'document.report.manage', 'manage_settings', 'system.setting.manage'];
+      const perms = getPermissionNames(state);
+      return perms.some(p => documentPerms.includes(p));
+    },
+
     // Check if user has any settings menu permission
     hasAnySettingsMenu: (state) => {
       if (isSuperAdminUser(state)) return true;

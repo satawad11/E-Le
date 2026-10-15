@@ -119,7 +119,7 @@ class LeaveService
                 'contact_address' => $data['contact_address'] ?? null, 'status' => 'Pending', 'approval_level' => 1,
                 'substitute_id' => $data['substitute_id'] ?? null, 'substitute_status' => isset($data['substitute_id']) ? 'Pending' : null,
                 'substitute_reason' => $data['substitute_reason'] ?? null,
-                'meta_data' => isset($data['meta_data']) ? (is_array($data['meta_data']) ? $data['meta_data'] : json_decode($data['meta_data'], true)) : null,
+                'meta_data' => $this->metaData($data),
                 'signature_path' => $data['signature_path'] ?? null, 'notified_supervisor_at' => $data['notified_supervisor_at'] ?? null,
                 'verification_hash' => Str::random(40),
                 'submitted_at' => now(),
@@ -138,12 +138,18 @@ class LeaveService
                     'sha256' => hash_file('sha256', $attachment->getRealPath()),
                 ]);
             }
-            foreach (ApprovalStep::with('role')->orderBy('step_order')->get() as $step) {
-                LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'step_order' => $step->step_order], [
+            /*
+             * snapshot สายอนุมัติ ณ วันยื่น — ต้องคัดลอก "วิธีหาตัวผู้อนุมัติ" ให้ครบ
+             * ไม่ใช่แค่ role เพราะขั้นตอนแบบหัวหน้าแผนกต้นสังกัด/ผอ./ผู้ใช้เจาะจง
+             * ไม่ได้ผูกกับ role ใด ๆ ถ้าตกหล่นจะกลายเป็นขั้นตอนแบบ ROLE ทั้งหมด
+             * แล้วผู้อนุมัติตัวจริงจะถูกปฏิเสธสิทธิ์ในขั้นของตัวเอง
+             */
+            foreach (ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role') as $step) {
+                LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'stage' => LeaveApproval::STAGE_REQUEST, 'step_order' => $step->step_order], [
                     'step_name' => $step->name, 'required_role_id' => $step->role_id, 'status' => 'Pending',
-                    // pin ชนิดผู้อนุมัติด้วย มิฉะนั้นขั้นแบบหัวหน้าหน่วยงาน/ผู้อำนวยการ/รายบุคคลจะไม่มีใครอนุมัติได้
-                    'approver_type' => $step->approver_type ?? ApprovalStep::RESOLVER_ROLE,
+                    'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
                     'specific_user_id' => $step->specific_user_id, 'permission_name' => $step->permission_name,
+                    'allow_self_approval' => (bool) $step->allow_self_approval,
                 ]);
             }
             $this->audit->log($leave, 'created', null, $leave->toArray());
@@ -288,6 +294,33 @@ class LeaveService
 
             return $leave;
         }, 5);
+    }
+
+    /**
+     * รวม meta_data ที่ส่งมากับ "ช่องกรอกเฉพาะแบบฟอร์ม" ของประเภทการลา
+     *
+     * ค่าที่กรอกถูกเก็บใต้คีย์ `extra_fields` เพื่อให้แบบฟอร์มตอนพิมพ์อ่านผ่าน
+     * `LeaveDocumentFields` ได้ โดยไม่ต้องเพิ่มคอลัมน์ใหม่ทุกครั้งที่มีแบบฟอร์มใหม่
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    private function metaData(array $data): ?array
+    {
+        $meta = $data['meta_data'] ?? null;
+        $meta = is_array($meta) ? $meta : (is_string($meta) ? json_decode($meta, true) : null);
+        $meta = is_array($meta) ? $meta : [];
+
+        $extra = array_filter(
+            (array) ($data['extra_fields'] ?? []),
+            fn ($value) => $value !== null && $value !== ''
+        );
+
+        if ($extra !== []) {
+            $meta['extra_fields'] = $extra;
+        }
+
+        return $meta === [] ? null : $meta;
     }
 
     /**

@@ -1,0 +1,31 @@
+# ชุดเสริมสำหรับการพัฒนาเท่านั้น — ห้ามใช้บน production
+#
+# DEPLOY-006 — Vite dev server ไม่มี authentication เสิร์ฟ source ดิบทั้งโครงการ
+# และเปิด websocket HMR จึงต้องอยู่นอก `docker-compose.yml` ที่ใช้ deploy จริง
+#
+# วิธีใช้บนเครื่องพัฒนา:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# ผูกพอร์ตไว้ที่ 127.0.0.1 เท่านั้น จึงเข้าถึงได้จากเครื่องตัวเอง ไม่ใช่ทั้งวง LAN
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: eleave_frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "127.0.0.1:5173:5173"
+    command: >
+      sh -c "npm ci &&
+             npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend
+
+volumes:
+  frontend_node_modules:

@@ -193,7 +193,7 @@ class LeaveWorkflowShadow
             return (int) $snapshot->step_order;
         }
 
-        $legacy = ApprovalStep::where('step_order', $leave->approval_level)->first();
+        $legacy = ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->firstWhere('step_order', $leave->approval_level);
 
         return $legacy === null ? null : (int) $legacy->step_order;
     }
@@ -219,7 +219,7 @@ class LeaveWorkflowShadow
 
         $snapshot = $leave->approvals()->where('step_order', $stepOrder)->first();
         $roleId = $snapshot?->required_role_id
-            ?? ApprovalStep::where('step_order', $stepOrder)->value('role_id');
+            ?? ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->firstWhere('step_order', $stepOrder)?->role_id;
 
         if ($roleId === null) {
             return [];

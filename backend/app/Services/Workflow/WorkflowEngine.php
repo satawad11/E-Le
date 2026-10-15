@@ -13,6 +13,7 @@ use App\Models\Workflow\WorkflowVersion;
 use App\Services\AuditLogger;
 use App\Services\OrgScopeResolver;
 use App\Services\PermissionEvaluator;
+use App\Services\Workflow\Assignee\AssigneeResolverRegistry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -36,6 +37,7 @@ class WorkflowEngine
         private readonly OrgScopeResolver $orgScope,
         private readonly AuditLogger $audit,
         private readonly PermissionEvaluator $permissions,
+        private readonly AssigneeResolverRegistry $assignees,
     ) {}
 
     // ------------------------------------------------------------------ อ่านสถานะ
@@ -350,6 +352,22 @@ class WorkflowEngine
     {
         $step = $task->step;
         $roleId = $task->assignee_role_id ?? $step?->assignee_role_id;
+
+        /*
+         * ให้โมดูลเจ้าของเรื่องตอบก่อนถ้ามีกติกาของตัวเอง
+         *
+         * การแปลงขั้นตอนของโมดูลมาเป็น `assignee_type` ของ engine เป็นการลดรูป
+         * ซึ่งทำให้ความละเอียดของสิทธิ์หายไป (เช่น ขั้น ผอ. กับขั้นหัวหน้าแผนก
+         * กลายเป็น `org_manager` เหมือนกัน) โมดูลจึงตอบเองได้ด้วยตรรกะชุดเดียว
+         * กับที่เส้นทางอนุมัติจริงใช้ — engine ยังไม่รู้จักโมดูลใดเป็นการเฉพาะ
+         */
+        $fromSubject = $this->assignees->candidatesFor($instance, $step);
+
+        if ($fromSubject !== null) {
+            sort($fromSubject);
+
+            return array_values(array_unique(array_map('intval', $fromSubject)));
+        }
 
         $ids = match ($step?->assignee_type) {
             WorkflowStep::ASSIGNEE_USER => array_filter([$task->assignee_user_id ?? $step->assignee_user_id]),

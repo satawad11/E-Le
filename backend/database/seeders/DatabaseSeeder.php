@@ -80,7 +80,7 @@ class DatabaseSeeder extends Seeder
         foreach ($leaveTypes as $type) {
             LeaveType::firstOrCreate(['name' => $type['name']], ['description' => $type['description']]);
         }
-        $this->call([NewLeaveTypesSeeder::class]);
+        $this->call([NewLeaveTypesSeeder::class, LeaveFormExtraFieldSeeder::class]);
 
         // Create Users
         $faker = Factory::create('th_TH');
@@ -136,17 +136,18 @@ class DatabaseSeeder extends Seeder
         }
 
         // Seed dynamic approval steps matching the default workflow
+        // ทุกขั้นอนุมัติใบลาของตนเองได้ ตามมติเจ้าของระบบ 2026-10-14 (LEAVE-APPROVAL-02)
         ApprovalStep::firstOrCreate(
             ['step_order' => 1],
-            ['role_id' => $hrHeadRole->id, 'name' => 'ตรวจสอบโดยหัวหน้าบุคลากร']
+            ['role_id' => $hrHeadRole->id, 'name' => 'ตรวจสอบโดยหัวหน้าบุคลากร', 'allow_self_approval' => true]
         );
         ApprovalStep::firstOrCreate(
             ['step_order' => 2],
-            ['role_id' => $deputyRole->id, 'name' => 'พิจารณาโดยรองผู้อำนวยการ']
+            ['role_id' => $deputyRole->id, 'name' => 'พิจารณาโดยรองผู้อำนวยการ', 'allow_self_approval' => true]
         );
         ApprovalStep::firstOrCreate(
             ['step_order' => 3],
-            ['role_id' => $directorRole->id, 'name' => 'อนุมัติรอบสุดท้ายโดยผู้อำนวยการ']
+            ['role_id' => $directorRole->id, 'name' => 'อนุมัติรอบสุดท้ายโดยผู้อำนวยการ', 'allow_self_approval' => true]
         );
 
         // LEGACY-03: เติม org_units/department_org_unit_map/users.org_unit_id
@@ -161,6 +162,10 @@ class DatabaseSeeder extends Seeder
         // LEGACY-05: แปลงสายอนุมัติด้านบนเป็น Leave Workflow v1 (shadow mode)
         // ต้องอยู่ท้ายสุดเพราะอ่านจาก approval_steps ที่เพิ่งสร้าง
         $this->call([LeaveWorkflowSeeder::class]);
+
+        // DOC-ENGINE: สิทธิ์ Field Dictionary และแหล่งข้อมูลของศูนย์จัดการเอกสาร
+        // ต้องรันหลังประเภทการลาและแม่แบบเอกสาร เพราะสร้างกติกาผูกแบบฟอร์มจากทั้งสองอย่าง
+        $this->call([DocumentEngineSeeder::class]);
     }
 
     private function seedProfile($user, $faker, $fname = 'ทดสอบ', $lname = 'ระบบ', $position = 'นักวิชาการ', $idCard = null)
