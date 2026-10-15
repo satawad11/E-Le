@@ -21,6 +21,10 @@ All notable changes to the E-la project will be documented in this file.
 - `PdfOverlayRenderer` crashed on any ticked checkbox (it switched to a Helvetica font file that the engine's font folder does not contain).
 - Leaves always pinned the HTML form version, so a published PDF form was never used for new leaves.
 
+#### Removed
+- Old "จัดการแม่แบบเอกสาร" page and menu entry — `/admin/document-templates` now redirects to the Document Center ("แบบฟอร์มใบลา" tab). The read-only template API stays for the leave-type settings page.
+- `document:import-forms`, `document:scaffold-fields` and the five PDFs in `resources/document-templates` (another college's Word forms with its name baked in and placeholder field positions) — superseded by `document:generate-leave-forms`. Tests now generate their own sample PDF.
+
 #### Tests
 - `LeaveFormDesignerTest` (11). `DocumentEngineTest` default-state test updated for the new kill-switch default.
 

@@ -19,6 +19,7 @@ use App\Services\DocumentEngine\LeaveTypeForms;
 use App\Services\DocumentEngine\PdfOverlayRenderer;
 use App\Services\DocumentEngine\Providers\LeaveRequestDataProvider;
 use App\Support\FormDate;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Database\Seeders\DocumentEngineSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -69,7 +70,7 @@ class LeaveFormDesignerTest extends TestCase
         ]));
 
         $path = 'document-templates/'.$template->code.'-v1.pdf';
-        Storage::disk('private_uploads')->put($path, (string) file_get_contents(resource_path('document-templates/leave_vacation.pdf')));
+        Storage::disk('private_uploads')->put($path, (string) Pdf::loadHTML('<p>แบบฟอร์มทดสอบ</p>')->setPaper('a4')->output());
 
         $version = $template->versions()->create([
             'version' => 1, 'status' => DocumentTemplateVersion::STATUS_ACTIVE, 'render_mode' => DocumentTemplate::RENDER_PDF_OVERLAY,
