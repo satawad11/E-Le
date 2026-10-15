@@ -4,7 +4,6 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
-<<<<<<< HEAD
 ### [TPL-01] - 2026-10-15 — Leave form templates: security, data and layout
 #### Security
 - **Remote code execution via document templates (TPL-SEC-01).** `LeaveDocumentTemplateResolver::render()` passed admin-editable `document_templates.content_html` to `Blade::render()`, and `POST /api/admin/document-templates/preview` rendered HTML sent in the request body the same way — anyone with the settings permission could run PHP on the server (`@php … @endphp`). HTML leave forms now always render from the code-owned blade files. The HTML template create/update/delete and HTML-preview endpoints were removed; preview is `GET /api/admin/document-templates/{template}/preview` rendering the code view with sample data. Admin form design goes through the Document Engine (field placement on the official PDF).
@@ -25,7 +24,7 @@ All notable changes to the E-la project will be documented in this file.
 - Fields `requester_signature`, `previous_same_type_count`, `duration_years|months|days` in `LeaveDocumentFields`.
 - Default form fields for the Hajj, follow-spouse and study leave types in `LeaveFormExtraFieldSeeder` (only for types with none yet).
 - Tests `DocumentTemplateSecurityTest` (5), `LeaveFormDataTest` (8).
-=======
+
 ### [USER-GOV-01] - 2026-10-14 — User account governance
 #### Fixed
 - `DELETE /api/admin/users/{user}` hard-deleted the account. FK cascades wiped the user's leaves, leave balances, attendances, personnel record and PDPA access logs (and tables with `restrictOnDelete` made it fail with 500). The endpoint now returns 409 and admins suspend accounts instead. The delete button was removed from the users page.
@@ -36,7 +35,6 @@ All notable changes to the E-la project will be documented in this file.
 
 #### Added
 - Tests `Tests\Feature\UserAccountGovernanceTest` (9 tests).
->>>>>>> origin/main
 
 ### [MERGE-PR2] - 2026-10-14 — Merge Document & Report Engine / cancellation chain (PR #2) into main
 #### Changed
