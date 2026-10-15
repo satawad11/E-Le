@@ -4,6 +4,14 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [LEAVE-FORMS-02] - 2026-10-15 — Forms for the three remaining leave types
+#### Added
+- Forms for every leave type in the regulation that had none (they printed on the sick/personal/maternity form):
+  - `leave_military` — แบบรายงานลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล (a report to the supervisor, so it has an acknowledgement block instead of approve/reject)
+  - `leave_international` — แบบใบลาไปปฏิบัติงานในองค์การระหว่างประเทศ
+  - `leave_rehabilitation` — แบบใบลาไปฟื้นฟูสมรรถภาพด้านอาชีพ
+- Leave types are matched to these forms by name until a form is chosen on the leave-type page; default form fields for each in `LeaveFormExtraFieldSeeder`; all three can be generated for the Visual Designer.
+
 ### [DOC-DESIGNER-01] - 2026-10-15 — Leave forms designed per leave type in the Visual Designer
 #### Added
 - **Leave forms tab** in the Document Center: one row per leave type (+ the cancellation form) with *Create form*, *Design*, publish status, and a *Use this form* switch. Admins no longer edit `.env` to turn the engine on for a leave type.

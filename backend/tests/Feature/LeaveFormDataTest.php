@@ -172,7 +172,7 @@ class LeaveFormDataTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole(Role::findOrCreate('Super Admin', 'web'));
 
-        $codes = ['leave_sick_personal', 'leave_vacation', 'leave_cancel', 'leave_paternity', 'leave_ordination', 'leave_hajj', 'leave_spouse', 'leave_study', 'official_travel'];
+        $codes = ['leave_sick_personal', 'leave_vacation', 'leave_cancel', 'leave_paternity', 'leave_ordination', 'leave_hajj', 'leave_spouse', 'leave_study', 'official_travel', 'leave_military', 'leave_international', 'leave_rehabilitation'];
 
         foreach ($codes as $code) {
             $template = DocumentTemplate::where('code', $code)->firstOrFail();

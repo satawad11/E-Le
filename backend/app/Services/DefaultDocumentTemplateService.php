@@ -90,6 +90,27 @@ class DefaultDocumentTemplateService
                 12.0
             ),
             $this->leaveTemplate(
+                'leave_military',
+                'แบบรายงานลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล',
+                'pdf.leave_military',
+                8.0,
+                14.0
+            ),
+            $this->leaveTemplate(
+                'leave_international',
+                'แบบใบลาไปปฏิบัติงานในองค์การระหว่างประเทศ',
+                'pdf.leave_international',
+                8.0,
+                14.0
+            ),
+            $this->leaveTemplate(
+                'leave_rehabilitation',
+                'แบบใบลาไปฟื้นฟูสมรรถภาพด้านอาชีพ',
+                'pdf.leave_rehabilitation',
+                8.0,
+                14.0
+            ),
+            $this->leaveTemplate(
                 'official_travel',
                 'บันทึกข้อความ ขออนุญาตเดินทางไปราชการ',
                 'pdf.official_travel',

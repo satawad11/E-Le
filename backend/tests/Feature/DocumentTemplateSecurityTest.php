@@ -92,7 +92,7 @@ class DocumentTemplateSecurityTest extends TestCase
     {
         $admin = $this->admin();
 
-        foreach (['leave_sick_personal', 'leave_vacation', 'leave_cancel', 'leave_hajj', 'official_travel'] as $code) {
+        foreach (['leave_sick_personal', 'leave_vacation', 'leave_cancel', 'leave_hajj', 'official_travel', 'leave_military', 'leave_international', 'leave_rehabilitation'] as $code) {
             $template = DocumentTemplate::where('code', $code)->firstOrFail();
 
             $response = $this->actingAs($admin)->get("/api/admin/document-templates/{$template->id}/preview");
