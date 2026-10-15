@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\UserDelegation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ProfileController extends Controller
 {
@@ -23,10 +25,18 @@ class ProfileController extends Controller
             'line_user_id' => 'nullable|string|max:255',
             'notification_channel' => 'nullable|string|in:line,telegram,both,none',
             'password' => 'nullable|string|min:12',
+            'current_password' => 'nullable|string',
             'profile' => 'nullable|array',
             'signature_file' => 'nullable|image|max:2048',
             'signature_base64' => 'nullable|string',
         ]);
+
+        // ต้องยืนยันรหัสผ่านเดิม — กันกรณี token/เครื่องที่ค้าง login ถูกใช้ยึดบัญชี
+        if ($request->filled('password') && ! Hash::check((string) $request->current_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['รหัสผ่านปัจจุบันไม่ถูกต้อง'],
+            ]);
+        }
 
         $user->phone = $request->phone;
         $user->telegram_chat_id = $request->telegram_chat_id;

@@ -98,7 +98,17 @@
   - Full decoupling between organizational hierarchy and system roles.
   - Rock-solid workflow stability, concurrency safety, and audit traceability.
 
+## ADR-USER-GOV-01: User accounts are never hard-deleted
 
-
-
+- **Status**: Accepted
+- **Date**: 2026-10-14
+- **Context**:
+  `users` is referenced by 60+ foreign keys. Several cascade (leaves, leave_balances, attendances, personnel, user_profiles, personal_data_access_logs), others restrict (personnel_assignments, ot_time_records). Deleting an account either destroyed historical records or failed with 500. PROJECT_RULES forbids deleting historical/effective-dated records and PROD phase forbids schema changes, so soft deletes (`deleted_at`) are not an option now.
+- **Decision**:
+  1. `DELETE /api/admin/users/{user}` always responds 409 and changes nothing; the route and `delete_users` permission stay so callers get a clear message.
+  2. Personnel who leave the organisation are suspended (`is_active = false`), which revokes all tokens and blocks login.
+  3. Erasure requests under PDPA, if ever required, need a separate anonymisation procedure approved by the data controller.
+- **Consequences**:
+  - Leave, attendance and audit history stay intact for every former employee.
+  - Mistakenly created accounts cannot be removed; they are suspended instead.
 

@@ -4,6 +4,17 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [USER-GOV-01] - 2026-10-14 — User account governance
+#### Fixed
+- `DELETE /api/admin/users/{user}` hard-deleted the account. FK cascades wiped the user's leaves, leave balances, attendances, personnel record and PDPA access logs (and tables with `restrictOnDelete` made it fail with 500). The endpoint now returns 409 and admins suspend accounts instead. The delete button was removed from the users page.
+- Changes to roles, direct permissions and personnel profile fields made through the user admin page were not audited. They now write `user.access_changed`, `user.profile_updated` (field names only, never values) and `user.password_reset_by_admin`. Column changes on `users` (incl. `is_active`) were already audited by the model hook.
+- Admins could suspend their own account (now 422; the button is hidden for self).
+- Users page set `user.is_active` from a field the toggle endpoint never returned.
+- Changing one's own password (`POST /api/profile`) did not require the current password. It now does; the profile page asks for it and signs the user out after the change (all tokens are revoked server-side).
+
+#### Added
+- Tests `Tests\Feature\UserAccountGovernanceTest` (9 tests).
+
 ### [LEAVE-FIX-01] - 2026-10-13 — Leave lifecycle audit & fix
 #### Fixed
 - Cancelling an approved leave never returned the used days (status was set to `Cancelled` before `restoreBalance()` ran).

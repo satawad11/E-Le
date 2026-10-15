@@ -9,6 +9,7 @@ use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\PersonnelType;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\LeavePolicyService;
 use App\Services\PersonalDataAccessLogger;
 use Illuminate\Http\Request;
@@ -118,6 +119,11 @@ class UserController extends Controller
             return $user;
         });
 
+        // คอลัมน์ของ users ถูก audit โดย model hook อยู่แล้ว (AppServiceProvider)
+        // ที่ต้องบันทึกเพิ่มคือบทบาท/สิทธิ์ และชื่อฟิลด์ทะเบียนประวัติ
+        $this->auditAccessChange($user, null);
+        $this->auditProfileFields($user, array_keys($profileData));
+
         return response()->json([
             'message' => 'สร้างผู้ใช้เรียบร้อยแล้ว',
             'user' => $user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
@@ -147,6 +153,8 @@ class UserController extends Controller
             'profile' => 'nullable|array',
             'custom_permissions' => 'nullable',
         ]);
+
+        $accessBefore = $this->accessSnapshot($user);
 
         $user->name = $request->name;
         $user->email = $request->email;
@@ -179,16 +187,24 @@ class UserController extends Controller
                 $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
                 $profileData['profile_photo_path'] = '/storage/'.$path;
             }
-            $user->profile()->updateOrCreate(
+            $profile = $user->profile()->updateOrCreate(
                 ['user_id' => $user->id],
                 $profileData
             );
         } elseif ($request->hasFile('profile_photo')) {
             $path = $request->file('profile_photo')->store('profile_photos', 'private_uploads');
-            $user->profile()->updateOrCreate(
+            $profile = $user->profile()->updateOrCreate(
                 ['user_id' => $user->id],
                 ['profile_photo_path' => '/storage/'.$path]
             );
+        }
+
+        $this->auditAccessChange($user, $accessBefore);
+        if (isset($profile)) {
+            $this->auditProfileFields($user, array_keys($profile->wasRecentlyCreated ? $profile->getAttributes() : $profile->getChanges()));
+        }
+        if ($request->filled('password')) {
+            app(AuditLogger::class)->log('user.password_reset_by_admin', 'user', $user->id);
         }
 
         return response()->json([
@@ -197,15 +213,25 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * ไม่ลบบัญชีผู้ใช้จริง — การลบจะ cascade ลบใบลา ยอดวันลา การลงเวลา ทะเบียนบุคลากร
+     * และบันทึกการเข้าถึงข้อมูลส่วนบุคคลของผู้ใช้นั้นทิ้งถาวร (บางตารางเป็น restrict จน error 500)
+     * ซึ่งขัดกับกฎห้ามลบประวัติ บุคลากรที่พ้นสภาพให้ใช้การ "ระงับการใช้งาน" แทน
+     */
     public function destroy(User $user)
     {
-        $user->delete();
-
-        return response()->json(['message' => 'ลบผู้ใช้เรียบร้อยแล้ว']);
+        return response()->json([
+            'message' => 'ระบบไม่อนุญาตให้ลบบัญชีผู้ใช้ เพื่อรักษาประวัติการลา การลงเวลา และทะเบียนประวัติบุคลากร กรุณาใช้ "ระงับการใช้งาน" แทน',
+        ], 409);
     }
 
-    public function toggleStatus(User $user)
+    public function toggleStatus(Request $request, User $user)
     {
+        if ($user->is($request->user()) && $user->is_active) {
+            return response()->json(['message' => 'ไม่สามารถระงับการใช้งานบัญชีของตนเองได้'], 422);
+        }
+
+        // การเปลี่ยน is_active ถูก audit (user.updated) และ token ถูกยกเลิก (UserObserver) ใน model hook แล้ว
         $user->is_active = ! $user->is_active;
         $user->save();
 
@@ -213,5 +239,36 @@ class UserController extends Controller
             'message' => $user->is_active ? 'เปิดใช้งานผู้ใช้แล้ว' : 'ระงับการใช้งานผู้ใช้แล้ว',
             'user' => $user->fresh()->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
         ]);
+    }
+
+    private function accessSnapshot(User $user): array
+    {
+        return [
+            'roles' => $user->roles()->pluck('name')->sort()->values()->all(),
+            'direct_permissions' => $user->getDirectPermissions()->pluck('name')->sort()->values()->all(),
+        ];
+    }
+
+    private function auditAccessChange(User $user, ?array $before): void
+    {
+        $user->unsetRelation('roles')->unsetRelation('permissions');
+        $after = $this->accessSnapshot($user);
+
+        if ($before !== $after) {
+            app(AuditLogger::class)->log('user.access_changed', 'user', $user->id, $before, $after);
+        }
+    }
+
+    /**
+     * บันทึกเฉพาะ "ชื่อฟิลด์" ทะเบียนประวัติที่เปลี่ยน ไม่บันทึกค่า
+     * — ไม่ให้ audit log กลายเป็นสำเนาเลขบัตรประชาชน/ที่อยู่
+     */
+    private function auditProfileFields(User $user, array $fields): void
+    {
+        $fields = array_values(array_diff($fields, ['id', 'user_id', 'id_card_number_hash', 'created_at', 'updated_at']));
+
+        if ($fields !== []) {
+            app(AuditLogger::class)->log('user.profile_updated', 'user', $user->id, null, ['fields' => $fields]);
+        }
     }
 }

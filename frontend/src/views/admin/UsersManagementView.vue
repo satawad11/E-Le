@@ -4,7 +4,7 @@
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">จัดการผู้ใช้งาน (บุคลากร)</h1>
-        <p class="text-gray-500 mt-1">เพิ่ม แก้ไข และลบข้อมูลบุคลากรภายในระบบ</p>
+        <p class="text-gray-500 mt-1">เพิ่ม แก้ไข และระงับการใช้งานบัญชีบุคลากร (ระบบไม่ลบบัญชีเพื่อรักษาประวัติ)</p>
       </div>
       <div class="flex flex-wrap gap-2">
         <button
@@ -138,7 +138,7 @@
                 </td>
                 <td class="px-4 py-3 text-center">
                   <div class="flex flex-wrap items-center justify-center gap-2">
-                    <button @click="toggleStatus(user)" class="inline-flex items-center gap-1 px-3 py-1 rounded text-xs transition" :class="user.is_active ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'" :disabled="submitting" title="เปิด-ปิด การใช้งาน">
+                    <button v-if="user.id !== authStore.user?.id || !user.is_active" @click="toggleStatus(user)" class="inline-flex items-center gap-1 px-3 py-1 rounded text-xs transition" :class="user.is_active ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'" :disabled="submitting" title="เปิด-ปิด การใช้งาน">
                       <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="user.is_active ? ICONS.ban : ICONS.check"/>
                       </svg>
@@ -155,12 +155,6 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.pencil"/>
                       </svg>
                       แก้ไข
-                    </button>
-                    <button v-if="user.id !== authStore.user?.id" @click="confirmDelete(user)" class="inline-flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition">
-                      <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.trash"/>
-                      </svg>
-                      ลบ
                     </button>
                   </div>
                 </td>
@@ -474,24 +468,6 @@
       </div>
     </transition>
 
-    <!-- Delete Confirmation Modal -->
-    <transition name="fade">
-      <div v-if="deleteModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
-          <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-            </svg>
-          </div>
-          <h3 class="font-bold text-gray-900 text-lg mb-1">ยืนยันการลบ?</h3>
-          <p class="text-gray-500 text-sm mb-6">คุณแน่ใจว่าต้องการลบผู้ใช้งาน <strong class="text-gray-800">{{ deleteModal.userName }}</strong> หรือไม่?</p>
-          <div class="flex gap-3">
-            <button @click="deleteModal.show = false" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition-colors">ยกเลิก</button>
-            <button @click="doDelete" :disabled="submitting" class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-sm transition-colors">ลบผู้ใช้งาน</button>
-          </div>
-        </div>
-      </div>
-    </transition>
     <!-- User Individual Permissions Modal -->
     <UserPermissionModal 
       :show="permissionModal.show" 
@@ -604,12 +580,6 @@ const modal = reactive({
   show: false,
   isEdit: false,
   userId: null
-})
-
-const deleteModal = reactive({
-  show: false,
-  userId: null,
-  userName: ''
 })
 
 const getDefaultProfile = () => ({
@@ -864,7 +834,7 @@ const toggleStatus = async (user) => {
   try {
     const res = await api.post(`/admin/users/${user.id}/toggle-status`)
     alertStore.success(res.data.message)
-    user.is_active = res.data.is_active
+    user.is_active = res.data.user?.is_active ?? !user.is_active
   } catch (e) {
     alertStore.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะ')
   } finally {
@@ -924,26 +894,6 @@ const handleCsvUpload = async (e) => {
   }
 }
 
-const confirmDelete = (user) => {
-  deleteModal.userId = user.id
-  deleteModal.userName = user.name
-  deleteModal.show = true
-}
-
-const doDelete = async () => {
-  submitting.value = true
-  try {
-    const res = await api.delete(`/admin/users/${deleteModal.userId}`)
-    alertStore.success(res.data.message || 'ลบผู้ใช้เรียบร้อยแล้ว')
-    await fetchUsers()
-    deleteModal.show = false
-  } catch (e) {
-    console.error(e)
-    alertStore.error(e.response?.data?.message || 'ไม่สามารถลบผู้ใช้ได้')
-  } finally {
-    submitting.value = false
-  }
-}
 </script>
 
 <style scoped>
