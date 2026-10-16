@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Department;
 use App\Models\Leave;
 use App\Services\OrgScopeResolver;
 use Illuminate\Database\Eloquent\Builder;
@@ -77,10 +78,34 @@ class GovernmentLeaveReportController extends Controller
         return response("\xEF\xBB\xBF".$content, 200, ['Content-Type' => 'text/csv; charset=UTF-8', 'Content-Disposition' => 'attachment; filename="leave-register.csv"']);
     }
 
-    private function applyReportScope(Builder $query, Request $request): void
+    /**
+     * หน่วยงานสำหรับตัวกรองของหน้ารายงานการลาราชการ
+     * จำกัดตามขอบเขตเดียวกับทะเบียนคุม — แสดงเฉพาะหน่วยงานที่ผู้ดูเห็นข้อมูลได้ และส่งแค่ id/name
+     */
+    public function departments(Request $r)
+    {
+        abort_unless($r->user()->can('leave.report.view') || $r->user()->can('leave.management.manage'), 403);
+        $query = Department::query()->select('id', 'name')->orderBy('name');
+        $visible = $this->visibleOrgUnitIds($r);
+        if ($visible !== null) {
+            $query->where(fn (Builder $q) => $q
+                ->whereHas('orgUnits', fn (Builder $units) => $units->whereIn('org_units.id', $visible))
+                ->orWhereHas('users', fn (Builder $users) => $users->whereIn('org_unit_id', $visible)));
+        }
+
+        return response()->json(['data' => $query->get()]);
+    }
+
+    private function visibleOrgUnitIds(Request $request): ?array
     {
         $ability = $request->user()->can('leave.report.view') ? 'leave.report.view' : 'leave.management.manage';
-        $visible = $this->scopes->visibleOrgUnitIds($request->user(), $ability, OrgScopeResolver::ORGANIZATION);
+
+        return $this->scopes->visibleOrgUnitIds($request->user(), $ability, OrgScopeResolver::ORGANIZATION);
+    }
+
+    private function applyReportScope(Builder $query, Request $request): void
+    {
+        $visible = $this->visibleOrgUnitIds($request);
         if ($visible !== null) {
             $query->whereHas('user', fn (Builder $users) => $users->whereIn('org_unit_id', $visible));
         }

@@ -4,6 +4,12 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [REPORTS-01] - 2026-10-16 — Department filter on the government leave report
+#### Fixed
+- The หน่วยงาน dropdown on รายงานการลาราชการ (`/reports`) was always empty: it called `GET /api/departments`, which does not exist (404). It now calls the new `GET /api/reports/government-leave-departments`.
+#### Added
+- `GET /api/reports/government-leave-departments` (auth + `leave.report.view` or `leave.management.manage`, else 403). Returns only `id`/`name`, limited to the viewer's org scope for `leave.report.view` (default ORGANIZATION), the same scope the register itself uses.
+
 ### [LEAVE-FORMS-04] - 2026-10-16 — Six forms reworded to the regulation's annexed forms
 #### Changed
 - Hajj, military call-up, spouse, study, international organisation and vocational rehabilitation forms now follow the wording and section order of the forms annexed to ระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลาของข้าราชการ พ.ศ. 2555 (checked against the NABC leave manual, which reproduces the annex):
