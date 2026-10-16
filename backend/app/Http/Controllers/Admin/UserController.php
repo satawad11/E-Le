@@ -24,6 +24,17 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    // K-ORG-01 — บทบาทที่ได้ทุกสิทธิ์ผ่าน Gate::before และข้อความเมื่อผู้ที่ไม่มี `admin.users.manage_permissions` พยายามมอบบทบาท/สิทธิ์
+    private const SUPER_ADMIN_ROLES = ['Super Admin', 'SuperAdmin'];
+
+    private const DENY_ROLE = 'ไม่สามารถกำหนดบทบาทที่มีสิทธิ์สูงกว่าบทบาทของท่านได้';
+
+    private const DENY_ROLE_CHANGE = 'ท่านไม่มีสิทธิ์เปลี่ยนบทบาทของผู้ใช้ (ต้องมีสิทธิ์ "กำหนดสิทธิ์รายบุคคล")';
+
+    private const DENY_PERMISSIONS = 'ท่านไม่มีสิทธิ์กำหนดสิทธิ์รายบุคคล (ต้องมีสิทธิ์ "กำหนดสิทธิ์รายบุคคล")';
+
+    private const DENY_CREDENTIALS = 'ไม่สามารถเปลี่ยนอีเมลหรือรหัสผ่านของผู้ใช้ที่มีสิทธิ์สูงกว่าท่านได้';
+
     public function index(Request $request)
     {
         $users = User::with(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType'])->orderBy('name', 'asc')->get();
@@ -42,6 +53,26 @@ class UserController extends Controller
         return response()->json($users);
     }
 
+    /**
+     * บทบาทที่ผู้ใช้ปัจจุบันมอบให้ผู้อื่นได้ (K-ORG-01)
+     *
+     * `GET /admin/roles` เป็นของผู้จัดการบทบาท (`system.menu.manage`) ฟอร์มผู้ใช้จึงใช้รายการนี้แทน
+     */
+    public function assignableRoles(Request $request)
+    {
+        $actor = $request->user();
+        $roles = Role::with('permissions:id,name')->orderBy('name')->get();
+
+        if (! $this->canManageAccess($actor)) {
+            $roles = $roles->filter(fn (Role $role) => $this->roleWithinActor($actor, $role));
+        }
+
+        return response()->json([
+            'roles' => $roles->map(fn (Role $role) => ['id' => $role->id, 'name' => $role->name])->values(),
+            'can_manage_access' => $this->canManageAccess($actor),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -58,6 +89,13 @@ class UserController extends Controller
         ]);
 
         $position = $this->requestedPosition($request, null);
+
+        // K-ORG-01: ผู้ที่ไม่มีสิทธิ์กำหนดสิทธิ์ สร้างผู้ใช้ได้เฉพาะบทบาทที่ไม่เกินของตนเอง และไม่มีสิทธิ์รายบุคคล
+        $actor = $request->user();
+        if (! $this->canManageAccess($actor)) {
+            $this->ensureRoleWithinActor($actor, Role::find($request->role_id));
+            abort_if(($this->requestedPermissions($request) ?? []) !== [], 403, self::DENY_PERMISSIONS);
+        }
 
         $profileData = $request->has('profile') ? (is_string($request->profile) ? json_decode($request->profile, true) : $request->profile) : [];
         $idCard = $profileData['id_card_number'] ?? null;
@@ -84,8 +122,8 @@ class UserController extends Controller
             }
 
             if ($request->has('custom_permissions')) {
-                $perms = is_string($request->custom_permissions) ? json_decode($request->custom_permissions, true) : $request->custom_permissions;
-                if (is_array($perms)) {
+                $perms = $this->requestedPermissions($request);
+                if ($perms !== null) {
                     /*
                      * LEGACY-04 (04-6): syncPermissions() บันทึกลง pivot ของ Spatie แล้ว
                      * เดิมยังเขียนซ้ำลงคอลัมน์ `users.custom_permissions` ซึ่งเป็นแหล่งสิทธิ์
@@ -134,7 +172,7 @@ class UserController extends Controller
      *   - แถวใดผิดพลาดให้ข้ามแถวนั้นและรายงานเลขบรรทัด ไม่ล้มทั้งไฟล์
      *   - เลขบัตรประชาชนซ้ำกับที่มีอยู่ไม่ได้ เพราะการเข้าสู่ระบบด้วยเลขบัตรค้นจาก hash
      *     แล้วหยิบแถวแรกที่เจอ ถ้าซ้ำจะเข้าบัญชีผิดคน
-     *   - บทบาทที่กำหนดได้เท่ากับที่ store() กำหนดได้ (สิทธิ์ route เดียวกัน)
+     *   - บทบาทที่กำหนดได้เท่ากับที่ store() กำหนดได้ — ไม่เกินบทบาทของผู้นำเข้า เว้นแต่ถือ `admin.users.manage_permissions` (K-ORG-01)
      */
     public function importCsv(Request $request)
     {
@@ -166,6 +204,8 @@ class UserController extends Controller
         }
 
         $profileColumns = ['id_card_number', 'title', 'first_name', 'last_name', 'gender', 'position'];
+        $actor = $request->user();
+        $canManageAccess = $this->canManageAccess($actor);
         $importedIds = [];
         $errors = [];
         $line = 1;
@@ -195,7 +235,13 @@ class UserController extends Controller
                 'position' => 'nullable|string|max:255',
             ]);
 
-            $validator->after(function ($validator) use ($data) {
+            $validator->after(function ($validator) use ($data, $actor, $canManageAccess) {
+                // K-ORG-01: บทบาทในไฟล์ต้องไม่เกินของผู้นำเข้า (ยกเว้นผู้มีสิทธิ์กำหนดสิทธิ์)
+                $role = filled($data['role_id'] ?? null) ? Role::find($data['role_id']) : null;
+                if (! $canManageAccess && $role && ! $this->roleWithinActor($actor, $role)) {
+                    $validator->errors()->add('role_id', self::DENY_ROLE);
+                }
+
                 if (filled($data['id_card_number'] ?? null) && UserProfile::where(
                     'id_card_number_hash',
                     hash('sha256', $data['id_card_number'].config('app.key'))
@@ -286,6 +332,36 @@ class UserController extends Controller
 
         $position = $this->requestedPosition($request, $user);
 
+        /*
+         * K-ORG-01: ผู้ถือ `edit_users` / `system.user.manage` ที่ไม่มี `admin.users.manage_permissions`
+         * แก้ข้อมูลได้แต่ห้ามเปลี่ยนบทบาทหรือสิทธิ์รายบุคคล (รวมบัญชีตนเอง)
+         * ฟอร์มส่งค่าเดิมกลับมาทุกครั้ง จึงยอมรับค่าที่ไม่เปลี่ยนและข้ามการ sync
+         */
+        $actor = $request->user();
+        $canManageAccess = $this->canManageAccess($actor);
+        $perms = $request->has('custom_permissions') ? $this->requestedPermissions($request) : null;
+
+        // ผู้ใช้ที่ยังไม่มีบทบาท (ข้อมูลเก่า) ให้บทบาทได้ตามกฎเดียวกับการสร้างผู้ใช้
+        $assignFirstRole = false;
+
+        if (! $canManageAccess) {
+            if ($user->role_id === null) {
+                $this->ensureRoleWithinActor($actor, Role::find($request->role_id));
+                $assignFirstRole = true;
+            } else {
+                abort_if((int) $request->role_id !== (int) $user->role_id, 403, self::DENY_ROLE_CHANGE);
+            }
+            abort_if(
+                $perms !== null && $this->sortedNames($perms) !== $this->sortedNames($user->getDirectPermissions()->pluck('name')->all()),
+                403,
+                self::DENY_PERMISSIONS
+            );
+
+            // เปลี่ยนรหัสผ่าน/อีเมลของผู้ที่มีสิทธิ์สูงกว่า = ยึดบัญชีนั้นได้ จึงห้ามเช่นกัน
+            $credentialsChanged = $request->filled('password') || $request->email !== $user->email;
+            abort_if($credentialsChanged && ! $this->accessWithinActor($actor, $user), 403, self::DENY_CREDENTIALS);
+        }
+
         $accessBefore = $this->accessSnapshot($user);
 
         $user->name = $request->name;
@@ -298,17 +374,16 @@ class UserController extends Controller
             $user->password = bcrypt($request->password);
         }
 
-        $role = Role::find($request->role_id);
-        if ($role) {
-            $user->syncRoles([$role->name]);
+        if ($canManageAccess || $assignFirstRole) {
+            $role = Role::find($request->role_id);
+            if ($role) {
+                $user->syncRoles([$role->name]);
+            }
         }
 
-        if ($request->has('custom_permissions')) {
-            $perms = is_string($request->custom_permissions) ? json_decode($request->custom_permissions, true) : $request->custom_permissions;
-            if (is_array($perms)) {
-                // LEGACY-04 (04-6): แหล่งสิทธิ์รายบุคคลมีที่เดียวคือ Spatie
-                $user->syncPermissions($perms);
-            }
+        if ($canManageAccess && $perms !== null) {
+            // LEGACY-04 (04-6): แหล่งสิทธิ์รายบุคคลมีที่เดียวคือ Spatie
+            $user->syncPermissions($perms);
         }
 
         $user->save();
@@ -424,6 +499,65 @@ class UserController extends Controller
 
         return Position::assignable($uuid, $currentId === null ? null : (int) $currentId)
             ?? throw ValidationException::withMessages(['position_uuid' => 'ไม่พบตำแหน่งที่ใช้งานอยู่ในทะเบียนตำแหน่ง']);
+    }
+
+    /**
+     * K-ORG-01 — ผู้ที่เปลี่ยนบทบาท/สิทธิ์รายบุคคลได้อย่างอิสระ
+     *
+     * เป็นสิทธิ์เดียวกับหน้ากำหนดสิทธิ์รายบุคคล (LEGACY-04) Super Admin ผ่านด้วย Gate::before
+     */
+    private function canManageAccess(User $actor): bool
+    {
+        return $actor->can('admin.users.manage_permissions');
+    }
+
+    private function ensureRoleWithinActor(User $actor, ?Role $role): void
+    {
+        abort_if($role && ! $this->roleWithinActor($actor, $role), 403, self::DENY_ROLE);
+    }
+
+    /**
+     * บทบาท "ไม่เกิน" ผู้กระทำ = ไม่ใช่ Super Admin และทุก permission ของบทบาทผู้กระทำถืออยู่แล้ว
+     * (Super Admin ไม่ได้ถือ permission ครบในตาราง — ได้ทุกอย่างผ่าน Gate::before จึงต้องกันด้วยชื่อ)
+     */
+    private function roleWithinActor(User $actor, Role $role): bool
+    {
+        if (in_array($role->name, self::SUPER_ADMIN_ROLES, true)) {
+            return false;
+        }
+
+        return $role->permissions->pluck('name')->diff($actor->getAllPermissions()->pluck('name'))->isEmpty();
+    }
+
+    /** สิทธิ์รวมของ $target ไม่เกินของผู้กระทำ — ใช้ตัดสินว่าแตะข้อมูลเข้าระบบของเขาได้หรือไม่ */
+    private function accessWithinActor(User $actor, User $target): bool
+    {
+        if ($actor->is($target)) {
+            return true;
+        }
+
+        if ($target->roles->pluck('name')->intersect(self::SUPER_ADMIN_ROLES)->isNotEmpty()) {
+            return false;
+        }
+
+        return $target->getAllPermissions()->pluck('name')->diff($actor->getAllPermissions()->pluck('name'))->isEmpty();
+    }
+
+    /** custom_permissions จากฟอร์ม (JSON string หรือ array) — null เมื่ออ่านไม่ได้ */
+    private function requestedPermissions(Request $request): ?array
+    {
+        $perms = $request->custom_permissions;
+        $perms = is_string($perms) ? json_decode($perms, true) : $perms;
+
+        return is_array($perms) ? $perms : null;
+    }
+
+    private function sortedNames(array $names): array
+    {
+        $names = array_values(array_unique(array_map('strval', $names)));
+        sort($names);
+
+        return $names;
     }
 
     private function accessSnapshot(User $user): array

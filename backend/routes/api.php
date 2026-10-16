@@ -176,6 +176,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     });
 
     Route::group(['middleware' => ['permission:edit_users|system.user.manage']], function () {
+        // K-ORG-01: บทบาทที่ผู้ใช้คนนี้มอบได้ (ผู้ไม่มีสิทธิ์กำหนดสิทธิ์จะเห็นเฉพาะบทบาทที่ไม่เกินของตน)
+        Route::get('/admin/assignable-roles', [UserController::class, 'assignableRoles']);
         Route::post('/admin/users', [UserController::class, 'store']);
         Route::post('/admin/users/import', [UserController::class, 'importCsv']);
         Route::put('/admin/users/{user}', [UserController::class, 'update']);
