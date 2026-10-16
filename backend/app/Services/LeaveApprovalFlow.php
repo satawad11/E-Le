@@ -6,6 +6,7 @@ use App\Models\ApprovalStep;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\User;
+use App\Models\UserDelegation;
 use App\Services\Workflow\ApproverResolverService;
 use Illuminate\Support\Collection;
 
@@ -91,10 +92,20 @@ class LeaveApprovalFlow
             return collect();
         }
         $ids = $this->resolver->resolveEligibleApproverIds($leave->user, $step);
+
+        // ผู้ทำหน้าที่แทนที่มีผลอยู่ (DELEGATION-01) — เดิมแจ้งเฉพาะผู้มีอำนาจตัวจริง
+        // ผู้รักษาราชการแทนจึงไม่รู้ว่ามีใบลารอ ทั้งที่ผู้มีอำนาจไม่อยู่
+        $delegateIds = UserDelegation::query()
+            ->whereIn('user_id', array_values(array_diff($ids, [$leave->user_id])))
+            ->where('delegate_id', '!=', $leave->user_id)
+            ->inEffect()
+            ->pluck('delegate_id')
+            ->all();
+
         if (! $this->resolver->canSelfApprove($leave->user, $step)) {
             $ids = array_diff($ids, [$leave->user_id]);
         }
 
-        return User::whereIn('id', $ids)->where('is_active', true)->get();
+        return User::whereIn('id', array_values(array_unique(array_merge($ids, $delegateIds))))->where('is_active', true)->get();
     }
 }

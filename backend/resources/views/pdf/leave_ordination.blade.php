@@ -22,7 +22,7 @@
             font-weight: bold;
             src: url("{{ public_path('fonts/THSarabunNew/THSarabunNew Bold.ttf') }}") format('truetype');
         }
-        @page { margin: 8mm 14mm; size: A4 portrait; }
+        @page { margin: 6mm 14mm 7mm; size: A4 portrait; }
         body { font-family: 'THSarabunNew', sans-serif; font-size: 14pt; line-height: 1.1; color: #000; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
@@ -152,10 +152,10 @@
 
 @include('pdf.partials.requester_signature')
 
-<div class="bold underline" style="margin-top: 8px;">ความเห็นผู้บังคับบัญชา</div>
+<div class="bold underline" style="margin-top: 4px;">ความเห็นผู้บังคับบัญชา</div>
 <div style="border-bottom: 1px dotted #000; min-height: 16px;">{{ $commander['comment'] ?? '' }}</div>
 <div style="border-bottom: 1px dotted #000; min-height: 16px;">&nbsp;</div>
-<div class="text-center" style="margin-top: 8px;">
+<div class="text-center" style="margin-top: 4px;">
     (ลงชื่อ)
     @if (! empty($commander['signature']))
         <img class="sign-img" src="{{ $commander['signature'] }}" alt="">
@@ -163,16 +163,17 @@
     <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px;">&nbsp;</span>
 </div>
 <div class="text-center">(<span class="fill" style="width: 190px;">{{ $commander['name'] ?? '' }}</span>)</div>
+@include('pdf.partials.acting_line', ['block' => $commander])
 <div class="text-center">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($commander['date'] ?? null) }}</span></div>
 
-<div class="bold underline" style="margin-top: 8px;">คำสั่ง</div>
+<div class="bold underline" style="margin-top: 4px;">คำสั่ง</div>
 <div style="margin-left: 40px;">
     <span class="box {{ ($order['status'] ?? '') === 'Approved' ? 'checked' : '' }}"></span>อนุญาต
     &nbsp;&nbsp;&nbsp;&nbsp;
     <span class="box {{ ($order['status'] ?? '') === 'Rejected' ? 'checked' : '' }}"></span>ไม่อนุญาต
 </div>
 <div style="border-bottom: 1px dotted #000; min-height: 16px;">{{ $order['comment'] ?? '' }}</div>
-<div class="text-center" style="margin-top: 8px;">
+<div class="text-center" style="margin-top: 4px;">
     (ลงชื่อ)
     @if (! empty($order['signature']))
         <img class="sign-img" src="{{ $order['signature'] }}" alt="">
@@ -181,6 +182,7 @@
 </div>
 <div class="text-center">(<span class="fill" style="width: 190px;">{{ $order['name'] ?? '' }}</span>)</div>
 <div class="text-center"><span class="fill" style="width: 190px;">{{ $order['position'] ?? ($director_position ?? '') }}</span></div>
+@include('pdf.partials.acting_line', ['block' => $order])
 <div class="text-center">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($order['date'] ?? null) }}</span></div>
 
 @includeIf('pdf.partials.verification_qr')

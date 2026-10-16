@@ -169,6 +169,7 @@ class LeaveLifecycleFixesTest extends TestCase
             'user_id' => $this->employee->id, 'leave_type_id' => $this->type->id,
             'start_date' => $start->toDateString(), 'end_date' => $start->copy()->addDay()->toDateString(),
             'reason' => 'บันทึกย้อนหลัง',
+            'signers' => [1 => $this->approver->id],
         ])->assertCreated();
 
         $leave = Leave::firstOrFail();

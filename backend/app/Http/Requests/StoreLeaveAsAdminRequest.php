@@ -21,6 +21,9 @@ class StoreLeaveAsAdminRequest extends FormRequest
             'reason' => 'required|string|max:1000',
             'leave_period' => 'nullable|in:full_day,morning,afternoon',
             'contact_address' => 'nullable|string|max:1000',
+            // ผู้ลงนามจริงของแต่ละขั้น step_order => user id (DELEGATION-01)
+            'signers' => 'nullable|array',
+            'signers.*' => 'nullable|integer|exists:users,id',
         ];
     }
 }

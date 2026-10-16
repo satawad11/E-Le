@@ -112,11 +112,10 @@ class DelegationResolver
             return null;
         }
 
+        // นับเฉพาะรายการที่รับรองแล้วในทะเบียนการทำหน้าที่แทน (DELEGATION-01) — คำขอที่รอรับรองยังใช้ไม่ได้
         $delegation = UserDelegation::query()
             ->where('delegate_id', $actor->getKey())
-            ->where('is_active', true)
-            ->whereDate('start_date', '<=', $date)
-            ->whereDate('end_date', '>=', $date)
+            ->inEffect($date)
             ->whereHas('user.roles', fn ($query) => $query->where('roles.id', $requiredRoleId))
             ->first();
 

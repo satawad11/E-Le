@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreLeaveAsAdminRequest;
 use App\Http\Requests\StoreLeaveRequest;
 use App\Http\Requests\UpdateLeaveRequest;
+use App\Models\ApprovalStep;
 use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\Setting;
+use App\Models\User;
+use App\Services\LeaveApprovalSigner;
 use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class LeaveRequestController extends Controller
@@ -18,6 +22,7 @@ class LeaveRequestController extends Controller
     public function __construct(
         private LeaveService $leaveService,
         private LeaveRequestNotificationService $notifications,
+        private LeaveApprovalSigner $signer,
     ) {}
 
     public function store(StoreLeaveRequest $request)
@@ -68,8 +73,19 @@ class LeaveRequestController extends Controller
         abort_if((int) $data['user_id'] === $request->user()->id, 403, 'ห้ามบันทึกวันลาแทนให้ตนเอง กรุณายื่นใบลาตามปกติ');
         $data['contact_address'] = $data['contact_address'] ?? 'บันทึกโดยฝ่ายบุคคล';
         $data['signature_path'] = null;
-        $leave = $this->leaveService->createLeaveRequest($data, (int) $data['user_id'], null, ['skip_timing_rules' => true]);
-        $leave = $this->leaveService->finalizeRecordedLeave($leave, $request->user(), 'บันทึกวันลาแทนโดยฝ่ายบุคคล');
+
+        /*
+         * DELEGATION-01 — ผู้ลงนามแต่ละขั้นคือผู้มีอำนาจตัวจริงที่ลงนามในเอกสารกระดาษ (หรือผู้ทำหน้าที่แทน)
+         * ไม่ใช่เจ้าหน้าที่ที่บันทึก เดิมทุกขั้นพิมพ์ชื่อเจ้าหน้าที่เป็นผู้อนุมัติ
+         * ตรวจทุกขั้นก่อนสร้างใบลา จะได้ไม่เหลือใบที่ค้างครึ่งทาง
+         */
+        $signatures = $this->recordedSignatures($request->user(), (int) $data['user_id'], $data['signers'] ?? []);
+
+        $leave = DB::transaction(function () use ($data, $request, $signatures) {
+            $leave = $this->leaveService->createLeaveRequest($data, (int) $data['user_id'], null, ['skip_timing_rules' => true]);
+
+            return $this->leaveService->finalizeRecordedLeave($leave, $request->user(), $signatures, 'บันทึกวันลาแทนโดยฝ่ายบุคคล');
+        });
         LeaveActionLog::create([
             'leave_id' => $leave->id,
             'user_id' => $request->user()->id,
@@ -78,6 +94,45 @@ class LeaveRequestController extends Controller
         ]);
 
         return response()->json(['message' => 'บันทึกวันลาเรียบร้อยแล้ว', 'leave' => $leave->load('type')], 201);
+    }
+
+    /**
+     * ผู้ที่เลือกเป็นผู้ลงนามได้ในแต่ละขั้น เมื่อฝ่ายบุคคลบันทึกวันลาแทนบุคลากรคนนี้
+     */
+    public function recordSigners(Request $request)
+    {
+        abort_unless($request->user()->can('leave.management.manage'), 403);
+        $data = $request->validate(['user_id' => 'required|integer|exists:users,id']);
+        $requester = User::findOrFail($data['user_id']);
+
+        return response()->json(ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->map(fn (ApprovalStep $step) => [
+            'step_order' => $step->step_order,
+            'name' => $step->name,
+            'candidates' => $this->signer->candidatesFor($requester, $step),
+        ])->values());
+    }
+
+    /**
+     * snapshot ผู้ลงนามของทุกขั้น ตามที่ฝ่ายบุคคลเลือก — abort 422 ถ้าขั้นใดไม่ได้เลือกหรือเลือกผู้ไม่มีอำนาจ
+     *
+     * @param  array<int|string, mixed>  $signers  step_order => user id
+     * @return array<int, array<string, mixed>> step_order => คอลัมน์ snapshot
+     */
+    private function recordedSignatures(User $recorder, int $requesterId, array $signers): array
+    {
+        $requester = User::with('profile')->findOrFail($requesterId);
+        $probe = (new Leave)->forceFill(['user_id' => $requester->id])->setRelation('user', $requester);
+        $signatures = [];
+
+        foreach (ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE) as $step) {
+            $signerId = $signers[$step->step_order] ?? null;
+            abort_if(blank($signerId), 422, 'กรุณาเลือกผู้ลงนามขั้น "'.$step->name.'" ตามเอกสารที่ลงนามแล้ว');
+
+            $capacity = $this->signer->recordCapacity($recorder, $probe, $step, (int) $signerId);
+            $signatures[$step->step_order] = $this->signer->snapshot($capacity, $recorder, null, null);
+        }
+
+        return $signatures;
     }
 
     public function update(UpdateLeaveRequest $request, Leave $leave)

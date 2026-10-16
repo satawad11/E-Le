@@ -210,19 +210,20 @@ class LeaveService
      * เดิมแค่เปลี่ยน status เป็น Approved — วันลาจึงค้างอยู่ใน reserved ตลอดไป
      * (ไม่ถูกนับเป็น used) และขั้นตอนอนุมัติทุกขั้นยังเป็น Pending
      */
-    public function finalizeRecordedLeave(Leave $leave, User $recorder, string $note): Leave
+    /**
+     * @param  array<int, array<string, mixed>>  $signatures  step_order => snapshot ผู้ลงนามจริง (LeaveApprovalSigner::snapshot)
+     */
+    public function finalizeRecordedLeave(Leave $leave, User $recorder, array $signatures, string $note): Leave
     {
-        return DB::transaction(function () use ($leave, $recorder, $note) {
+        return DB::transaction(function () use ($leave, $recorder, $signatures, $note) {
             $leave = Leave::whereKey($leave->id)->lockForUpdate()->firstOrFail();
-            $leave->approvals()->where('status', 'Pending')->update([
-                'status' => 'Approved',
-                'approver_id' => $recorder->id,
-                'approver_name' => $recorder->full_name_with_title,
-                'approver_position' => $recorder->profile?->position,
-                'comment' => $note,
-                'approved_at' => now(),
-                'acted_at' => now(),
-            ]);
+            foreach ($leave->approvals()->where('status', 'Pending')->get() as $approval) {
+                $signature = $signatures[$approval->step_order] ?? null;
+                if ($signature === null) {
+                    throw ValidationException::withMessages(['signers' => "กรุณาเลือกผู้ลงนามขั้น \"{$approval->step_name}\""]);
+                }
+                $approval->update(['status' => 'Approved'] + $signature);
+            }
             if (! $this->deductBalance($leave)) {
                 throw ValidationException::withMessages(['leave_type_id' => 'วันลาคงเหลือไม่เพียงพอ']);
             }
@@ -233,7 +234,11 @@ class LeaveService
                 'hr_verified_by' => $recorder->id,
                 'hr_verified_at' => now(),
             ])->save();
-            $this->audit->log($leave, 'recorded_by_hr', null, ['recorded_by' => $recorder->id, 'note' => $note]);
+            $this->audit->log($leave, 'recorded_by_hr', null, [
+                'recorded_by' => $recorder->id,
+                'note' => $note,
+                'signers' => collect($signatures)->map(fn (array $s) => $s['approver_id'])->all(),
+            ]);
 
             return $leave;
         }, 5);

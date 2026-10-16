@@ -62,7 +62,7 @@
           class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow">
           <div class="flex flex-col md:flex-row md:items-start gap-4">
             <!-- Checkbox for bulk select -->
-            <div v-if="!isCancel" class="flex-shrink-0 pt-1">
+            <div v-if="!isCancel && leave.signing?.mode !== 'record'" class="flex-shrink-0 pt-1">
               <input type="checkbox" :value="leave.id" v-model="selectedIds" class="w-4 h-4 rounded text-[#800000] focus:ring-[#800000] cursor-pointer focus-visible:ring-2 focus-visible:ring-[#800000]" :aria-label="`เลือกใบลาของ ${leave.user?.name}`">
             </div>
             <!-- Avatar + User info -->
@@ -84,6 +84,12 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     {{ leave.total_days }} วัน
                   </span>
+                </div>
+                <div v-if="leave.signing?.mode === 'delegate'" class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-3 py-1">
+                  ท่านลงนามในฐานะ {{ leave.signing.acting_line }}
+                </div>
+                <div v-else-if="leave.signing?.mode === 'record'" class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 rounded-full px-3 py-1">
+                  ท่านไม่ใช่ผู้มีอำนาจขั้นนี้ — บันทึกแทนได้ตามเอกสารที่ผู้มีอำนาจลงนามแล้วเท่านั้น
                 </div>
                 <div class="mt-3 bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm text-gray-700">
                   <span class="font-semibold text-gray-500 text-xs block mb-1">เหตุผล:</span>
@@ -126,10 +132,10 @@
             <!-- Action buttons -->
             <div class="flex flex-wrap sm:flex-nowrap gap-2 md:flex-col xl:flex-row w-full md:w-auto">
               <template v-if="leave.cancellation_status === 'Pending'">
-                <button @click="handleApproveCancel(leave.id)" class="flex-1 md:flex-none px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-semibold rounded-xl min-h-[44px] flex items-center justify-center">
+                <button @click="handleApproveCancel(leave)" class="flex-1 md:flex-none px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-xs sm:text-sm font-semibold rounded-xl min-h-[44px] flex items-center justify-center">
                   อนุมัติยกเลิก
                 </button>
-                <button @click="handleRejectCancel(leave.id)" class="flex-1 md:flex-none px-4 py-2.5 border border-red-200 text-red-600 hover:bg-red-50 text-xs sm:text-sm font-semibold rounded-xl min-h-[44px] flex items-center justify-center">
+                <button @click="handleRejectCancel(leave)" class="flex-1 md:flex-none px-4 py-2.5 border border-red-200 text-red-600 hover:bg-red-50 text-xs sm:text-sm font-semibold rounded-xl min-h-[44px] flex items-center justify-center">
                   ปฏิเสธการยกเลิก
                 </button>
               </template>
@@ -137,12 +143,12 @@
                 <button v-if="authStore.isHRHead && !leave.hr_verified_at" @click="handleHrVerify(leave.id)" class="flex-1 md:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-xl min-h-[44px] flex items-center justify-center">
                   ตรวจสอบสถิติแล้ว
                 </button>
-                <button @click="handleApprove(leave.id)"
+                <button @click="handleApprove(leave)"
                   class="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-xl transition-colors shadow-sm min-h-[44px]">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                   อนุมัติ
                 </button>
-                <button @click="handleReject(leave.id)"
+                <button @click="handleReject(leave)"
                   class="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white hover:bg-red-50 text-red-600 text-sm font-semibold rounded-xl border-2 border-red-200 hover:border-red-400 transition-colors min-h-[44px]">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                   ปฏิเสธ
@@ -214,8 +220,27 @@
               : (modal.isApprove ? 'ยืนยันการอนุมัติ' : 'ระบุเหตุผลการปฏิเสธ') }}
         </h3>
         
+        <!-- ฐานะการลงนาม (DELEGATION-01) -->
+        <div v-if="modal.signing?.mode === 'delegate'" class="mb-4 bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-sm text-indigo-800">
+          ท่านลงนามในฐานะ <span class="font-semibold">{{ modal.signing.acting_line }}</span> — ข้อความนี้จะพิมพ์ใต้ตำแหน่งของท่านบนแบบฟอร์ม
+        </div>
+        <div v-if="isRecordMode" class="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <label for="on-behalf-of" class="block text-sm font-semibold text-amber-900 mb-1.5">ผู้มีอำนาจที่ลงนามในเอกสาร <span class="text-red-500">*</span></label>
+          <select id="on-behalf-of" v-model="modal.onBehalfOf" class="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white text-sm focus:outline-none focus:border-[#800000]">
+            <option :value="null" disabled>— เลือกผู้มีอำนาจ —</option>
+            <option v-for="c in modal.signing.record_candidates" :key="c.id" :value="c.id">
+              {{ c.name }}{{ c.acting_line ? ` (${c.acting_line})` : (c.position ? ` (${c.position})` : '') }}
+            </option>
+          </select>
+          <p class="mt-2 text-xs text-amber-800">
+            ท่านไม่ใช่ผู้มีอำนาจของขั้นนี้ ระบบจะบันทึกชื่อผู้มีอำนาจที่เลือกเป็นผู้ลงนาม (ไม่มีรูปลายเซ็น) และบันทึกว่าท่านเป็นผู้บันทึกแทน
+            — ใช้เฉพาะเมื่อผู้มีอำนาจลงนามในเอกสารจริงแล้ว
+          </p>
+          <p v-if="!modal.signing.record_candidates?.length" class="mt-2 text-xs text-red-600">ไม่พบผู้มีอำนาจของขั้นนี้ — ตรวจสอบการตั้งค่าสายอนุมัติหรือทะเบียนการปฏิบัติหน้าที่แทน</p>
+        </div>
+
         <!-- Signature Block — ใช้ทั้งการอนุมัติใบลาและการอนุมัติคำขอยกเลิก -->
-        <div v-if="modal.isApprove" class="mb-4">
+        <div v-if="modal.isApprove && !isRecordMode" class="mb-4">
           <label class="block text-sm font-semibold text-gray-700 mb-1.5">ลายเซ็นผู้อนุมัติ <span class="text-red-500">*</span></label>
           <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col gap-3">
             <div class="flex gap-4 border-b border-gray-200 pb-2">
@@ -307,7 +332,19 @@ const alertStore = useAlertStore()
 const loading = ref(true)
 const loadError = ref('')
 const isProcessingAction = ref(false)
-const modal = reactive({ show: false, isApprove: false, isCancelAction: false, leaveId: null, comment: '' })
+const modal = reactive({ show: false, isApprove: false, isCancelAction: false, leaveId: null, comment: '', signing: null, onBehalfOf: null })
+const isRecordMode = computed(() => modal.signing?.mode === 'record')
+
+const openModal = (leave, isApprove, isCancelAction) => {
+  modal.leaveId = leave.id
+  modal.isApprove = isApprove
+  modal.isCancelAction = isCancelAction
+  modal.comment = ''
+  modal.signing = leave.signing || null
+  const candidates = leave.signing?.record_candidates || []
+  modal.onBehalfOf = candidates.length === 1 ? candidates[0].id : null
+  modal.show = true
+}
 const expandedLeaveIds = ref([])
 
 function toggleTimeline(leaveId) {
@@ -347,7 +384,7 @@ const rejectionPresets = [
 
 const toggleSelectAll = (e) => {
   if (e.target.checked) {
-    selectedIds.value = filteredApprovals.value.map(l => l.id)
+    selectedIds.value = filteredApprovals.value.filter(l => l.signing?.mode !== 'record').map(l => l.id)
   } else {
     selectedIds.value = []
   }
@@ -523,15 +560,15 @@ const loadApprovals = async () => {
   }
 }
 
-const handleApprove = (id) => {
-  modal.leaveId = id; modal.isApprove = true; modal.comment = ''; modal.isCancelAction = false; modal.show = true
-}
-const handleReject = (id) => {
-  modal.leaveId = id; modal.isApprove = false; modal.comment = ''; modal.isCancelAction = false; modal.show = true
-}
+const handleApprove = (leave) => openModal(leave, true, false)
+const handleReject = (leave) => openModal(leave, false, false)
 
 const confirmAction = async () => {
-  if (modal.isApprove && sigType.value === 'draw' && !sigBase64.value && !canvasSaved.value) {
+  if (isRecordMode.value && !modal.onBehalfOf) {
+    alertStore.error('กรุณาเลือกผู้มีอำนาจที่ลงนามในเอกสาร')
+    return
+  }
+  if (modal.isApprove && !isRecordMode.value && sigType.value === 'draw' && !sigBase64.value && !canvasSaved.value) {
     alertStore.error('กรุณาวาดลายเซ็นก่อนอนุมัติ')
     return
   }
@@ -540,27 +577,28 @@ const confirmAction = async () => {
     return
   }
 
+  const onBehalfOf = isRecordMode.value ? modal.onBehalfOf : null
   isProcessingAction.value = true
   try {
     if (modal.isCancelAction) {
       if (modal.isApprove) {
-        const signature = sigType.value === 'draw' && sigBase64.value ? sigBase64.value : null
-        await leaveStore.approveCancellation(modal.leaveId, modal.comment, signature)
+        const signature = !isRecordMode.value && sigType.value === 'draw' && sigBase64.value ? sigBase64.value : null
+        await leaveStore.approveCancellation(modal.leaveId, modal.comment, signature, onBehalfOf)
         alertStore.success('อนุมัติยกเลิกใบลาแล้ว')
       } else {
-        await leaveStore.rejectCancellation(modal.leaveId, modal.comment)
+        await leaveStore.rejectCancellation(modal.leaveId, modal.comment, onBehalfOf)
         alertStore.success('ปฏิเสธการยกเลิกใบลาแล้ว')
       }
     } else {
       if (modal.isApprove) {
         const payload = { comment: modal.comment }
-        if (sigType.value === 'draw' && sigBase64.value) {
+        if (!isRecordMode.value && sigType.value === 'draw' && sigBase64.value) {
           payload.signature_base64 = sigBase64.value
         }
-        await leaveStore.approveLeave(modal.leaveId, payload.comment, payload.signature_base64)
+        await leaveStore.approveLeave(modal.leaveId, payload.comment, payload.signature_base64, onBehalfOf)
         alertStore.success('อนุมัติใบลาเรียบร้อยแล้ว')
       } else {
-        await leaveStore.rejectLeave(modal.leaveId, modal.comment)
+        await leaveStore.rejectLeave(modal.leaveId, modal.comment, onBehalfOf)
         alertStore.success('ปฏิเสธใบลาเรียบร้อยแล้ว')
       }
     }
@@ -591,11 +629,7 @@ const handleHrVerify = async (id) => {
   }
 }
 
-const handleApproveCancel = (id) => {
-  modal.leaveId = id; modal.isApprove = true; modal.comment = ''; modal.isCancelAction = true; modal.show = true
-}
+const handleApproveCancel = (leave) => openModal(leave, true, true)
 
-const handleRejectCancel = (id) => {
-  modal.leaveId = id; modal.isApprove = false; modal.comment = ''; modal.isCancelAction = true; modal.show = true
-}
+const handleRejectCancel = (leave) => openModal(leave, false, true)
 </script>

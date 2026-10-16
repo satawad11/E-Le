@@ -228,9 +228,7 @@ class LeaveWorkflowShadow
         $holders = User::whereHas('roles', fn ($query) => $query->where('roles.id', $roleId))->pluck('id')->all();
 
         $delegates = UserDelegation::query()
-            ->where('is_active', true)
-            ->whereDate('start_date', '<=', today())
-            ->whereDate('end_date', '>=', today())
+            ->inEffect()
             ->whereHas('user.roles', fn ($query) => $query->where('roles.id', $roleId))
             ->pluck('delegate_id')
             ->all();
@@ -343,9 +341,7 @@ class LeaveWorkflowShadow
         }
 
         return UserDelegation::query()
-            ->where('is_active', true)
-            ->whereDate('start_date', '<=', today())
-            ->whereDate('end_date', '>=', today())
+            ->inEffect()
             ->whereHas('user.roles', fn ($query) => $query->where('roles.id', $roleId))
             ->pluck('delegate_id')
             ->map(fn ($id) => (int) $id)

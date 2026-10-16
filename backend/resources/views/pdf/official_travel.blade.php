@@ -15,9 +15,11 @@
     <title>บันทึกข้อความ ขออนุญาตเดินทางไปราชการ</title>
     @include('pdf.partials.form_styles')
     <style>
+        /* ขอบบน/ล่างแคบกว่าแบบอื่นเล็กน้อย ให้บล็อกผู้ลงนาม 3 ขั้นพร้อมบรรทัดปฏิบัติราชการแทนอยู่ในหน้าเดียว */
+        @page { margin: 6mm 14mm; }
         .memo-title { font-size: 26pt; font-weight: bold; line-height: 1; }
-        .approvals { width: 100%; border-collapse: collapse; font-size: 13pt; margin-top: 8px; }
-        .approvals td { width: 50%; vertical-align: top; padding: 0 6px 6px 0; }
+        .approvals { width: 100%; border-collapse: collapse; font-size: 13pt; margin-top: 4px; }
+        .approvals td { width: 50%; vertical-align: top; padding: 0 6px 2px 0; }
     </style>
 </head>
 <body>
@@ -165,7 +167,7 @@
                             <span class="box {{ ($block['status'] ?? '') === 'Rejected' ? 'checked' : '' }}"></span>ไม่{{ $isLast ? 'อนุญาต' : 'เห็นชอบ' }}
                         </div>
                         <div style="border-bottom: 1px dotted #000; min-height: 15px;">{{ $block['comment'] ?? '' }}</div>
-                        <div style="margin-top: 4px;">
+                        <div style="margin-top: 2px;">
                             ลงชื่อ
                             @if (! empty($block['signature']))
                                 <img class="sign-img" src="{{ $block['signature'] }}" alt="">
@@ -173,6 +175,7 @@
                             <span style="border-bottom: 1px dotted #000; display: inline-block; width: 170px;">&nbsp;</span>
                         </div>
                         <div style="margin-left: 30px;">(<span class="fill" style="width: 190px;">{{ $block['name'] ?? '' }}</span>)</div>
+                        @include('pdf.partials.acting_line', ['block' => $block, 'boxStyle' => 'margin-left: 30px; text-align: left;'])
                         <div style="margin-left: 30px;">วันที่ <span class="fill" style="width: 110px;">{{ $thaiShort($block['date'] ?? null) }}</span></div>
                     </td>
                 @endforeach

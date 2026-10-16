@@ -112,7 +112,7 @@ class LeaveWordService
 
         foreach ($approverBlocks as $block) {
             $table->addRow();
-            $table->addCell(4000)->addText($block['position'] ?? 'ผู้พิจารณา', ['size' => 14]);
+            $table->addCell(4000)->addText(trim(($block['position'] ?? 'ผู้พิจารณา').' '.($block['acting_line'] ?? '')), ['size' => 14]);
             $statusText = $block['status'] === 'Approved' ? 'อนุมัติแล้ว' : ($block['status'] === 'Rejected' ? 'ไม่อนุมัติ' : 'รอการพิจารณา');
             $table->addCell(5000)->addText('ชื่อ: '.($block['name'] ?? '-')."\nสถานะ: {$statusText}\nความเห็น: ".($block['comment'] ?? '-'), ['size' => 14]);
         }

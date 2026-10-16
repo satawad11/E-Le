@@ -76,12 +76,13 @@ export const useLeaveStore = defineStore('leave', {
         throw e;
       }
     },
-    async approveLeave(leaveId, comment = '', signature_base64 = null) {
-      await api.post(`/approvals/${leaveId}/approve`, { comment, signature_base64 });
+    // onBehalfOf: ผู้มีอำนาจตัวจริงเมื่อผู้ดูแลบันทึกแทนตามเอกสารที่ลงนามแล้ว (DELEGATION-01)
+    async approveLeave(leaveId, comment = '', signature_base64 = null, onBehalfOf = null) {
+      await api.post(`/approvals/${leaveId}/approve`, { comment, signature_base64, on_behalf_of: onBehalfOf || undefined });
       await this.fetchLeaves();
     },
-    async rejectLeave(leaveId, comment = '') {
-      await api.post(`/approvals/${leaveId}/reject`, { comment });
+    async rejectLeave(leaveId, comment = '', onBehalfOf = null) {
+      await api.post(`/approvals/${leaveId}/reject`, { comment, on_behalf_of: onBehalfOf || undefined });
       await this.fetchLeaves();
     },
     async cancelLeave(leaveId, reason = '') {
@@ -92,12 +93,12 @@ export const useLeaveStore = defineStore('leave', {
       }
       await Promise.all([this.fetchLeaves(), this.fetchBalances()]);
     },
-    async approveCancellation(leaveId, comment = '', signature_base64 = null) {
-      await api.post(`/leaves/${leaveId}/approve-cancellation`, { comment, signature_base64 });
+    async approveCancellation(leaveId, comment = '', signature_base64 = null, onBehalfOf = null) {
+      await api.post(`/leaves/${leaveId}/approve-cancellation`, { comment, signature_base64, on_behalf_of: onBehalfOf || undefined });
       await this.fetchLeaves();
     },
-    async rejectCancellation(leaveId, comment = '') {
-      await api.post(`/leaves/${leaveId}/reject-cancellation`, { comment });
+    async rejectCancellation(leaveId, comment = '', onBehalfOf = null) {
+      await api.post(`/leaves/${leaveId}/reject-cancellation`, { comment, on_behalf_of: onBehalfOf || undefined });
       await this.fetchLeaves();
     },
     async hrVerify(leaveId) {

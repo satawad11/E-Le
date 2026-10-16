@@ -207,6 +207,7 @@
                 <span style="border-bottom: 1px dotted #000; display: inline-block; width: 150px;">&nbsp;</span> ผู้ตรวจสอบ
             </div>
             <div class="text-center" style="width: 260px;">(<span class="fill" style="width: 190px;">{{ $checker['name'] ?? '' }}</span>)</div>
+            @include('pdf.partials.acting_line', ['block' => $checker, 'boxStyle' => 'width: 260px;'])
             <div class="text-center" style="width: 260px;">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($checker['date'] ?? null) }}</span></div>
         </div>
         <div class="panel-right">
@@ -223,6 +224,7 @@
                 <span style="border-bottom: 1px dotted #000; display: inline-block; width: 170px; text-align: center;">&nbsp;</span>
             </div>
             <div class="text-center" style="width: 280px;">(<span class="fill" style="width: 190px;">{{ $commander['name'] ?? '' }}</span>)</div>
+            @include('pdf.partials.acting_line', ['block' => $commander, 'boxStyle' => 'width: 280px;'])
             <div class="text-center" style="width: 280px;">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($commander['date'] ?? null) }}</span></div>
 
             <div class="bold underline" style="margin-top: 8px;">คำสั่ง</div>
@@ -241,6 +243,7 @@
             </div>
             <div class="text-center" style="width: 280px;">(<span class="fill" style="width: 190px;">{{ $order['name'] ?? '' }}</span>)</div>
             <div class="text-center" style="width: 280px;"><span class="fill" style="width: 190px;">{{ $order['position'] ?? ($director_position ?? '') }}</span></div>
+            @include('pdf.partials.acting_line', ['block' => $order, 'boxStyle' => 'width: 280px;'])
             <div class="text-center" style="width: 280px;">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($order['date'] ?? null) }}</span></div>
         </div>
         <div class="clear"></div>
