@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Leave;
+use App\Models\User;
 use App\Services\LeaveApprovalFlow;
+use App\Services\LeaveApprovalSigner;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * รายการใบลา/คำขอยกเลิกที่รอผู้ใช้คนนี้พิจารณา — กติกาข้อเดียว: เห็น = อนุมัติได้
@@ -29,7 +32,7 @@ class ApprovalController extends Controller
             ->orderBy('created_at', 'asc');
 
         if ($user->can('leave.management.manage')) {
-            return response()->json($query->get());
+            return response()->json($this->withSigning($user, $query->get()));
         }
 
         /*
@@ -48,6 +51,24 @@ class ApprovalController extends Controller
             ->filter(fn (Leave $leave) => $this->flow->canActAtCurrentStep($user, $leave))
             ->values();
 
-        return response()->json($leaves);
+        return response()->json($this->withSigning($user, $leaves));
+    }
+
+    /**
+     * แนบ "ฐานะการลงนาม" ของผู้ใช้ในขั้นปัจจุบันของแต่ละใบ (DELEGATION-01)
+     *
+     * หน้าจอใช้แสดงว่า "ท่านลงนามในฐานะปฏิบัติราชการแทน …" หรือให้ผู้ดูแลเลือกผู้มีอำนาจตัวจริงเมื่อบันทึกแทน
+     *
+     * @param  Collection<int, Leave>  $leaves
+     * @return Collection<int, Leave>
+     */
+    private function withSigning(User $user, Collection $leaves): Collection
+    {
+        $signer = app(LeaveApprovalSigner::class);
+
+        return $leaves->each(function (Leave $leave) use ($user, $signer) {
+            $step = $this->flow->currentStep($leave);
+            $leave->setAttribute('signing', $step === null ? null : $signer->describe($user, $leave, $step));
+        })->values();
     }
 }

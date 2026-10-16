@@ -148,6 +148,7 @@ class LeaveFormFieldMap
             $index = array_search($role, array_keys(self::ROLES), true);
             $rows[] = ["approval.{$role}.name", "{$roleLabel} — ชื่อ", 'ผู้ลงนาม', 'TEXT', "approverBlocks.{$index}.name"];
             $rows[] = ["approval.{$role}.position", "{$roleLabel} — ตำแหน่ง", 'ผู้ลงนาม', 'TEXT', "approverBlocks.{$index}.position"];
+            $rows[] = ["approval.{$role}.acting_line", "{$roleLabel} — รักษาราชการแทน/ปฏิบัติราชการแทน", 'ผู้ลงนาม', 'TEXT', "approverBlocks.{$index}.acting_line"];
             $rows[] = ["approval.{$role}.comment", "{$roleLabel} — ความเห็น", 'ผู้ลงนาม', 'TEXT', "approverBlocks.{$index}.comment"];
             $rows[] = ["approval.{$role}.date", "{$roleLabel} — วันที่ลงนาม", 'ผู้ลงนาม', 'DATE', "approverBlocks.{$index}.date"];
             $rows[] = ["approval.{$role}.signature", "{$roleLabel} — ลายเซ็น", 'ผู้ลงนาม', 'SIGNATURE', "approverBlocks.{$index}.signature"];
@@ -217,6 +218,7 @@ class LeaveFormFieldMap
 
             $values["approval.{$role}.name"] = (string) ($block['name'] ?? '');
             $values["approval.{$role}.position"] = (string) ($block['position'] ?? '');
+            $values["approval.{$role}.acting_line"] = (string) ($block['acting_line'] ?? '');
             $values["approval.{$role}.comment"] = (string) ($block['comment'] ?? '');
             $values["approval.{$role}.date"] = $date ? $date->format('d/m/').($date->year + 543) : '';
             $values["approval.{$role}.signature"] = (string) ($block['signature_path'] ?? '');
@@ -254,6 +256,7 @@ class LeaveFormFieldMap
                 ->map(fn (string $position, string $role) => [
                     'name' => 'ตัวอย่าง ผู้ลงนาม', 'position' => $position, 'comment' => 'เห็นควรอนุญาต',
                     'date' => now(), 'signature_path' => null, 'status' => 'Approved', 'role_name' => $role,
+                    'acting_line' => $role === 'Director' ? 'ปฏิบัติราชการแทน ผู้อำนวยการ' : '',
                 ])->values()->all(),
         ]);
 

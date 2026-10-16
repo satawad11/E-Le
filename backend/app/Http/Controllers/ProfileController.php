@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Models\UserDelegation;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ProfileController extends Controller
@@ -131,36 +134,64 @@ class ProfileController extends Controller
         ]);
     }
 
+    /** คำขอ/รายการทำหน้าที่แทนที่ผู้ใช้เป็นผู้มอบ (DELEGATION-01) */
     public function getDelegation(Request $request)
     {
-        $delegations = UserDelegation::with('delegate:id,name')
+        $delegations = UserDelegation::with('delegate.profile')
             ->where('user_id', $request->user()->id)
-            ->get();
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (UserDelegation $d) => [
+                'id' => $d->id,
+                'delegate_id' => $d->delegate_id,
+                'delegate' => $d->delegate ? ['id' => $d->delegate->id, 'name' => $d->delegate->full_name_with_title] : null,
+                'delegation_type' => $d->delegation_type,
+                'acting_line' => $d->actingLine(),
+                'start_date' => $d->start_date?->toDateString(),
+                'end_date' => $d->end_date?->toDateString(),
+                'order_number' => $d->order_number,
+                'status' => $d->status,
+                'is_active' => $d->is_active,
+            ]);
 
         return response()->json($delegations);
     }
 
-    public function setDelegation(Request $request)
+    /**
+     * ส่งคำขอให้ผู้อื่นทำหน้าที่แทน — มีผลเมื่องานบุคลากรรับรองตามคำสั่งแล้วเท่านั้น
+     *
+     * เดิมผู้ใช้ตั้งผู้รับมอบเองแล้วมีผลทันที ใครก็ได้จึงตั้งให้อีกคนลงนามอนุมัติแทนตนได้โดยไม่มีคำสั่ง
+     */
+    public function setDelegation(Request $request, AuditLogger $audit)
     {
-        $request->validate([
-            'delegate_id' => 'required|exists:users,id',
+        $data = $request->validate([
+            'delegate_id' => 'required|integer|exists:users,id',
+            'delegation_type' => ['nullable', Rule::in(UserDelegation::TYPES)],
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'is_active' => 'boolean',
+            'note' => 'nullable|string|max:500',
         ]);
 
-        $delegation = UserDelegation::updateOrCreate(
-            ['user_id' => $request->user()->id, 'delegate_id' => $request->delegate_id],
-            [
-                'start_date' => $request->start_date,
-                'end_date' => $request->end_date,
-                'is_active' => $request->is_active ?? true,
-            ]
-        );
+        abort_if((int) $data['delegate_id'] === $request->user()->id, 422, 'ไม่สามารถมอบหมายให้ตนเองได้');
+        abort_unless(User::whereKey($data['delegate_id'])->where('is_active', true)->exists(), 422, 'ผู้ทำหน้าที่แทนต้องเป็นบัญชีที่ใช้งานอยู่');
+
+        $delegation = UserDelegation::create([
+            'user_id' => $request->user()->id,
+            'delegate_id' => $data['delegate_id'],
+            'delegation_type' => $data['delegation_type'] ?? UserDelegation::TYPE_ON_BEHALF,
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'],
+            'note' => $data['note'] ?? null,
+            'is_active' => true,
+            'status' => UserDelegation::STATUS_PENDING,
+            'requested_by' => $request->user()->id,
+        ]);
+
+        $audit->log('delegation_requested', $delegation, after: $delegation->toArray());
 
         return response()->json([
-            'message' => 'บันทึกการมอบหมายสำเร็จ',
-            'delegation' => $delegation->load('delegate:id,name'),
-        ]);
+            'message' => 'ส่งคำขอเรียบร้อยแล้ว — มีผลเมื่องานบุคลากรรับรองตามคำสั่งแต่งตั้ง',
+            'delegation' => $delegation,
+        ], 201);
     }
 }

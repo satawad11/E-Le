@@ -277,6 +277,23 @@
   - Changing an HTML form layout now requires a code change and review.
   - An HTML form change applies to reprints of older leaves that are not served from a finalized Document Engine file.
 
+## ADR-DELEGATION-01: Acting authority comes from an HR-approved register; admins only record decisions on behalf of the real authority
+
+- **Status**: Accepted
+- **Date**: 2026-10-16
+- **Context**:
+  Thai government documents signed by someone acting for an absent authority must say so under the signature ("รักษาราชการแทน …" when the post is vacant or the holder cannot act, "ปฏิบัติราชการแทน …" under a delegation order). The system had a `user_delegations` table any user could fill for themselves with immediate effect, printed nothing about the capacity, and let anyone with `leave.management.manage` approve any step in their own name — so forms showed an HR officer as the person who granted the leave.
+  Owner decisions 2026-10-16: support both acting types; HR keeps the register (users may request, HR approves); an admin may only record a decision on behalf of the real authority; migration allowed.
+- **Decision**:
+  1. `user_delegations` becomes the register: type, acting position, order reference, status (`pending` / `approved` / `revoked`) with who requested/approved/revoked. Only approved, active rows within their dates give authority. Rows are revoked, never deleted.
+  2. `LeaveApprovalSigner` decides the capacity of every leave and cancellation decision: *self* (LEAVE-APPROVAL-02), *direct*, *delegate* (from the register) or *record*. Anything else is 403.
+  3. *Record* requires the admin to name the signer (`on_behalf_of`), who must be the step's authority or their in-effect delegate and not the requester. The approval is stored in the signer's name with no image signature and `recorded_by_user_id`.
+  4. The capacity is snapshotted on `leave_approvals` (`acting_type`, `acting_position`, `acting_order_ref`) so reprints never change when the register changes; forms print it as an extra line under the signer.
+- **Consequences**:
+  - Admins can no longer push a leave through every step alone; bulk approval skips leaves they would have to record.
+  - Leaves HR records directly (`/admin/leaves`, "บันทึกวันลาแทนโดยฝ่ายบุคคล") still name the HR officer as approver; out of scope here.
+  - Delegation requests no longer take effect immediately — HR must approve them.
+
 ## ADR-DOC-DESIGNER-01: Leave forms are designed per leave type on generated, organisation-neutral backgrounds
 
 - **Status**: Accepted

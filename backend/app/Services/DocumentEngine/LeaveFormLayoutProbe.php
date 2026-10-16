@@ -128,7 +128,7 @@ class LeaveFormLayoutProbe
             'requester_signature' => '',
             'approverBlocks' => collect(['HR Head', 'Deputy Director', 'Director'])->map(fn (string $role) => [
                 'name' => '', 'position' => '', 'comment' => '', 'date' => null,
-                'signature' => null, 'signature_path' => null, 'status' => '', 'role_name' => $role,
+                'signature' => null, 'signature_path' => null, 'status' => '', 'role_name' => $role, 'acting_line' => '',
             ])->all(),
             'leave' => $leave,
             'settings' => collect(),

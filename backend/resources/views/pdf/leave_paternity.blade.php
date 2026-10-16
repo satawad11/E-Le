@@ -139,6 +139,7 @@
     <span style="border-bottom: 1px dotted #000; display: inline-block; width: 220px;">&nbsp;</span>
 </div>
 <div class="text-center">(<span class="fill" style="width: 190px;">{{ $commander['name'] ?? '' }}</span>)</div>
+@include('pdf.partials.acting_line', ['block' => $commander])
 <div class="text-center">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($commander['date'] ?? null) }}</span></div>
 
 <div class="bold underline" style="margin-top: 8px;">คำสั่ง</div>
@@ -157,6 +158,7 @@
 </div>
 <div class="text-center">(<span class="fill" style="width: 190px;">{{ $order['name'] ?? '' }}</span>)</div>
 <div class="text-center"><span class="fill" style="width: 190px;">{{ $order['position'] ?? ($director_position ?? '') }}</span></div>
+@include('pdf.partials.acting_line', ['block' => $order])
 <div class="text-center">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($order['date'] ?? null) }}</span></div>
 
 <div class="note" style="margin-top: 8px;"><span class="bold">หมายเหตุ :</span> ให้แนบสำเนาทะเบียนสมรส และสำเนาสูติบัตรเพื่อประกอบการพิจารณา</div>

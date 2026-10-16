@@ -7,6 +7,7 @@ use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveApproval;
 use App\Models\Setting;
+use App\Models\UserDelegation;
 use App\Support\StoredFile;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -34,7 +35,7 @@ class LeaveApproverBlocks
     private const BLANK_NAME = '........................................................';
 
     /**
-     * @return array<int, array{name: string, date: ?Carbon, signature: ?string, signature_path: ?string, comment: ?string, status: ?string, position: string, role_name: string}>
+     * @return array<int, array{name: string, date: ?Carbon, signature: ?string, signature_path: ?string, comment: ?string, status: ?string, position: string, role_name: string, acting_line: string, recorded: bool}>
      */
     public function for(Leave $leave, bool $isCancel = false): array
     {
@@ -61,6 +62,10 @@ class LeaveApproverBlocks
                 'status' => $approval?->status,
                 'position' => (string) ($approval?->approver_position ?: ($step->role?->description ?? $step->name)),
                 'role_name' => $roleName,
+                // "ปฏิบัติราชการแทน …" เมื่อผู้ทำหน้าที่แทนลงนาม (DELEGATION-01) — จาก snapshot ณ วันลงนาม
+                'acting_line' => $acted ? UserDelegation::lineFor($approval->acting_type, $approval->acting_position) : '',
+                // ผู้ดูแลบันทึกตามเอกสารที่ลงนามแล้ว — ไม่มีรูปลายเซ็นในระบบ
+                'recorded' => $acted && $approval->recorded_by_user_id !== null,
             ];
         })->values()->all();
 
@@ -98,6 +103,8 @@ class LeaveApproverBlocks
             'status' => $log->action === 'Cancellation Approved' ? 'Approved' : 'Rejected',
             'position' => (string) ($log->user->profile?->position ?? ''),
             'role_name' => 'Director',
+            'acting_line' => '',
+            'recorded' => false,
         ];
     }
 

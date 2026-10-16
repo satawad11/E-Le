@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\DelegationController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\DocumentEngineController;
 use App\Http\Controllers\Admin\DocumentReportController;
@@ -214,6 +215,14 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         // ทดลองว่าใครคือผู้อนุมัติจริงของแต่ละขั้น ก่อนบันทึกการตั้งค่า
         Route::post('/admin/workflow-steps/preview', [WorkflowController::class, 'preview']);
     });
+
+    // Admin: ทะเบียนการรักษาราชการแทน / ปฏิบัติราชการแทน (DELEGATION-01) — ไม่มี delete โดยตั้งใจ
+    // สิทธิ์ตรวจใน DelegationController (LeaveApprovalSigner::canRecord) แบบเดียวกับงานจัดการวันลาอื่น
+    Route::get('/admin/delegations', [DelegationController::class, 'index']);
+    Route::post('/admin/delegations', [DelegationController::class, 'store']);
+    Route::put('/admin/delegations/{delegation}', [DelegationController::class, 'update']);
+    Route::post('/admin/delegations/{delegation}/approve', [DelegationController::class, 'approve']);
+    Route::post('/admin/delegations/{delegation}/revoke', [DelegationController::class, 'revoke']);
 
     // Admin: Leave Types CRUD
     Route::group(['middleware' => ['can:manage_leave_types']], function () {

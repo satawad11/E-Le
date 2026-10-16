@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['leave_id', 'stage', 'approver_id', 'approver_name', 'approver_position', 'signature_path', 'status', 'comment', 'approved_at', 'step_order', 'step_name', 'required_role_id', 'approver_type', 'specific_user_id', 'permission_name', 'allow_self_approval', 'delegated_from_user_id', 'is_self_approval', 'acted_at'])]
+#[Fillable(['leave_id', 'stage', 'approver_id', 'approver_name', 'approver_position', 'signature_path', 'status', 'comment', 'approved_at', 'step_order', 'step_name', 'required_role_id', 'approver_type', 'specific_user_id', 'permission_name', 'allow_self_approval', 'delegated_from_user_id', 'is_self_approval', 'acted_at', 'acting_type', 'acting_position', 'acting_order_ref', 'recorded_by_user_id'])]
 class LeaveApproval extends Model
 {
     /** สายอนุมัติของการขอลา */
@@ -27,6 +27,18 @@ class LeaveApproval extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approver_id');
+    }
+
+    /** ผู้ดูแลที่บันทึกการลงนามนี้ตามเอกสารกระดาษ (ผู้ลงนามจริงคือ approver) */
+    public function recordedBy()
+    {
+        return $this->belongsTo(User::class, 'recorded_by_user_id');
+    }
+
+    /** ผู้มีอำนาจตัวจริงเมื่อ approver ทำหน้าที่แทน */
+    public function delegatedFrom()
+    {
+        return $this->belongsTo(User::class, 'delegated_from_user_id');
     }
 
     public function requiredRole()

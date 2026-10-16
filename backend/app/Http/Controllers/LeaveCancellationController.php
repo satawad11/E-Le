@@ -7,14 +7,12 @@ use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveApproval;
 use App\Models\LeaveAuditLog;
-use App\Models\User;
 use App\Services\LeaveApprovalFlow;
+use App\Services\LeaveApprovalSigner;
 use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
-use App\Services\Workflow\ApproverResolverService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * ยกเลิกวันลา (แบบใบขอยกเลิกวันลา)
@@ -34,7 +32,7 @@ class LeaveCancellationController extends Controller
         private LeaveService $leaveService,
         private LeaveApprovalFlow $flow,
         private LeaveRequestNotificationService $notifications,
-        private ApproverResolverService $resolver,
+        private LeaveApprovalSigner $signer,
     ) {}
 
     public function cancel(Request $request, Leave $leave)
@@ -133,7 +131,8 @@ class LeaveCancellationController extends Controller
         $isApprove = $decision === 'Approved';
         $data = $request->validate([
             'comment' => $isApprove ? 'nullable|string|max:1000' : 'required|string|max:1000',
-            'signature_base64' => 'nullable|string',
+            'signature_base64' => 'nullable|string|max:2000000',
+            'on_behalf_of' => 'nullable|integer|exists:users,id',
         ]);
         $user = $request->user();
 
@@ -144,21 +143,12 @@ class LeaveCancellationController extends Controller
             $step = $this->currentStep($locked);
             abort_if($step === null, 422, 'ไม่พบขั้นตอนอนุมัติของคำขอยกเลิก กรุณาตรวจสอบการตั้งค่าลำดับการอนุมัติ');
 
-            $isSelf = $locked->user_id === $user->id;
-            $delegatedFrom = $this->authorizeStep($user, $locked, $step, $isSelf, $isApprove);
+            // ฐานะการลงนาม: ตนเอง / ผู้มีอำนาจ / ทำหน้าที่แทน / ผู้ดูแลบันทึกแทน (DELEGATION-01)
+            $capacity = $this->signer->capacity($user, $locked, $step, $isApprove, $request->integer('on_behalf_of') ?: null);
+            $isSelf = $capacity['mode'] === LeaveApprovalSigner::MODE_SELF;
+            $delegatedFrom = $capacity['delegation']?->user_id;
 
-            $step->update([
-                'approver_id' => $user->id,
-                'approver_name' => $user->full_name_with_title,
-                'approver_position' => $user->profile?->position,
-                'signature_path' => $this->resolveSignature($user, $data['signature_base64'] ?? null),
-                'status' => $decision,
-                'comment' => $data['comment'] ?? null,
-                'approved_at' => now(),
-                'acted_at' => now(),
-                'delegated_from_user_id' => $delegatedFrom,
-                'is_self_approval' => $isSelf,
-            ]);
+            $step->update(['status' => $decision] + $this->signer->snapshot($capacity, $user, $data['signature_base64'] ?? null, $data['comment'] ?? null));
 
             $next = $isApprove
                 ? $locked->cancellationApprovals()->where('step_order', '>', $step->step_order)->orderBy('step_order')->first()
@@ -186,7 +176,7 @@ class LeaveCancellationController extends Controller
                 ! $isApprove => 'cancellation_rejected',
                 $next !== null => 'cancellation_step_approved',
                 default => 'cancellation_approved',
-            }, ['step' => $step->step_order, 'final' => $next === null, 'comment' => $data['comment'] ?? null, 'self_approved' => $isSelf]);
+            }, ['step' => $step->step_order, 'final' => $next === null, 'comment' => $data['comment'] ?? null, 'self_approved' => $isSelf, 'capacity' => $capacity['mode'], 'signer_id' => $capacity['signer']->id, 'delegated_from' => $delegatedFrom]);
 
             return [$locked, $next];
         }, 5);
@@ -207,31 +197,6 @@ class LeaveCancellationController extends Controller
             },
             'cancellation_status' => $locked->cancellation_status,
         ]);
-    }
-
-    /**
-     * ผู้ทำรายการพิจารณาขั้นปัจจุบันของคำขอยกเลิกได้หรือไม่ — คืนผู้มอบอำนาจถ้าทำแทน
-     *
-     * - คำขอของตนเอง: อนุมัติได้เฉพาะขั้นที่เปิด allow_self_approval และตนเป็นผู้อนุมัติขั้นนั้นโดยตรง
-     *   สิทธิ์ผู้ดูแลและการรับมอบอำนาจใช้ไม่ได้ · ปฏิเสธคำขอของตนเองไม่ได้ (LEAVE-APPROVAL-02)
-     * - ผู้ถือ leave.management.manage พิจารณาคำขอของผู้อื่นได้ทุกขั้น ทีละขั้น
-     */
-    private function authorizeStep(User $user, Leave $leave, LeaveApproval $step, bool $isSelf, bool $isApprove): ?int
-    {
-        if ($isSelf) {
-            abort_unless($isApprove, 403, 'ห้ามปฏิเสธคำขอยกเลิกใบลาของตนเอง');
-            abort_unless($this->resolver->canSelfApprove($leave->user, $step), 403, 'ขั้นตอนนี้ไม่อนุญาตให้พิจารณาคำขอยกเลิกวันลาของตนเอง');
-
-            return null;
-        }
-
-        if ($user->can('leave.management.manage')) {
-            return null;
-        }
-
-        abort_unless($leave->user && $this->resolver->isAuthorizedApprover($user, $leave->user, $step), 403, 'ไม่มีสิทธิ์พิจารณาในขั้นตอนนี้');
-
-        return $this->resolver->getDelegatedFromId($user, $leave->user, $step);
     }
 
     /**
@@ -267,25 +232,6 @@ class LeaveCancellationController extends Controller
             'allow_self_approval' => (bool) $legacy->allow_self_approval,
             'status' => 'Pending',
         ]);
-    }
-
-    /** ลายเซ็นที่จะประทับบนขั้นตอนนี้ — ที่วาดสดมาก่อน ถ้าไม่มีใช้ลายเซ็นในโปรไฟล์ */
-    private function resolveSignature(User $user, ?string $base64): ?string
-    {
-        if (! $base64 || ! preg_match('/^data:image\/(\w+);base64,/', $base64, $matches)) {
-            return $user->profile?->signature_path;
-        }
-
-        $type = strtolower($matches[1]);
-        if (! in_array($type, ['jpg', 'jpeg', 'png'], true)) {
-            return $user->profile?->signature_path;
-        }
-
-        $binary = base64_decode(substr($base64, strpos($base64, ',') + 1));
-        $fileName = 'signatures/'.uniqid().'.'.$type;
-        Storage::disk('private_uploads')->put($fileName, $binary);
-
-        return '/storage/'.$fileName;
     }
 
     private function audit(Request $request, Leave $leave, string $action, array $after = []): void

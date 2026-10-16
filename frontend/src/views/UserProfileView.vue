@@ -190,14 +190,35 @@
 
           <!-- Delegation Section -->
           <div v-if="authStore.isManager || authStore.isSuperAdmin || authStore.hasPermission('approvals')" class="md:col-span-2">
-            <h3 class="text-lg font-bold text-red-700 mb-2 border-b pb-2 mt-4">มอบหมายผู้อนุมัติชั่วคราว</h3>
-            <p class="text-xs text-gray-500 mb-4">ในกรณีที่คุณลางานหรือไม่สามารถอนุมัติใบลาได้ คุณสามารถมอบหมายให้ผู้ใช้อื่นอนุมัติแทนชั่วคราวได้</p>
-            
+            <h3 class="text-lg font-bold text-red-700 mb-2 border-b pb-2 mt-4">ขอให้ผู้อื่นปฏิบัติหน้าที่แทน</h3>
+            <p class="text-xs text-gray-500 mb-4">
+              ส่งคำขอให้ผู้อื่นรักษาราชการแทน/ปฏิบัติราชการแทนในช่วงที่ท่านไม่อยู่ — คำขอจะมีผลเมื่องานบุคลากรรับรองตามคำสั่งแต่งตั้งแล้วเท่านั้น
+              และผู้ทำหน้าที่แทนจะลงนามโดยมีข้อความ "ปฏิบัติราชการแทน …" ใต้ตำแหน่งบนแบบฟอร์ม
+            </p>
+
+            <div v-if="myDelegations.length" class="mb-4 border border-gray-200 rounded-xl divide-y divide-gray-100 text-sm">
+              <div v-for="d in myDelegations" :key="d.id" class="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                <div>
+                  <span class="font-semibold text-gray-800">{{ d.delegate?.name || '-' }}</span>
+                  <span class="text-gray-500"> · {{ d.acting_line || delegationTypeLabel(d.delegation_type) }}</span>
+                  <div class="text-xs text-gray-500">{{ d.start_date }} ถึง {{ d.end_date }}<span v-if="d.order_number"> · คำสั่งที่ {{ d.order_number }}</span></div>
+                </div>
+                <span :class="['text-xs font-semibold px-2 py-0.5 rounded-full', delegationStatusClass(d.status)]">{{ delegationStatusLabel(d.status) }}</span>
+              </div>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="md:col-span-2">
-                <label class="block text-xs text-gray-700 mb-1">เลือกผู้รับมอบหมาย</label>
+                <label class="block text-xs text-gray-700 mb-1">ประเภท</label>
+                <select v-model="delegationForm.delegation_type" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
+                  <option value="on_behalf">ปฏิบัติราชการแทน (มอบอำนาจตามคำสั่ง)</option>
+                  <option value="acting">รักษาราชการแทน (ผู้ดำรงตำแหน่งไม่อาจปฏิบัติราชการได้)</option>
+                </select>
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs text-gray-700 mb-1">ผู้ปฏิบัติหน้าที่แทน</label>
                 <select v-model="delegationForm.delegate_id" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
-                  <option :value="null">-- ไม่มีการมอบหมาย --</option>
+                  <option :value="null">-- เลือกผู้ปฏิบัติหน้าที่แทน --</option>
                   <option v-for="u in usersList" :key="u.id" :value="u.id">{{ u.personnel?.full_name || u.name }} ({{ u.current_assignment?.position || u.position || u.profile?.position || u.role?.name }})</option>
                 </select>
               </div>
@@ -214,7 +235,7 @@
             <div v-if="delegationForm.delegate_id" class="mt-3">
               <button type="button" @click="saveDelegation" :disabled="savingDelegation" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition-all shadow-sm flex items-center gap-2">
                 <span v-if="savingDelegation" class="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
-                บันทึกการมอบหมาย
+                ส่งคำขอให้งานบุคลากรรับรอง
               </button>
             </div>
           </div>
@@ -303,10 +324,26 @@ const form = reactive({
 
 const delegationForm = reactive({
   delegate_id: null,
+  delegation_type: 'on_behalf',
   start_date: '',
-  end_date: '',
-  is_active: true
+  end_date: ''
 })
+const myDelegations = ref([])
+
+const DELEGATION_TYPES = { acting: 'รักษาราชการแทน', on_behalf: 'ปฏิบัติราชการแทน' }
+const DELEGATION_STATUS = {
+  pending: ['รองานบุคลากรรับรอง', 'bg-amber-100 text-amber-800'],
+  approved: ['รับรองแล้ว', 'bg-green-100 text-green-800'],
+  revoked: ['ยกเลิกแล้ว', 'bg-gray-100 text-gray-600']
+}
+const delegationTypeLabel = (type) => DELEGATION_TYPES[type] || type
+const delegationStatusLabel = (status) => DELEGATION_STATUS[status]?.[0] || status
+const delegationStatusClass = (status) => DELEGATION_STATUS[status]?.[1] || 'bg-gray-100 text-gray-600'
+
+const loadDelegations = async () => {
+  const delRes = await api.get('/profile/delegations')
+  myDelegations.value = Array.isArray(delRes.data) ? delRes.data : []
+}
 
 onMounted(async () => {
   try {
@@ -322,18 +359,8 @@ onMounted(async () => {
     form.department = user.department
     form.profile = user.profile || {}
 
-    // Load active delegation
-    const delRes = await api.get('/profile/delegations')
-    if (delRes.data && delRes.data.length > 0) {
-      // Find active or future delegation
-      const del = delRes.data.find(d => d.is_active)
-      if (del) {
-        delegationForm.delegate_id = del.delegate_id
-        delegationForm.start_date = del.start_date.substring(0, 10)
-        delegationForm.end_date = del.end_date.substring(0, 10)
-        delegationForm.is_active = del.is_active
-      }
-    }
+    // คำขอ/รายการปฏิบัติหน้าที่แทนของฉัน (DELEGATION-01)
+    await loadDelegations()
 
     // Load users list for delegation
     if (authStore.isManager || authStore.isSuperAdmin || authStore.hasPermission('approvals')) {
@@ -516,14 +543,18 @@ const saveDelegation = async () => {
       return
     }
     
-    await api.post('/profile/delegations', {
+    const res = await api.post('/profile/delegations', {
       delegate_id: delegationForm.delegate_id,
+      delegation_type: delegationForm.delegation_type,
       start_date: delegationForm.start_date,
-      end_date: delegationForm.end_date,
-      is_active: true
+      end_date: delegationForm.end_date
     })
-    
-    alertStore.success('บันทึกการมอบหมายผู้อนุมัติเรียบร้อยแล้ว')
+
+    alertStore.success(res.data?.message || 'ส่งคำขอเรียบร้อยแล้ว')
+    delegationForm.delegate_id = null
+    delegationForm.start_date = ''
+    delegationForm.end_date = ''
+    await loadDelegations()
   } catch (e) {
     console.error(e)
     alertStore.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการบันทึกการมอบหมาย')

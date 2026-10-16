@@ -4,6 +4,21 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [DELEGATION-01] - 2026-10-16 — Acting for an absent authority (รักษาราชการแทน / ปฏิบัติราชการแทน)
+#### Added
+- **Delegation register** (ตั้งค่าระบบ → การปฏิบัติหน้าที่แทน, `leave.management.manage`): HR records an appointment order (type, delegator, delegate, acting position, order number/date, period), approves requests users send from their profile, edits, or revokes it. Rows are never deleted; every change is audited.
+- Both Thai acting types: *รักษาราชการแทน* and *ปฏิบัติราชการแทน*. A delegate's signature is snapshotted with the type, the position acted for and the order reference, and every leave form prints "<type> <position>" under the signer (new field `approval.<role>.acting_line` in the Visual Designer).
+- Pending-approval list tells each user in which capacity they sign (direct / acting / recording on behalf); in-effect delegates are notified together with the authority.
+- A signature drawn in the approval dialog is now saved for leave approvals too (previously only cancellations).
+
+#### Changed
+- **Admins no longer approve in their own name.** A user with leave-management rights who is not the step's authority must pick the authority (or their in-effect delegate) who signed the paper document; the approval is stored in that person's name, without an image signature, with `recorded_by_user_id` = the admin and comment "บันทึกตามเอกสารที่ลงนามแล้ว". Applies to leave approval/rejection and cancellation decisions.
+- A delegation a user sets up on their own profile is now a *request* (pending) that has no effect until HR approves it; self-delegation is rejected.
+- Signer blocks on the sick/personal, vacation, cancellation, paternity, ordination, official-travel, military and shared commander/order forms have an acting line; spacing on the ordination and official-travel forms was tightened so every form still fits one A4 page.
+
+#### Migration
+- `2026_10_16_100000_add_acting_capacity_to_delegations_and_approvals` (additive): `user_delegations` gains type, acting position, order number/date, note, status, requested/approved/revoked by/at; `leave_approvals` gains `acting_type`, `acting_position`, `acting_order_ref`, `recorded_by_user_id`. Existing delegations become approved *ปฏิบัติราชการแทน*.
+
 ### [LEAVE-FORMS-03] - 2026-10-15 — Long affiliation line on vacation, cancellation and ordination forms
 #### Fixed
 - "สังกัด" sat in a third-of-a-line cell, so a real school name + parent agency (e.g. "วิทยาลัยเทคนิคดอนเมือง สำนักงานคณะกรรมการการอาชีวศึกษา") shrank to unreadable size. It now has its own full-width line.

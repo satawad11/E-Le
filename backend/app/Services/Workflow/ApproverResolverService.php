@@ -89,6 +89,16 @@ class ApproverResolverService
      */
     public function getDelegatedFromId(User $actor, User $requester, ApprovalStep|LeaveApproval|array $step, ?string $on = null): ?int
     {
+        return $this->findDelegation($actor, $requester, $step, $on)?->user_id;
+    }
+
+    /**
+     * รายการในทะเบียนการทำหน้าที่แทนที่ทำให้ actor ลงนามขั้นนี้ได้ — null ถ้าไม่ได้ทำหน้าที่แทน
+     *
+     * นับเฉพาะรายการที่รับรองแล้ว (approved) และมีผล ณ วันที่ — คำขอที่ยังรอรับรองใช้ไม่ได้
+     */
+    public function findDelegation(User $actor, User $requester, ApprovalStep|LeaveApproval|array $step, ?string $on = null): ?UserDelegation
+    {
         // ใบลาของตนเองไม่อนุมัติผ่านการรับมอบอำนาจ — มิฉะนั้นผู้ที่ได้รับมอบจากใครก็ได้ในขั้นนั้น
         // จะอนุมัติขั้นที่ตนไม่มีสิทธิ์ให้ใบลาของตนเอง
         if ($actor->id === $requester->id) {
@@ -104,15 +114,13 @@ class ApproverResolverService
             return null;
         }
 
-        $delegation = UserDelegation::query()
+        return UserDelegation::query()
+            ->with('user.profile')
             ->where('delegate_id', $actor->getKey())
             ->whereIn('user_id', $eligibleIds)
-            ->where('is_active', true)
-            ->whereDate('start_date', '<=', $date)
-            ->whereDate('end_date', '>=', $date)
+            ->inEffect($date)
+            ->orderByDesc('id')
             ->first();
-
-        return $delegation ? (int) $delegation->user_id : null;
     }
 
     private function resolveDepartmentHeadIds(User $requester, string $date, ?int $fallbackRoleId): array

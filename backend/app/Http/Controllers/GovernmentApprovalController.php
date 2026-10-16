@@ -6,10 +6,12 @@ use App\Models\ApprovalStep;
 use App\Models\Leave;
 use App\Models\LeaveApproval;
 use App\Models\LeaveAuditLog;
+use App\Models\User;
+use App\Models\UserDelegation;
+use App\Services\LeaveApprovalSigner;
 use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
 use App\Services\NotificationCenter\NotificationCenter;
-use App\Services\Workflow\ApproverResolverService;
 use App\Services\Workflow\LeaveWorkflowShadow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +23,7 @@ class GovernmentApprovalController extends Controller
         private LeaveWorkflowShadow $shadow,
         private NotificationCenter $notifications,
         private LeaveRequestNotificationService $leaveNotifications,
+        private LeaveApprovalSigner $signer,
     ) {}
 
     /**
@@ -77,37 +80,23 @@ class GovernmentApprovalController extends Controller
         ]);
     }
 
-    private function authorizeStep(Request $r, LeaveApproval $step, Leave $leave): ?int
+    /**
+     * ฐานะการลงนามของผู้ทำรายการ (DELEGATION-01) — ดู LeaveApprovalSigner
+     *
+     * @return array{mode: string, signer: User, delegation: ?UserDelegation}
+     */
+    private function capacity(Request $r, LeaveApproval $step, Leave $leave, bool $isApprove): array
     {
-        /*
-         * LEAVE-APPROVAL-02 — ใบลาของตนเองอนุมัติได้เฉพาะขั้นที่เปิด allow_self_approval
-         * และตนเป็นผู้อนุมัติของขั้นนั้นโดยตรง ต้องตรวจก่อนทางลัดของผู้ดูแลด้านล่าง
-         * ไม่งั้นผู้ถือ leave.management.manage จะอนุมัติทุกขั้นของใบลาตนเองได้
-         */
-        if ($leave->user_id === $r->user()->id) {
-            abort_unless(
-                app(ApproverResolverService::class)->canSelfApprove($leave->user, $step),
-                403,
-                'ขั้นตอนนี้ไม่อนุญาตให้อนุมัติใบลาของตนเอง'
-            );
-
-            return null;
-        }
-
-        if ($r->user()->can('leave.management.manage') || $r->user()->roles->contains('name', 'Super Admin')) {
-            return null;
-        }
-
-        $resolver = app(ApproverResolverService::class);
-        $isAuthorized = $resolver->isAuthorizedApprover($r->user(), $leave->user, $step);
-        abort_unless($isAuthorized, 403, 'ไม่มีสิทธิ์อนุมัติในขั้นตอนนี้');
-
-        return $resolver->getDelegatedFromId($r->user(), $leave->user, $step);
+        return $this->signer->capacity($r->user(), $leave, $step, $isApprove, $r->integer('on_behalf_of') ?: null);
     }
 
     public function approve(Request $r, Leave $leave)
     {
-        $data = $r->validate(['comment' => 'nullable|string|max:1000']);
+        $data = $r->validate([
+            'comment' => 'nullable|string|max:1000',
+            'signature_base64' => 'nullable|string|max:2000000',
+            'on_behalf_of' => 'nullable|integer|exists:users,id',
+        ]);
         abort_unless($leave->status === 'Pending', 422, 'ใบลาไม่ได้อยู่ระหว่างอนุมัติ');
         if ($leave->substitute_id) {
             abort_unless($leave->substitute_status === 'Accepted', 422, 'ผู้ปฏิบัติงานแทนยังไม่ตอบรับ');
@@ -115,16 +104,16 @@ class GovernmentApprovalController extends Controller
         DB::transaction(function () use ($r, $leave, $data) {
             $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
             $step = $this->step($locked);
-            $delegatedFrom = $this->authorizeStep($r, $step, $locked);
-            $selfApproval = $locked->user_id === $r->user()->id;
-            $step->update(['approver_id' => $r->user()->id, 'approver_name' => $r->user()->full_name_with_title, 'approver_position' => $r->user()->profile?->position, 'signature_path' => $r->user()->profile?->signature_path, 'status' => 'Approved', 'comment' => $data['comment'] ?? null, 'approved_at' => now(), 'acted_at' => now(), 'delegated_from_user_id' => $delegatedFrom, 'is_self_approval' => $selfApproval]);
+            $capacity = $this->capacity($r, $step, $locked, true);
+            $selfApproval = $capacity['mode'] === LeaveApprovalSigner::MODE_SELF;
+            $step->update(['status' => 'Approved'] + $this->signer->snapshot($capacity, $r->user(), $data['signature_base64'] ?? null, $data['comment'] ?? null));
             $next = $locked->approvals()->where('step_order', '>', $step->step_order)->orderBy('step_order')->first();
             if ($next) {
                 $locked->update(['approval_level' => $next->step_order]);
             } else {
                 abort_unless($this->service->deductBalance($locked), 422, 'วันลาคงเหลือไม่เพียงพอ');
                 $locked->update(['status' => 'Approved']);
-            }LeaveAuditLog::create(['leave_id' => $locked->id, 'user_id' => $r->user()->id, 'action' => 'approval_approved', 'after' => ['step' => $step->step_order, 'final' => ! $next, 'self_approved' => $selfApproval], 'ip_address' => $r->ip(), 'user_agent' => $r->userAgent()]);
+            }LeaveAuditLog::create(['leave_id' => $locked->id, 'user_id' => $r->user()->id, 'action' => 'approval_approved', 'after' => ['step' => $step->step_order, 'final' => ! $next, 'self_approved' => $selfApproval, 'capacity' => $capacity['mode'], 'signer_id' => $capacity['signer']->id, 'delegated_from' => $capacity['delegation']?->user_id], 'ip_address' => $r->ip(), 'user_agent' => $r->userAgent()]);
         }, 5);
         $leave->refresh();
         $this->shadow($leave, 'approve', $r, $data['comment'] ?? null, $shadowInstanceId);
@@ -140,18 +129,21 @@ class GovernmentApprovalController extends Controller
 
     public function reject(Request $r, Leave $leave)
     {
-        $data = $r->validate(['comment' => 'required|string|max:1000']);
+        $data = $r->validate([
+            'comment' => 'required|string|max:1000',
+            'on_behalf_of' => 'nullable|integer|exists:users,id',
+        ]);
         abort_unless($leave->status === 'Pending', 422, 'ใบลาไม่ได้อยู่ระหว่างอนุมัติ');
         abort_if($leave->user_id === $r->user()->id, 403, 'ห้ามปฏิเสธใบลาของตนเอง');
         $shadowInstanceId = $this->shadowPrepare($leave);
         DB::transaction(function () use ($r, $leave, $data) {
             $locked = Leave::with('user')->whereKey($leave->id)->lockForUpdate()->firstOrFail();
             $step = $this->step($locked);
-            $delegatedFrom = $this->authorizeStep($r, $step, $locked);
-            $step->update(['approver_id' => $r->user()->id, 'approver_name' => $r->user()->full_name_with_title, 'approver_position' => $r->user()->profile?->position, 'signature_path' => $r->user()->profile?->signature_path, 'status' => 'Rejected', 'comment' => $data['comment'], 'approved_at' => now(), 'acted_at' => now(), 'delegated_from_user_id' => $delegatedFrom]);
+            $capacity = $this->capacity($r, $step, $locked, false);
+            $step->update(['status' => 'Rejected'] + $this->signer->snapshot($capacity, $r->user(), null, $data['comment']));
             $this->service->restoreBalance($locked);
             $locked->update(['status' => 'Rejected']);
-            LeaveAuditLog::create(['leave_id' => $locked->id, 'user_id' => $r->user()->id, 'action' => 'approval_rejected', 'after' => ['step' => $step->step_order, 'comment' => $data['comment']], 'ip_address' => $r->ip(), 'user_agent' => $r->userAgent()]);
+            LeaveAuditLog::create(['leave_id' => $locked->id, 'user_id' => $r->user()->id, 'action' => 'approval_rejected', 'after' => ['step' => $step->step_order, 'comment' => $data['comment'], 'capacity' => $capacity['mode'], 'signer_id' => $capacity['signer']->id, 'delegated_from' => $capacity['delegation']?->user_id], 'ip_address' => $r->ip(), 'user_agent' => $r->userAgent()]);
         }, 5);
         $leave->refresh();
         $this->shadow($leave, 'reject', $r, $data['comment'], $shadowInstanceId);

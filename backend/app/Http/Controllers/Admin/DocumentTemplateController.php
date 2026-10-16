@@ -171,6 +171,7 @@ class DocumentTemplateController extends Controller
                 'status' => 'Approved',
                 'position' => $position,
                 'role_name' => $role,
+                'acting_line' => '',
             ])
             ->values()
             ->all();

@@ -288,6 +288,13 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 'manage_departments', title: 'จัดการแผนกวิชา', parent: 'ตั้งค่าระบบ' }
     },
     {
+      // ทะเบียนการรักษาราชการแทน / ปฏิบัติราชการแทน (DELEGATION-01)
+      path: '/admin/delegations',
+      name: 'admin-delegations',
+      component: () => import('../views/admin/DelegationsManagementView.vue'),
+      meta: { requiresAuth: true, permission: 'leave.management.manage', title: 'การปฏิบัติหน้าที่แทน', parent: 'ตั้งค่าระบบ' }
+    },
+    {
       path: '/admin/workflow',
       name: 'admin-workflow',
       component: () => import('../views/admin/WorkflowManagementView.vue'),

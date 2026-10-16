@@ -112,6 +112,7 @@
 </div>
 <div class="text-center">(<span class="fill" style="width: 190px;">{{ $acknowledger['name'] ?? '' }}</span>)</div>
 <div class="text-center">ตำแหน่ง <span class="fill" style="width: 190px;">{{ $acknowledger['position'] ?? ($director_position ?? '') }}</span></div>
+@include('pdf.partials.acting_line', ['block' => $acknowledger])
 <div class="text-center">วันที่ <span class="fill" style="width: 110px;">{{ \App\Support\FormDate::short($acknowledger['date'] ?? null) }}</span></div>
 
 @includeIf('pdf.partials.verification_qr')

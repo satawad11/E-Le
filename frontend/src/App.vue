@@ -516,6 +516,9 @@
             <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_workflow_steps')" to="/admin/workflow" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               จัดการลำดับการอนุมัติ
             </router-link>
+            <router-link v-if="authStore.isAdmin || authStore.hasPermission('leave.management.manage')" to="/admin/delegations" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+              การปฏิบัติหน้าที่แทน
+            </router-link>
             <router-link v-if="authStore.canManageSettings" to="/admin/notifications" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               การแจ้งเตือน
             </router-link>
@@ -862,6 +865,9 @@
               <router-link v-if="authStore.isAdmin || authStore.hasPermission('manage_workflow_steps')" to="/admin/workflow" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 จัดการลำดับการอนุมัติ
               </router-link>
+              <router-link v-if="authStore.isAdmin || authStore.hasPermission('leave.management.manage')" to="/admin/delegations" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+                การปฏิบัติหน้าที่แทน
+              </router-link>
               <router-link v-if="authStore.canManageSettings" to="/admin/notifications" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 การแจ้งเตือน
               </router-link>
@@ -1052,8 +1058,8 @@ const isAttendanceRouteActive = computed(() => {
 })
 
 const isAdminRouteActive = computed(() => {
-  return ['admin-settings', 'admin-attendance-settings', 'document-center', 'document-designer', 'admin-modules', 'admin-departments', 'admin-workflow', 'admin-leave-types', 'admin-fiscal-years', 'admin-notifications', 'admin-work-calendar', 'admin-leave-policies'].includes(route.name) ||
-    ['/admin/settings', '/admin/attendance-settings', '/admin/document-center', '/admin/modules', '/admin/departments', '/admin/workflow', '/admin/leave-types', '/admin/fiscal-years', '/admin/notifications', '/admin/work-calendar', '/admin/leave-policies'].includes(route.path)
+  return ['admin-settings', 'admin-attendance-settings', 'document-center', 'document-designer', 'admin-modules', 'admin-departments', 'admin-workflow', 'admin-delegations', 'admin-leave-types','admin-fiscal-years', 'admin-notifications', 'admin-work-calendar', 'admin-leave-policies'].includes(route.name) ||
+    ['/admin/settings', '/admin/attendance-settings', '/admin/document-center', '/admin/modules', '/admin/departments', '/admin/workflow', '/admin/delegations', '/admin/leave-types','/admin/fiscal-years', '/admin/notifications', '/admin/work-calendar', '/admin/leave-policies'].includes(route.path)
 })
 
 const isSarabanRouteActive = computed(() => {
