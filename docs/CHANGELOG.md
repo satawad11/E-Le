@@ -10,11 +10,15 @@ All notable changes to the E-la project will be documented in this file.
 - Both Thai acting types: *รักษาราชการแทน* and *ปฏิบัติราชการแทน*. A delegate's signature is snapshotted with the type, the position acted for and the order reference, and every leave form prints "<type> <position>" under the signer (new field `approval.<role>.acting_line` in the Visual Designer).
 - Pending-approval list tells each user in which capacity they sign (direct / acting / recording on behalf); in-effect delegates are notified together with the authority.
 - A signature drawn in the approval dialog is now saved for leave approvals too (previously only cancellations).
+- **HR-recorded leaves name the real signers.** When HR records a leave (`POST /admin/leaves`) it picks who signed each step on paper (the authority or an in-effect delegate; `GET /admin/leaves/record-signers` lists them). Each step is stored in that person's name with `recorded_by_user_id` = the officer; previously every step printed the officer as approver.
+- Permission `leave.management.manage` now exists and is granted to the *HR Head* role (migration `2026_10_16_110000`, `RolesAndPermissionsSeeder`). Code has checked it in ~30 places, but it was never seeded, so only Super Admin could use those HR functions.
 
 #### Changed
 - **Admins no longer approve in their own name.** A user with leave-management rights who is not the step's authority must pick the authority (or their in-effect delegate) who signed the paper document; the approval is stored in that person's name, without an image signature, with `recorded_by_user_id` = the admin and comment "บันทึกตามเอกสารที่ลงนามแล้ว". Applies to leave approval/rejection and cancellation decisions.
 - A delegation a user sets up on their own profile is now a *request* (pending) that has no effect until HR approves it; self-delegation is rejected.
-- Signer blocks on the sick/personal, vacation, cancellation, paternity, ordination, official-travel, military and shared commander/order forms have an acting line; spacing on the ordination and official-travel forms was tightened so every form still fits one A4 page.
+- `WorkflowEngine::authorize` no longer lets `leave.management.manage` holders pass every step of every workflow (leave shadow, OT orders, attendance corrections), including orders they issued themselves; only assignees and in-effect delegates act.
+- Recording on behalf no longer fillsthe authority's comment line with a system note; the fact is kept in `recorded_by_user_id` and the audit log.
+- Signer blocks on the sick/personal, vacation, cancellation, paternity,ordination, official-travel, military and shared commander/order forms have an acting line; spacing on the ordination and official-travel forms was tightened so every form still fits one A4 page.
 
 #### Migration
 - `2026_10_16_100000_add_acting_capacity_to_delegations_and_approvals` (additive): `user_delegations` gains type, acting position, order number/date, note, status, requested/approved/revoked by/at; `leave_approvals` gains `acting_type`, `acting_position`, `acting_order_ref`, `recorded_by_user_id`. Existing delegations become approved *ปฏิบัติราชการแทน*.

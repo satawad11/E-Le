@@ -14,9 +14,9 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\UserDelegation;
 use App\Services\LeaveApprovalFlow;
-use App\Services\LeaveApprovalSigner;
 use App\Services\LeaveApproverBlocks;
 use Carbon\Carbon;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
@@ -206,7 +206,7 @@ class LeaveActingOnBehalfTest extends TestCase
         $this->assertSame('ผู้อำนวยการวิทยาลัยทดสอบ', $final->approver_position);
         $this->assertSame($this->admin->id, $final->recorded_by_user_id);
         $this->assertNull($final->signature_path);
-        $this->assertSame(LeaveApprovalSigner::RECORD_COMMENT, $final->comment);
+        $this->assertNull($final->comment);
         $this->assertNull($final->acting_type);
         $this->assertSame('Approved', $leave->fresh()->status);
 
@@ -306,6 +306,77 @@ class LeaveActingOnBehalfTest extends TestCase
         $step = $leave->cancellationApprovals()->where('step_order', 3)->firstOrFail();
         $this->assertSame($this->director->id, $step->approver_id);
         $this->assertSame($this->admin->id, $step->recorded_by_user_id);
+    }
+
+    // ── ใบลาที่ฝ่ายบุคคลบันทึกแทน ────────────────────────────────────────
+
+    private function recordPayload(array $signers): array
+    {
+        $day = today()->addWeeks(3)->next(Carbon::TUESDAY)->toDateString();
+
+        return [
+            'user_id' => $this->employee->id, 'leave_type_id' => $this->type->id,
+            'start_date' => $day, 'end_date' => $day, 'reason' => 'บันทึกตามใบลากระดาษ',
+            'signers' => $signers,
+        ];
+    }
+
+    public function test_a_leave_recorded_by_hr_names_the_real_signers_not_the_officer(): void
+    {
+        $this->delegate();
+
+        $this->actingAs($this->admin)->postJson('/api/admin/leaves', $this->recordPayload([
+            1 => $this->hr->id, 2 => $this->deputy->id, 3 => $this->deputy->id,
+        ]))->assertCreated();
+
+        $leave = Leave::where('user_id', $this->employee->id)->firstOrFail();
+        $this->assertSame('Approved', $leave->status);
+        $steps = $leave->approvals()->orderBy('step_order')->get();
+        $this->assertSame([$this->hr->id, $this->deputy->id, $this->deputy->id], $steps->pluck('approver_id')->all());
+        $this->assertSame([$this->admin->id], $steps->pluck('recorded_by_user_id')->unique()->values()->all());
+        $this->assertSame([null], $steps->pluck('signature_path')->unique()->values()->all());
+        $this->assertSame('on_behalf', $steps[2]->acting_type);
+        $this->assertSame($this->director->id, $steps[2]->delegated_from_user_id);
+
+        $blocks = app(LeaveApproverBlocks::class)->for($leave->fresh());
+        $this->assertNotContains($this->admin->full_name_with_title, array_column($blocks, 'name'));
+        $this->assertSame('ปฏิบัติราชการแทน ผู้อำนวยการวิทยาลัยทดสอบ', $blocks[2]['acting_line']);
+    }
+
+    public function test_hr_must_name_an_authorised_signer_for_every_step(): void
+    {
+        $this->actingAs($this->admin)->postJson('/api/admin/leaves', $this->recordPayload([1 => $this->hr->id, 2 => $this->deputy->id]))
+            ->assertStatus(422);
+        $this->actingAs($this->admin)->postJson('/api/admin/leaves', $this->recordPayload([1 => $this->hr->id, 2 => $this->deputy->id, 3 => $this->other->id]))
+            ->assertStatus(422);
+        $this->actingAs($this->admin)->postJson('/api/admin/leaves', $this->recordPayload([1 => $this->employee->id, 2 => $this->deputy->id, 3 => $this->director->id]))
+            ->assertStatus(422);
+
+        $this->assertSame(0, Leave::where('user_id', $this->employee->id)->count());
+    }
+
+    public function test_hr_sees_who_may_sign_each_step_for_the_chosen_person(): void
+    {
+        $this->delegate();
+
+        $steps = $this->actingAs($this->admin)->getJson('/api/admin/leaves/record-signers?user_id='.$this->employee->id)->assertOk()->json();
+
+        $this->assertSame([1, 2, 3], array_column($steps, 'step_order'));
+        $director = collect($steps[2]['candidates']);
+        $this->assertTrue($director->contains('id', $this->director->id));
+        $this->assertTrue($director->contains('id', $this->deputy->id));
+
+        $this->actingAs($this->deputy)->getJson('/api/admin/leaves/record-signers?user_id='.$this->employee->id)->assertForbidden();
+    }
+
+    public function test_the_hr_head_role_holds_leave_management_after_seeding(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $hrHead = User::factory()->create();
+        $hrHead->assignRole('HR Head');
+
+        $this->assertTrue($hrHead->fresh()->can('leave.management.manage'));
+        $this->actingAs($hrHead)->getJson('/api/admin/delegations')->assertOk();
     }
 
     // ── ทะเบียนการทำหน้าที่แทน ──────────────────────────────────────────

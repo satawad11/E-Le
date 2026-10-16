@@ -263,6 +263,7 @@ class LeaveSelfApprovalTest extends TestCase
             'user_id' => $for->id, 'leave_type_id' => $this->type->id,
             'start_date' => today()->addWeeks(3)->next(Carbon::TUESDAY)->toDateString(), 'end_date' => today()->addWeeks(3)->next(Carbon::TUESDAY)->toDateString(),
             'reason' => 'บันทึกแทน',
+            'signers' => [1 => $this->hr->id, 2 => $this->deputy->id, 3 => $this->director->id],
         ];
 
         $this->actingAs($this->hr)->postJson('/api/admin/leaves', $payload($this->hr))->assertForbidden();

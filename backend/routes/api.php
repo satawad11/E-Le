@@ -146,6 +146,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         ->middleware('can:attendance.ot_summary');
 
     Route::post('/admin/leaves', [LeaveRequestController::class, 'storeAsAdmin']);
+    Route::get('/admin/leaves/record-signers', [LeaveRequestController::class, 'recordSigners']);
 
     // Approval routes
     // approve/reject ประกาศไว้ที่ routes/leave_government.php (GovernmentApprovalController)

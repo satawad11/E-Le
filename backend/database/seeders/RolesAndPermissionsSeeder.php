@@ -29,6 +29,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'approve_leave',
             'view_all_attendances',
             'export_reports',
+            // งานบุคลากร: จัดการวันลา บันทึกวันลาแทน ทะเบียนการปฏิบัติหน้าที่แทน (DELEGATION-01)
+            'leave.management.manage',
         ];
 
         foreach ($permissions as $permission) {
@@ -48,6 +50,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'approve_leave',
             'view_all_attendances',
             'export_reports',
+            'leave.management.manage',
         ]);
 
         // 3. Deputy Director

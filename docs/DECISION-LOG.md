@@ -291,8 +291,10 @@
   4. The capacity is snapshotted on `leave_approvals` (`acting_type`, `acting_position`, `acting_order_ref`) so reprints never change when the register changes; forms print it as an extra line under the signer.
 - **Consequences**:
   - Admins can no longer push a leave through every step alone; bulk approval skips leaves they would have to record.
-  - Leaves HR records directly (`/admin/leaves`, "บันทึกวันลาแทนโดยฝ่ายบุคคล") still name the HR officer as approver; out of scope here.
-  - Delegation requests no longer take effect immediately — HR must approve them.
+  - Leaves HR records directly (`/admin/leaves`) follow the same rule (owner decision 2026-10-16): HR must pick the real signer of every step; the officer is kept only as `recorded_by_user_id`.
+  - `leave.management.manage` is granted to the HR Head role (owner decision 2026-10-16), which also opens the other HR leave functions guarded by it.
+  - The workflow engine's manager bypass is removed; otherwise the grant would let HR Head decide any OT order or attendance correction (including their own).
+- Delegation requests no longer take effect immediately — HR must approve them.
 
 ## ADR-DOC-DESIGNER-01: Leave forms are designed per leave type on generated, organisation-neutral backgrounds
 

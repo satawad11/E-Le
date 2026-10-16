@@ -70,6 +70,7 @@
       <h2 class="text-lg font-bold text-gray-800 mb-4">บันทึกวันลาให้พนักงาน</h2>
       <p class="text-sm text-gray-600 mb-6">
         เมื่อบันทึกผ่านหน้านี้ สถานะของใบลาจะถูกตั้งเป็น <strong>"อนุมัติแล้ว (Approved)"</strong> ทันที โดยไม่ต้องรอสายบังคับบัญชาอนุมัติ เหมาะสำหรับกรณีที่พนักงานไม่สามารถบันทึกได้ด้วยตนเอง
+        — ให้เลือกผู้ลงนามจริงของแต่ละขั้นตามเอกสารกระดาษ แบบฟอร์มจะพิมพ์ชื่อผู้ลงนามเหล่านั้น ไม่ใช่ชื่อผู้บันทึก
       </p>
 
       <form @submit.prevent="handleManualSubmit" class="space-y-4">
@@ -113,6 +114,26 @@
           <p class="mt-1 text-xs text-gray-500">ลาครึ่งวันต้องเลือกวันเริ่มต้นและสิ้นสุดเป็นวันเดียวกัน · บันทึกย้อนหลังได้ ระบบนับเป็นวันที่ใช้ไปและอนุมัติทุกขั้นให้ทันที</p>
         </div>
 
+        <!-- ผู้ลงนามจริงแต่ละขั้น (DELEGATION-01) -->
+        <div v-if="manualForm.user_id" class="border border-amber-200 bg-amber-50 rounded-xl p-4">
+          <p class="text-sm font-semibold text-amber-900 mb-1">ผู้ลงนามตามเอกสาร *</p>
+          <p class="text-xs text-amber-800 mb-3">เลือกผู้มีอำนาจ (หรือผู้ปฏิบัติหน้าที่แทน) ที่ลงนามในใบลากระดาษของแต่ละขั้น</p>
+          <p v-if="signerSteps.loading" class="text-xs text-gray-500">กำลังโหลดผู้มีอำนาจ...</p>
+          <p v-else-if="!signerSteps.items.length" class="text-xs text-red-600">ยังไม่ได้ตั้งค่าลำดับการอนุมัติ</p>
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label v-for="step in signerSteps.items" :key="step.step_order" class="block text-xs text-gray-700">
+              {{ step.step_order }}. {{ step.name }}
+              <select v-model="manualForm.signers[step.step_order]" required class="mt-1 w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] p-2">
+                <option :value="null" disabled>— เลือกผู้ลงนาม —</option>
+                <option v-for="c in step.candidates" :key="c.id" :value="c.id">
+                  {{ c.name }}{{ c.acting_line ? ` (${c.acting_line})` : (c.position ? ` (${c.position})` : '') }}
+                </option>
+              </select>
+              <span v-if="!step.candidates.length" class="text-red-600">ไม่พบผู้มีอำนาจของขั้นนี้</span>
+            </label>
+          </div>
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">เหตุผลการลา *</label>
           <textarea v-model="manualForm.reason" required rows="3" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#800000] focus:border-[#800000] p-2.5" placeholder="กรุณาระบุเหตุผลการลา..."></textarea>
@@ -132,7 +153,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 import ThaiDatePicker from '../../components/ThaiDatePicker.vue'
@@ -150,15 +171,39 @@ const syncForm = ref({
 const syncLoading = ref(false)
 const syncResult = ref(null)
 
-const manualForm = ref({
+const emptyManualForm = () => ({
   user_id: '',
   leave_type_id: '',
   start_date: '',
   end_date: '',
   leave_period: 'full_day',
-  reason: ''
+  reason: '',
+  signers: {}
 })
+const manualForm = ref(emptyManualForm())
 const manualLoading = ref(false)
+
+// ผู้ลงนามที่เลือกได้ในแต่ละขั้น — ขึ้นกับสายอนุมัติของบุคลากรที่เลือก
+const signerSteps = reactive({ loading: false, items: [] })
+watch(() => manualForm.value.user_id, async (userId) => {
+  signerSteps.items = []
+  manualForm.value.signers = {}
+  if (!userId) return
+  signerSteps.loading = true
+  try {
+    const res = await api.get('/admin/leaves/record-signers', { params: { user_id: userId } })
+    signerSteps.items = res.data || []
+    const signers = {}
+    for (const step of signerSteps.items) {
+      signers[step.step_order] = step.candidates.length === 1 ? step.candidates[0].id : null
+    }
+    manualForm.value.signers = signers
+  } catch (error) {
+    alertStore.error(error.response?.data?.message || 'โหลดรายชื่อผู้มีอำนาจไม่สำเร็จ')
+  } finally {
+    signerSteps.loading = false
+  }
+})
 
 const users = ref([])
 const leaveTypes = ref([])
@@ -182,14 +227,7 @@ const handleManualSubmit = async () => {
     await api.post('/admin/leaves', manualForm.value)
     alertStore.success('บันทึกวันลาให้พนักงานสำเร็จ!')
     // Reset form
-    manualForm.value = {
-      user_id: '',
-      leave_type_id: '',
-      start_date: '',
-      end_date: '',
-      leave_period: 'full_day',
-      reason: ''
-    }
+    manualForm.value = emptyManualForm()
   } catch (error) {
     const errors = error.response?.data?.errors
     if (errors) {

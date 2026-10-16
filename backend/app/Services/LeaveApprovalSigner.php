@@ -32,8 +32,6 @@ class LeaveApprovalSigner
 
     public const MODE_RECORD = 'record';
 
-    public const RECORD_COMMENT = 'บันทึกตามเอกสารที่ลงนามแล้ว';
-
     public function __construct(private readonly ApproverResolverService $resolver) {}
 
     /**
@@ -66,16 +64,32 @@ class LeaveApprovalSigner
         abort_unless($this->canRecord($actor), 403, 'ไม่มีสิทธิ์อนุมัติในขั้นตอนนี้');
         abort_if($onBehalfOf === null, 422, 'ท่านไม่ใช่ผู้มีอำนาจลงนามในขั้นนี้ — เลือกผู้มีอำนาจที่ลงนามในเอกสารจริงเพื่อบันทึกแทน');
 
-        $signer = User::with('profile')->find($onBehalfOf);
+        return $this->recordCapacity($actor, $leave, $step, $onBehalfOf);
+    }
+
+    /**
+     * ฐานะ "บันทึกแทน" — ผู้ลงนามคือผู้มีอำนาจของขั้นนี้ หรือผู้ทำหน้าที่แทนที่มีผลอยู่ ไม่ใช่ผู้ยื่น
+     *
+     * ใช้ทั้งหน้ารออนุมัติ (ผู้ดูแลไม่ใช่ผู้มีอำนาจ) และใบลาที่ฝ่ายบุคคลบันทึกแทน (เลือกผู้ลงนามทุกขั้น)
+     *
+     * @return array{mode: string, signer: User, delegation: ?UserDelegation}
+     */
+    public function recordCapacity(User $actor, Leave $leave, LeaveApproval|ApprovalStep $step, int $signerId): array
+    {
+        abort_unless($this->canRecord($actor), 403, 'ไม่มีสิทธิ์บันทึกการลงนามแทน');
+        $requester = $leave->user;
+        abort_if($requester === null, 422, 'ไม่พบผู้ยื่นใบลา');
+
+        $signer = User::with('profile')->find($signerId);
         abort_if($signer === null || ! $signer->is_active, 422, 'ไม่พบผู้มีอำนาจที่ระบุ');
         abort_if($signer->id === $leave->user_id, 422, 'ผู้ลงนามต้องไม่ใช่ผู้ยื่นใบลา');
 
-        if (in_array($signer->id, $eligible, true)) {
+        if (in_array($signer->id, $this->resolver->resolveEligibleApproverIds($requester, $step), true)) {
             return ['mode' => self::MODE_RECORD, 'signer' => $signer, 'delegation' => null];
         }
 
         $delegation = $this->resolver->findDelegation($signer, $requester, $step);
-        abort_if($delegation === null, 422, 'ผู้ที่ระบุไม่มีอำนาจลงนามในขั้นนี้ และไม่ได้ทำหน้าที่แทนผู้มีอำนาจ');
+        abort_if($delegation === null, 422, 'ผู้ที่ระบุไม่มีอำนาจลงนามในขั้น "'.($step->step_name ?? $step->name ?? $step->step_order).'" และไม่ได้ทำหน้าที่แทนผู้มีอำนาจ');
 
         return ['mode' => self::MODE_RECORD, 'signer' => $signer, 'delegation' => $delegation];
     }
@@ -137,7 +151,8 @@ class LeaveApprovalSigner
             'approver_name' => $signer->full_name_with_title,
             'approver_position' => $signer->profile?->position,
             'signature_path' => $record ? null : $this->signature($actor, $signatureBase64),
-            'comment' => filled($comment) ? $comment : ($record ? self::RECORD_COMMENT : null),
+            // ไม่เติมข้อความแทนผู้มีอำนาจ — ช่องความเห็นพิมพ์บนแบบฟอร์ม ฐานะ "บันทึกแทน" อยู่ที่ recorded_by_user_id และ audit
+            'comment' => filled($comment) ? $comment : null,
             'delegated_from_user_id' => $delegation?->user_id,
             'acting_type' => $delegation?->delegation_type,
             'acting_position' => $delegation ? ($delegation->acting_position ?: $delegation->user?->profile?->position) : null,
@@ -183,17 +198,21 @@ class LeaveApprovalSigner
      */
     public function recordCandidates(Leave $leave, LeaveApproval|ApprovalStep $step): array
     {
-        if ($leave->user === null) {
-            return [];
-        }
+        return $leave->user === null ? [] : $this->candidatesFor($leave->user, $step);
+    }
 
-        $eligible = array_values(array_diff($this->resolver->resolveEligibleApproverIds($leave->user, $step), [$leave->user_id]));
+    /**
+     * @return array<int, array{id: int, name: string, position: ?string, acting_line: string}>
+     */
+    public function candidatesFor(User $requester, LeaveApproval|ApprovalStep $step): array
+    {
+        $eligible = array_values(array_diff($this->resolver->resolveEligibleApproverIds($requester, $step), [$requester->id]));
         $candidates = User::with('profile')->whereIn('id', $eligible)->where('is_active', true)->get()
             ->map(fn (User $user) => ['id' => $user->id, 'name' => $user->full_name_with_title, 'position' => $user->profile?->position, 'acting_line' => '']);
 
         $delegations = UserDelegation::with(['delegate.profile', 'user.profile'])->whereIn('user_id', $eligible)->inEffect()->get();
         foreach ($delegations as $delegation) {
-            if ($delegation->delegate && $delegation->delegate->is_active && $delegation->delegate_id !== $leave->user_id) {
+            if ($delegation->delegate && $delegation->delegate->is_active && $delegation->delegate_id !== $requester->id) {
                 $candidates->push([
                     'id' => $delegation->delegate_id,
                     'name' => $delegation->delegate->full_name_with_title,

@@ -139,10 +139,12 @@ class WorkflowEngine
     /**
      * ผู้ใช้คนนี้ทำงานขั้นปัจจุบันได้หรือไม่ และทำในนามใคร
      *
-     * ให้ผลตรงกับ `GovernmentApprovalController::authorizeStep()` ทุกกรณี:
-     *   1. ถือสิทธิ์ `leave.management.manage` → ผ่าน โดยไม่นับเป็นการรับมอบอำนาจ
-     *   2. ถือบทบาทที่ขั้นตอนต้องการ → ผ่านในนามตนเอง
-     *   3. รับมอบอำนาจจากผู้ที่ถือบทบาทนั้น → ผ่านในนามผู้มอบ
+     *   1. ถือบทบาทที่ขั้นตอนต้องการ → ผ่านในนามตนเอง
+     *   2. รับมอบอำนาจจากผู้ที่ถือบทบาทนั้น → ผ่านในนามผู้มอบ
+     *
+     * ไม่มีทางลัดของผู้ดูแลแล้ว (DELEGATION-01) — เดิมผู้ถือ `leave.management.manage` ผ่านทุกขั้นของทุกสาย
+     * (ใบลา OT แก้ไขเวลา) รวมถึงคำสั่งที่ตนเองเป็นผู้ออก ตอนนี้ผู้ดูแลบันทึกแทนผู้มีอำนาจได้เฉพาะสายใบลา
+     * ผ่าน LeaveApprovalSigner ซึ่งบันทึกในนามผู้มีอำนาจตัวจริง
      *
      * @return array{allowed:bool, effective_actor_id:?int, delegated_by_id:?int, reason:?string}
      */
@@ -161,11 +163,6 @@ class WorkflowEngine
         }
 
         $step = $task->step;
-
-        // ผู้ดูแลสายอนุมัติข้ามลำดับได้ตามพฤติกรรมเดิมของระบบ
-        if ($user->can('leave.management.manage')) {
-            return ['allowed' => true, 'effective_actor_id' => $user->getKey(), 'delegated_by_id' => null, 'reason' => 'workflow_manager'];
-        }
 
         if ($this->isDirectAssignee($instance, $task, $step, $user)) {
             return ['allowed' => true, 'effective_actor_id' => $user->getKey(), 'delegated_by_id' => null, 'reason' => 'assignee'];
