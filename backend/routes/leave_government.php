@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/promotion-screening', [PromotionScreeningController::class, 'index']);
     Route::get('/reports/promotion-screening.csv', [PromotionScreeningController::class, 'csv'])->middleware('throttle:exports');
     Route::get('/reports/government-leave-register', [GovernmentLeaveReportController::class, 'register']);
+    Route::get('/reports/government-leave-departments', [GovernmentLeaveReportController::class, 'departments']);
     Route::get('/reports/government-leave-summary', [GovernmentLeaveReportController::class, 'summary']);
     Route::get('/reports/government-leave-register.csv', [GovernmentLeaveReportController::class, 'csv'])->middleware('throttle:exports');
     Route::middleware('can:leave.approval.hr')->prefix('admin')->group(function () {

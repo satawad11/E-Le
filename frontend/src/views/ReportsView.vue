@@ -185,7 +185,7 @@ onMounted(async () => {
   try {
     const [s, d, p] = await Promise.all([
       api.get('/reports/government-leave-summary', { params: { months: 12 } }),
-      api.get('/departments'),
+      api.get('/reports/government-leave-departments'),
       api.get('/personnel-types')
     ])
     summary.value = s.data
