@@ -313,3 +313,18 @@
   - Generation re-renders a form ~20–30 times (~15–30 s per form).
   - Leave types without a system form (military call-up, international organisation, vocational rehabilitation) still need a PDF uploaded by the admin.
 
+## ADR-ORG-ACCESS-01: Per-user permission scopes are changed only through audited artisan commands
+
+- **Status**: Accepted
+- **Date**: 2026-10-16
+- **Context**:
+  The owner wants the org modelled as executives / teachers / staff with vocational-college positions (`docs/ORG-POSITION-ACCESS-MAPPING.md`). Positions stay labels; access comes from role + org-unit assignment. Making a deputy director the manager of their division narrows every scope to that division, so the owner decided (Q6) that deputies keep an organisation-wide view of leave and attendance through `permission_scopes`, and HR staff need the same. Nothing could write `permission_scopes` except direct SQL, which has no audit trail, and the rows have no effective dates. The owner approved code without schema changes during PROD-00 Architecture Freeze.
+- **Decision**:
+  1. `PermissionScopeService` is the only writer of `permission_scopes`; `access:scope-grant`, `access:scope-revoke` and `access:scope-list` call it.
+  2. The actor (`--by`) must be active and hold `admin.users.manage_permissions`; nobody can grant a scope to themselves; a reason (e.g. the appointment order) is required.
+  3. Legacy permission names are stored under the canonical name and a user has at most one row per permission (all equivalent names are replaced), because `PermissionEvaluator::scopeFor()` reads the first matching row.
+  4. Every grant and revoke writes `audit_logs` (`access.scope.granted` / `access.scope.revoked`) with before/after and the reason.
+- **Consequences**:
+  - Scopes still do not expire: when a holder leaves the post an admin must run `access:scope-revoke`.
+  - An admin screen is not built yet; the commands run on the server. A screen can reuse the service later.
+  - Scopes widen what a user sees; who may approve still comes from `org_unit_managers`.

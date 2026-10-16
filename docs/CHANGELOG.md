@@ -4,6 +4,11 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [ORG-ACCESS-01] - 2026-10-16 — Audited per-user permission scopes
+#### Added
+- `php artisan access:scope-grant {user} {permission} {scope} [--unit=] --by= --reason=`, `access:scope-revoke {user} {permission} --by= --reason=` and `access:scope-list [user]`: give or remove a per-user scope (`permission_scopes`) by email or UUID. The actor must hold `admin.users.manage_permissions`, cannot grant to themselves and must give a reason; legacy permission names are stored under the canonical name with one row per user and permission; every change is written to `audit_logs`. Previously the table could only be changed with direct SQL.
+- Owner decisions Q1–Q6 recorded in `docs/ORG-POSITION-ACCESS-MAPPING.md` (4-division structure, contract/hourly teachers copy temporary-employee leave quotas, HR staff use HR Head, no supplies/finance modules yet, deputy directors see leave and attendance organisation-wide). No data changed.
+
 ### [ORG-ACCESS-00] - 2026-10-16 — Draft position → access mapping (no data changed)
 #### Added
 - `docs/ORG-POSITION-ACCESS-MAPPING.md`: proposed mapping of each executive / teacher / staff position to personnel type, role and org unit/scope, the 4-division org tree, pitfalls found in the current code (manager assignments narrow scope, role names the code still checks, auto-created leave policies for new personnel types) and the questions the owner must answer. Draft only — no data, schema or code changed.
