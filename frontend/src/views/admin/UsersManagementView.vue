@@ -239,7 +239,7 @@
                 <button @click="activeTab = 'address'" :class="activeTab === 'address' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลที่อยู่</button>
                 <button @click="activeTab = 'employment'" :class="activeTab === 'employment' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลการจ้าง</button>
                 <button @click="activeTab = 'system'" :class="activeTab === 'system' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลระบบ (Account)</button>
-                <button v-if="authStore.isAdmin" @click="activeTab = 'permissions'" :class="activeTab === 'permissions' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">สิทธิ์การเข้าถึงพิเศษ</button>
+                <button v-if="canManageAccess" @click="activeTab = 'permissions'" :class="activeTab === 'permissions' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">สิทธิ์การเข้าถึงพิเศษ</button>
               </div>
 
             </div>
@@ -445,10 +445,15 @@
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">บทบาทในระบบ *</label>
-                    <select v-model="form.role_id" required class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
+                    <select v-if="!modal.isEdit || canManageAccess" v-model="form.role_id" required class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
                       <option value="" disabled>เลือกสิทธิ์</option>
                       <option v-for="role in roles" :key="role.id" :value="role.id">{{ roleLabel(role.name) }}</option>
                     </select>
+                    <!-- K-ORG-01: เปลี่ยนบทบาทได้เฉพาะผู้มีสิทธิ์กำหนดสิทธิ์รายบุคคล (backend ตรวจซ้ำ) -->
+                    <template v-else>
+                      <input :value="editingRoleName ? roleLabel(editingRoleName) : '-'" type="text" readonly class="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-gray-50 text-gray-600" />
+                      <span class="text-xs text-gray-400">เปลี่ยนบทบาทได้เฉพาะผู้มีสิทธิ์ "กำหนดสิทธิ์รายบุคคล"</span>
+                    </template>
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">รหัสผ่าน <span v-if="modal.isEdit" class="text-gray-400 font-normal">(เว้นว่างหากไม่เปลี่ยน)</span></label>
@@ -536,6 +541,9 @@ const submitting = ref(false)
 const users = ref([])
 const departments = ref([])
 const roles = ref([])
+// K-ORG-01: ผู้ที่เปลี่ยนบทบาท/สิทธิ์รายบุคคลได้ — ค่าจาก backend (/admin/assignable-roles)
+const canManageAccess = ref(false)
+const editingRoleName = ref('')
 const availablePermissions = ref([])
 
 const permissionModal = reactive({
@@ -757,9 +765,11 @@ const fetchDepartments = async () => {
 const fetchRoles = async () => {
   // ผู้ที่ดูรายชื่อผู้ใช้ได้ อาจไม่มีสิทธิ์จัดการบทบาท — ให้หน้าจอทำงานต่อได้
   // แทนที่จะพังทั้งหน้า (เหมือนที่ fetchPermissions ทำอยู่แล้ว)
+  // K-ORG-01: ได้เฉพาะบทบาทที่ผู้ใช้คนนี้มอบได้ แทน /admin/roles ซึ่งเป็นของผู้จัดการบทบาท
   try {
-    const res = await api.get('/admin/roles')
-    roles.value = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : [])
+    const res = await api.get('/admin/assignable-roles')
+    roles.value = Array.isArray(res.data?.roles) ? res.data.roles : []
+    canManageAccess.value = res.data?.can_manage_access === true
   } catch (e) {
     console.error('Failed to fetch roles', e)
   }
@@ -826,6 +836,7 @@ const openEditModal = (user) => {
   form.password = ''
   form.department_id = user.department_id || ''
   form.role_id = user.role_id || user.role?.id || (user.roles && user.roles[0] ? user.roles[0].id : '')
+  editingRoleName.value = user.role?.name || (user.roles && user.roles[0] ? user.roles[0].name : '')
   form.telegram_chat_id = user.telegram_chat_id || ''
   form.work_start_time = user.work_start_time || ''
   form.work_end_time = user.work_end_time || ''
@@ -867,7 +878,10 @@ const submitForm = async () => {
     formData.append('telegram_chat_id', form.telegram_chat_id || '')
     if (form.work_start_time) formData.append('work_start_time', form.work_start_time)
     if (form.work_end_time) formData.append('work_end_time', form.work_end_time)
-    formData.append('custom_permissions', JSON.stringify(form.custom_permissions || []))
+    // K-ORG-01: ส่งสิทธิ์รายบุคคลเฉพาะผู้ที่กำหนดสิทธิ์ได้ — ผู้อื่นไม่ส่ง เพื่อคงสิทธิ์เดิมของผู้ใช้ไว้
+    if (canManageAccess.value) {
+      formData.append('custom_permissions', JSON.stringify(form.custom_permissions || []))
+    }
     formData.append('position_uuid', form.position_uuid || '')
     
     // Add profile data as individual fields (Server expects an array)
