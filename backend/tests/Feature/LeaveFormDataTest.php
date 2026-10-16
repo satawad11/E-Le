@@ -167,19 +167,24 @@ class LeaveFormDataTest extends TestCase
      * แบบฟอร์มราชการเป็นกระดาษ A4 แผ่นเดียว — เดิมแบบใบลาป่วยฯ ล้นไปหน้า 2 ทั้งส่วนลงนาม
      * เพราะ dompdf ตัดแถวตารางข้ามหน้าไม่ได้
      */
-    public function test_every_leave_form_fits_on_one_a4_page(): void
+    public function test_every_single_page_leave_form_fits_on_one_a4_page(): void
     {
         app(DefaultDocumentTemplateService::class)->sync();
         $admin = User::factory()->create();
         $admin->assignRole(Role::findOrCreate('Super Admin', 'web'));
 
-        $codes = ['leave_sick_personal', 'leave_vacation', 'leave_cancel', 'leave_paternity', 'leave_ordination', 'leave_hajj', 'leave_spouse', 'leave_study', 'official_travel', 'leave_military', 'leave_international', 'leave_rehabilitation'];
+        $codes = ['leave_sick_personal', 'leave_vacation', 'leave_cancel', 'leave_paternity', 'leave_ordination', 'leave_hajj', 'leave_spouse', 'leave_study', 'official_travel', 'leave_military'];
+        $pages = fn (string $code) => preg_match_all('/\/Type\s*\/Page[^s]/', $this->actingAs($admin)
+            ->get('/api/admin/document-templates/'.DocumentTemplate::where('code', $code)->firstOrFail()->id.'/preview')->assertOk()->getContent());
 
         foreach ($codes as $code) {
-            $template = DocumentTemplate::where('code', $code)->firstOrFail();
-            $pdf = $this->actingAs($admin)->get("/api/admin/document-templates/{$template->id}/preview")->assertOk()->getContent();
+            $this->assertSame(1, $pages($code), "{$code} ต้องพิมพ์ได้ในหน้าเดียว");
+        }
 
-            $this->assertSame(1, preg_match_all('/\/Type\s*\/Page[^s]/', $pdf), "{$code} ต้องพิมพ์ได้ในหน้าเดียว");
+        // แบบท้ายระเบียบของสองประเภทนี้เป็นแบบหลายหน้า (5 และ 4 หน้า) มีส่วนของส่วนราชการ/กระทรวง/งานบุคคล
+        foreach (['leave_international' => 5, 'leave_rehabilitation' => 4] as $code => $officialPages) {
+            $this->assertGreaterThan(1, $pages($code));
+            $this->assertLessThanOrEqual($officialPages, $pages($code), "{$code} ไม่ควรยาวกว่าแบบท้ายระเบียบ");
         }
     }
 

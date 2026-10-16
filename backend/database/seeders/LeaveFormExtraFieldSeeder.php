@@ -43,6 +43,10 @@ class LeaveFormExtraFieldSeeder extends Seeder
                 ['key' => 'spouse_level', 'label' => 'ระดับของคู่สมรส', 'type' => 'text', 'required' => false],
                 ['key' => 'spouse_affiliation', 'label' => 'สังกัดของคู่สมรส', 'type' => 'text', 'required' => false],
                 ['key' => 'spouse_country', 'label' => 'ประเทศที่คู่สมรสไปปฏิบัติราชการ/ปฏิบัติงาน', 'type' => 'text', 'required' => true],
+                ['key' => 'spouse_posting_period', 'label' => 'คู่สมรสไปปฏิบัติราชการมีกำหนด (เช่น 2 ปี 0 เดือน 0 วัน)', 'type' => 'text', 'required' => false],
+                ['key' => 'salary', 'label' => 'เงินเดือน (บาท)', 'type' => 'text', 'required' => false],
+                ['key' => 'previous_country', 'label' => 'ครั้งสุดท้ายลาติดตามคู่สมรสไปประเทศ', 'type' => 'text', 'required' => false],
+                ['key' => 'total_with_previous', 'label' => 'กรณีลาติดต่อกับครั้งก่อน รวมทั้งครั้งนี้เป็นเวลา', 'type' => 'text', 'required' => false],
             ],
             'leave_study' => [
                 ['key' => 'level', 'label' => 'ระดับ/วิทยฐานะ', 'type' => 'text', 'required' => false],
@@ -52,6 +56,7 @@ class LeaveFormExtraFieldSeeder extends Seeder
                 ['key' => 'institution', 'label' => 'สถานศึกษา/หน่วยงานที่ไป', 'type' => 'text', 'required' => true],
                 ['key' => 'country', 'label' => 'ประเทศ', 'type' => 'text', 'required' => false],
                 ['key' => 'funding', 'label' => 'ทุนที่ใช้', 'type' => 'text', 'required' => false],
+                ['key' => 'salary', 'label' => 'เงินเดือน (บาท)', 'type' => 'text', 'required' => false],
             ],
             'leave_military' => [
                 ['key' => 'level', 'label' => 'ระดับ/วิทยฐานะ', 'type' => 'text', 'required' => false],
@@ -67,6 +72,7 @@ class LeaveFormExtraFieldSeeder extends Seeder
                 ['key' => 'assigned_position', 'label' => 'ตำแหน่งที่ไปปฏิบัติงาน', 'type' => 'text', 'required' => false],
                 ['key' => 'country', 'label' => 'ประเทศ', 'type' => 'text', 'required' => true],
                 ['key' => 'funding', 'label' => 'ได้รับค่าตอบแทนจาก', 'type' => 'text', 'required' => false],
+                ['key' => 'salary', 'label' => 'อัตราเงินเดือน (บาท)', 'type' => 'text', 'required' => false],
             ],
             'leave_rehabilitation' => [
                 ['key' => 'level', 'label' => 'ระดับ/วิทยฐานะ', 'type' => 'text', 'required' => false],
