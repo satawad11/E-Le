@@ -21,6 +21,7 @@ All notable changes to the E-la project will be documented in this file.
 - **Role grant register (C3):** `user_role_grants` (migration `2026_10_18_140000`) records who gave which role, under which order and until when. The user form takes `role_order_number` and `role_expires_at` from holders of `admin.users.manage_permissions`; `access:expire-role-grants` (daily 00:30) returns expired holders to `authorization.base_role` (`ACCESS_BASE_ROLE`, default `Employee`).
 - **Roles (B5):** `HR Officer`, `Auditor` (read-only reports) and `Overtime Operator` (migration `2026_10_18_150000`); Thai descriptions filled in for existing roles where empty.
 - The annual review CSV also lists unit memberships and role-grant order/expiry.
+- **`php artisan org:apply-structure --by= [--dry-run] [--with-bachelor]`** builds the four divisions and their sections from `config/school_structure.php` (regulation 2569 clauses 8–12 and annex chart): creates missing units by exact name, moves matching sections and `แผนกวิชา…` departments under their division, never deletes, renames or deactivates, audits every change, and is idempotent. Requires `system.org_structure.manage`.
 
 ### [LEAVE-DELETE-01] - 2026-10-16 — Deleting a leave is a separate Super Admin permission
 #### Changed
