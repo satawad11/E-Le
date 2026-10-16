@@ -4,6 +4,10 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [ORG-ACCESS-00] - 2026-10-16 — Draft position → access mapping (no data changed)
+#### Added
+- `docs/ORG-POSITION-ACCESS-MAPPING.md`: proposed mapping of each executive / teacher / staff position to personnel type, role and org unit/scope, the 4-division org tree, pitfalls found in the current code (manager assignments narrow scope, role names the code still checks, auto-created leave policies for new personnel types) and the questions the owner must answer. Draft only — no data, schema or code changed.
+
 ### [LEAVE-FORMS-04] - 2026-10-16 — Six forms reworded to the regulation's annexed forms
 #### Changed
 - Hajj, military call-up, spouse, study, international organisation and vocational rehabilitation forms now follow the wording and section order of the forms annexed to ระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลาของข้าราชการ พ.ศ. 2555 (checked against the NABC leave manual, which reproduces the annex):
