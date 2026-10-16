@@ -44,6 +44,9 @@ class OrgScopeResolver
 
     public const CUSTOM = 'CUSTOM';
 
+    /** @var array<string,array<int,int>> หน่วยที่ประจำ แยกตามผู้ใช้@วันที่ */
+    private array $memberUnits = [];
+
     public function __construct(private readonly PermissionEvaluator $evaluator) {}
 
     /**
@@ -141,13 +144,50 @@ class OrgScopeResolver
     {
         $home = $this->homeOrgUnitId($user);
 
-        return match ($scope) {
-            self::ORGANIZATION => null,
-            self::SELF, self::ASSIGNED => [],
-            self::CUSTOM => $orgUnitId === null ? [] : [$orgUnitId],
-            self::DESCENDANTS => $home === null ? [] : $this->subtreeIds($home),
-            default => $home === null ? [] : [$home],
-        };
+        if (in_array($scope, [self::ORGANIZATION, self::SELF, self::ASSIGNED, self::CUSTOM], true)) {
+            return match ($scope) {
+                self::ORGANIZATION => null,
+                self::CUSTOM => $orgUnitId === null ? [] : [$orgUnitId],
+                default => [],
+            };
+        }
+
+        // ต้นสังกัด + หน่วยที่ประจำตามคำสั่ง (ACCESS-GOV-01 · C1 — ระเบียบฯ 2569 ข้อ 13 วรรคสอง)
+        $bases = array_values(array_unique(array_merge($home === null ? [] : [$home], $this->memberOrgUnitIds($user))));
+
+        if ($scope !== self::DESCENDANTS) {
+            return $bases;
+        }
+
+        $units = [];
+        foreach ($bases as $base) {
+            foreach ($this->subtreeIds($base) as $id) {
+                $units[$id] = $id;
+            }
+        }
+
+        return array_values($units);
+    }
+
+    /**
+     * หน่วยงานที่ผู้ใช้เป็นเจ้าหน้าที่ประจำ ณ วันที่ระบุ (นอกเหนือจากต้นสังกัด)
+     *
+     * @return array<int,int>
+     */
+    public function memberOrgUnitIds(User $user, ?string $on = null): array
+    {
+        $date = $on ?? now()->toDateString();
+
+        // เรียกซ้ำหลายครั้งต่อคำขอ (ทุก ability ที่ตรวจขอบเขต) — จำผลไว้ต่อผู้ใช้/วันที่
+        return $this->memberUnits[$user->getKey().'@'.$date] ??= DB::table('org_unit_members')
+            ->where('user_id', $user->getKey())
+            ->whereDate('effective_from', '<=', $date)
+            ->where(fn ($query) => $query->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date))
+            ->pluck('org_unit_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

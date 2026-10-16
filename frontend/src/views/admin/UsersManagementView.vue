@@ -482,6 +482,16 @@
                       <span class="text-xs text-gray-400">เปลี่ยนบทบาทได้เฉพาะผู้มีสิทธิ์ "กำหนดสิทธิ์รายบุคคล"</span>
                     </template>
                   </div>
+                  <!-- ACCESS-GOV-01 · C3: ทะเบียนการมอบบทบาท -->
+                  <div v-if="canManageAccess" class="md:col-span-1">
+                    <label class="block text-xs text-gray-700 mb-1">เลขที่คำสั่งมอบบทบาท</label>
+                    <input v-model="form.role_order_number" type="text" maxlength="100" placeholder="เช่น 123/2569" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                  </div>
+                  <div v-if="canManageAccess" class="md:col-span-1">
+                    <label class="block text-xs text-gray-700 mb-1">บทบาทหมดอายุ (เว้นว่าง = ไม่กำหนด)</label>
+                    <input v-model="form.role_expires_at" type="date" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <span class="text-xs text-gray-400">ถึงวันนั้นระบบจะคืนเป็นบทบาทพื้นฐานอัตโนมัติ</span>
+                  </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">รหัสผ่าน <span v-if="modal.isEdit" class="text-gray-400 font-normal">(เว้นว่างหากไม่เปลี่ยน)</span></label>
                     <input v-model="form.password" type="password" :required="!modal.isEdit" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
@@ -699,6 +709,8 @@ const form = reactive({
   password: '',
   department_id: '',
   role_id: '',
+  role_order_number: '',
+  role_expires_at: '',
   telegram_chat_id: '',
   work_start_time: '',
   work_end_time: '',
@@ -839,6 +851,8 @@ const openAddModal = () => {
   form.password = ''
   form.department_id = ''
   form.role_id = ''
+  form.role_order_number = ''
+  form.role_expires_at = ''
   form.telegram_chat_id = ''
   form.work_start_time = ''
   form.work_end_time = ''
@@ -864,6 +878,8 @@ const openEditModal = (user) => {
   form.department_id = user.department_id || ''
   form.role_id = user.role_id || user.role?.id || (user.roles && user.roles[0] ? user.roles[0].id : '')
   editingRoleName.value = user.role?.name || (user.roles && user.roles[0] ? user.roles[0].name : '')
+  form.role_order_number = user.current_role_grant?.order_number || ''
+  form.role_expires_at = (user.current_role_grant?.expires_at || '').slice(0, 10)
   form.telegram_chat_id = user.telegram_chat_id || ''
   form.work_start_time = user.work_start_time || ''
   form.work_end_time = user.work_end_time || ''
@@ -902,6 +918,10 @@ const submitForm = async () => {
     if (form.password) formData.append('password', form.password)
     formData.append('department_id', form.department_id)
     formData.append('role_id', form.role_id)
+    if (canManageAccess.value) {
+      formData.append('role_order_number', form.role_order_number || '')
+      formData.append('role_expires_at', form.role_expires_at || '')
+    }
     formData.append('telegram_chat_id', form.telegram_chat_id || '')
     if (form.work_start_time) formData.append('work_start_time', form.work_start_time)
     if (form.work_end_time) formData.append('work_end_time', form.work_end_time)

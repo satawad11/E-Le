@@ -53,7 +53,7 @@
 @php
     // ผู้ตรวจสอบ / ผู้บังคับบัญชา / ผู้สั่งการ — เรียงตามลำดับขั้นอนุมัติที่ตั้งค่าไว้
     $blocks = collect($approverBlocks ?? []);
-    $checker = $blocks->firstWhere('role_name', 'HR Head') ?? $blocks->first();
+    $checker = $blocks->first(fn ($b) => \App\Services\DocumentEngine\LeaveFormFieldMap::isChecker($b)) ?? $blocks->first();
     $order = $blocks->last();
     $commander = $blocks->filter(fn ($b) => $b !== $checker && $b !== $order)->first() ?? $order;
 @endphp

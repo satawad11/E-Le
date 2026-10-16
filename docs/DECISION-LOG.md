@@ -373,3 +373,11 @@
   - Until the owner enters the 2569 structure and unit heads, approvals still use the old fallback.
   - The approval chain is still one chain for every leave type; leaves beyond the director's authority are still recorded by hand.
   - Role names are still read by PDF signature blocks and the OT workflow provisioner; removing them is the next phase.
+
+### ADR-ACCESS-GOV-01 addendum (2026-10-17): phase 2
+
+- Forms decide the checker block by the step's signer capacity; role names remain only as the reading of legacy `ROLE` steps, in one constant (`ApprovalStep::LEGACY_ROLE_CAPACITY`).
+- The OT chain keeps its stored workflow version; a subject resolver answers from unit heads first, so no workflow data had to be rewritten.
+- Staff memberships are a separate table from `org_unit_managers` so that no membership can ever make someone an approver.
+- Role expiry returns the user to one configured base role, because the user form keeps one role per user.
+- New roles were added, not swapped in: moving users to them is an owner decision made on the user page.

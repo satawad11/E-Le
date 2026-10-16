@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\OrgUnitManager;
+use App\Models\OrgUnitMember;
 use App\Models\User;
 use App\Models\UserDelegation;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +54,8 @@ class AccessReviewService
         $scopes = DB::table('permission_scopes')->where('model_type', (new User)->getMorphClass())->get()->groupBy('model_id');
         $managers = OrgUnitManager::with('orgUnit:id,name')->inEffect($today)->get()->groupBy('user_id');
         $delegations = UserDelegation::query()->inEffect($today)->get();
+        $memberships = OrgUnitMember::with('orgUnit:id,name')->inEffect($today)->get()->groupBy('user_id');
+        $grants = DB::table('user_role_grants')->whereNull('ended_at')->get()->keyBy('user_id');
 
         $rows = [];
         $privilegedCount = 0;
@@ -75,6 +78,8 @@ class AccessReviewService
                 $user->permissions->pluck('name')->implode(', '),
                 $userScopes->map(fn ($s) => $s->permission_name.'='.$s->scope)->implode(', '),
                 $userManagers->map(fn (OrgUnitManager $m) => $m->assignment_type.' '.($m->orgUnit?->name ?? '').($m->order_number ? ' (คำสั่ง '.$m->order_number.')' : ''))->implode(', '),
+                ($memberships->get($user->id) ?? collect())->map(fn (OrgUnitMember $m) => ($m->orgUnit?->name ?? '').' (คำสั่ง '.$m->order_number.')')->implode(', '),
+                trim(($grants->get($user->id)?->order_number ? 'คำสั่ง '.$grants->get($user->id)->order_number.' ' : '').($grants->get($user->id)?->expires_at ? 'หมดอายุ '.substr($grants->get($user->id)->expires_at, 0, 10) : '')),
                 $delegations->filter(fn ($d) => (int) $d->delegate_id === $user->id)->map(fn ($d) => $d->delegation_type.' แทน user#'.$d->user_id.' ถึง '.$d->end_date)->implode(', '),
                 $user->last_login_at?->toDateTimeString() ?? 'ไม่เคยเข้าระบบ',
                 $privileged ? 'ใช่' : '',
@@ -82,7 +87,7 @@ class AccessReviewService
             ];
         }
 
-        $header = ['อีเมล', 'ชื่อ', 'หน่วยงาน', 'บทบาท', 'สิทธิ์รายบุคคล', 'ขอบเขตพิเศษ', 'หัวหน้าหน่วยงาน (มีผล)', 'ทำการแทน (มีผล)', 'เข้าระบบล่าสุด', 'สิทธิ์สูง', 'ผลการทบทวน (คงไว้/ถอน)'];
+        $header = ['อีเมล', 'ชื่อ', 'หน่วยงาน', 'บทบาท', 'สิทธิ์รายบุคคล', 'ขอบเขตพิเศษ', 'หัวหน้าหน่วยงาน (มีผล)', 'ประจำงาน (มีผล)', 'การมอบบทบาท', 'ทำการแทน (มีผล)', 'เข้าระบบล่าสุด', 'สิทธิ์สูง', 'ผลการทบทวน (คงไว้/ถอน)'];
         $path = "access-reviews/{$academicYear}.csv";
         Storage::disk('local')->put($path, "\u{FEFF}".$this->csv(array_merge([$header], $rows)));
 

@@ -21,7 +21,19 @@
       <ErrorState :message="loadError" @retry="loadData" />
     </div>
 
-    <div v-else class="bg-white shadow rounded-lg overflow-hidden">
+    <div v-if="!loading && !loadError" class="bg-white shadow rounded-lg p-4 flex flex-wrap items-end gap-3">
+      <div class="flex-1 min-w-[16rem]">
+        <label for="ot-permit-unit" class="block text-sm font-medium text-gray-700 mb-1">ผู้อนุญาตคำสั่งปฏิบัติงานล่วงเวลา (OT)</label>
+        <select id="ot-permit-unit" v-model="otPermitUnit" :disabled="!canManage" class="w-full border rounded px-3 py-2 text-sm">
+          <option value="">ยังไม่ตั้ง (ใช้บทบาทรองผู้อำนวยการตามเดิม)</option>
+          <option v-for="u in divisionOptions" :key="u.uuid" :value="u.uuid">หัวหน้าของ {{ u.name }}</option>
+        </select>
+        <p class="text-xs text-gray-500 mt-1">ขั้นอนุมัติขั้นสุดท้ายของคำสั่ง OT คือหัวหน้าหน่วยงานระดับสถานศึกษา (ผู้อำนวยการ)</p>
+      </div>
+      <button v-if="canManage" type="button" class="px-4 py-2 rounded bg-[#800000] hover:bg-[#660000] text-white text-sm disabled:opacity-50" :disabled="saving" @click="saveOtPermit">บันทึก</button>
+    </div>
+
+    <div v-if="!loading && !loadError" class="bg-white shadow rounded-lg overflow-hidden">
       <div class="flex flex-wrap items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200 text-sm">
         <label class="flex items-center gap-2 text-gray-600">
           <input v-model="showInactive" type="checkbox">
@@ -53,9 +65,21 @@
                   <button v-if="canManage" type="button" class="ml-1 text-red-600 hover:underline" @click="openEndModal(m, row.unit)">ปิดวาระ</button>
                 </span>
               </div>
+              <div v-if="row.unit.members?.length" class="mt-1 flex flex-wrap gap-2">
+                <span
+                  v-for="m in row.unit.members"
+                  :key="m.uuid"
+                  class="inline-flex items-center gap-1 text-xs rounded border px-2 py-0.5 border-sky-200 bg-sky-50 text-sky-800"
+                >
+                  เจ้าหน้าที่ประจำ: {{ m.user?.name || '-' }}
+                  <span class="text-gray-400">(คำสั่ง {{ m.order_number }})</span>
+                  <button v-if="canManage" type="button" class="ml-1 text-red-600 hover:underline" @click="openEndModal(m, row.unit, 'member')">สิ้นสุด</button>
+                </span>
+              </div>
             </div>
             <div v-if="canManage" class="flex flex-wrap gap-2 text-sm">
               <button v-if="row.unit.is_active" type="button" class="text-emerald-700 hover:underline" @click="openManagerModal(row.unit)">ตั้งหัวหน้า</button>
+              <button v-if="row.unit.is_active" type="button" class="text-sky-700 hover:underline" @click="openManagerModal(row.unit, 'member')">เพิ่มเจ้าหน้าที่ประจำ</button>
               <button v-if="row.unit.is_active && canHaveChildren(row.unit)" type="button" class="text-blue-600 hover:underline" @click="openUnitModal(null, row.unit)">เพิ่มงาน/หน่วยย่อย</button>
               <button v-if="row.unit.parent_id" type="button" class="text-gray-700 hover:underline" @click="openUnitModal(row.unit)">แก้ไข</button>
               <button type="button" class="text-gray-500 hover:underline" @click="openHistory(row.unit)">ประวัติ</button>
@@ -100,7 +124,7 @@
     </AppModal>
 
     <!-- ตั้งหัวหน้าหน่วยงาน -->
-    <AppModal v-model="managerModal.show" :title="`ตั้งหัวหน้า: ${managerModal.unitName}`" size="lg">
+    <AppModal v-model="managerModal.show" :title="`${managerModal.mode === 'member' ? 'เพิ่มเจ้าหน้าที่ประจำ' : 'ตั้งหัวหน้า'}: ${managerModal.unitName}`" size="lg">
       <form id="manager-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4" @submit.prevent="saveManager">
         <div class="sm:col-span-2">
           <label for="manager-user" class="block text-sm font-medium text-gray-700 mb-1">บุคลากร</label>
@@ -109,7 +133,7 @@
             <option v-for="u in users" :key="u.uuid" :value="u.uuid">{{ u.full_name_with_title || u.name }}</option>
           </select>
         </div>
-        <div>
+        <div v-if="managerModal.mode !== 'member'">
           <label for="manager-type" class="block text-sm font-medium text-gray-700 mb-1">ฐานะ</label>
           <select id="manager-type" v-model="managerModal.assignment_type" class="w-full border rounded px-3 py-2 text-sm">
             <option value="MANAGER">หัวหน้า (ตามคำสั่งแต่งตั้ง)</option>
@@ -117,7 +141,7 @@
             <option value="DELEGATE">รับมอบอำนาจเฉพาะช่วง</option>
           </select>
         </div>
-        <div>
+        <div v-if="managerModal.mode !== 'member'">
           <label for="manager-scope" class="block text-sm font-medium text-gray-700 mb-1">ขอบเขต</label>
           <select id="manager-scope" v-model="managerModal.scope" class="w-full border rounded px-3 py-2 text-sm">
             <option value="UNIT">เฉพาะหน่วยงานนี้</option>
@@ -144,7 +168,11 @@
           <label for="manager-note" class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
           <input id="manager-note" v-model="managerModal.note" type="text" maxlength="255" class="w-full border rounded px-3 py-2 text-sm">
         </div>
-        <p class="sm:col-span-2 text-xs text-gray-500">
+        <p v-if="managerModal.mode === 'member'" class="sm:col-span-2 text-xs text-gray-500">
+          เจ้าหน้าที่ประจำงานเห็นข้อมูลของหน่วยงานนี้เพิ่มจากหน่วยงานต้นสังกัด ตามสิทธิ์ที่บทบาทให้ไว้ แต่ไม่เป็นผู้อนุมัติใบลา
+          หนึ่งคนประจำได้หลายงาน (ระเบียบฯ 2569 ข้อ 13)
+        </p>
+        <p v-else class="sm:col-span-2 text-xs text-gray-500">
           การตั้งหัวหน้าทำให้ผู้นั้นอนุมัติใบลาของบุคลากรในหน่วยงานตามลำดับการอนุมัติ และเห็นข้อมูลตามขอบเขตที่เลือก
           หน่วยงานหนึ่งมีหัวหน้าได้มากกว่าหนึ่งคน และหนึ่งคนเป็นหัวหน้าได้หลายหน่วยงาน
         </p>
@@ -226,6 +254,20 @@ const showInactive = ref(false)
 
 const canManage = computed(() => authStore.isAdmin || authStore.hasPermission('system.org_structure.manage'))
 const root = computed(() => units.value.find(u => u.parent_id === null) || null)
+const otPermitUnit = ref('')
+const divisionOptions = computed(() => units.value.filter(u => u.is_active && u.parent_id !== null))
+
+const saveOtPermit = async () => {
+  saving.value = true
+  try {
+    await api.put('/admin/org-structure/overtime-permit-unit', { org_unit_uuid: otPermitUnit.value || null })
+    alertStore.success('บันทึกผู้อนุญาตคำสั่ง OT เรียบร้อยแล้ว')
+  } catch (e) {
+    alertStore.error(getErrorMessage(e, 'บันทึกไม่สำเร็จ'))
+  } finally {
+    saving.value = false
+  }
+}
 
 const TYPE_LABELS = { organization: 'สถานศึกษา', division: 'ฝ่าย', section: 'งาน', department: 'แผนก' }
 const typeLabel = type => TYPE_LABELS[type] || type
@@ -302,11 +344,12 @@ const saveUnit = async () => {
 }
 
 const today = () => new Date().toISOString().slice(0, 10)
-const managerModal = reactive({ show: false, unitUuid: '', unitName: '', user_uuid: '', assignment_type: 'MANAGER', scope: 'UNIT', order_number: '', order_date: '', effective_from: '', effective_to: '', note: '' })
+const managerModal = reactive({ show: false, mode: 'manager', unitUuid: '', unitName: '', user_uuid: '', assignment_type: 'MANAGER', scope: 'UNIT', order_number: '', order_date: '', effective_from: '', effective_to: '', note: '' })
 
-const openManagerModal = async unit => {
+const openManagerModal = async (unit, mode = 'manager') => {
   Object.assign(managerModal, {
     show: true,
+    mode,
     unitUuid: unit.uuid,
     unitName: unit.name,
     user_uuid: '',
@@ -332,10 +375,17 @@ const openManagerModal = async unit => {
 const saveManager = async () => {
   saving.value = true
   try {
-    const { unitUuid, show, unitName, ...payload } = managerModal
+    const { unitUuid, show, unitName, mode, ...payload } = managerModal
     if (!payload.effective_to) payload.effective_to = null
-    await api.post(`/admin/org-units/${unitUuid}/managers`, payload)
-    alertStore.success('บันทึกหัวหน้าหน่วยงานเรียบร้อยแล้ว')
+    if (mode === 'member') {
+      delete payload.assignment_type
+      delete payload.scope
+      await api.post(`/admin/org-units/${unitUuid}/members`, payload)
+      alertStore.success('บันทึกเจ้าหน้าที่ประจำงานเรียบร้อยแล้ว')
+    } else {
+      await api.post(`/admin/org-units/${unitUuid}/managers`, payload)
+      alertStore.success('บันทึกหัวหน้าหน่วยงานเรียบร้อยแล้ว')
+    }
     managerModal.show = false
     await loadData()
   } catch (e) {
@@ -345,14 +395,15 @@ const saveManager = async () => {
   }
 }
 
-const endModal = reactive({ show: false, uuid: '', label: '', effective_to: '', note: '' })
-const openEndModal = (manager, unit) => {
-  Object.assign(endModal, { show: true, uuid: manager.uuid, label: `${manager.user?.name || ''} · ${unit.name}`, effective_to: today(), note: '' })
+const endModal = reactive({ show: false, kind: 'manager', uuid: '', label: '', effective_to: '', note: '' })
+const openEndModal = (manager, unit, kind = 'manager') => {
+  Object.assign(endModal, { show: true, kind, uuid: manager.uuid, label: `${manager.user?.name || ''} · ${unit.name}`, effective_to: today(), note: '' })
 }
 const saveEnd = async () => {
   saving.value = true
   try {
-    await api.post(`/admin/org-unit-managers/${endModal.uuid}/end`, { effective_to: endModal.effective_to, note: endModal.note || null })
+    const base = endModal.kind === 'member' ? 'org-unit-members' : 'org-unit-managers'
+    await api.post(`/admin/${base}/${endModal.uuid}/end`, { effective_to: endModal.effective_to, note: endModal.note || null })
     alertStore.success('ปิดวาระเรียบร้อยแล้ว')
     endModal.show = false
     await loadData()
@@ -382,6 +433,7 @@ const loadData = async () => {
   try {
     const res = await api.get('/admin/org-units')
     units.value = Array.isArray(res.data?.units) ? res.data.units : []
+    otPermitUnit.value = res.data?.overtime_permit_unit_uuid || ''
   } catch (e) {
     loadError.value = getErrorMessage(e, 'ไม่สามารถโหลดโครงสร้างหน่วยงานได้')
   } finally {

@@ -59,6 +59,12 @@ class User extends Authenticatable
         return $this->belongsTo(Department::class);
     }
 
+    /** การมอบบทบาทที่ยังเปิดอยู่ (ACCESS-GOV-01 · C3) — เลขคำสั่งและวันหมดอายุของบทบาทปัจจุบัน */
+    public function currentRoleGrant()
+    {
+        return $this->hasOne(UserRoleGrant::class)->whereNull('ended_at')->latest('id');
+    }
+
     public function orgUnit()
     {
         return $this->belongsTo(OrgUnit::class);

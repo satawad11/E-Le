@@ -6,6 +6,7 @@ use App\Models\ApprovalStep;
 use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveApproval;
+use App\Models\Role;
 use App\Models\Setting;
 use App\Models\UserDelegation;
 use App\Support\StoredFile;
@@ -25,29 +26,33 @@ use Illuminate\Support\Collection;
  */
 class LeaveApproverBlocks
 {
-    /** ชื่อผู้บริหารตามตำแหน่งจากหน้าตั้งค่า — ใช้เมื่อขั้นนั้นยังไม่มีผู้ลงนาม */
+    /** ชื่อผู้บริหารตามฐานะผู้ลงนามจากหน้าตั้งค่า — ใช้เมื่อขั้นนั้นยังไม่มีผู้ลงนาม */
     private const DEFAULT_NAME_SETTINGS = [
-        'HR Head' => 'head_hr_name',
-        'Deputy Director' => 'deputy_admin_name',
-        'Director' => 'director_name',
+        ApprovalStep::CAPACITY_CHECKER => 'head_hr_name',
+        ApprovalStep::CAPACITY_DEPUTY => 'deputy_admin_name',
+        ApprovalStep::CAPACITY_DIRECTOR => 'director_name',
     ];
 
     private const BLANK_NAME = '........................................................';
 
     /**
-     * @return array<int, array{name: string, date: ?Carbon, signature: ?string, signature_path: ?string, comment: ?string, status: ?string, position: string, role_name: string, acting_line: string, recorded: bool}>
+     * `capacity` = ฐานะผู้ลงนาม (checker/supervisor/deputy/director) จากวิธีหาผู้อนุมัติของขั้น
+     * แบบฟอร์มใช้เลือกบล็อก "ผู้ตรวจสอบ" แทนการเทียบชื่อบทบาท (ACCESS-GOV-01 · B2)
+     * `role_name` คงไว้ให้แบบฟอร์มที่ออกแบบไว้เดิม
+     *
+     * @return array<int, array{name: string, date: ?Carbon, signature: ?string, signature_path: ?string, comment: ?string, status: ?string, position: string, role_name: string, capacity: ?string, acting_line: string, recorded: bool}>
      */
     public function for(Leave $leave, bool $isCancel = false): array
     {
-        $steps = ApprovalStep::stepsFor($isCancel ? ApprovalStep::CHAIN_CANCELLATION : ApprovalStep::CHAIN_LEAVE)->load('role');
         $approvals = $this->approvals($leave, $isCancel);
         $settings = Setting::pluck('value', 'key');
 
-        $blocks = $steps->map(function (ApprovalStep $step) use ($approvals, $settings) {
-            $roleName = (string) ($step->role?->name ?? '');
-            $approval = $approvals->get($step->step_order);
+        $blocks = $this->steps($approvals, $isCancel)->map(function (array $step) use ($approvals, $settings) {
+            $roleName = (string) ($step['role']?->name ?? '');
+            $capacity = ApprovalStep::capacityOf($step['approver_type'], $roleName, $step['org_unit_id']);
+            $approval = $approvals->get($step['step_order']);
             $acted = $approval !== null && in_array($approval->status, ['Approved', 'Rejected'], true);
-            $settingKey = self::DEFAULT_NAME_SETTINGS[$roleName] ?? null;
+            $settingKey = self::DEFAULT_NAME_SETTINGS[$capacity] ?? null;
 
             return [
                 'name' => $approval
@@ -60,8 +65,9 @@ class LeaveApproverBlocks
                 'signature_path' => $acted ? $approval->signature_path : null,
                 'comment' => $acted ? $approval->comment : null,
                 'status' => $approval?->status,
-                'position' => (string) ($approval?->approver_position ?: ($step->role?->description ?? $step->name)),
+                'position' => (string) ($approval?->approver_position ?: ($step['role']?->description ?? $step['name'])),
                 'role_name' => $roleName,
+                'capacity' => $capacity,
                 // "ปฏิบัติราชการแทน …" เมื่อผู้ทำหน้าที่แทนลงนาม (DELEGATION-01) — จาก snapshot ณ วันลงนาม
                 'acting_line' => $acted ? UserDelegation::lineFor($approval->acting_type, $approval->acting_position) : '',
                 // ผู้ดูแลบันทึกตามเอกสารที่ลงนามแล้ว — ไม่มีรูปลายเซ็นในระบบ
@@ -74,6 +80,30 @@ class LeaveApproverBlocks
         }
 
         return $blocks;
+    }
+
+    /**
+     * ขั้นของสายปัจจุบัน — วิธีหาผู้อนุมัติอ่านจาก snapshot ของใบลา (ถ้ามีแถวของขั้นนั้น)
+     * เพราะ snapshot อาจมีไม่ครบทุกขั้น (ใบลาเก่าสร้างแถวทีละขั้นเมื่อถึงขั้นนั้น)
+     *
+     * @param  Collection<int, LeaveApproval>  $approvals
+     * @return Collection<int, array{step_order: int, name: string, approver_type: ?string, role: ?Role, org_unit_id: ?int}>
+     */
+    private function steps(Collection $approvals, bool $isCancel): Collection
+    {
+        return ApprovalStep::stepsFor($isCancel ? ApprovalStep::CHAIN_CANCELLATION : ApprovalStep::CHAIN_LEAVE)
+            ->load('role')
+            ->map(function (ApprovalStep $step) use ($approvals) {
+                $pinned = $approvals->get($step->step_order);
+
+                return [
+                    'step_order' => (int) $step->step_order,
+                    'name' => (string) $step->name,
+                    'approver_type' => $pinned?->approver_type ?? $step->approver_type,
+                    'role' => $step->role,
+                    'org_unit_id' => $pinned ? $pinned->org_unit_id : $step->org_unit_id,
+                ];
+            })->values();
     }
 
     /**
@@ -103,6 +133,7 @@ class LeaveApproverBlocks
             'status' => $log->action === 'Cancellation Approved' ? 'Approved' : 'Rejected',
             'position' => (string) ($log->user->profile?->position ?? ''),
             'role_name' => 'Director',
+            'capacity' => ApprovalStep::CAPACITY_DIRECTOR,
             'acting_line' => '',
             'recorded' => false,
         ];

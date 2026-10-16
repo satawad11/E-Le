@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\ApprovalStep;
 use App\Models\OrgUnit;
 use App\Models\OrgUnitManager;
+use App\Models\OrgUnitMember;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\Workflow\Assignee\OvertimeAssigneeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -46,6 +49,13 @@ class OrgStructureController extends Controller
             ->get()
             ->groupBy('org_unit_id');
 
+        $members = OrgUnitMember::query()
+            ->with('user.profile')
+            ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $today))
+            ->orderBy('effective_from')
+            ->get()
+            ->groupBy('org_unit_id');
+
         $units = OrgUnit::query()->orderBy('name')->get()->map(fn (OrgUnit $unit) => [
             'id' => $unit->id,
             'uuid' => $unit->uuid,
@@ -56,9 +66,32 @@ class OrgStructureController extends Controller
             'is_active' => (bool) $unit->is_active,
             'linked_department' => $linked->has($unit->id),
             'managers' => ($managers->get($unit->id) ?? collect())->map(fn (OrgUnitManager $m) => $this->managerPayload($m, $today))->values(),
+            'members' => ($members->get($unit->id) ?? collect())->map(fn (OrgUnitMember $m) => $this->memberPayload($m, $today))->values(),
         ]);
 
-        return response()->json(['units' => $units]);
+        $permitUnitId = (int) (Setting::where('key', OvertimeAssigneeResolver::PERMIT_UNIT_SETTING)->value('value') ?: 0) ?: null;
+
+        return response()->json([
+            'units' => $units,
+            // หน่วยงานที่หัวหน้าเป็นผู้อนุญาตคำสั่ง OT (รองผู้อำนวยการฝ่ายบริหารทรัพยากร)
+            'overtime_permit_unit_uuid' => $permitUnitId ? OrgUnit::whereKey($permitUnitId)->value('uuid') : null,
+        ]);
+    }
+
+    /** ตั้งหน่วยงานที่หัวหน้าเป็นผู้อนุญาตคำสั่ง OT — null = กลับไปใช้บทบาทตามเดิม */
+    public function updateOvertimePermitUnit(Request $request): JsonResponse
+    {
+        $data = $request->validate(['org_unit_uuid' => ['nullable', 'string', 'exists:org_units,uuid']], $this->messages());
+        $unit = filled($data['org_unit_uuid'] ?? null) ? OrgUnit::where('uuid', $data['org_unit_uuid'])->firstOrFail() : null;
+        abort_if($unit !== null && ! $unit->is_active, 422, 'หน่วยงานนี้ถูกปิดใช้งานแล้ว');
+
+        $before = Setting::where('key', OvertimeAssigneeResolver::PERMIT_UNIT_SETTING)->value('value');
+        DB::transaction(function () use ($unit, $before) {
+            Setting::updateOrCreate(['key' => OvertimeAssigneeResolver::PERMIT_UNIT_SETTING], ['value' => (string) ($unit?->id ?? ''), 'type' => 'string']);
+            $this->audit->log('org_unit.overtime_permit_unit_set', 'setting', OvertimeAssigneeResolver::PERMIT_UNIT_SETTING, ['org_unit_id' => $before], ['org_unit_id' => $unit?->id]);
+        });
+
+        return response()->json(['message' => 'บันทึกผู้อนุญาตคำสั่ง OT เรียบร้อยแล้ว']);
     }
 
     /** ประวัติหัวหน้าทั้งหมดของหน่วยงาน รวมวาระที่ปิดแล้ว */
@@ -239,6 +272,81 @@ class OrgStructureController extends Controller
     }
 
     /**
+     * เจ้าหน้าที่ประจำงานตามคำสั่ง (ระเบียบฯ 2569 ข้อ 13 วรรคสอง) — ขยายขอบเขตข้อมูล ไม่ให้สิทธิ์อนุมัติ
+     */
+    public function storeMember(Request $request, string $uuid): JsonResponse
+    {
+        $unit = OrgUnit::where('uuid', $uuid)->firstOrFail();
+        abort_unless($unit->is_active, 422, 'หน่วยงานนี้ถูกปิดใช้งานแล้ว');
+
+        $data = $request->validate([
+            'user_uuid' => ['required', 'string', 'exists:users,uuid'],
+            'order_number' => ['required', 'string', 'max:100'],
+            'order_date' => ['required', 'date'],
+            'effective_from' => ['required', 'date'],
+            'effective_to' => ['nullable', 'date', 'after_or_equal:effective_from'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ], $this->messages());
+
+        $user = User::where('uuid', $data['user_uuid'])->firstOrFail();
+        abort_unless($user->is_active, 422, 'ผู้ใช้นี้ถูกระงับการใช้งาน');
+
+        $overlap = OrgUnitMember::query()
+            ->where('org_unit_id', $unit->id)->where('user_id', $user->id)
+            ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $data['effective_from']))
+            ->when($data['effective_to'] ?? null, fn ($q, $to) => $q->whereDate('effective_from', '<=', $to))
+            ->exists();
+        if ($overlap) {
+            throw ValidationException::withMessages(['user_uuid' => ['ผู้ใช้นี้ประจำหน่วยงานนี้ซ้อนช่วงเวลาอยู่แล้ว']]);
+        }
+
+        $member = DB::transaction(function () use ($data, $unit, $user, $request) {
+            $member = OrgUnitMember::create([
+                'org_unit_id' => $unit->id,
+                'user_id' => $user->id,
+                'order_number' => trim($data['order_number']),
+                'order_date' => $data['order_date'],
+                'effective_from' => $data['effective_from'],
+                'effective_to' => $data['effective_to'] ?? null,
+                'note' => $data['note'] ?? null,
+                'created_by' => $request->user()->id,
+            ]);
+            $this->audit->log('org_unit.member_assigned', 'org_unit_member', $member->id, null, $member->only([
+                'uuid', 'org_unit_id', 'user_id', 'order_number', 'effective_from', 'effective_to',
+            ]), reason: 'คำสั่งที่ '.trim($data['order_number']));
+
+            return $member;
+        });
+
+        return response()->json(['message' => 'บันทึกเจ้าหน้าที่ประจำงานเรียบร้อยแล้ว', 'uuid' => $member->uuid], 201);
+    }
+
+    public function endMember(Request $request, string $uuid): JsonResponse
+    {
+        $member = OrgUnitMember::where('uuid', $uuid)->firstOrFail();
+        $data = $request->validate([
+            'effective_to' => ['required', 'date'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ], $this->messages());
+
+        $end = Carbon::parse($data['effective_to'])->toDateString();
+        if ($end < $member->effective_from->toDateString()) {
+            throw ValidationException::withMessages(['effective_to' => ['วันสิ้นสุดต้องไม่ก่อนวันเริ่มมีผล']]);
+        }
+        if ($member->effective_to !== null && $member->effective_to->toDateString() < $end) {
+            throw ValidationException::withMessages(['effective_to' => ['การประจำงานนี้สิ้นสุดก่อนวันที่ระบุแล้ว']]);
+        }
+
+        $before = ['effective_to' => $member->effective_to?->toDateString()];
+        DB::transaction(function () use ($member, $end, $data, $request, $before) {
+            $member->forceFill(['effective_to' => $end, 'ended_by' => $request->user()->id])->save();
+            $this->audit->log('org_unit.member_ended', 'org_unit_member', $member->id, $before, ['effective_to' => $end], reason: $data['note'] ?? null);
+        });
+
+        return response()->json(['message' => 'สิ้นสุดการประจำงานเรียบร้อยแล้ว']);
+    }
+
+    /**
      * ปิดหน่วยงานได้เมื่อไม่มีหน่วยย่อยที่ยังใช้งาน ไม่มีบุคลากรสังกัด ไม่มีหัวหน้าที่ยังมีผล
      * และไม่ถูกอ้างในสายอนุมัติ — มิฉะนั้นใบลาจะหาผู้อนุมัติไม่ได้หรือคนจะหลุดจากผัง
      */
@@ -255,6 +363,9 @@ class OrgStructureController extends Controller
         }
         if (OrgUnitManager::where('org_unit_id', $unit->id)->inEffect()->exists()) {
             $reasons[] = 'ยังมีหัวหน้าหน่วยงานที่วาระยังไม่สิ้นสุด';
+        }
+        if (OrgUnitMember::where('org_unit_id', $unit->id)->inEffect()->exists()) {
+            $reasons[] = 'ยังมีเจ้าหน้าที่ประจำงาน';
         }
         if (ApprovalStep::where('org_unit_id', $unit->id)->exists()) {
             $reasons[] = 'ถูกใช้ในลำดับการอนุมัติ';
@@ -298,6 +409,24 @@ class OrgStructureController extends Controller
             'in_effect' => $m->effective_from?->toDateString() <= $today
                 && ($m->effective_to === null || $m->effective_to->toDateString() >= $today),
             'note' => $m->note,
+        ];
+    }
+
+    private function memberPayload(OrgUnitMember $m, string $today): array
+    {
+        return [
+            'uuid' => $m->uuid,
+            'user' => $m->user ? [
+                'uuid' => $m->user->uuid,
+                'name' => $m->user->full_name_with_title ?? $m->user->name,
+                'is_active' => (bool) $m->user->is_active,
+            ] : null,
+            'order_number' => $m->order_number,
+            'order_date' => $m->order_date?->toDateString(),
+            'effective_from' => $m->effective_from?->toDateString(),
+            'effective_to' => $m->effective_to?->toDateString(),
+            'in_effect' => $m->effective_from?->toDateString() <= $today
+                && ($m->effective_to === null || $m->effective_to->toDateString() >= $today),
         ];
     }
 

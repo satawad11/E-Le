@@ -80,6 +80,57 @@ class ApprovalStep extends Model
         return static::query()->chain(self::CHAIN_CANCELLATION)->exists();
     }
 
+    /** ฐานะของผู้ลงนามบนแบบฟอร์มราชการ — ใช้เลือกบล็อก "ผู้ตรวจสอบ" และชื่อผู้บริหารจากหน้าตั้งค่า */
+    public const CAPACITY_CHECKER = 'checker';
+
+    public const CAPACITY_SUPERVISOR = 'supervisor';
+
+    public const CAPACITY_DEPUTY = 'deputy';
+
+    public const CAPACITY_DIRECTOR = 'director';
+
+    /**
+     * ชื่อบทบาทของระบบเดิมที่ยังใช้ในขั้นแบบ ROLE — จุดเดียวที่ยังอ่านชื่อบทบาท (ACCESS-GOV-01 · B2)
+     * ขั้นที่ตั้งด้วยวิธีหาผู้อนุมัติอัตโนมัติไม่ต้องพึ่งชื่อบทบาทเลย
+     */
+    private const LEGACY_ROLE_CAPACITY = [
+        'HR Head' => self::CAPACITY_CHECKER, 'HRHead' => self::CAPACITY_CHECKER, 'เจ้าหน้าที่บุคลากร (HR)' => self::CAPACITY_CHECKER,
+        'Deputy Director' => self::CAPACITY_DEPUTY, 'รองผู้อำนวยการ' => self::CAPACITY_DEPUTY,
+        'Director' => self::CAPACITY_DIRECTOR, 'ผู้อำนวยการ' => self::CAPACITY_DIRECTOR,
+    ];
+
+    /**
+     * ฐานะผู้ลงนามของขั้น จากวิธีหาผู้อนุมัติ (ขั้นใน approval_steps หรือ snapshot ใน leave_approvals)
+     *
+     * ORG_UNIT_MANAGER: หน่วยระดับสถานศึกษา = ผู้อำนวยการ · หน่วยที่อยู่ใต้สถานศึกษาโดยตรง (ฝ่าย) = รองฯ · ลึกกว่านั้น = หัวหน้า
+     */
+    public static function capacityOf(?string $approverType, ?string $roleName, ?int $orgUnitId): ?string
+    {
+        return match ($approverType ?: self::RESOLVER_ROLE) {
+            self::RESOLVER_HR_OFFICER => self::CAPACITY_CHECKER,
+            self::RESOLVER_DEPARTMENT_HEAD, self::RESOLVER_REQUESTER_SUPERVISOR => self::CAPACITY_SUPERVISOR,
+            self::RESOLVER_DIVISION_DIRECTOR => self::CAPACITY_DEPUTY,
+            self::RESOLVER_DIRECTOR => self::CAPACITY_DIRECTOR,
+            self::RESOLVER_ORG_UNIT_MANAGER => self::capacityOfUnit($orgUnitId),
+            default => self::LEGACY_ROLE_CAPACITY[(string) $roleName] ?? null,
+        };
+    }
+
+    private static function capacityOfUnit(?int $orgUnitId): ?string
+    {
+        $unit = $orgUnitId ? OrgUnit::find($orgUnitId) : null;
+        if ($unit === null) {
+            return null;
+        }
+        if ($unit->parent_id === null) {
+            return self::CAPACITY_DIRECTOR;
+        }
+
+        return OrgUnit::whereKey($unit->parent_id)->whereNull('parent_id')->exists()
+            ? self::CAPACITY_DEPUTY
+            : self::CAPACITY_SUPERVISOR;
+    }
+
     /**
      * วิธีหาตัวผู้อนุมัติของขั้นนี้ สำหรับคัดลอกลง leave_approvals (snapshot ณ วันยื่น)
      *

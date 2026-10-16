@@ -235,6 +235,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/admin/org-units/{uuid}/managers', [OrgStructureController::class, 'managerHistory']);
         Route::post('/admin/org-units/{uuid}/managers', [OrgStructureController::class, 'storeManager']);
         Route::post('/admin/org-unit-managers/{uuid}/end', [OrgStructureController::class, 'endManager']);
+        Route::put('/admin/org-structure/overtime-permit-unit', [OrgStructureController::class, 'updateOvertimePermitUnit']);
+        Route::post('/admin/org-units/{uuid}/members', [OrgStructureController::class, 'storeMember']);
+        Route::post('/admin/org-unit-members/{uuid}/end', [OrgStructureController::class, 'endMember']);
     });
 
     // Admin: Workflow Steps

@@ -2,6 +2,7 @@
 
 namespace App\Services\DocumentEngine;
 
+use App\Models\ApprovalStep;
 use App\Models\Leave;
 use App\Models\LeaveType;
 use App\Services\LeaveDocumentFields;
@@ -252,12 +253,15 @@ class LeaveFormFieldMap
 
         $values = $this->values($sample + [
             'leave' => $leave,
-            'approverBlocks' => collect(['HR Head' => 'หัวหน้างานบุคลากร', 'Deputy Director' => 'รองผู้อำนวยการ', 'Director' => 'ผู้อำนวยการ'])
-                ->map(fn (string $position, string $role) => [
-                    'name' => 'ตัวอย่าง ผู้ลงนาม', 'position' => $position, 'comment' => 'เห็นควรอนุญาต',
-                    'date' => now(), 'signature_path' => null, 'status' => 'Approved', 'role_name' => $role,
-                    'acting_line' => $role === 'Director' ? 'ปฏิบัติราชการแทน ผู้อำนวยการ' : '',
-                ])->values()->all(),
+            'approverBlocks' => collect([
+                ApprovalStep::CAPACITY_CHECKER => 'หัวหน้างานบุคลากร',
+                ApprovalStep::CAPACITY_DEPUTY => 'รองผู้อำนวยการ',
+                ApprovalStep::CAPACITY_DIRECTOR => 'ผู้อำนวยการ',
+            ])->map(fn (string $position, string $capacity) => [
+                'name' => 'ตัวอย่าง ผู้ลงนาม', 'position' => $position, 'comment' => 'เห็นควรอนุญาต',
+                'date' => now(), 'signature_path' => null, 'status' => 'Approved', 'role_name' => '', 'capacity' => $capacity,
+                'acting_line' => $capacity === ApprovalStep::CAPACITY_DIRECTOR ? 'ปฏิบัติราชการแทน ผู้อำนวยการ' : '',
+            ])->values()->all(),
         ]);
 
         // ช่องเฉพาะแบบฟอร์มที่ยังไม่มีค่าตัวอย่าง ให้แสดงชื่อช่องแทน จะได้เห็นตำแหน่งบนพรีวิว
@@ -277,7 +281,7 @@ class LeaveFormFieldMap
      * ดัชนีของบล็อกผู้ลงนามตามบทบาทบนแบบฟอร์ม
      *
      *   authorizer = ขั้นสุดท้าย · commander = ขั้นก่อนสุดท้าย (มีขั้นเดียว = ขั้นนั้น)
-     *   checker    = ขั้นของงานบุคลากร (บทบาท HR Head) ที่ไม่ใช่สองบทบาทข้างต้น
+     *   checker    = ขั้นของงานบุคลากร (ฐานะ checker) ที่ไม่ใช่สองบทบาทข้างต้น
      *                ถ้าไม่มีและมีตั้งแต่ 3 ขั้น ใช้ขั้นแรก
      *
      * @param  array<int, array<string, mixed>>  $blocks
@@ -296,7 +300,7 @@ class LeaveFormFieldMap
 
         $checker = null;
         foreach ($blocks as $index => $block) {
-            if (($block['role_name'] ?? '') === 'HR Head' && $index !== $commander && $index !== $authorizer) {
+            if (self::isChecker($block) && $index !== $commander && $index !== $authorizer) {
                 $checker = $index;
                 break;
             }
@@ -306,6 +310,21 @@ class LeaveFormFieldMap
         }
 
         return ['checker' => $checker, 'commander' => $commander, 'authorizer' => $authorizer];
+    }
+
+    /**
+     * บล็อกของงานบุคลากร — จากฐานะผู้ลงนาม (ACCESS-GOV-01) ไม่ใช่ชื่อบทบาท
+     * บล็อกที่สร้างก่อนมี `capacity` (เช่นค่าที่ส่งมาจากภายนอก) ยังอ่าน role_name ได้
+     *
+     * @param  array<string, mixed>  $block
+     */
+    public static function isChecker(array $block): bool
+    {
+        if (array_key_exists('capacity', $block)) {
+            return $block['capacity'] === ApprovalStep::CAPACITY_CHECKER;
+        }
+
+        return ApprovalStep::capacityOf(null, (string) ($block['role_name'] ?? ''), null) === ApprovalStep::CAPACITY_CHECKER;
     }
 
     /**

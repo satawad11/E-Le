@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApprovalStep;
 use App\Models\Department;
 use App\Models\DocumentTemplate;
 use App\Models\Leave;
@@ -162,15 +163,20 @@ class DocumentTemplateController extends Controller
      */
     private function sampleApproverBlocks(): array
     {
-        return collect(['HR Head' => 'หัวหน้างานบุคลากร', 'Deputy Director' => 'รองผู้อำนวยการ', 'Director' => 'ผู้อำนวยการ'])
-            ->map(fn (string $position, string $role) => [
+        return collect([
+            ApprovalStep::CAPACITY_CHECKER => 'หัวหน้างานบุคลากร',
+            ApprovalStep::CAPACITY_DEPUTY => 'รองผู้อำนวยการ',
+            ApprovalStep::CAPACITY_DIRECTOR => 'ผู้อำนวยการ',
+        ])
+            ->map(fn (string $position, string $capacity) => [
                 'name' => 'ตัวอย่าง ผู้ลงนาม',
                 'date' => now(),
                 'signature' => null,
                 'comment' => 'เห็นควรอนุญาต',
                 'status' => 'Approved',
                 'position' => $position,
-                'role_name' => $role,
+                'role_name' => '',
+                'capacity' => $capacity,
                 'acting_line' => '',
             ])
             ->values()

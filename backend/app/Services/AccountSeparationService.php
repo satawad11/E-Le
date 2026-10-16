@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\OrgUnitManager;
+use App\Models\OrgUnitMember;
 use App\Models\User;
 use App\Models\UserDelegation;
 use Illuminate\Support\Carbon;
@@ -16,7 +17,7 @@ use InvalidArgumentException;
  * ในวันเดียวกัน มิฉะนั้นคนที่ย้ายออกไปแล้วยังอนุมัติใบลาหรือเห็นข้อมูลของหน่วยงานเดิมได้:
  *
  * 1. ระงับบัญชี (UserObserver ยกเลิก token ทั้งหมด)
- * 2. ปิดวาระหัวหน้าหน่วยงานที่ยังมีผลหรือยังไม่เริ่ม ณ วันพ้นสภาพ
+ * 2. ปิดวาระหัวหน้าหน่วยงานและการประจำงานที่ยังมีผลหรือยังไม่เริ่ม ณ วันพ้นสภาพ
  * 3. เพิกถอนการรักษาราชการแทน/ปฏิบัติราชการแทน ทั้งที่เป็นผู้มอบและผู้รับมอบ
  * 4. ลบขอบเขตสิทธิ์รายบุคคล (permission_scopes)
  *
@@ -28,7 +29,7 @@ class AccountSeparationService
     public function __construct(private readonly AuditLogger $audit) {}
 
     /**
-     * @return array{managers_ended:int, delegations_revoked:int, scopes_removed:int, pending_leaves:int}
+     * @return array{managers_ended:int, memberships_ended:int, delegations_revoked:int, scopes_removed:int, pending_leaves:int}
      */
     public function separate(User $actor, User $user, string $date, string $reason): array
     {
@@ -57,6 +58,16 @@ class AccountSeparationService
                 $end = $manager->effective_from->toDateString() > $date ? $manager->effective_from->toDateString() : $date;
                 $manager->forceFill(['effective_to' => $end, 'ended_by' => $actor->id])->save();
                 $this->audit->log('org_unit.manager_ended', 'org_unit_manager', $manager->id, null, ['effective_to' => $end], 'พ้นสภาพ: '.$reason, $actor->id);
+            }
+
+            $members = OrgUnitMember::query()
+                ->where('user_id', $user->id)
+                ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>', $date))
+                ->get();
+            foreach ($members as $member) {
+                $end = $member->effective_from->toDateString() > $date ? $member->effective_from->toDateString() : $date;
+                $member->forceFill(['effective_to' => $end, 'ended_by' => $actor->id])->save();
+                $this->audit->log('org_unit.member_ended', 'org_unit_member', $member->id, null, ['effective_to' => $end], 'พ้นสภาพ: '.$reason, $actor->id);
             }
 
             $delegations = UserDelegation::query()
@@ -93,6 +104,7 @@ class AccountSeparationService
 
             $result = [
                 'managers_ended' => $managers->count(),
+                'memberships_ended' => $members->count(),
                 'delegations_revoked' => $delegations->count(),
                 'scopes_removed' => $scopes->count(),
                 'pending_leaves' => DB::table('leaves')->where('user_id', $user->id)->where('status', 'Pending')->whereNull('deleted_at')->count(),

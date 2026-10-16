@@ -14,6 +14,13 @@ All notable changes to the E-la project will be documented in this file.
 - Cancelling an approved leave now walks the steps that leave was pinned to when it was submitted, unless a separate cancellation chain is configured (owner answer Q4). Before, it used today's leave chain.
 - `config('workflow.approver_role_fallback')` (`WORKFLOW_APPROVER_ROLE_FALLBACK`, default `true`): when `false`, department-head / deputy / director steps that find no unit head no longer fall back to everyone holding a standard role or permission; only a role chosen on the step still applies.
 - Successful login records `users.last_login_at`.
+#### Added (phase 2, 2026-10-17)
+- **Signature blocks without role names (B2):** each block carries `capacity` (checker / supervisor / deputy / director) derived from the step's approver type (`ApprovalStep::capacityOf()`), using the leave's pinned step where present. Forms pick the HR checker block and the default signer names from settings by capacity; role names are read only for legacy `ROLE` steps.
+- **OT approvers from unit heads (B2):** `OvertimeAssigneeResolver` gives the permit step to the head of the unit set on the org structure page (`PUT /api/admin/org-structure/overtime-permit-unit`, setting `overtime_permit_org_unit_id`) and the approval step to the head of the college unit. Not configured → the old role-based chain; with `WORKFLOW_APPROVER_ROLE_FALLBACK=false` → nobody.
+- **Staff of several units (C1):** `org_unit_members` (migration `2026_10_18_130000`) records "เจ้าหน้าที่ประจำงาน" by order (regulation 2569 clause 13 para 2). UNIT/DESCENDANTS data scopes include those units; members never become approvers. `POST /api/admin/org-units/{uuid}/members`, `POST /api/admin/org-unit-members/{uuid}/end`; separation ends memberships.
+- **Role grant register (C3):** `user_role_grants` (migration `2026_10_18_140000`) records who gave which role, under which order and until when. The user form takes `role_order_number` and `role_expires_at` from holders of `admin.users.manage_permissions`; `access:expire-role-grants` (daily 00:30) returns expired holders to `authorization.base_role` (`ACCESS_BASE_ROLE`, default `Employee`).
+- **Roles (B5):** `HR Officer`, `Auditor` (read-only reports) and `Overtime Operator` (migration `2026_10_18_150000`); Thai descriptions filled in for existing roles where empty.
+- The annual review CSV also lists unit memberships and role-grant order/expiry.
 
 ### [LEAVE-DELETE-01] - 2026-10-16 — Deleting a leave is a separate Super Admin permission
 #### Changed
