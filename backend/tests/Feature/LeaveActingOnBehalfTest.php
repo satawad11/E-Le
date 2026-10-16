@@ -379,6 +379,16 @@ class LeaveActingOnBehalfTest extends TestCase
         $this->actingAs($hrHead)->getJson('/api/admin/delegations')->assertOk();
     }
 
+    public function test_existing_installs_grant_leave_management_to_super_admin_explicitly(): void
+    {
+        $role = Role::create(['name' => 'Super Admin', 'guard_name' => 'web']);
+        $this->assertFalse($role->hasPermissionTo('leave.management.manage'));
+
+        (require database_path('migrations/2026_10_16_120000_grant_leave_management_to_super_admin.php'))->up();
+
+        $this->assertTrue($role->fresh()->hasPermissionTo('leave.management.manage'));
+    }
+
     // ── ทะเบียนการทำหน้าที่แทน ──────────────────────────────────────────
 
     public function test_a_users_own_delegation_request_stays_pending_until_hr_approves_it(): void

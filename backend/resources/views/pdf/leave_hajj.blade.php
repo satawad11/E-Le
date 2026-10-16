@@ -19,8 +19,9 @@
     $hasBeen = $done_before ?? null;
 @endphp
 
-@include('pdf.partials.form_header', ['formTitle' => 'แบบใบลาไปประกอบพิธีฮัจย์', 'formSubject' => 'ขอลาไปประกอบพิธีฮัจย์'])
+@include('pdf.partials.form_header', ['formTitle' => 'แบบใบลาไปประกอบพิธีฮัจย์ ณ เมืองเมกกะ ประเทศซาอุดีอาระเบีย', 'formSubject' => 'ขอลาไปประกอบพิธีฮัจย์'])
 
+{{-- ถ้อยคำตามแบบท้ายระเบียบฯ พ.ศ. 2555 --}}
 <table class="row" style="margin-top: 6px;">
     <tr>
         <td width="14%"></td>
@@ -32,16 +33,17 @@
 </table>
 <table class="row">
     <tr>
-        <td width="6%">สังกัด</td>
-        <td width="94%" class="dot-left">&nbsp;{{ $affiliation_line ?? '' }}</td>
+        <td width="6%">ระดับ</td>
+        <td width="24%" class="dot-left">&nbsp;{{ $level ?? '' }}</td>
+        <td width="7%" class="text-center">สังกัด</td>
+        <td width="63%" class="dot-left">&nbsp;{{ $affiliation_line ?? '' }}</td>
     </tr>
 </table>
 <table class="row">
     <tr>
-        <td width="9%">เกิดวันที่</td>
-        <td width="30%" class="dot">{{ $birth_date_thai ?? '' }}</td>
-        <td width="20%" class="text-center">เข้ารับราชการเมื่อวันที่</td>
-        <td width="41%" class="dot">{{ $hired_date_thai ?? '' }}</td>
+        <td width="22%">เข้ารับราชการเมื่อวันที่</td>
+        <td width="40%" class="dot">{{ $hired_date_thai ?? '' }}</td>
+        <td width="38%"></td>
     </tr>
 </table>
 
@@ -50,13 +52,10 @@
     <span class="box {{ $hasBeen === false ? 'checked' : '' }}"></span>ยังไม่เคย
     &nbsp;&nbsp;
     <span class="box {{ $hasBeen === true ? 'checked' : '' }}"></span>เคย
-    &nbsp;ไปประกอบพิธีฮัจย์
+    &nbsp;ไปประกอบพิธีฮัจย์ บัดนี้ มีศรัทธาจะไปประกอบพิธีฮัจย์
 </div>
-
-<div style="margin-top: 6px; text-indent: 14%;">
-    บัดนี้มีศรัทธาจะไปประกอบพิธีฮัจย์ ณ เมืองเมกกะ ประเทศซาอุดีอาระเบีย
-</div>
-<table class="row" style="margin-top: 4px;">
+<div>ณ เมืองเมกกะ ประเทศซาอุดีอาระเบีย จึงขออนุญาตลาหยุดราชการ</div>
+<table class="row">
     <tr>
         <td width="10%">ตั้งแต่วันที่</td>
         <td width="28%" class="dot">{{ $start_date_thai ?? '' }}</td>
@@ -68,7 +67,7 @@
     </tr>
 </table>
 
-<div class="text-center" style="margin-top: 14px;">ขอแสดงความนับถือ</div>
+<div style="margin-top: 10px;"></div>
 @include('pdf.partials.requester_signature')
 
 @include('pdf.partials.commander_and_order')

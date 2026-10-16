@@ -18,14 +18,14 @@
 
 @php
     $kind = (string) ($extra['call_kind'] ?? '');
-    $kinds = ['เข้ารับการตรวจเลือก', 'เข้ารับการเตรียมพล'];
 @endphp
 
 @include('pdf.partials.form_header', [
-    'formTitle' => 'แบบรายงานลาเข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล',
+    'formTitle' => 'แบบรายงานลาเข้ารับการตรวจเลือก หรือเข้ารับการเตรียมพล',
     'formSubject' => 'รายงานลา'.($kind !== '' ? $kind : 'เข้ารับการตรวจเลือกหรือเข้ารับการเตรียมพล'),
 ])
 
+{{-- ถ้อยคำตามแบบท้ายระเบียบฯ พ.ศ. 2555 — เป็นการรายงาน ไม่ใช่การขออนุญาต --}}
 <table class="row" style="margin-top: 6px;">
     <tr>
         <td width="14%"></td>
@@ -43,8 +43,7 @@
         <td width="63%" class="dot-left">&nbsp;{{ $affiliation_line ?? '' }}</td>
     </tr>
 </table>
-
-<table class="row" style="margin-top: 4px;">
+<table class="row">
     <tr>
         <td width="20%">ได้รับหมายเรียกของ</td>
         <td width="80%" class="dot-left">&nbsp;{{ $extra['summons_issuer'] ?? '' }}</td>
@@ -58,17 +57,12 @@
         <td width="47%" class="dot-left">&nbsp;{{ $extra['summons_date'] ?? '' }}</td>
     </tr>
 </table>
-
-<div style="margin-top: 6px;">
-    ให้
-    @foreach ($kinds as $option)
-        &nbsp;<span class="box {{ $kind === $option ? 'checked' : '' }}"></span>{{ $option }}
-    @endforeach
-</div>
-<table class="row" style="margin-top: 4px;">
+<table class="row">
     <tr>
-        <td width="6%">ณ</td>
-        <td width="94%" class="dot-left">&nbsp;{{ $extra['report_place'] ?? '' }}</td>
+        <td width="4%">ให้</td>
+        <td width="36%" class="dot-left">&nbsp;{{ $kind }}</td>
+        <td width="7%" class="text-center">ณ ที่</td>
+        <td width="53%" class="dot-left">&nbsp;{{ $extra['report_place'] ?? '' }}</td>
     </tr>
 </table>
 <table class="row">
@@ -82,21 +76,11 @@
         <td width="8%" class="text-center">วัน</td>
     </tr>
 </table>
-<table class="row">
-    <tr>
-        <td width="30%">ในระหว่างลาจะติดต่อข้าพเจ้าได้ที่</td>
-        <td width="70%" class="dot-left">&nbsp;{{ $contact_address ?? '' }}</td>
-    </tr>
-    <tr>
-        <td width="30%">หมายเลขโทรศัพท์</td>
-        <td width="70%" class="dot-left">&nbsp;{{ $phone ?? '' }}</td>
-    </tr>
-</table>
 
-<div style="margin-top: 6px; text-indent: 14%;">จึงเรียนมาเพื่อโปรดทราบ</div>
-<div class="text-center" style="margin-top: 8px;">ขอแสดงความนับถือ</div>
+<div style="margin-top: 6px; text-indent: 14%;">จึงรายงานมาเพื่อโปรดทราบ</div>
 @include('pdf.partials.requester_signature')
 
+{{-- แบบท้ายระเบียบไม่มีส่วนผู้บังคับบัญชา — ระบบเพิ่มช่อง "รับทราบ" ไว้ใต้รายงานสำหรับสายอนุมัติ --}}
 @php
     $signBlocks = collect($approverBlocks ?? []);
     $acknowledger = $signBlocks->last();

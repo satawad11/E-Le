@@ -4,6 +4,17 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [LEAVE-FORMS-04] - 2026-10-16 — Six forms reworded to the regulation's annexed forms
+#### Changed
+- Hajj, military call-up, spouse, study, international organisation and vocational rehabilitation forms now follow the wording and section order of the forms annexed to ระเบียบสำนักนายกรัฐมนตรีว่าด้วยการลาของข้าราชการ พ.ศ. 2555 (checked against the NABC leave manual, which reproduces the annex):
+  - Hajj: full title "… ณ เมืองเมกกะ ประเทศซาอุดีอาระเบีย", ระดับ added, birth date removed, "จึงขออนุญาตลาหยุดราชการ" sentence.
+  - Military call-up: "ให้เข้ารับการ … ณ ที่ …", "จึงรายงานมาเพื่อโปรดทราบ"; no contact lines (not on the official report). The "acknowledged" block stays as a system addition for the approval chain.
+  - Spouse: salary line, the spouse's posting period, "ครั้งสุดท้ายข้าพเจ้าได้ลาติดตามคู่สมรสไปประเทศ …" and the cumulative-period line.
+  - Study: separate "ศึกษาวิชา …" and "ฝึกอบรม ปฏิบัติการวิจัย ดูงาน …" options, salary, the compliance undertaking.
+  - International organisation and vocational rehabilitation are now the official multi-page forms (all numbered sections, the department/HR attestation sections and the order), 4 and 3 pages; lines the system has no data for are left blank to fill by hand.
+- New optional per-leave-type fields used by these forms: `salary` (spouse, study, international), `spouse_posting_period`, `previous_country`, `total_with_previous` (spouse).
+- `leave.management.manage` is also granted explicitly to the Super Admin role on existing installs (migration `2026_10_16_120000`).
+
 ### [DELEGATION-01] - 2026-10-16 — Acting for an absent authority (รักษาราชการแทน / ปฏิบัติราชการแทน)
 #### Added
 - **Delegation register** (ตั้งค่าระบบ → การปฏิบัติหน้าที่แทน, `leave.management.manage`): HR records an appointment order (type, delegator, delegate, acting position, order number/date, period), approves requests users send from their profile, edits, or revokes it. Rows are never deleted; every change is audited.
