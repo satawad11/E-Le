@@ -4,6 +4,10 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [USER-PERMS-KEEP] - 2026-10-16 — Saving a user no longer erases their direct permissions
+#### Fixed
+- `GET /api/admin/users` (and `GET /api/admin/users/{id}`) now include the user's direct permissions (`permissions`: id, name). The user form fills the "สิทธิ์การเข้าถึงพิเศษ" checkboxes from this list and sends it back on every save; without it the form sent `[]`, so any save by an administrator silently removed that user's direct permissions. Role permissions are not included, so they are not turned into direct ones.
+
 ### [K-ORG-01-FIX] - 2026-10-16 — User form can no longer hand out roles or permissions
 #### Security
 - `POST /api/admin/users`, `PUT /api/admin/users/{id}` and `POST /api/admin/users/import` now check what the actor may grant. Only holders of `admin.users.manage_permissions` (and Super Admin) may change `role_id` or `custom_permissions`. Other `edit_users` / `system.user.manage` holders may create or import users only with a role that does not exceed their own (never Super Admin) and without direct permissions, and may not change anyone's role or direct permissions, their own included (a user with no role yet may be given one within the actor's reach). Unchanged values still save. Refusals are 403 with a Thai message; import skips the row and reports its line.
