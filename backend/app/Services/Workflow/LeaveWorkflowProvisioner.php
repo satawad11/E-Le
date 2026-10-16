@@ -306,7 +306,7 @@ class LeaveWorkflowProvisioner
     {
         return match ($legacy->approver_type ?? 'ROLE') {
             ApprovalStep::RESOLVER_SPECIFIC_USER => WorkflowStep::ASSIGNEE_USER,
-            ApprovalStep::RESOLVER_REQUESTER_SUPERVISOR, ApprovalStep::RESOLVER_DEPARTMENT_HEAD, ApprovalStep::RESOLVER_DIVISION_DIRECTOR, ApprovalStep::RESOLVER_DIRECTOR => WorkflowStep::ASSIGNEE_ORG_MANAGER,
+            ApprovalStep::RESOLVER_REQUESTER_SUPERVISOR, ApprovalStep::RESOLVER_DEPARTMENT_HEAD, ApprovalStep::RESOLVER_DIVISION_DIRECTOR, ApprovalStep::RESOLVER_DIRECTOR, ApprovalStep::RESOLVER_ORG_UNIT_MANAGER => WorkflowStep::ASSIGNEE_ORG_MANAGER,
             default => WorkflowStep::ASSIGNEE_ROLE,
         };
     }

@@ -11,6 +11,7 @@ use App\Models\PersonnelType;
 use App\Models\Position;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Services\AccountSeparationService;
 use App\Services\AuditLogger;
 use App\Services\LeavePolicyService;
 use App\Services\PersonalDataAccessLogger;
@@ -475,14 +476,53 @@ class UserController extends Controller
             return response()->json(['message' => 'ไม่สามารถระงับการใช้งานบัญชีของตนเองได้'], 422);
         }
 
-        // การเปลี่ยน is_active ถูก audit (user.updated) และ token ถูกยกเลิก (UserObserver) ใน model hook แล้ว
-        $user->is_active = ! $user->is_active;
-        $user->save();
+        if (! $user->is_active && $user->separated_at !== null) {
+            // บัญชีที่พ้นสภาพแล้ว: เปิดใช้งาน = กลับเข้ารับราชการ/ต่อสัญญา ล้างวันพ้นสภาพพร้อม audit
+            abort_unless($this->canManageAccess($request->user()) || $this->accessWithinActor($request->user(), $user), 403, 'ไม่มีสิทธิ์เปิดใช้งานบัญชีนี้');
+            app(AccountSeparationService::class)->reinstate($request->user(), $user);
+        } else {
+            // การเปลี่ยน is_active ถูก audit (user.updated) และ token ถูกยกเลิก (UserObserver) ใน model hook แล้ว
+            $user->is_active = ! $user->is_active;
+            $user->save();
+        }
 
         return response()->json([
             'message' => $user->is_active ? 'เปิดใช้งานผู้ใช้แล้ว' : 'ระงับการใช้งานผู้ใช้แล้ว',
             'user' => $user->fresh()->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType']),
         ]);
+    }
+
+    /**
+     * บันทึกบุคลากรพ้นสภาพ (ACCESS-GOV-01) — ระงับบัญชีและปิดอำนาจทั้งหมด ณ วันพ้นสภาพ ไม่ลบบัญชี
+     *
+     * ผู้ที่ไม่มีสิทธิ์กำหนดสิทธิ์ (เช่น งานบุคลากร) บันทึกได้เฉพาะบัญชีที่สิทธิ์ไม่เกินของตน
+     * เพื่อไม่ให้ใช้การพ้นสภาพปิดบัญชีผู้ดูแลระบบ
+     */
+    public function separate(Request $request, User $user)
+    {
+        $actor = $request->user();
+        abort_unless($this->canManageAccess($actor) || $this->accessWithinActor($actor, $user), 403, 'ไม่มีสิทธิ์บันทึกการพ้นสภาพของบัญชีนี้');
+
+        $data = $request->validate([
+            'separated_at' => ['required', 'date'],
+            'reason' => ['required', 'string', 'max:255'],
+        ], [
+            'separated_at.required' => 'กรุณาระบุวันที่พ้นสภาพ',
+            'reason.required' => 'กรุณาระบุเหตุที่พ้นสภาพ เช่น ย้ายไปวิทยาลัยอื่น เกษียณอายุราชการ หมดสัญญาจ้าง',
+        ]);
+
+        try {
+            $result = app(AccountSeparationService::class)->separate($actor, $user, $data['separated_at'], $data['reason']);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $message = 'บันทึกการพ้นสภาพแล้ว ระงับบัญชี ปิดวาระหัวหน้า '.$result['managers_ended'].' รายการ เพิกถอนการทำการแทน '.$result['delegations_revoked'].' รายการ';
+        if ($result['pending_leaves'] > 0) {
+            $message .= ' · มีใบลารออนุมัติค้าง '.$result['pending_leaves'].' ใบ กรุณาพิจารณา';
+        }
+
+        return response()->json(['message' => $message, 'result' => $result]);
     }
 
     /**

@@ -29,6 +29,7 @@ class ApproverResolverService
         $roleId = is_array($step) ? ($step['role_id'] ?? null) : ($step->role_id ?? $step->required_role_id ?? null);
         $specificUserId = is_array($step) ? ($step['specific_user_id'] ?? null) : ($step->specific_user_id ?? null);
         $permissionName = is_array($step) ? ($step['permission_name'] ?? null) : ($step->permission_name ?? null);
+        $orgUnitId = is_array($step) ? ($step['org_unit_id'] ?? null) : ($step->org_unit_id ?? null);
 
         $eligibleUserIds = match ($type) {
             ApprovalStep::RESOLVER_SPECIFIC_USER => $specificUserId ? [(int) $specificUserId] : [],
@@ -36,6 +37,7 @@ class ApproverResolverService
             ApprovalStep::RESOLVER_DIVISION_DIRECTOR => $this->resolveDivisionDirectorIds($requester, $date, $roleId),
             ApprovalStep::RESOLVER_DIRECTOR => $this->resolveDirectorIds($date, $roleId),
             ApprovalStep::RESOLVER_HR_OFFICER => $this->resolveHROfficerIds($roleId),
+            ApprovalStep::RESOLVER_ORG_UNIT_MANAGER => $this->resolveOrgUnitManagerIds($orgUnitId ? (int) $orgUnitId : null, $date, $roleId),
             default => $this->resolveByRoleIdOrPermission($roleId, $permissionName),
         };
 
@@ -128,13 +130,7 @@ class ApproverResolverService
         $orgUnitId = $this->orgScope->homeOrgUnitId($requester);
 
         if ($orgUnitId !== null && Schema::hasTable('org_unit_managers')) {
-            $managers = DB::table('org_unit_managers')
-                ->where('org_unit_id', $orgUnitId)
-                ->whereDate('effective_from', '<=', $date)
-                ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date))
-                ->pluck('user_id')
-                ->map(fn ($id) => (int) $id)
-                ->all();
+            $managers = $this->managerIdsOf($orgUnitId, $date);
 
             if (! empty($managers)) {
                 return $managers;
@@ -143,13 +139,7 @@ class ApproverResolverService
             // Check parent unit if direct unit has no manager
             $parentUnitId = DB::table('org_units')->where('id', $orgUnitId)->value('parent_id');
             if ($parentUnitId) {
-                $parentManagers = DB::table('org_unit_managers')
-                    ->where('org_unit_id', $parentUnitId)
-                    ->whereDate('effective_from', '<=', $date)
-                    ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date))
-                    ->pluck('user_id')
-                    ->map(fn ($id) => (int) $id)
-                    ->all();
+                $parentManagers = $this->managerIdsOf((int) $parentUnitId, $date);
 
                 if (! empty($parentManagers)) {
                     return $parentManagers;
@@ -157,8 +147,7 @@ class ApproverResolverService
             }
         }
 
-        // Fallback to role or permissions
-        return $this->resolveByRoleIdOrPermission($fallbackRoleId, 'leave.approval.dept', ['Head of Department', 'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย']);
+        return $this->fallback($fallbackRoleId, 'leave.approval.dept', ['Head of Department', 'หัวหน้าแผนกวิชา / หัวหน้าฝ่าย']);
     }
 
     private function resolveDivisionDirectorIds(User $requester, string $date, ?int $fallbackRoleId): array
@@ -168,13 +157,7 @@ class ApproverResolverService
         if ($orgUnitId !== null && Schema::hasTable('org_unit_managers')) {
             $parentUnitId = DB::table('org_units')->where('id', $orgUnitId)->value('parent_id');
             if ($parentUnitId) {
-                $managers = DB::table('org_unit_managers')
-                    ->where('org_unit_id', $parentUnitId)
-                    ->whereDate('effective_from', '<=', $date)
-                    ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date))
-                    ->pluck('user_id')
-                    ->map(fn ($id) => (int) $id)
-                    ->all();
+                $managers = $this->managerIdsOf((int) $parentUnitId, $date);
 
                 if (! empty($managers)) {
                     return $managers;
@@ -182,7 +165,7 @@ class ApproverResolverService
             }
         }
 
-        return $this->resolveByRoleIdOrPermission($fallbackRoleId, 'leave.approval.director', ['Deputy Director', 'รองผู้อำนวยการ']);
+        return $this->fallback($fallbackRoleId, 'leave.approval.director', ['Deputy Director', 'รองผู้อำนวยการ']);
     }
 
     private function resolveDirectorIds(string $date, ?int $fallbackRoleId): array
@@ -191,13 +174,7 @@ class ApproverResolverService
             // Find root unit manager
             $rootUnitId = DB::table('org_units')->whereNull('parent_id')->value('id');
             if ($rootUnitId) {
-                $managers = DB::table('org_unit_managers')
-                    ->where('org_unit_id', $rootUnitId)
-                    ->whereDate('effective_from', '<=', $date)
-                    ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date))
-                    ->pluck('user_id')
-                    ->map(fn ($id) => (int) $id)
-                    ->all();
+                $managers = $this->managerIdsOf((int) $rootUnitId, $date);
 
                 if (! empty($managers)) {
                     return $managers;
@@ -205,12 +182,70 @@ class ApproverResolverService
             }
         }
 
-        return $this->resolveByRoleIdOrPermission($fallbackRoleId, 'leave.approval.director', ['Director', 'ผู้อำนวยการ']);
+        return $this->fallback($fallbackRoleId, 'leave.approval.director', ['Director', 'ผู้อำนวยการ']);
     }
 
     private function resolveHROfficerIds(?int $fallbackRoleId): array
     {
-        return $this->resolveByRoleIdOrPermission($fallbackRoleId, 'leave.management.manage', ['HR Head', 'HRHead', 'เจ้าหน้าที่บุคลากร (HR)']);
+        // งานบุคลากรหาจากสิทธิ์ leave.management.manage เสมอ (ไม่ได้ผูกกับผังองค์กร)
+        // ชื่อบทบาทเป็นเพียงทางถอยของระบบเดิม ปิดได้ด้วยสวิตช์เดียวกับขั้นอื่น
+        return $this->resolveByRoleIdOrPermission(
+            $fallbackRoleId,
+            'leave.management.manage',
+            $this->roleFallbackEnabled() ? ['HR Head', 'HRHead', 'เจ้าหน้าที่บุคลากร (HR)'] : [],
+        );
+    }
+
+    /**
+     * หัวหน้าของหน่วยงานที่ขั้นนี้ระบุไว้ (ORG_UNIT_MANAGER · ACCESS-GOV-01)
+     *
+     * ใช้กับขั้นที่ผู้อนุมัติไม่ได้ขึ้นกับต้นสังกัดของผู้ยื่น เช่น รองผู้อำนวยการฝ่ายบริหารทรัพยากร
+     * ที่อนุมัติใบลาของทุกฝ่าย (คำตอบ Q3) — ไม่มีทางถอยตามชื่อบทบาทหรือ permission เลย
+     * เพราะขั้นนี้ตั้งใจชี้ตัวคนตามคำสั่งมอบหมาย ทางถอยเดียวคือ role ที่ผู้ดูแลเลือกไว้ในขั้นเอง
+     */
+    private function resolveOrgUnitManagerIds(?int $orgUnitId, string $date, ?int $fallbackRoleId): array
+    {
+        if ($orgUnitId !== null && Schema::hasTable('org_unit_managers')) {
+            $managers = $this->managerIdsOf($orgUnitId, $date);
+            if (! empty($managers)) {
+                return $managers;
+            }
+        }
+
+        return $fallbackRoleId ? $this->resolveByRoleIdOrPermission($fallbackRoleId) : [];
+    }
+
+    /** ผู้ใช้ที่เป็นหัวหน้า/รักษาการ/รับมอบของหน่วยงาน ณ วันที่ (ตามวันมีผลของคำสั่ง) */
+    private function managerIdsOf(int $orgUnitId, string $date): array
+    {
+        return DB::table('org_unit_managers')
+            ->where('org_unit_id', $orgUnitId)
+            ->whereDate('effective_from', '<=', $date)
+            ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date))
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /**
+     * ทางถอยเมื่อหาหัวหน้าจากผังองค์กรไม่พบ
+     *
+     * role ที่ผู้ดูแลเลือกไว้ในขั้น (role_id) ใช้ได้เสมอเพราะเป็นข้อมูลที่ตั้งใจตั้ง
+     * ส่วน permission กลางและชื่อบทบาทมาตรฐานทำให้ "ทุกคนที่มีบทบาทนั้น" อนุมัติได้ทุกฝ่าย
+     * จึงปิดได้ด้วย workflow.approver_role_fallback (production ควรปิดหลังกรอกหัวหน้าหน่วยงานครบ)
+     */
+    private function fallback(?int $fallbackRoleId, string $permissionName, array $roleNames): array
+    {
+        if (! $this->roleFallbackEnabled()) {
+            return $fallbackRoleId ? $this->resolveByRoleIdOrPermission($fallbackRoleId) : [];
+        }
+
+        return $this->resolveByRoleIdOrPermission($fallbackRoleId, $permissionName, $roleNames);
+    }
+
+    private function roleFallbackEnabled(): bool
+    {
+        return (bool) config('workflow.approver_role_fallback', true);
     }
 
     private function resolveByRoleIdOrPermission(?int $roleId, ?string $permissionName = null, array $roleNameFallbacks = []): array

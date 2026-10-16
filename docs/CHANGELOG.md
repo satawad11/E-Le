@@ -4,6 +4,17 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [ACCESS-GOV-01] - 2026-10-16 — Access governance for the 2569 school administration regulation
+#### Added
+- **Approver type `ORG_UNIT_MANAGER`** ("head of a named unit"): a leave step can point at one org unit, e.g. the deputy director in charge of the resource-management division, who then approves leaves of every division (owner answer Q3). It never falls back to role names. `approval_steps.org_unit_id` and the pinned `leave_approvals.org_unit_id` (migration `2026_10_18_100000`). The workflow page gains the option and a unit picker.
+- **Org structure page** (`/admin/org-structure`, new permission `system.org_structure.manage`, Super Admin only by default): build divisions and sections under the college, move departments under a division, deactivate unused units, and register unit heads / acting heads with order number and date. Assignments are closed with an end date, never deleted; every change is audited. `org_unit_managers.order_number`, `order_date`, `ended_by` (migration `2026_10_18_110000`). Endpoints: `GET/POST /api/admin/org-units`, `PUT /api/admin/org-units/{uuid}`, `GET/POST /api/admin/org-units/{uuid}/managers`, `POST /api/admin/org-unit-managers/{uuid}/end`.
+- **Separation** (`POST /api/admin/users/{id}/separate`, "พ้นสภาพ" on the user list): suspends the account, revokes tokens, ends unit-head assignments, revokes acting/on-behalf delegations and removes per-user scopes as of the given date; the account and its history stay. Reactivating a separated account clears the separation (`user.reinstated`). HR cannot separate accounts with more access than their own. `users.separated_at`, `separation_reason`, `last_login_at` (migration `2026_10_18_120000`).
+- **Annual access review** per academic year (owner answer Q9): `php artisan access:review 2569 --by=` writes a private CSV of every active user's roles, direct permissions, scopes, head assignments, delegations and last login; `php artisan access:review-signoff 2569 --by=` is accepted only from the director/acting director of the college unit and not from the person who generated it. Table `access_reviews`.
+#### Changed
+- Cancelling an approved leave now walks the steps that leave was pinned to when it was submitted, unless a separate cancellation chain is configured (owner answer Q4). Before, it used today's leave chain.
+- `config('workflow.approver_role_fallback')` (`WORKFLOW_APPROVER_ROLE_FALLBACK`, default `true`): when `false`, department-head / deputy / director steps that find no unit head no longer fall back to everyone holding a standard role or permission; only a role chosen on the step still applies.
+- Successful login records `users.last_login_at`.
+
 ### [LEAVE-DELETE-01] - 2026-10-16 — Deleting a leave is a separate Super Admin permission
 #### Changed
 - `DELETE /api/leaves/{leave}` now requires the new permission `leave.delete` (granted only to Super Admin, migration `2026_10_17_120000`) instead of `leave.management.manage`. After DELEGATION-01 gave HR Head `leave.management.manage`, HR could soft-delete any leave, including approved ones; HR now corrects leave data through cancellation, which goes through the approval chain.

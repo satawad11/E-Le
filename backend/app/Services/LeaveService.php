@@ -145,12 +145,10 @@ class LeaveService
              * แล้วผู้อนุมัติตัวจริงจะถูกปฏิเสธสิทธิ์ในขั้นของตัวเอง
              */
             foreach (ApprovalStep::stepsFor(ApprovalStep::CHAIN_LEAVE)->load('role') as $step) {
-                LeaveApproval::firstOrCreate(['leave_id' => $leave->id, 'stage' => LeaveApproval::STAGE_REQUEST, 'step_order' => $step->step_order], [
-                    'step_name' => $step->name, 'required_role_id' => $step->role_id, 'status' => 'Pending',
-                    'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
-                    'specific_user_id' => $step->specific_user_id, 'permission_name' => $step->permission_name,
-                    'allow_self_approval' => (bool) $step->allow_self_approval,
-                ]);
+                LeaveApproval::firstOrCreate(
+                    ['leave_id' => $leave->id, 'stage' => LeaveApproval::STAGE_REQUEST, 'step_order' => $step->step_order],
+                    $step->snapshotAttributes() + ['status' => 'Pending'],
+                );
             }
             $this->audit->log($leave, 'created', null, $leave->toArray());
 

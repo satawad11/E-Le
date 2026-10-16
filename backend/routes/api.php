@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DocumentEngineController;
 use App\Http\Controllers\Admin\DocumentReportController;
 use App\Http\Controllers\Admin\DocumentTemplateController;
 use App\Http\Controllers\Admin\LeaveTypeController;
+use App\Http\Controllers\Admin\OrgStructureController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\PositionController;
 use App\Http\Controllers\Admin\SecureExportSettingController;
@@ -182,6 +183,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/admin/users/import', [UserController::class, 'importCsv']);
         Route::put('/admin/users/{user}', [UserController::class, 'update']);
         Route::post('/admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
+        // ACCESS-GOV-01: บุคลากรพ้นสภาพ — ระงับบัญชีและปิดวาระหัวหน้า/การทำการแทน/ขอบเขตสิทธิ์ ไม่ลบบัญชี
+        Route::post('/admin/users/{user}/separate', [UserController::class, 'separate']);
     });
 
     // ORG-ACCESS-02: ทะเบียนตำแหน่ง — อ่านได้ทุกคน (ฟอร์มผู้ใช้/ตัวกรองรายงาน) ไม่มีการลบ
@@ -221,6 +224,17 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::put('/admin/departments/{department}', [DepartmentController::class, 'update']);
         Route::delete('/admin/departments/{department}', [DepartmentController::class, 'destroy']);
         Route::put('/admin/departments/{department}/toggle-status', [DepartmentController::class, 'toggleStatus']);
+    });
+
+    // Admin: โครงสร้างหน่วยงานและทะเบียนหัวหน้าหน่วยงาน (ACCESS-GOV-01) — ไม่มี delete โดยตั้งใจ
+    // หน้าลำดับการอนุมัติอ่านรายการหน่วยงานได้ด้วย เพื่อเลือกหน่วยของขั้นแบบ ORG_UNIT_MANAGER
+    Route::get('/admin/org-units', [OrgStructureController::class, 'index'])->middleware('permission:system.org_structure.manage|manage_workflow_steps');
+    Route::group(['middleware' => ['permission:system.org_structure.manage']], function () {
+        Route::post('/admin/org-units', [OrgStructureController::class, 'store']);
+        Route::put('/admin/org-units/{uuid}', [OrgStructureController::class, 'update']);
+        Route::get('/admin/org-units/{uuid}/managers', [OrgStructureController::class, 'managerHistory']);
+        Route::post('/admin/org-units/{uuid}/managers', [OrgStructureController::class, 'storeManager']);
+        Route::post('/admin/org-unit-managers/{uuid}/end', [OrgStructureController::class, 'endManager']);
     });
 
     // Admin: Workflow Steps

@@ -218,6 +218,24 @@
                 </select>
               </div>
 
+              <!-- Conditional: หัวหน้าของหน่วยงานที่ระบุ (ACCESS-GOV-01) -->
+              <div v-else-if="step.approver_type === 'ORG_UNIT_MANAGER'">
+                <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">
+                  หน่วยงาน <span class="text-red-500">*</span>
+                </label>
+                <select
+                  v-model="step.org_unit_id"
+                  required
+                  class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-[#800000] text-sm transition-colors text-gray-700 bg-white"
+                >
+                  <option value="" disabled>เลือกหน่วยงาน</option>
+                  <option v-for="unit in orgUnitOptions" :key="unit.id" :value="unit.id">
+                    {{ unit.label }}
+                  </option>
+                </select>
+                <p class="text-[11px] text-gray-500 mt-1">ผู้อนุมัติคือหัวหน้า/รักษาการของหน่วยงานนี้ตามหน้าโครงสร้างหน่วยงาน ไม่ขึ้นกับต้นสังกัดของผู้ยื่น</p>
+              </div>
+
               <!-- Info hint for automatic resolvers -->
               <div v-else class="flex items-center text-xs text-blue-700 bg-blue-50 p-2.5 rounded-xl">
                 <svg class="w-4 h-4 mr-1.5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -456,6 +474,7 @@ const loading = ref(false)
 const saving = ref(false)
 const roles = ref([])
 const usersList = ref([])
+const orgUnits = ref([])
 const steps = ref([])
 const initialStepsSnapshot = ref('')
 const currentFingerprint = ref('')
@@ -508,12 +527,22 @@ const useLeaveChainForCancellation = () => {
 const resolverOptions = [
   { value: 'DEPARTMENT_HEAD', label: 'หัวหน้าแผนกวิชา / หัวหน้างาน (ต้นสังกัดผู้ยื่น)' },
   { value: 'REQUESTER_SUPERVISOR', label: 'ผู้บังคับบัญชาชั้นต้น' },
-  { value: 'DIVISION_DIRECTOR', label: 'หัวหน้าฝ่าย / รองผู้อำนวยการ' },
+  { value: 'DIVISION_DIRECTOR', label: 'หัวหน้าฝ่าย / รองผู้อำนวยการ (ฝ่ายของผู้ยื่น)' },
+  { value: 'ORG_UNIT_MANAGER', label: 'หัวหน้าของหน่วยงานที่ระบุ (เช่น รองผู้อำนวยการฝ่ายบริหารทรัพยากร)' },
   { value: 'DIRECTOR', label: 'ผู้อำนวยการสถานศึกษา' },
   { value: 'HR_OFFICER', label: 'เจ้าหน้าที่งานบุคลากร' },
   { value: 'ROLE', label: 'กำหนดตามบทบาทระบบ (System Role)' },
   { value: 'SPECIFIC_USER', label: 'ระบุตัวบุคคลรายคน (Specific User)' },
 ]
+
+// หน่วยงานที่ยังใช้งาน แสดงชื่อพร้อมหน่วยแม่ เพื่อแยก "งาน" ชื่อซ้ำในต่างฝ่าย
+const orgUnitOptions = computed(() => {
+  const byId = new Map(orgUnits.value.map(u => [u.id, u]))
+  return orgUnits.value
+    .filter(u => u.is_active && u.parent_id !== null)
+    .map(u => ({ id: u.id, label: byId.get(u.parent_id)?.parent_id ? `${u.name} (${byId.get(u.parent_id).name})` : u.name }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'th'))
+})
 
 const resolverLabel = (value) => {
   return resolverOptions.find(o => o.value === value)?.label || value || ''
@@ -535,7 +564,8 @@ const runPreview = async () => {
         name: (s.name || '').trim(),
         approver_type: s.approver_type || 'ROLE',
         role_id: s.role_id ? Number(s.role_id) : null,
-        specific_user_id: s.specific_user_id ? Number(s.specific_user_id) : null
+        specific_user_id: s.specific_user_id ? Number(s.specific_user_id) : null,
+        org_unit_id: s.org_unit_id ? Number(s.org_unit_id) : null
       }))
     })
     previewModal.value.result = res.data
@@ -576,6 +606,7 @@ const serializeSteps = (stepList) => {
     role_id: Number(s.role_id) || '',
     approver_type: s.approver_type || 'ROLE',
     specific_user_id: Number(s.specific_user_id) || '',
+    org_unit_id: Number(s.org_unit_id) || '',
     allow_self_approval: !!s.allow_self_approval,
     name: (s.name || '').trim(),
     step_order: Number(s.step_order) || 0
@@ -602,6 +633,13 @@ const fetchWorkflow = async () => {
       api.get('/users/list')
     ])
     roles.value = Array.isArray(rolesRes.data) ? rolesRes.data : (rolesRes.data?.data || [])
+    try {
+      const unitsRes = await api.get('/admin/org-units')
+      orgUnits.value = Array.isArray(unitsRes.data?.units) ? unitsRes.data.units : []
+    } catch (e) {
+      // ไม่มีรายการหน่วยงาน = เลือกขั้นแบบหน่วยงานที่ระบุไม่ได้ แต่สายเดิมยังแก้ได้
+      orgUnits.value = []
+    }
     usersList.value = Array.isArray(usersRes.data) ? usersRes.data : (usersRes.data?.data || [])
     
     const rawSteps = Array.isArray(stepsRes.data) 
@@ -616,6 +654,7 @@ const fetchWorkflow = async () => {
       role_id: s.role_id || '',
       approver_type: s.approver_type || 'ROLE',
       specific_user_id: s.specific_user_id || '',
+      org_unit_id: s.org_unit_id || '',
       allow_self_approval: !!s.allow_self_approval,
       name: s.name,
       step_order: s.step_order || (idx + 1)
@@ -663,6 +702,7 @@ const addStep = () => {
     role_id: '',
     approver_type: 'DEPARTMENT_HEAD',
     specific_user_id: '',
+    org_unit_id: '',
     allow_self_approval: false,
     name: 'ตรวจสอบโดยหัวหน้างาน',
     step_order: steps.value.length + 1
@@ -728,6 +768,10 @@ const saveWorkflow = async () => {
       alertStore.error(`กรุณาระบุผู้ใช้งานในลำดับที่ ${i + 1}`)
       return
     }
+    if (s.approver_type === 'ORG_UNIT_MANAGER' && !s.org_unit_id) {
+      alertStore.error(`กรุณาเลือกหน่วยงานในลำดับที่ ${i + 1}`)
+      return
+    }
   }
 
   reindexSteps()
@@ -740,6 +784,7 @@ const saveWorkflow = async () => {
         role_id: s.role_id ? Number(s.role_id) : null,
         approver_type: s.approver_type || 'ROLE',
         specific_user_id: s.specific_user_id ? Number(s.specific_user_id) : null,
+        org_unit_id: s.org_unit_id ? Number(s.org_unit_id) : null,
         allow_self_approval: !!s.allow_self_approval,
         name: s.name.trim(),
         step_order: Number(s.step_order)
@@ -760,6 +805,7 @@ const saveWorkflow = async () => {
       role_id: s.role_id || '',
       approver_type: s.approver_type || 'ROLE',
       specific_user_id: s.specific_user_id || '',
+      org_unit_id: s.org_unit_id || '',
       allow_self_approval: !!s.allow_self_approval,
       name: s.name,
       step_order: s.step_order || (idx + 1)

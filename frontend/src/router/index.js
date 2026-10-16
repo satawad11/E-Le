@@ -250,6 +250,12 @@ const router = createRouter({
       meta: { requiresAuth: true, permissions: ['edit_users', 'system.user.manage', 'system.position.manage'], title: 'ทะเบียนตำแหน่ง', parent: 'จัดการผู้ใช้งาน' }
     },
     {
+      path: '/admin/org-structure',
+      name: 'admin-org-structure',
+      component: () => import('../views/admin/OrgStructureView.vue'),
+      meta: { requiresAuth: true, permissions: ['system.org_structure.manage'], title: 'โครงสร้างหน่วยงาน', parent: 'จัดการผู้ใช้งาน' }
+    },
+    {
       path: '/admin/menus',
       name: 'admin-menus',
       component: () => import('../views/admin/MenusManagementView.vue'),
