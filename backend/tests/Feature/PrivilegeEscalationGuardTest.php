@@ -216,6 +216,23 @@ class PrivilegeEscalationGuardTest extends TestCase
         $this->assertFalse($target->fresh()->hasRole('Super Admin'));
     }
 
+    public function test_user_without_a_role_gets_one_only_within_the_editor(): void
+    {
+        $editor = $this->hrEditor();
+        $target = User::factory()->create();
+        $payload = $this->userPayload($target);
+
+        $this->actingAs($editor)
+            ->putJson("/api/admin/users/{$target->id}", array_merge($payload, ['role_id' => $this->superAdminRoleId()]))
+            ->assertForbidden();
+        $this->assertFalse($target->fresh()->hasRole('Super Admin'));
+
+        $this->actingAs($editor)
+            ->putJson("/api/admin/users/{$target->id}", array_merge($payload, ['role_id' => Role::findByName('Employee', 'web')->id]))
+            ->assertOk();
+        $this->assertTrue($target->fresh()->hasRole('Employee'));
+    }
+
     public function test_user_editor_cannot_create_a_super_admin(): void
     {
         $editor = $this->hrEditor();

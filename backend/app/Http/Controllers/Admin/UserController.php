@@ -341,8 +341,16 @@ class UserController extends Controller
         $canManageAccess = $this->canManageAccess($actor);
         $perms = $request->has('custom_permissions') ? $this->requestedPermissions($request) : null;
 
+        // ผู้ใช้ที่ยังไม่มีบทบาท (ข้อมูลเก่า) ให้บทบาทได้ตามกฎเดียวกับการสร้างผู้ใช้
+        $assignFirstRole = false;
+
         if (! $canManageAccess) {
-            abort_if((int) $request->role_id !== (int) $user->role_id, 403, self::DENY_ROLE_CHANGE);
+            if ($user->role_id === null) {
+                $this->ensureRoleWithinActor($actor, Role::find($request->role_id));
+                $assignFirstRole = true;
+            } else {
+                abort_if((int) $request->role_id !== (int) $user->role_id, 403, self::DENY_ROLE_CHANGE);
+            }
             abort_if(
                 $perms !== null && $this->sortedNames($perms) !== $this->sortedNames($user->getDirectPermissions()->pluck('name')->all()),
                 403,
@@ -366,16 +374,16 @@ class UserController extends Controller
             $user->password = bcrypt($request->password);
         }
 
-        if ($canManageAccess) {
+        if ($canManageAccess || $assignFirstRole) {
             $role = Role::find($request->role_id);
             if ($role) {
                 $user->syncRoles([$role->name]);
             }
+        }
 
-            if ($perms !== null) {
-                // LEGACY-04 (04-6): แหล่งสิทธิ์รายบุคคลมีที่เดียวคือ Spatie
-                $user->syncPermissions($perms);
-            }
+        if ($canManageAccess && $perms !== null) {
+            // LEGACY-04 (04-6): แหล่งสิทธิ์รายบุคคลมีที่เดียวคือ Spatie
+            $user->syncPermissions($perms);
         }
 
         $user->save();
@@ -528,7 +536,7 @@ class UserController extends Controller
             return true;
         }
 
-        if ($target->hasRole(self::SUPER_ADMIN_ROLES)) {
+        if ($target->roles->pluck('name')->intersect(self::SUPER_ADMIN_ROLES)->isNotEmpty()) {
             return false;
         }
 
