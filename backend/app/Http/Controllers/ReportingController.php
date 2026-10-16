@@ -75,6 +75,7 @@ class ReportingController extends Controller
             'org_unit_id' => 'nullable|integer|exists:org_units,id',
             'user_id' => 'nullable|integer|exists:users,id',
             'personnel_type_id' => 'nullable|integer|exists:personnel_types,id',
+            'position_group' => 'nullable|uuid|exists:position_groups,uuid',
         ]);
 
         return ReportFilter::from($data);

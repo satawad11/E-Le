@@ -15,14 +15,18 @@ class GovernmentLeaveReportController extends Controller
     private function registerQuery(Request $r)
     {
         abort_unless($r->user()->can('leave.report.view') || $r->user()->can('leave.management.manage'), 403);
-        $data = $r->validate(['from' => 'required|date', 'to' => 'required|date|after_or_equal:from', 'department_id' => 'nullable|exists:departments,id', 'personnel_type_id' => 'nullable|exists:personnel_types,id']);
-        $q = Leave::withTrashed()->with(['user:id,name,department_id,personnel_type_id', 'user.department:id,name', 'user.personnelType:id,name', 'type:id,name'])->whereBetween('start_date', [$data['from'], $data['to']]);
+        $data = $r->validate(['from' => 'required|date', 'to' => 'required|date|after_or_equal:from', 'department_id' => 'nullable|exists:departments,id', 'personnel_type_id' => 'nullable|exists:personnel_types,id', 'position_group' => 'nullable|uuid|exists:position_groups,uuid']);
+        $q = Leave::withTrashed()->with(['user:id,name,department_id,personnel_type_id', 'user.department:id,name', 'user.personnelType:id,name', 'user.currentAssignment.positionRef.group', 'type:id,name'])->whereBetween('start_date', [$data['from'], $data['to']]);
         $this->applyReportScope($q, $r);
         if ($data['department_id'] ?? null) {
             $q->whereHas('user', fn ($x) => $x->where('department_id', $data['department_id']));
         }
         if ($data['personnel_type_id'] ?? null) {
             $q->whereHas('user', fn ($x) => $x->where('personnel_type_id', $data['personnel_type_id']));
+        }
+        // ORG-ACCESS-02: กลุ่มบุคลากรตามตำแหน่งปัจจุบันในทะเบียนตำแหน่ง
+        if ($data['position_group'] ?? null) {
+            $q->whereHas('user.currentAssignment.positionRef.group', fn ($x) => $x->where('uuid', $data['position_group']));
         }
 
         return $q->orderBy('start_date')->orderBy('id'); // id เป็นตัวตัดสินลำดับให้คงที่ เพื่อให้ chunk ไม่ข้าม/ซ้ำแถว
@@ -63,11 +67,11 @@ class GovernmentLeaveReportController extends Controller
     {
         $query = $this->registerQuery($r);
         $out = fopen('php://temp', 'r+');
-        fputcsv($out, ['เลขที่', 'ชื่อ', 'ประเภทบุคลากร', 'หน่วยงาน', 'ประเภทลา', 'เริ่ม', 'สิ้นสุด', 'จำนวนวัน', 'สถานะ', 'วันที่ลบเอกสาร']);
+        fputcsv($out, ['เลขที่', 'ชื่อ', 'ประเภทบุคลากร', 'กลุ่มบุคลากร', 'หน่วยงาน', 'ประเภทลา', 'เริ่ม', 'สิ้นสุด', 'จำนวนวัน', 'สถานะ', 'วันที่ลบเอกสาร']);
         // ต้องวนทุกแถว ไม่ใช่แค่หน้าแรกของ paginator
         $query->chunk(500, function ($rows) use ($out) {
             foreach ($rows as $x) {
-                fputcsv($out, [$x->document_number, $x->user?->name, $x->user?->personnelType?->name, $x->user?->department?->name, $x->type?->name, $x->start_date?->toDateString(), $x->end_date?->toDateString(), $x->total_days, $this->statusLabel($x), $x->deleted_at?->format('Y-m-d H:i')]);
+                fputcsv($out, [$x->document_number, $x->user?->name, $x->user?->personnelType?->name, $x->user?->currentAssignment?->positionRef?->group?->name ?? 'ยังไม่ระบุ', $x->user?->department?->name, $x->type?->name, $x->start_date?->toDateString(), $x->end_date?->toDateString(), $x->total_days, $this->statusLabel($x), $x->deleted_at?->format('Y-m-d H:i')]);
             }
         });
         rewind($out);

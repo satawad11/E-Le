@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Console\Commands\Concerns\ResolvesScopeCommandUsers;
+use App\Console\Commands\Concerns\ResolvesCommandUsers;
 use App\Services\PermissionScopeService;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
@@ -12,7 +12,7 @@ use InvalidArgumentException;
  */
 class ListPermissionScopes extends Command
 {
-    use ResolvesScopeCommandUsers;
+    use ResolvesCommandUsers;
 
     protected $signature = 'access:scope-list {user? : อีเมลหรือ UUID (เว้นว่าง = ทุกคน)}';
 

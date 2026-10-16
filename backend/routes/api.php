@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DocumentReportController;
 use App\Http\Controllers\Admin\DocumentTemplateController;
 use App\Http\Controllers\Admin\LeaveTypeController;
 use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Admin\PositionController;
 use App\Http\Controllers\Admin\SecureExportSettingController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WorkflowController;
@@ -179,6 +180,15 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/admin/users/import', [UserController::class, 'importCsv']);
         Route::put('/admin/users/{user}', [UserController::class, 'update']);
         Route::post('/admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
+    });
+
+    // ORG-ACCESS-02: ทะเบียนตำแหน่ง — อ่านได้ทุกคน (ฟอร์มผู้ใช้/ตัวกรองรายงาน) แก้ไขต้องมีสิทธิ์จัดการผู้ใช้ ไม่มีการลบ
+    Route::get('/positions', [PositionController::class, 'index']);
+    Route::group(['middleware' => ['permission:edit_users|system.user.manage']], function () {
+        Route::post('/admin/position-groups', [PositionController::class, 'storeGroup']);
+        Route::put('/admin/position-groups/{positionGroup}', [PositionController::class, 'updateGroup']);
+        Route::post('/admin/positions', [PositionController::class, 'store']);
+        Route::put('/admin/positions/{position}', [PositionController::class, 'update']);
     });
 
     /*

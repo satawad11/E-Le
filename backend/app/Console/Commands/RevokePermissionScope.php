@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Console\Commands\Concerns\ResolvesScopeCommandUsers;
+use App\Console\Commands\Concerns\ResolvesCommandUsers;
 use App\Services\PermissionScopeService;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
@@ -15,7 +15,7 @@ use InvalidArgumentException;
  */
 class RevokePermissionScope extends Command
 {
-    use ResolvesScopeCommandUsers;
+    use ResolvesCommandUsers;
 
     protected $signature = 'access:scope-revoke
         {user : อีเมลหรือ UUID ของผู้ถูกถอนขอบเขต}

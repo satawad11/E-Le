@@ -244,6 +244,12 @@ const router = createRouter({
       meta: { requiresAuth: true, permissions: ['edit_users', 'system.user.manage'], title: 'กำหนดประเภทบุคลากร', parent: 'จัดการผู้ใช้งาน' }
     },
     {
+      path: '/admin/positions',
+      name: 'admin-positions',
+      component: () => import('../views/admin/PositionsManagementView.vue'),
+      meta: { requiresAuth: true, permissions: ['edit_users', 'system.user.manage'], title: 'ทะเบียนตำแหน่ง', parent: 'จัดการผู้ใช้งาน' }
+    },
+    {
       path: '/admin/menus',
       name: 'admin-menus',
       component: () => import('../views/admin/MenusManagementView.vue'),

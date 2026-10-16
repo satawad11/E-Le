@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Console\Commands\Concerns\ResolvesScopeCommandUsers;
+use App\Console\Commands\Concerns\ResolvesCommandUsers;
 use App\Services\PermissionScopeService;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
@@ -16,7 +16,7 @@ use InvalidArgumentException;
  */
 class GrantPermissionScope extends Command
 {
-    use ResolvesScopeCommandUsers;
+    use ResolvesCommandUsers;
 
     protected $signature = 'access:scope-grant
         {user : อีเมลหรือ UUID ของผู้ได้รับขอบเขต}

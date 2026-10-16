@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PersonnelAssignment extends Model
 {
-    protected $fillable = ['uuid', 'user_id', 'org_unit_id', 'personnel_type_id', 'position', 'effective_from', 'effective_to'];
+    protected $fillable = ['uuid', 'user_id', 'org_unit_id', 'personnel_type_id', 'position', 'position_id', 'effective_from', 'effective_to'];
 
     protected $casts = ['effective_from' => 'date', 'effective_to' => 'date'];
 
@@ -23,6 +23,11 @@ class PersonnelAssignment extends Model
     public function personnelType()
     {
         return $this->belongsTo(PersonnelType::class);
+    }
+
+    public function positionRef()
+    {
+        return $this->belongsTo(Position::class, 'position_id');
     }
 
     public function personnel()

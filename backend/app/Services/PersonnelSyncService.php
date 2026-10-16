@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Department;
 use App\Models\Personnel;
 use App\Models\PersonnelAssignment;
+use App\Models\Position;
 use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Support\Facades\DB;
@@ -102,6 +103,8 @@ class PersonnelSyncService
                             'org_unit_id' => $user->org_unit_id,
                             'personnel_type_id' => $user->personnel_type_id,
                             'position' => $currentAssignment->position,
+                            // ORG-ACCESS-02: ย้ายหน่วยงาน/เปลี่ยนประเภทบุคลากรต้องไม่ทำให้ตำแหน่งในทะเบียนหลุด
+                            'position_id' => $currentAssignment->position_id,
                             'effective_from' => now()->toDateString(),
                             'effective_to' => null,
                         ]);
@@ -321,6 +324,8 @@ class PersonnelSyncService
                 'org_unit_id' => $orgUnitId ?: $current?->org_unit_id,
                 'personnel_type_id' => $personnelTypeId ?: $current?->personnel_type_id,
                 'position' => $position ?: $current?->position,
+                // ORG-ACCESS-02: ส่ง null มาได้เพื่อล้างตำแหน่งในทะเบียน ไม่ส่งมา = คงของเดิม
+                'position_id' => array_key_exists('position_id', $attributes) ? $attributes['position_id'] : $current?->position_id,
                 'effective_from' => $effectiveFrom,
                 'effective_to' => $effectiveTo,
             ]);
@@ -328,6 +333,62 @@ class PersonnelSyncService
             $this->syncFromAssignment($newAssignment);
 
             return $newAssignment;
+        });
+    }
+
+    /**
+     * ผูกตำแหน่งจากทะเบียนตำแหน่งให้บุคลากร (ORG-ACCESS-02)
+     *
+     * - ตำแหน่งเดิมไม่ถูกเขียนทับ: ปิด assignment ปัจจุบันแล้วเปิดใหม่ตั้งแต่วันนี้ผ่าน assignPosition()
+     *   ยกเว้น assignment ที่เพิ่งเริ่มวันนี้ ซึ่งแก้ในแถวเดิม (ปิดย้อนเป็นเมื่อวานไม่ได้)
+     * - ข้อความตำแหน่ง (`position`) ถูกตั้งเป็นชื่อตำแหน่ง ณ ตอนผูก และ sync ไป user_profiles ตามกลไกเดิม
+     *   แก้ชื่อตำแหน่งในทะเบียนภายหลังจึงไม่เปลี่ยนข้อความในประวัติหรือแบบฟอร์มที่พิมพ์ไปแล้ว
+     * - ส่ง null เพื่อล้างตำแหน่งในทะเบียน ข้อความเดิมยังอยู่
+     *
+     * คืน true เมื่อมีการเปลี่ยนแปลง
+     */
+    public function assignCatalogPosition(User $user, ?Position $position, ?int $actorId = null): bool
+    {
+        return DB::transaction(function () use ($user, $position, $actorId) {
+            $current = PersonnelAssignment::where('user_id', $user->id)
+                ->whereNull('effective_to')
+                ->lockForUpdate()
+                ->first();
+
+            $newId = $position?->getKey();
+            $currentId = $current?->position_id === null ? null : (int) $current->position_id;
+            if ($current !== null && $currentId === $newId) {
+                return false;
+            }
+
+            $before = $current?->only(['uuid', 'position', 'position_id']);
+            $attributes = ['position_id' => $newId];
+            if ($position !== null) {
+                $attributes['position'] = $position->name;
+            }
+
+            if ($current !== null && $current->effective_from->isToday()) {
+                $current->update($attributes);
+                $assignment = $current;
+            } else {
+                // ยังไม่มี assignment — เริ่มจากหน่วยงานและประเภทบุคลากรปัจจุบันของผู้ใช้ ไม่ให้ต้นสังกัดหาย
+                $assignment = $this->assignPosition($user->id, $attributes + ($current === null ? [
+                    'org_unit_id' => $user->org_unit_id,
+                    'personnel_type_id' => $user->personnel_type_id,
+                ] : []));
+            }
+
+            app(AuditLogger::class)->log(
+                'personnel.position_assigned',
+                'user',
+                $user->id,
+                $before,
+                $assignment->only(['uuid', 'position', 'position_id', 'effective_from']),
+                null,
+                $actorId,
+            );
+
+            return true;
         });
     }
 

@@ -7,10 +7,10 @@ use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
- * หาผู้ใช้/หน่วยงานจากค่าที่พิมพ์ในคำสั่ง access:scope-*
+ * หาผู้ใช้/หน่วยงานจากค่าที่พิมพ์ในคำสั่ง artisan (access:scope-*, personnel:match-positions)
  * รับอีเมลหรือ UUID ไม่รับ id ภายใน (PROJECT_RULES ข้อ 4)
  */
-trait ResolvesScopeCommandUsers
+trait ResolvesCommandUsers
 {
     protected function findUser(string $identifier, string $label): User
     {

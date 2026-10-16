@@ -38,6 +38,13 @@
           <option v-for="p in personnelTypes" :key="p.id" :value="p.id">{{ p.name }}</option>
         </select>
       </label>
+      <label class="text-sm font-medium text-gray-700">
+        กลุ่มบุคลากร
+        <select v-model="filters.position_group" class="mt-1 block min-w-40 rounded-xl border border-gray-200 p-2 text-sm focus:ring-2 focus:ring-[#800000]/20 focus:border-[#800000]">
+          <option value="">ทั้งหมด</option>
+          <option v-for="g in positionGroups" :key="g.uuid" :value="g.uuid">{{ g.name }}</option>
+        </select>
+      </label>
       <button type="submit" class="rounded-xl bg-[#800000] hover:bg-[#660000] px-5 py-2.5 text-white font-medium text-sm shadow-sm transition-colors">
         แสดงรายงาน
       </button>
@@ -83,7 +90,7 @@
               <td class="p-3 font-medium text-gray-900">{{ row.document_number }}</td>
               <td class="p-3">
                 <p class="font-medium text-gray-900">{{ row.user?.name }}</p>
-                <p class="text-xs text-gray-500">{{ row.user?.personnel_type?.name }}</p>
+                <p class="text-xs text-gray-500">{{ row.user?.personnel_type?.name }}<span v-if="row.user?.current_assignment?.position_ref?.group"> · {{ row.user.current_assignment.position_ref.group.name }}</span></p>
               </td>
               <td class="p-3 text-gray-600">{{ row.user?.department?.name }}</td>
               <td class="p-3 text-gray-600">{{ row.type?.name }}</td>
@@ -126,6 +133,7 @@ const truncated = computed(() => total.value > rows.value.length)
 const summary = ref([])
 const departments = ref([])
 const personnelTypes = ref([])
+const positionGroups = ref([])
 
 const today = new Date()
 const start = new Date(today.getFullYear(), 0, 1)
@@ -135,7 +143,8 @@ const filters = reactive({
   from: iso(start),
   to: iso(today),
   department_id: '',
-  personnel_type_id: ''
+  personnel_type_id: '',
+  position_group: ''
 })
 
 const status = {
@@ -193,6 +202,11 @@ onMounted(async () => {
     personnelTypes.value = p.data
   } catch (e) {
     console.warn('Failed to load filter metadata', e)
+  }
+  try {
+    positionGroups.value = (await api.get('/positions')).data.filter(g => g.is_active)
+  } catch (e) {
+    console.warn('Failed to load position groups', e)
   }
   await loadRegister()
 })

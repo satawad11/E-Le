@@ -8,11 +8,13 @@ use App\Models\LeaveBalance;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\PersonnelType;
+use App\Models\Position;
 use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\AuditLogger;
 use App\Services\LeavePolicyService;
 use App\Services\PersonalDataAccessLogger;
+use App\Services\PersonnelSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -24,7 +26,7 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $users = User::with(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType'])->orderBy('name', 'asc')->get();
+        $users = User::with(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType'])->orderBy('name', 'asc')->get();
 
         // คืนทะเบียนประวัติของบุคลากรทุกคน จึงถือเป็นการเข้าถึงข้อมูลส่วนบุคคลแบบรวม
         app(PersonalDataAccessLogger::class)
@@ -50,9 +52,12 @@ class UserController extends Controller
             'department_id' => 'required|exists:departments,id',
             'telegram_chat_id' => 'nullable|string|max:255',
             'personnel_type_id' => 'nullable|exists:personnel_types,id',
+            'position_uuid' => 'nullable|uuid',
             'profile' => 'nullable|array',
             'custom_permissions' => 'nullable',
         ]);
+
+        $position = $this->requestedPosition($request, null);
 
         $profileData = $request->has('profile') ? (is_string($request->profile) ? json_decode($request->profile, true) : $request->profile) : [];
         $idCard = $profileData['id_card_number'] ?? null;
@@ -107,9 +112,13 @@ class UserController extends Controller
         $this->auditAccessChange($user, null);
         $this->auditProfileFields($user, array_keys($profileData));
 
+        if ($request->exists('position_uuid')) {
+            app(PersonnelSyncService::class)->assignCatalogPosition($user->fresh(), $position);
+        }
+
         return response()->json([
             'message' => 'สร้างผู้ใช้เรียบร้อยแล้ว',
-            'user' => $user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
+            'user' => $user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType']),
         ], 201);
     }
 
@@ -255,7 +264,7 @@ class UserController extends Controller
         app(PersonalDataAccessLogger::class)
             ->record($request, $user->id, 'user_profile', 'เปิดดูทะเบียนประวัติบุคลากร');
 
-        return response()->json($user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']));
+        return response()->json($user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType']));
     }
 
     public function update(Request $request, User $user)
@@ -270,9 +279,12 @@ class UserController extends Controller
             'role_id' => 'required|exists:roles,id',
             'department_id' => 'required|exists:departments,id',
             'telegram_chat_id' => 'nullable|string|max:255',
+            'position_uuid' => 'nullable|uuid',
             'profile' => 'nullable|array',
             'custom_permissions' => 'nullable',
         ]);
+
+        $position = $this->requestedPosition($request, $user);
 
         $accessBefore = $this->accessSnapshot($user);
 
@@ -327,9 +339,14 @@ class UserController extends Controller
             app(AuditLogger::class)->log('user.password_reset_by_admin', 'user', $user->id);
         }
 
+        if ($request->exists('position_uuid')) {
+            app(PersonnelSyncService::class)->assignCatalogPosition($user->fresh(), $position);
+            $user->unsetRelation('currentAssignment');
+        }
+
         return response()->json([
             'message' => 'อัปเดตข้อมูลผู้ใช้เรียบร้อยแล้ว',
-            'user' => $user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
+            'user' => $user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType']),
         ]);
     }
 
@@ -387,8 +404,30 @@ class UserController extends Controller
 
         return response()->json([
             'message' => $user->is_active ? 'เปิดใช้งานผู้ใช้แล้ว' : 'ระงับการใช้งานผู้ใช้แล้ว',
-            'user' => $user->fresh()->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']),
+            'user' => $user->fresh()->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType']),
         ]);
+    }
+
+    /**
+     * ตำแหน่งจากทะเบียนที่ฟอร์มส่งมา (ORG-ACCESS-02)
+     *
+     * ต้องเป็นตำแหน่งที่ใช้งานอยู่ ยกเว้นตำแหน่งเดิมของผู้ใช้ที่ถูกปิดใช้งานภายหลัง (บันทึกซ้ำได้โดยไม่ต้องเปลี่ยน)
+     */
+    private function requestedPosition(Request $request, ?User $user): ?Position
+    {
+        $uuid = $request->input('position_uuid');
+        if ($uuid === null || $uuid === '') {
+            return null;
+        }
+
+        $position = Position::where('uuid', $uuid)->first();
+        $currentId = $user?->currentAssignment?->position_id;
+
+        if ($position === null || (! $position->is_active && (int) $currentId !== $position->getKey())) {
+            throw ValidationException::withMessages(['position_uuid' => 'ไม่พบตำแหน่งที่ใช้งานอยู่ในทะเบียนตำแหน่ง']);
+        }
+
+        return $position;
     }
 
     private function accessSnapshot(User $user): array

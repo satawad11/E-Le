@@ -438,6 +438,14 @@
             >
               กำหนดประเภทบุคลากร
             </router-link>
+            <router-link
+              v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage'])"
+              to="/admin/positions"
+              class="nav-link !py-2 !text-sm"
+              active-class="nav-link-active"
+            >
+              ทะเบียนตำแหน่ง
+            </router-link>
             <!--
               ซ่อนเมนู "จัดการเมนูตามสิทธิ์" ไว้ก่อน: แถบเมนูข้างชุดนี้เขียนตายตัวใน App.vue
               ยังไม่ได้อ่านจาก /user/menus จริง การตั้งค่าในหน้านั้นจึงไม่มีผลกับสิ่งที่ผู้ใช้เห็น
@@ -806,6 +814,15 @@
               >
                 กำหนดประเภทบุคลากร
               </router-link>
+              <router-link
+                v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage'])"
+                to="/admin/positions"
+                @click="mobileMenu = false"
+                class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
+                active-class="!bg-white/20 !text-white font-semibold"
+              >
+                ทะเบียนตำแหน่ง
+              </router-link>
               <!-- ซ่อน "จัดการเมนูตามสิทธิ์" ไว้ก่อน ดูเหตุผลประกอบที่เมนูฝั่ง desktop -->
               <router-link v-if="authStore.isAdmin || authStore.hasPermission('system.role.manage')" to="/admin/roles" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 จัดการบทบาทและสิทธิ์
@@ -1067,8 +1084,8 @@ const isSarabanRouteActive = computed(() => {
 })
 
 const isUserRouteActive = computed(() => {
-  return ['admin-users', 'admin-menus', 'admin-roles', 'admin-personnel-assignments'].includes(route.name) ||
-    ['/admin/users', '/admin/menus', '/admin/roles', '/admin/personnel-assignments'].includes(route.path)
+  return ['admin-users', 'admin-menus', 'admin-roles', 'admin-personnel-assignments', 'admin-positions'].includes(route.name) ||
+    ['/admin/users', '/admin/menus', '/admin/roles', '/admin/personnel-assignments', '/admin/positions'].includes(route.path)
 })
 
 // Auto open active collapsible menu on navigation & close mobile drawer

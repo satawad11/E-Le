@@ -347,7 +347,15 @@
                   </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">ตำแหน่ง</label>
-                    <input v-model="form.profile.position" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <select v-model="form.position_uuid" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" @change="applyCatalogPosition">
+                      <option value="">ไม่ระบุจากทะเบียน (พิมพ์เอง)</option>
+                      <optgroup v-for="group in positionGroups" :key="group.uuid" :label="group.name">
+                        <option v-for="position in selectablePositions(group)" :key="position.uuid" :value="position.uuid">
+                          {{ position.name }}{{ position.is_active ? '' : ' (ปิดใช้งาน)' }}
+                        </option>
+                      </optgroup>
+                    </select>
+                    <input v-if="!form.position_uuid" v-model="form.profile.position" type="text" placeholder="ข้อความตำแหน่ง" class="mt-2 w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-2">
                     <label class="block text-xs text-gray-700 mb-1">แผนกวิชา</label>
@@ -633,8 +641,29 @@ const form = reactive({
   work_start_time: '',
   work_end_time: '',
   custom_permissions: [],
+  position_uuid: '',
   profile: getDefaultProfile()
 })
+
+// ORG-ACCESS-02: ทะเบียนตำแหน่ง (ผู้บริหาร / ครู / เจ้าหน้าที่) — ตำแหน่งไม่ให้สิทธิ์ใด ๆ
+const positionGroups = ref([])
+
+const fetchPositions = async () => {
+  try {
+    const res = await api.get('/positions')
+    positionGroups.value = Array.isArray(res.data) ? res.data : []
+  } catch (e) {
+    console.error('Failed to fetch positions', e)
+  }
+}
+
+// ตำแหน่งที่ปิดใช้งานแล้วเลือกใหม่ไม่ได้ แต่ยังแสดงถ้าเป็นตำแหน่งเดิมของผู้ใช้ที่กำลังแก้ไข
+const selectablePositions = (group) => group.positions.filter(p => p.is_active || p.uuid === form.position_uuid)
+
+const applyCatalogPosition = () => {
+  const position = positionGroups.value.flatMap(g => g.positions).find(p => p.uuid === form.position_uuid)
+  if (position) form.profile.position = position.name
+}
 
 const updateFullName = () => {
   const title = form.profile.title || ''
@@ -651,7 +680,8 @@ const loadInitialData = async () => {
       fetchUsers(),
       fetchDepartments(),
       fetchRoles(),
-      fetchPermissions()
+      fetchPermissions(),
+      fetchPositions()
     ])
   } catch (e) {
     console.error(e)
@@ -727,6 +757,7 @@ const openAddModal = () => {
   form.work_start_time = ''
   form.work_end_time = ''
   form.custom_permissions = []
+  form.position_uuid = ''
   form.profile = getDefaultProfile()
   
   imageFile.value = null
@@ -752,6 +783,7 @@ const openEditModal = (user) => {
   form.custom_permissions = Array.isArray(user.custom_permissions) ? [...user.custom_permissions] : (user.permissions ? user.permissions.map(p => typeof p === 'string' ? p : p.name) : [])
   
   form.profile = { ...getDefaultProfile(), ...(user.profile || {}) }
+  form.position_uuid = user.current_assignment?.position_ref?.uuid || ''
   
   imageFile.value = null
   imagePreview.value = null
@@ -787,6 +819,7 @@ const submitForm = async () => {
     if (form.work_start_time) formData.append('work_start_time', form.work_start_time)
     if (form.work_end_time) formData.append('work_end_time', form.work_end_time)
     formData.append('custom_permissions', JSON.stringify(form.custom_permissions || []))
+    formData.append('position_uuid', form.position_uuid || '')
     
     // Add profile data as individual fields (Server expects an array)
     for (const key in form.profile) {

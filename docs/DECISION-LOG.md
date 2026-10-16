@@ -328,3 +328,20 @@
   - Scopes still do not expire: when a holder leaves the post an admin must run `access:scope-revoke`.
   - An admin screen is not built yet; the commands run on the server. A screen can reuse the service later.
   - Scopes widen what a user sees; who may approve still comes from `org_unit_managers`.
+
+## ADR-ORG-ACCESS-02: Positions catalog with personnel groups, added during the production freeze
+
+- **Status**: Accepted
+- **Date**: 2026-10-16
+- **Context**:
+  The owner wants reports split into executives / teachers / staff (Q7). Positions were free text on `personnel_assignments.position` and `user_profiles.position`, so no reliable grouping existed; deriving the group from the org tree would count staff attached to academic departments as teachers. PROJECT_RULES forbid schema changes in PROD PHASE except critical fixes; the owner explicitly approved this exception on 2026-10-16 for the design in `docs/ORG-POSITION-ACCESS-MAPPING.md` section 7.1.
+- **Decision**:
+  1. Additive schema only: `position_groups`, `positions` and nullable `personnel_assignments.position_id` (restrict on delete). No existing column is changed or removed; existing rows keep `position_id` null.
+  2. The free-text `position` stays the printed text. Linking a catalog position copies its name at that moment, so renaming a catalog entry never rewrites history or issued forms.
+  3. Changing a person's catalog position closes the current assignment and opens a new one from today (same-day assignments are updated in place); org-unit/personnel-type changes carry `position_id` forward. Each link is audited as `personnel.position_assigned`.
+  4. Catalog entries are never deleted, only deactivated; a group with active positions cannot be deactivated. Edits need `system.user.manage` and are audited.
+  5. Positions grant no permission; no authorization code reads `position_id`.
+  6. Existing text is matched only by exact name through `personnel:match-positions` (dry run first); everything else is chosen by HR.
+- **Consequences**:
+  - Reports group people by their current assignment; people not linked yet show as "ยังไม่ระบุ".
+  - The seeded division names follow the 4-division structure in the mapping document and have not been checked against the latest regulation text; they are data and can be edited.
