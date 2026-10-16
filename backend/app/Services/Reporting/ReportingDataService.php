@@ -52,7 +52,7 @@ class ReportingDataService
     {
         $users = User::query()
             ->whereIn('users.id', $this->scope->users($viewer, $ability, $filter, true))
-            ->with(['personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit:id,name', 'department:id,name', 'personnelType:id,name', 'profile:id,user_id,position'])
+            ->with(['personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit:id,name', 'department:id,name', 'personnelType:id,name', 'profile:id,user_id,position'])
             ->orderBy('users.name')
             ->get(['users.id', 'users.uuid', 'users.name', 'users.org_unit_id', 'users.department_id', 'users.personnel_type_id', 'users.is_active']);
         $rows = $users->map(fn (User $user): array => [
@@ -62,12 +62,13 @@ class ReportingDataService
             'position' => $user->currentAssignment?->position ?? $user->profile?->position,
             'organization' => $user->currentAssignment?->orgUnit?->name ?? $user->orgUnit?->name ?? $user->department?->name,
             'personnel_type' => $user->currentAssignment?->personnelType?->name ?? $user->personnelType?->name,
+            'position_group' => $user->currentAssignment?->positionRef?->group?->name ?? 'ยังไม่ระบุ',
             'active' => $user->is_active,
         ])->all();
 
         return $this->dataset('personnel', 'Personnel Report', [
             'name' => 'Name', 'position' => 'Position', 'organization' => 'Organization',
-            'personnel_type' => 'Personnel Type', 'active' => 'Active',
+            'personnel_type' => 'Personnel Type', 'position_group' => 'Personnel Group', 'active' => 'Active',
         ], $rows, ['personnel' => count($rows)], $filter);
     }
 

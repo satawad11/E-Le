@@ -3,6 +3,7 @@
 namespace App\Services\Reporting;
 
 use App\Models\FiscalYear;
+use App\Models\PositionGroup;
 use Carbon\CarbonImmutable;
 
 final readonly class ReportFilter
@@ -14,6 +15,8 @@ final readonly class ReportFilter
         public ?int $orgUnitId = null,
         public ?int $userId = null,
         public ?int $personnelTypeId = null,
+        // ORG-ACCESS-02: กลุ่มบุคลากร (ผู้บริหาร / ครู / เจ้าหน้าที่) ตามตำแหน่งปัจจุบันในทะเบียนตำแหน่ง
+        public ?int $positionGroupId = null,
     ) {}
 
     public static function from(array $input): self
@@ -39,6 +42,7 @@ final readonly class ReportFilter
             isset($input['org_unit_id']) ? (int) $input['org_unit_id'] : null,
             isset($input['user_id']) ? (int) $input['user_id'] : null,
             isset($input['personnel_type_id']) ? (int) $input['personnel_type_id'] : null,
+            self::positionGroupId($input['position_group'] ?? null),
         );
     }
 
@@ -51,7 +55,20 @@ final readonly class ReportFilter
             'org_unit_id' => $this->orgUnitId,
             'user_id' => $this->userId,
             'personnel_type_id' => $this->personnelTypeId,
+            'position_group_id' => $this->positionGroupId,
         ];
+    }
+
+    /**
+     * รับ UUID ของกลุ่ม (ไม่รับ id ภายใน) — UUID ที่ไม่มีอยู่จริงกรองได้ผลว่าง ไม่ใช่ไม่กรอง
+     */
+    private static function positionGroupId(mixed $uuid): ?int
+    {
+        if (! is_string($uuid) || $uuid === '') {
+            return null;
+        }
+
+        return (int) (PositionGroup::query()->where('uuid', $uuid)->value('id') ?? 0);
     }
 
     private static function currentFiscalYear(): int

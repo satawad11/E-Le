@@ -4,6 +4,28 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [ORG-ACCESS-02] - 2026-10-16 — Positions catalog and personnel groups
+#### Added
+- **Schema (approved PROD PHASE exception, additive only):** `position_groups`, `positions`, nullable `personnel_assignments.position_id` (migration `2026_10_17_100000_create_positions_catalog`). Seeds 3 groups (ผู้บริหาร / ครู / เจ้าหน้าที่) and 17 positions; existing rows are not linked automatically.
+- Positions page (จัดการผู้ใช้งาน → ทะเบียนตำแหน่ง, `/admin/positions`): add/edit/deactivate groups and positions; `GET /api/positions`, `POST/PUT /api/admin/position-groups`, `POST/PUT /api/admin/positions` (UUIDs, `system.user.manage`, audited, no delete).
+- User form picks the position from the catalog (`position_uuid`); free text is still available when nothing is picked. Linking closes the current assignment and opens a new one (audited as `personnel.position_assigned`).
+- Personnel-group filter and column: government leave register page and CSV (`position_group`), and `/api/reporting/*` (`position_group` filter, `position_group` column in the personnel report).
+- `php artisan personnel:match-positions [--dry-run] [--by=]`: link existing free-text positions that exactly match a catalog name.
+- Permission `system.position.manage` (migration `2026_10_17_110000`, `RolesAndPermissionsSeeder`) granted to HR Head and Super Admin: manage the catalog, link positions with `PUT /api/admin/users/{uuid}/position` ("ตำแหน่ง" button on the user list), and run `personnel:match-positions`. It does not open user, role or permission editing.
+#### Fixed
+- Moving a person to another org unit or personnel type no longer drops their catalog position on the new assignment.
+#### Security
+- Recorded K-ORG-01: holders of `edit_users` / `system.user.manage` can assign any role or permission through the user form. Only Super Admin holds them today; do not grant them to other roles until it is fixed.
+
+### [ORG-ACCESS-01] - 2026-10-16 — Audited per-user permission scopes
+#### Added
+- `php artisan access:scope-grant {user} {permission} {scope} [--unit=] --by= --reason=`, `access:scope-revoke {user} {permission} --by= --reason=` and `access:scope-list [user]`: give or remove a per-user scope (`permission_scopes`) by email or UUID. The actor must hold `admin.users.manage_permissions`, cannot grant to themselves and must give a reason; legacy permission names are stored under the canonical name with one row per user and permission; every change is written to `audit_logs`. Previously the table could only be changed with direct SQL.
+- Owner decisions Q1–Q6 recorded in `docs/ORG-POSITION-ACCESS-MAPPING.md` (4-division structure, contract/hourly teachers copy temporary-employee leave quotas, HR staff use HR Head, no supplies/finance modules yet, deputy directors see leave and attendance organisation-wide). No data changed.
+
+### [ORG-ACCESS-00] - 2026-10-16 — Draft position → access mapping (no data changed)
+#### Added
+- `docs/ORG-POSITION-ACCESS-MAPPING.md`: proposed mapping of each executive / teacher / staff position to personnel type, role and org unit/scope, the 4-division org tree, pitfalls found in the current code (manager assignments narrow scope, role names the code still checks, auto-created leave policies for new personnel types) and the questions the owner must answer. Draft only — no data, schema or code changed.
+
 ### [REPORTS-01] - 2026-10-16 — Department filter on the government leave report
 #### Fixed
 - The หน่วยงาน dropdown on รายงานการลาราชการ (`/reports`) was always empty: it called `GET /api/departments`, which does not exist (404). It now calls the new `GET /api/reports/government-leave-departments`.

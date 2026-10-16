@@ -61,6 +61,9 @@ class ReportingScopeService
         if ($filter->personnelTypeId !== null) {
             $query->where('users.personnel_type_id', $filter->personnelTypeId);
         }
+        if ($filter->positionGroupId !== null) {
+            $query->whereHas('currentAssignment.positionRef', fn (Builder $position) => $position->where('position_group_id', $filter->positionGroupId));
+        }
         if ($activeOnly) {
             $query->where('users.is_active', true);
         }

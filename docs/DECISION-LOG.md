@@ -313,3 +313,36 @@
   - Generation re-renders a form ~20–30 times (~15–30 s per form).
   - Leave types without a system form (military call-up, international organisation, vocational rehabilitation) still need a PDF uploaded by the admin.
 
+## ADR-ORG-ACCESS-01: Per-user permission scopes are changed only through audited artisan commands
+
+- **Status**: Accepted
+- **Date**: 2026-10-16
+- **Context**:
+  The owner wants the org modelled as executives / teachers / staff with vocational-college positions (`docs/ORG-POSITION-ACCESS-MAPPING.md`). Positions stay labels; access comes from role + org-unit assignment. Making a deputy director the manager of their division narrows every scope to that division, so the owner decided (Q6) that deputies keep an organisation-wide view of leave and attendance through `permission_scopes`, and HR staff need the same. Nothing could write `permission_scopes` except direct SQL, which has no audit trail, and the rows have no effective dates. The owner approved code without schema changes during PROD-00 Architecture Freeze.
+- **Decision**:
+  1. `PermissionScopeService` is the only writer of `permission_scopes`; `access:scope-grant`, `access:scope-revoke` and `access:scope-list` call it.
+  2. The actor (`--by`) must be active and hold `admin.users.manage_permissions`; nobody can grant a scope to themselves; a reason (e.g. the appointment order) is required.
+  3. Legacy permission names are stored under the canonical name and a user has at most one row per permission (all equivalent names are replaced), because `PermissionEvaluator::scopeFor()` reads the first matching row.
+  4. Every grant and revoke writes `audit_logs` (`access.scope.granted` / `access.scope.revoked`) with before/after and the reason.
+- **Consequences**:
+  - Scopes still do not expire: when a holder leaves the post an admin must run `access:scope-revoke`.
+  - An admin screen is not built yet; the commands run on the server. A screen can reuse the service later.
+  - Scopes widen what a user sees; who may approve still comes from `org_unit_managers`.
+
+## ADR-ORG-ACCESS-02: Positions catalog with personnel groups, added during the production freeze
+
+- **Status**: Accepted
+- **Date**: 2026-10-16
+- **Context**:
+  The owner wants reports split into executives / teachers / staff (Q7). Positions were free text on `personnel_assignments.position` and `user_profiles.position`, so no reliable grouping existed; deriving the group from the org tree would count staff attached to academic departments as teachers. PROJECT_RULES forbid schema changes in PROD PHASE except critical fixes; the owner explicitly approved this exception on 2026-10-16 for the design in `docs/ORG-POSITION-ACCESS-MAPPING.md` section 7.1.
+- **Decision**:
+  1. Additive schema only: `position_groups`, `positions` and nullable `personnel_assignments.position_id` (restrict on delete). No existing column is changed or removed; existing rows keep `position_id` null.
+  2. The free-text `position` stays the printed text. Linking a catalog position copies its name at that moment, so renaming a catalog entry never rewrites history or issued forms.
+  3. Changing a person's catalog position closes the current assignment and opens a new one from today (same-day assignments are updated in place); org-unit/personnel-type changes carry `position_id` forward. Each link is audited as `personnel.position_assigned`.
+  4. Catalog entries are never deleted, only deactivated; a group with active positions cannot be deactivated. Edits need `system.user.manage` and are audited.
+  5. Positions grant no permission; no authorization code reads `position_id`.
+  6. Existing text is matched only by exact name through `personnel:match-positions` (dry run first); everything else is chosen by HR.
+- **Consequences**:
+  - Reports group people by their current assignment; people not linked yet show as "ยังไม่ระบุ".
+  - The seeded division names follow the 4-division structure in the mapping document and have not been checked against the latest regulation text; they are data and can be edited.
+  - HR Head manages the catalog and links positions through a dedicated permission `system.position.manage` (migration `2026_10_17_110000`) and `PUT /api/admin/users/{uuid}/position`. The owner first asked for `system.user.manage`, but that permission opens the user form, which accepts any `role_id` / `custom_permissions` (K-ORG-01) and would let every HR officer make themselves Super Admin; the owner chose the narrower permission.
