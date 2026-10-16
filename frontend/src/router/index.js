@@ -247,7 +247,7 @@ const router = createRouter({
       path: '/admin/positions',
       name: 'admin-positions',
       component: () => import('../views/admin/PositionsManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['edit_users', 'system.user.manage'], title: 'ทะเบียนตำแหน่ง', parent: 'จัดการผู้ใช้งาน' }
+      meta: { requiresAuth: true, permissions: ['edit_users', 'system.user.manage', 'system.position.manage'], title: 'ทะเบียนตำแหน่ง', parent: 'จัดการผู้ใช้งาน' }
     },
     {
       path: '/admin/menus',

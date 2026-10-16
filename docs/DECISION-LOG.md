@@ -345,3 +345,4 @@
 - **Consequences**:
   - Reports group people by their current assignment; people not linked yet show as "ยังไม่ระบุ".
   - The seeded division names follow the 4-division structure in the mapping document and have not been checked against the latest regulation text; they are data and can be edited.
+  - HR Head manages the catalog and links positions through a dedicated permission `system.position.manage` (migration `2026_10_17_110000`) and `PUT /api/admin/users/{uuid}/position`. The owner first asked for `system.user.manage`, but that permission opens the user form, which accepts any `role_id` / `custom_permissions` (K-ORG-01) and would let every HR officer make themselves Super Admin; the owner chose the narrower permission.

@@ -68,6 +68,7 @@ $modules = [
             'edit_users' => 'เพิ่ม/แก้ไขข้อมูลผู้ใช้งาน',
             'delete_users' => 'ลบผู้ใช้งาน',
             'admin.users.manage_permissions' => 'จัดการสิทธิ์รายบุคคล (Individual Permissions)',
+            'system.position.manage' => 'จัดการทะเบียนตำแหน่งและผูกตำแหน่งบุคลากร',
             'manage_departments' => 'จัดการฝ่าย / แผนก / โครงสร้างองค์กร',
             'manage_workflow_steps' => 'จัดการขั้นตอนการเดินเรื่องอนุมัติ',
             'manage_leave_types' => 'จัดการประเภทการลา',

@@ -10,6 +10,7 @@ use App\Models\Position;
 use App\Models\PositionGroup;
 use App\Models\User;
 use App\Services\OrgScopeResolver;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -265,6 +266,108 @@ class PositionCatalogTest extends TestCase
         $this->actingAs($user)->getJson('/api/reports/government-leave-register?from=2020-01-01&to=2030-12-31')->assertForbidden();
     }
 
+    // ------------------------------------------- HR Head (system.position.manage)
+
+    public function test_hr_head_role_gets_position_permission_but_not_user_management(): void
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+        $hrHead = Role::findByName('HR Head', 'web');
+
+        $this->assertTrue($hrHead->hasPermissionTo('system.position.manage'));
+        $this->assertFalse($hrHead->hasPermissionTo('system.user.manage'));
+        $this->assertFalse($hrHead->hasPermissionTo('edit_users'));
+    }
+
+    public function test_migration_grants_position_permission_to_existing_hr_head_role(): void
+    {
+        $role = Role::findOrCreate('HR Head', 'web');
+        $this->assertFalse($role->fresh()->hasPermissionTo(Permission::findOrCreate('system.position.manage', 'web')));
+
+        (require database_path('migrations/2026_10_17_110000_grant_position_management_to_hr_head.php'))->up();
+
+        $this->assertTrue($role->fresh()->hasPermissionTo('system.position.manage'));
+    }
+
+    public function test_hr_can_manage_catalog_and_assign_positions_with_audit(): void
+    {
+        $hr = $this->hrOfficer();
+        $target = $this->staff($this->unitA, null, now()->subMonth()->toDateString());
+        $group = PositionGroup::where('code', 'STAFF')->first();
+
+        $this->actingAs($hr)->postJson('/api/admin/positions', ['code' => 'STAFF_LIBRARY', 'name' => 'เจ้าหน้าที่ห้องสมุด', 'group_uuid' => $group->uuid])
+            ->assertCreated();
+
+        $position = Position::where('code', 'STAFF_LIBRARY')->first();
+        $this->actingAs($hr)->putJson("/api/admin/users/{$target->uuid}/position", ['position_uuid' => $position->uuid])
+            ->assertOk()
+            ->assertJsonPath('position.uuid', $position->uuid)
+            ->assertJsonPath('position_text', 'เจ้าหน้าที่ห้องสมุด');
+
+        $this->assertSame($position->id, (int) PersonnelAssignment::where('user_id', $target->id)->whereNull('effective_to')->value('position_id'));
+        $this->assertDatabaseHas('audit_logs', ['action' => 'personnel.position_assigned', 'resource_id' => (string) $target->id, 'actor_id' => $hr->id]);
+
+        // ล้างตำแหน่งในทะเบียนได้ ข้อความเดิมยังอยู่
+        $this->actingAs($hr)->putJson("/api/admin/users/{$target->uuid}/position", ['position_uuid' => null])->assertOk();
+        $current = PersonnelAssignment::where('user_id', $target->id)->whereNull('effective_to')->first();
+        $this->assertNull($current->position_id);
+        $this->assertSame('เจ้าหน้าที่ห้องสมุด', $current->position);
+    }
+
+    public function test_hr_cannot_use_position_permission_to_change_roles_or_permissions(): void
+    {
+        $hr = $this->hrOfficer();
+        $superAdmin = Role::findOrCreate('Super Admin', 'web');
+
+        // แก้ข้อมูลผู้ใช้ (ซึ่งรับ role_id / custom_permissions) ไม่ได้ — รวมถึงตัวเอง
+        $this->actingAs($hr)->putJson("/api/admin/users/{$hr->id}", [
+            'name' => $hr->name,
+            'email' => $hr->email,
+            'role_id' => $superAdmin->id,
+            'department_id' => $this->department->id,
+            'custom_permissions' => ['system.user.manage'],
+        ])->assertForbidden();
+        $this->actingAs($hr)->putJson("/api/admin/users/{$hr->id}/permissions", ['permissions' => ['system.user.manage']])->assertForbidden();
+
+        // endpoint ผูกตำแหน่งไม่รับฟิลด์บทบาท/สิทธิ์ — ส่งมาก็ไม่มีผล
+        $this->actingAs($hr)->putJson("/api/admin/users/{$hr->uuid}/position", [
+            'position_uuid' => Position::where('code', 'DIRECTOR')->value('uuid'),
+            'role_id' => $superAdmin->id,
+            'custom_permissions' => ['system.user.manage'],
+        ])->assertOk();
+
+        $hr = $hr->fresh();
+        $this->assertFalse($hr->hasRole('Super Admin'));
+        $this->assertFalse($hr->hasPermissionTo('system.user.manage'));
+        $this->assertFalse($hr->can('system.user.manage'));
+    }
+
+    public function test_assign_endpoint_requires_permission_and_valid_position(): void
+    {
+        $target = $this->staff($this->unitA);
+        $position = Position::where('code', 'TEACHER')->first();
+
+        $this->actingAs($this->staff($this->unitA))->putJson("/api/admin/users/{$target->uuid}/position", ['position_uuid' => $position->uuid])->assertForbidden();
+
+        $hr = $this->hrOfficer();
+        $this->actingAs($hr)->putJson("/api/admin/users/{$target->uuid}/position", [])->assertJsonValidationErrors('position_uuid');
+        $this->actingAs($hr)->putJson("/api/admin/users/{$target->uuid}/position", ['position_uuid' => (string) Str::uuid()])->assertJsonValidationErrors('position_uuid');
+
+        $position->update(['is_active' => false]);
+        $this->actingAs($hr)->putJson("/api/admin/users/{$target->uuid}/position", ['position_uuid' => $position->uuid])->assertJsonValidationErrors('position_uuid');
+
+        $this->assertNull(PersonnelAssignment::where('user_id', $target->id)->whereNull('effective_to')->value('position_id'));
+    }
+
+    public function test_hr_can_run_match_command(): void
+    {
+        $hr = $this->hrOfficer();
+        $exact = $this->staff($this->unitA, 'ครูจ้างสอน', now()->subMonth()->toDateString());
+
+        $this->artisan('personnel:match-positions', ['--by' => $hr->email])->assertExitCode(0);
+
+        $this->assertNotNull(PersonnelAssignment::where('user_id', $exact->id)->whereNull('effective_to')->value('position_id'));
+    }
+
     // ---------------------------------------------------------------- reports
 
     public function test_government_register_filters_by_group_and_still_respects_unit_scope(): void
@@ -391,6 +494,21 @@ class PositionCatalogTest extends TestCase
         ]);
 
         return $user->fresh();
+    }
+
+    /**
+     * เจ้าหน้าที่งานบุคลากรตาม Q4: บทบาท HR Head ซึ่งมี system.position.manage แต่ไม่มีสิทธิ์แก้ไขผู้ใช้
+     */
+    private function hrOfficer(): User
+    {
+        Permission::findOrCreate('system.position.manage', 'web');
+        $role = Role::findOrCreate('HR Head', 'web');
+        $role->givePermissionTo(['system.position.manage', 'view_users']);
+
+        $hr = $this->staff($this->unitA);
+        $hr->syncRoles(['HR Head']);
+
+        return $hr->fresh();
     }
 
     private function updateUser(User $user, array $extra)

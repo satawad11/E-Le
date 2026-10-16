@@ -109,3 +109,14 @@ CRITICAL 6 · HIGH 6 · MEDIUM 5 · LOW 2 — ดู `docs/LEGACY-SYSTEM-ASSESSM
   (schema drift ที่ไม่มีจริง และ test ที่คิดว่าแดงแต่จริง ๆ เขียว 86/86)
   — เอกสารทั้งสองฉบับมีหมายเหตุกำกับจุดที่แก้ไว้แล้ว
 - Baseline commit + tag ยังอยู่บนเครื่อง local เท่านั้น ยังไม่ได้ push ขึ้น `origin`
+
+---
+
+## K-ORG-01 · ผู้ถือ `edit_users` / `system.user.manage` มอบบทบาทหรือสิทธิ์ใดก็ได้ผ่านฟอร์มแก้ไขผู้ใช้ (พบ 2026-10-16)
+
+`POST /api/admin/users` และ `PUT /api/admin/users/{id}` รับ `role_id` (ทุกบทบาท รวม Super Admin) และ `custom_permissions` แล้ว `syncRoles()` / `syncPermissions()` โดยไม่ตรวจว่าผู้แก้มีสิทธิ์มอบสิ่งนั้นหรือไม่ — รวมถึงแก้บัญชีของตนเอง
+LEGACY-04 ปิดทางผ่านหน้าจัดการสิทธิ์และการสร้าง role ไปแล้ว (`PrivilegeEscalationGuardTest`) แต่ทางนี้ยังเปิดอยู่
+
+- **ผลกระทบตอนนี้:** มีเฉพาะ Super Admin ที่ถือสิทธิ์นี้ จึงยังไม่มีใครยกระดับได้จริง
+- **ห้าม** มอบ `edit_users` หรือ `system.user.manage` ให้บทบาทอื่นจนกว่าจะแก้ — ORG-ACCESS-02 จึงใช้ `system.position.manage` แยกให้ HR Head
+- แนวทางแก้: เปลี่ยน `role_id` / `custom_permissions` ได้เฉพาะผู้มี `admin.users.manage_permissions` และห้ามมอบบทบาทที่สูงกว่าของตนเอง พร้อม test

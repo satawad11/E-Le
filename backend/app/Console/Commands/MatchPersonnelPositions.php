@@ -25,7 +25,7 @@ class MatchPersonnelPositions extends Command
 
     protected $signature = 'personnel:match-positions
         {--dry-run : แสดงผลการจับคู่โดยไม่บันทึก}
-        {--by= : อีเมลหรือ UUID ของผู้ดูแลที่สั่ง (ต้องมีสิทธิ์จัดการผู้ใช้) — จำเป็นเมื่อบันทึกจริง}';
+        {--by= : อีเมลหรือ UUID ของผู้ดูแลที่สั่ง (ต้องมีสิทธิ์จัดการทะเบียนตำแหน่ง) — จำเป็นเมื่อบันทึกจริง}';
 
     protected $description = 'จับคู่ข้อความตำแหน่งเดิมของบุคลากรกับทะเบียนตำแหน่ง (ชื่อตรงกันทุกตัวอักษรเท่านั้น)';
 
@@ -43,8 +43,8 @@ class MatchPersonnelPositions extends Command
                 return self::FAILURE;
             }
 
-            if (! $actor->is_active || ! $evaluator->allows($actor, 'system.user.manage')) {
-                $this->error('ผู้สั่งต้องเป็นผู้ใช้ที่ใช้งานอยู่และมีสิทธิ์จัดการผู้ใช้ (system.user.manage)');
+            if (! $actor->is_active || ! ($evaluator->allows($actor, 'system.position.manage') || $evaluator->allows($actor, 'system.user.manage'))) {
+                $this->error('ผู้สั่งต้องเป็นผู้ใช้ที่ใช้งานอยู่และมีสิทธิ์จัดการทะเบียนตำแหน่ง (system.position.manage)');
 
                 return self::FAILURE;
             }

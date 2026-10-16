@@ -11,8 +11,11 @@ All notable changes to the E-la project will be documented in this file.
 - User form picks the position from the catalog (`position_uuid`); free text is still available when nothing is picked. Linking closes the current assignment and opens a new one (audited as `personnel.position_assigned`).
 - Personnel-group filter and column: government leave register page and CSV (`position_group`), and `/api/reporting/*` (`position_group` filter, `position_group` column in the personnel report).
 - `php artisan personnel:match-positions [--dry-run] [--by=]`: link existing free-text positions that exactly match a catalog name.
+- Permission `system.position.manage` (migration `2026_10_17_110000`, `RolesAndPermissionsSeeder`) granted to HR Head and Super Admin: manage the catalog, link positions with `PUT /api/admin/users/{uuid}/position` ("ตำแหน่ง" button on the user list), and run `personnel:match-positions`. It does not open user, role or permission editing.
 #### Fixed
 - Moving a person to another org unit or personnel type no longer drops their catalog position on the new assignment.
+#### Security
+- Recorded K-ORG-01: holders of `edit_users` / `system.user.manage` can assign any role or permission through the user form. Only Super Admin holds them today; do not grant them to other roles until it is fixed.
 
 ### [ORG-ACCESS-01] - 2026-10-16 — Audited per-user permission scopes
 #### Added

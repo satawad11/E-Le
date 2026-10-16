@@ -156,6 +156,9 @@
                       </svg>
                       แก้ไข
                     </button>
+                    <button v-if="authStore.hasPermission('system.position.manage')" @click="openPositionAssign(user)" class="inline-flex items-center gap-1 px-3 py-1 bg-teal-600 text-white rounded text-xs hover:bg-teal-700 transition" title="กำหนดตำแหน่งจากทะเบียนตำแหน่ง">
+                      ตำแหน่ง
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -164,6 +167,29 @@
         </div>
       </div>
     </div>
+
+    <!-- ORG-ACCESS-02: กำหนดตำแหน่งอย่างเดียว (งานบุคลากร) — ไม่แตะบทบาท/สิทธิ์ของผู้ใช้ -->
+    <AppModal v-model="positionAssign.show" title="กำหนดตำแหน่ง" size="sm">
+      <p class="text-sm text-gray-600 mb-3">{{ positionAssign.user?.personnel?.full_name || positionAssign.user?.name }}</p>
+      <label class="block text-sm text-gray-700">
+        ตำแหน่งในทะเบียน
+        <select v-model="positionAssign.uuid" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded text-sm">
+          <option value="">ไม่ระบุจากทะเบียน</option>
+          <optgroup v-for="group in positionGroups" :key="group.uuid" :label="group.name">
+            <option v-for="position in selectablePositions(group, positionAssign.uuid)" :key="position.uuid" :value="position.uuid">
+              {{ position.name }}{{ position.is_active ? '' : ' (ปิดใช้งาน)' }}
+            </option>
+          </optgroup>
+        </select>
+      </label>
+      <p class="mt-2 text-xs text-gray-500">ตำแหน่งใช้แสดงผลและแยกรายงานเท่านั้น ไม่เปลี่ยนสิทธิ์การใช้งานระบบ</p>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="px-4 py-2 rounded border border-gray-300 text-sm" @click="positionAssign.show = false">ยกเลิก</button>
+          <button type="button" :disabled="submitting" class="px-4 py-2 rounded bg-[#800000] hover:bg-[#660000] text-white text-sm disabled:opacity-50" @click="savePositionAssign">บันทึก</button>
+        </div>
+      </template>
+    </AppModal>
 
     <!-- Form Modal (Full Screen or Large Modal) -->
     <transition name="fade">
@@ -499,6 +525,7 @@ import { ICONS } from '../../utils/icons'
 import LoadingState from '../../components/ui/LoadingState.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import ErrorState from '../../components/ui/ErrorState.vue'
+import AppModal from '../../components/ui/AppModal.vue'
 
 const authStore = useAuthStore()
 const alertStore = useAlertStore()
@@ -658,7 +685,29 @@ const fetchPositions = async () => {
 }
 
 // ตำแหน่งที่ปิดใช้งานแล้วเลือกใหม่ไม่ได้ แต่ยังแสดงถ้าเป็นตำแหน่งเดิมของผู้ใช้ที่กำลังแก้ไข
-const selectablePositions = (group) => group.positions.filter(p => p.is_active || p.uuid === form.position_uuid)
+const selectablePositions = (group, currentUuid = form.position_uuid) => group.positions.filter(p => p.is_active || p.uuid === currentUuid)
+
+const positionAssign = reactive({ show: false, user: null, uuid: '' })
+
+const openPositionAssign = (user) => {
+  positionAssign.user = user
+  positionAssign.uuid = user.current_assignment?.position_ref?.uuid || ''
+  positionAssign.show = true
+}
+
+const savePositionAssign = async () => {
+  submitting.value = true
+  try {
+    await api.put(`/admin/users/${positionAssign.user.uuid}/position`, { position_uuid: positionAssign.uuid || null })
+    alertStore.success('บันทึกตำแหน่งแล้ว')
+    positionAssign.show = false
+    await fetchUsers()
+  } catch (e) {
+    alertStore.error(getErrorMessage(e, 'บันทึกตำแหน่งไม่สำเร็จ'))
+  } finally {
+    submitting.value = false
+  }
+}
 
 const applyCatalogPosition = () => {
   const position = positionGroups.value.flatMap(g => g.positions).find(p => p.uuid === form.position_uuid)

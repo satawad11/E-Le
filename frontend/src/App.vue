@@ -439,7 +439,7 @@
               กำหนดประเภทบุคลากร
             </router-link>
             <router-link
-              v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage'])"
+              v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage', 'system.position.manage'])"
               to="/admin/positions"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -815,7 +815,7 @@
                 กำหนดประเภทบุคลากร
               </router-link>
               <router-link
-                v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage'])"
+                v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage', 'system.position.manage'])"
                 to="/admin/positions"
                 @click="mobileMenu = false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"

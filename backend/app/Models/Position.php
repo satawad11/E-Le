@@ -27,6 +27,20 @@ class Position extends Model
         return 'uuid';
     }
 
+    /**
+     * ตำแหน่งที่ผูกให้บุคลากรได้: ต้องใช้งานอยู่ ยกเว้นเป็นตำแหน่งเดิมของคนนั้น (บันทึกซ้ำได้หลังถูกปิดใช้งาน)
+     */
+    public static function assignable(string $uuid, ?int $currentPositionId): ?self
+    {
+        $position = self::where('uuid', $uuid)->first();
+
+        if ($position === null || (! $position->is_active && $currentPositionId !== $position->getKey())) {
+            return null;
+        }
+
+        return $position;
+    }
+
     public function group()
     {
         return $this->belongsTo(PositionGroup::class, 'position_group_id');

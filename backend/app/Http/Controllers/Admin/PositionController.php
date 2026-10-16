@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Position;
 use App\Models\PositionGroup;
+use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\PersonnelSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +18,7 @@ use Illuminate\Validation\ValidationException;
  * ทะเบียนตำแหน่งและกลุ่มบุคลากร (ORG-ACCESS-02)
  *
  * - อ่านได้ทุกคนที่เข้าสู่ระบบ (ข้อมูลอ้างอิง ไม่ใช่ข้อมูลส่วนบุคคล) ใช้ในฟอร์มผู้ใช้และตัวกรองรายงาน
- * - เพิ่ม/แก้ไขต้องมี `system.user.manage` (ตรวจที่ route) และบันทึก audit ทุกครั้ง
+ * - เพิ่ม/แก้ไข/ผูกตำแหน่งต้องมี `system.position.manage` หรือสิทธิ์จัดการผู้ใช้ (ตรวจที่ route) และบันทึก audit ทุกครั้ง
  * - ไม่มีการลบ — ปิดใช้งานแทน เพราะประวัติการดำรงตำแหน่งยังอ้างถึงอยู่
  */
 class PositionController extends Controller
@@ -99,6 +101,35 @@ class PositionController extends Controller
         });
 
         return response()->json($this->positionPayload($position->load('group')));
+    }
+
+    /**
+     * ผูกตำแหน่งให้บุคลากรโดยไม่ต้องผ่านฟอร์มแก้ไขผู้ใช้
+     *
+     * ให้งานบุคลากร (`system.position.manage`) ทำได้โดยไม่ต้องถือสิทธิ์แก้ไขผู้ใช้
+     * ซึ่งรับ role_id/custom_permissions — endpoint นี้แตะเฉพาะตำแหน่งเท่านั้น
+     * ส่ง position_uuid = null เพื่อล้างตำแหน่งในทะเบียน
+     */
+    public function assign(Request $request, User $user, PersonnelSyncService $personnel): JsonResponse
+    {
+        $data = $request->validate(['position_uuid' => ['present', 'nullable', 'uuid']]);
+
+        $position = null;
+        if ($data['position_uuid'] !== null) {
+            $currentId = $user->currentAssignment?->position_id;
+            $position = Position::assignable($data['position_uuid'], $currentId === null ? null : (int) $currentId)
+                ?? throw ValidationException::withMessages(['position_uuid' => 'ไม่พบตำแหน่งที่ใช้งานอยู่ในทะเบียนตำแหน่ง']);
+        }
+
+        $personnel->assignCatalogPosition($user, $position);
+
+        $assignment = $user->fresh()->currentAssignment?->load('positionRef.group');
+
+        return response()->json([
+            'message' => 'บันทึกตำแหน่งแล้ว',
+            'position' => $assignment?->positionRef === null ? null : $this->positionPayload($assignment->positionRef),
+            'position_text' => $assignment?->position,
+        ]);
     }
 
     /**

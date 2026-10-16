@@ -182,13 +182,15 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
     });
 
-    // ORG-ACCESS-02: ทะเบียนตำแหน่ง — อ่านได้ทุกคน (ฟอร์มผู้ใช้/ตัวกรองรายงาน) แก้ไขต้องมีสิทธิ์จัดการผู้ใช้ ไม่มีการลบ
+    // ORG-ACCESS-02: ทะเบียนตำแหน่ง — อ่านได้ทุกคน (ฟอร์มผู้ใช้/ตัวกรองรายงาน) ไม่มีการลบ
+    // แก้ไข/ผูกตำแหน่งใช้ system.position.manage (งานบุคลากร) โดยไม่ต้องมีสิทธิ์แก้บทบาท/สิทธิ์ของผู้ใช้
     Route::get('/positions', [PositionController::class, 'index']);
-    Route::group(['middleware' => ['permission:edit_users|system.user.manage']], function () {
+    Route::group(['middleware' => ['permission:edit_users|system.user.manage|system.position.manage']], function () {
         Route::post('/admin/position-groups', [PositionController::class, 'storeGroup']);
         Route::put('/admin/position-groups/{positionGroup}', [PositionController::class, 'updateGroup']);
         Route::post('/admin/positions', [PositionController::class, 'store']);
         Route::put('/admin/positions/{position}', [PositionController::class, 'update']);
+        Route::put('/admin/users/{user:uuid}/position', [PositionController::class, 'assign']);
     });
 
     /*

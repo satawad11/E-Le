@@ -420,14 +420,10 @@ class UserController extends Controller
             return null;
         }
 
-        $position = Position::where('uuid', $uuid)->first();
         $currentId = $user?->currentAssignment?->position_id;
 
-        if ($position === null || (! $position->is_active && (int) $currentId !== $position->getKey())) {
-            throw ValidationException::withMessages(['position_uuid' => 'ไม่พบตำแหน่งที่ใช้งานอยู่ในทะเบียนตำแหน่ง']);
-        }
-
-        return $position;
+        return Position::assignable($uuid, $currentId === null ? null : (int) $currentId)
+            ?? throw ValidationException::withMessages(['position_uuid' => 'ไม่พบตำแหน่งที่ใช้งานอยู่ในทะเบียนตำแหน่ง']);
     }
 
     private function accessSnapshot(User $user): array
