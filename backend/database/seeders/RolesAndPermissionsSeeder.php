@@ -33,6 +33,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'leave.management.manage',
             // งานบุคลากร: ทะเบียนตำแหน่งและผูกตำแหน่งบุคลากร (ORG-ACCESS-02)
             'system.position.manage',
+            // ลบใบลา — Super Admin เท่านั้น (Super Admin ได้ทุกสิทธิ์ด้านล่าง ไม่มอบให้บทบาทอื่น)
+            'leave.delete',
         ];
 
         foreach ($permissions as $permission) {

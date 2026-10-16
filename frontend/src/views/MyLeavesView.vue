@@ -144,8 +144,8 @@
                   ขอยกเลิก
                 </button>
                 
-                <!-- Admin/HR Actions -->
-                <div v-if="isAdminOrHR" class="flex gap-2">
+                <!-- ลบใบลา: สิทธิ์ leave.delete (Super Admin เท่านั้น) -->
+                <div v-if="canDeleteAny" class="flex gap-2">
                   <!-- <button @click="editLeave(leave)" class="px-3 py-1.5 text-xs font-semibold text-teal-600 border border-teal-200 rounded-lg hover:bg-teal-50">แก้ไข</button> -->
                   <button @click="deleteLeave(leave.id)" class="px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50">ลบ</button>
                 </div>
@@ -356,6 +356,7 @@ const filters = [
 
 const allAllowed = computed(() => authStore.isSuperAdmin || authStore.isHRHead || authStore.isManager || authStore.hasAnyPermission(['leave.report.view', 'leave.approval.dept', 'leave.approval.director']))
 const isAdminOrHR = computed(() => authStore.isSuperAdmin || authStore.isHRHead || authStore.hasPermission('leave.management.manage'))
+const canDeleteAny = computed(() => authStore.hasPermission('leave.delete'))
 
 const canCancel = (leave) => {
   if (leave.status !== 'Pending') return false;

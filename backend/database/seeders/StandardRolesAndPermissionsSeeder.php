@@ -25,6 +25,7 @@ class StandardRolesAndPermissionsSeeder extends Seeder
                 'leave.approval.final' => 'อนุมัติการลาขั้นสุดท้าย (ผอ.)',
                 'leave.report.view' => 'ดูรายงานและสถิติการลา',
                 'leave.management.manage' => 'จัดการสิทธิ์วันลาและซิงค์ข้อมูลวันลา (HR)',
+                'leave.delete' => 'ลบใบลา (เฉพาะผู้ดูแลระบบสูงสุด)',
             ],
             // === Attendance — แยกโมดูลออกจาก Leave ===
             'attendance' => [
