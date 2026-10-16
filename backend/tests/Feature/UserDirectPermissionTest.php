@@ -112,4 +112,51 @@ class UserDirectPermissionTest extends TestCase
 
         $this->assertFalse($target->fresh()->hasDirectPermission('attendance.view_all'));
     }
+
+    /**
+     * หน้าจัดการผู้ใช้ตั้งค่า checkbox สิทธิ์รายบุคคลจาก `permissions` ในรายการผู้ใช้
+     * แล้วส่งกลับมาทุกครั้งที่บันทึก เดิมรายการไม่มี `permissions` ฟอร์มจึงส่ง []
+     * และการบันทึกครั้งใดก็ตามของผู้ดูแลระบบลบสิทธิ์รายบุคคลของผู้ใช้นั้นทิ้งเงียบ ๆ
+     */
+    public function test_saving_a_user_from_the_list_keeps_their_individual_permissions(): void
+    {
+        $target = User::factory()->create(['department_id' => $this->department->id]);
+        $target->assignRole('Employee');
+        $target->givePermissionTo('attendance.view_all');
+
+        $listed = collect($this->actingAs($this->admin)->getJson('/api/admin/users')->assertOk()->json())
+            ->firstWhere('id', $target->id);
+
+        // เหมือน openEditModal() ใน UsersManagementView.vue
+        $formPermissions = collect($listed['permissions'] ?? [])
+            ->map(fn ($permission) => is_string($permission) ? $permission : $permission['name'])
+            ->all();
+
+        $this->actingAs($this->admin)->putJson("/api/admin/users/{$target->id}", [
+            'name' => 'ชื่อใหม่',
+            'email' => $listed['email'],
+            'role_id' => $listed['role_id'],
+            'department_id' => $listed['department_id'],
+            'custom_permissions' => json_encode($formPermissions),
+        ])->assertSuccessful();
+
+        $this->assertTrue(
+            $target->fresh()->hasDirectPermission('attendance.view_all'),
+            'บันทึกฟอร์มโดยไม่แตะแท็บสิทธิ์ ต้องไม่ลบสิทธิ์รายบุคคล',
+        );
+    }
+
+    /** รายการต้องมีเฉพาะสิทธิ์รายบุคคล ไม่ปนสิทธิ์จากบทบาท ไม่งั้นบันทึกแล้วสิทธิ์ของบทบาทจะกลายเป็นสิทธิ์รายบุคคล */
+    public function test_user_list_shows_only_direct_permissions(): void
+    {
+        $this->employeeRole->givePermissionTo('leave.report.view');
+        $target = User::factory()->create(['department_id' => $this->department->id]);
+        $target->assignRole('Employee');
+        $target->givePermissionTo('attendance.view_all');
+
+        $listed = collect($this->actingAs($this->admin)->getJson('/api/admin/users')->assertOk()->json())
+            ->firstWhere('id', $target->id);
+
+        $this->assertSame(['attendance.view_all'], array_column($listed['permissions'], 'name'));
+    }
 }

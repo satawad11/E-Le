@@ -37,7 +37,9 @@ class UserController extends Controller
 
     public function index(Request $request)
     {
-        $users = User::with(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType'])->orderBy('name', 'asc')->get();
+        // `permissions` = สิทธิ์รายบุคคล (direct) ของ Spatie — ฟอร์มแก้ไขใช้ตั้ง checkbox และส่งกลับมาทุกครั้งที่บันทึก
+        // ถ้าไม่ส่งไป ฟอร์มจะส่ง [] แล้วการบันทึกจะลบสิทธิ์รายบุคคลทิ้ง
+        $users = User::with(['roles', 'permissions:id,name', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType'])->orderBy('name', 'asc')->get();
 
         // คืนทะเบียนประวัติของบุคลากรทุกคน จึงถือเป็นการเข้าถึงข้อมูลส่วนบุคคลแบบรวม
         app(PersonalDataAccessLogger::class)
@@ -310,7 +312,7 @@ class UserController extends Controller
         app(PersonalDataAccessLogger::class)
             ->record($request, $user->id, 'user_profile', 'เปิดดูทะเบียนประวัติบุคลากร');
 
-        return response()->json($user->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType']));
+        return response()->json($user->load(['roles', 'permissions:id,name', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType']));
     }
 
     public function update(Request $request, User $user)
