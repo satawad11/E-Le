@@ -277,7 +277,15 @@
   - Changing an HTML form layout now requires a code change and review.
   - An HTML form change applies to reprints of older leaves that are not served from a finalized Document Engine file.
 
-## ADR-DELEGATION-01: Acting authority comes from an HR-approved register; admins only record decisions on behalf of the real authority
+## ADR-LEAVE-DELETE-01: Deleting a leave is a Super Admin-only permission
+
+- **Status**: Accepted
+- **Date**: 2026-10-16
+- **Context**: Leave deletion was gated by `leave.management.manage`. Granting that permission to HR Head (ADR-DELEGATION-01) let HR soft-delete any leave, including approved ones, which conflicts with the rule not to delete important history.
+- **Decision**: New permission `leave.delete`, granted only to Super Admin (owner decision 2026-10-16). Owners keep the existing right to delete their own pending leave within `cancel_allowed_days`. Each delete is audited.
+- **Consequences**: HR corrects approved leaves by cancellation through the approval chain. A deleted leave remains in the database (soft delete) and in the audit log.
+
+## ADR-DELEGATION-01:Acting authority comes from an HR-approved register; admins only record decisions on behalf of the real authority
 
 - **Status**: Accepted
 - **Date**: 2026-10-16

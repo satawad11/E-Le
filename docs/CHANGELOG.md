@@ -4,6 +4,13 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [LEAVE-DELETE-01] - 2026-10-16 — Deleting a leave is a separate Super Admin permission
+#### Changed
+- `DELETE /api/leaves/{leave}` now requires the new permission `leave.delete` (granted only to Super Admin, migration `2026_10_17_120000`) instead of `leave.management.manage`. After DELEGATION-01 gave HR Head `leave.management.manage`, HR could soft-delete any leave, including approved ones; HR now corrects leave data through cancellation, which goes through the approval chain.
+- An owner can still delete their own *pending* leave within the configured number of days.
+- Every delete is recorded in the audit log (`leave.deleted`, with the leave's status and dates before deletion).
+- The "ลบ" button on the leave list is shown only to holders of `leave.delete`.
+
 ### [USER-PERMS-KEEP] - 2026-10-16 — Saving a user no longer erases their direct permissions
 #### Fixed
 - `GET /api/admin/users` (and `GET /api/admin/users/{id}`) now include the user's direct permissions (`permissions`: id, name). The user form fills the "สิทธิ์การเข้าถึงพิเศษ" checkboxes from this list and sends it back on every save; without it the form sent `[]`, so any save by an administrator silently removed that user's direct permissions. Role permissions are not included, so they are not turned into direct ones.

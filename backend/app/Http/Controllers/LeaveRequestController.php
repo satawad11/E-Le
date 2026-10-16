@@ -10,6 +10,7 @@ use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\AuditLogger;
 use App\Services\LeaveApprovalSigner;
 use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
@@ -161,10 +162,17 @@ class LeaveRequestController extends Controller
         return response()->json(['message' => 'แก้ไขใบลาเรียบร้อยแล้ว', 'leave' => $leave->load('type')]);
     }
 
+    /**
+     * ลบใบลา (soft delete) — แยกเป็นสิทธิ์ `leave.delete` ของ Super Admin เท่านั้น (เจ้าของระบบตัดสิน 2026-10-16)
+     *
+     * เดิมผูกกับ `leave.management.manage` งานบุคลากรจึงลบใบลาที่อนุมัติแล้วของใครก็ได้
+     * การแก้ไขข้อมูลการลาตามปกติใช้การยกเลิกวันลาซึ่งผ่านสายอนุมัติ
+     * ผู้ยื่นยังลบใบของตนเองที่รออนุมัติได้ภายในจำนวนวันที่ตั้งค่าไว้ตามเดิม
+     */
     public function destroy(Request $request, Leave $leave)
     {
         $user = $request->user();
-        $canDelete = $user->can('leave.management.manage');
+        $canDelete = $user->can('leave.delete');
         if (! $canDelete && $leave->user_id === $user->id && $leave->status === 'Pending') {
             $cancelDays = (int) (Setting::where('key', 'cancel_allowed_days')->value('value') ?? 5);
             $canDelete = $leave->created_at->diffInDays(now()) <= $cancelDays;
@@ -172,10 +180,12 @@ class LeaveRequestController extends Controller
         if (! $canDelete) {
             return response()->json(['message' => 'ไม่มีสิทธิ์ลบใบลานี้'], 403);
         }
+        $before = $leave->only(['id', 'user_id', 'leave_type_id', 'start_date', 'end_date', 'total_days', 'status']);
         if (in_array($leave->status, ['Pending', 'Approved'], true)) {
             $this->leaveService->restoreBalance($leave);
         }
         $leave->delete();
+        app(AuditLogger::class)->log('leave.deleted', $leave, before: $before, after: ['deleted_at' => now()->toDateTimeString()]);
 
         return response()->json(['message' => 'ลบใบลาเรียบร้อยแล้ว']);
     }
