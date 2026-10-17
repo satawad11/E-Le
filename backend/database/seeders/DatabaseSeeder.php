@@ -28,9 +28,6 @@ class DatabaseSeeder extends Seeder
          * ลำดับสำคัญ: สิทธิ์ต้องมาก่อนเมนู เพราะ MenuSeeder ผูก menu_permissions
          *
          * ที่ **จงใจไม่ใส่** ไว้ที่นี่:
-         *   PurgeAndMigrateTo7StandardRolesSeeder  ลบ role และการผูกสิทธิ์ทิ้ง
-         *                                          เป็น one-off migration
-         *   StandardRolesAndPermissionsSeeder      ทับซ้อนกับ RolesAndPermissionsSeeder
          *   UpdateUserNamesSeeder                  แก้ข้อมูลย้อนหลังครั้งเดียว
          *   MockDataSeeder / MockLeaveSeeder       ข้อมูลจำลองสำหรับ dev เท่านั้น
          * ทั้งหมดต้องเรียกด้วยมือเมื่อจำเป็น

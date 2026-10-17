@@ -46,25 +46,25 @@ class PermissionEvaluatorTest extends TestCase
 
     public function test_legacy_permission_satisfies_the_canonical_name(): void
     {
-        // ผู้ใช้ถือ view_all_attendances ตามที่ฐานข้อมูลจริงเป็น
-        $user = $this->userWithLegacyPermission('view_all_attendances');
+        // ผู้ใช้ถือ view_users ตามที่ฐานข้อมูลจริงเป็น
+        $user = $this->userWithLegacyPermission('view_users');
 
         // แต่โค้ดเช็คด้วยชื่อ canonical
-        $this->assertTrue($this->evaluator->allows($user, 'attendance.view_all'));
+        $this->assertTrue($this->evaluator->allows($user, 'system.user.view'));
     }
 
     public function test_canonical_permission_also_satisfies_the_legacy_name(): void
     {
-        Permission::findOrCreate('attendance.view_all', 'web');
+        Permission::findOrCreate('system.user.view', 'web');
         $user = User::factory()->create();
-        $user->givePermissionTo('attendance.view_all');
+        $user->givePermissionTo('system.user.view');
 
-        $this->assertTrue($this->evaluator->allows($user->fresh(), 'view_all_attendances'));
+        $this->assertTrue($this->evaluator->allows($user->fresh(), 'view_users'));
     }
 
     public function test_unrelated_permission_is_not_granted(): void
     {
-        $user = $this->userWithLegacyPermission('view_all_attendances');
+        $user = $this->userWithLegacyPermission('view_users');
 
         $this->assertFalse($this->evaluator->allows($user, 'leave.report.view'));
         $this->assertFalse($this->evaluator->allows($user, 'attendance.ot_summary'));
@@ -72,9 +72,9 @@ class PermissionEvaluatorTest extends TestCase
 
     public function test_gate_honours_the_alias_mapping(): void
     {
-        $user = $this->userWithLegacyPermission('view_all_attendances');
+        $user = $this->userWithLegacyPermission('view_users');
 
-        $this->assertTrue($user->can('attendance.view_all'));
+        $this->assertTrue($user->can('system.user.view'));
     }
 
     /**
@@ -92,21 +92,21 @@ class PermissionEvaluatorTest extends TestCase
 
     public function test_explicit_deny_beats_an_allow(): void
     {
-        $user = $this->userWithLegacyPermission('view_all_attendances');
-        $this->assertTrue($user->can('attendance.view_all'));
+        $user = $this->userWithLegacyPermission('view_users');
+        $this->assertTrue($user->can('system.user.view'));
 
-        $this->deny($user, 'attendance.view_all');
+        $this->deny($user, 'system.user.view');
 
-        $this->assertFalse($this->evaluator->allows($user->fresh(), 'attendance.view_all'));
+        $this->assertFalse($this->evaluator->allows($user->fresh(), 'system.user.view'));
     }
 
     public function test_deny_cannot_be_bypassed_by_using_the_other_name(): void
     {
-        $user = $this->userWithLegacyPermission('view_all_attendances');
-        $this->deny($user, 'attendance.view_all');
+        $user = $this->userWithLegacyPermission('view_users');
+        $this->deny($user, 'system.user.view');
 
         // เรียกด้วยชื่อเก่าก็ต้องยังถูกปฏิเสธ
-        $this->assertFalse($this->evaluator->allows($user->fresh(), 'view_all_attendances'));
+        $this->assertFalse($this->evaluator->allows($user->fresh(), 'view_users'));
     }
 
     // ------------------------------------------------- 04-5 deny ชนะ Super Admin
@@ -114,29 +114,29 @@ class PermissionEvaluatorTest extends TestCase
     public function test_explicit_deny_beats_super_admin(): void
     {
         Role::findOrCreate('Super Admin', 'web');
-        Permission::findOrCreate('attendance.view_all', 'web');
+        Permission::findOrCreate('system.user.view', 'web');
 
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
 
-        $this->assertTrue($admin->fresh()->can('attendance.view_all'));
+        $this->assertTrue($admin->fresh()->can('system.user.view'));
 
-        $this->deny($admin, 'attendance.view_all');
+        $this->deny($admin, 'system.user.view');
 
-        $this->assertFalse($admin->fresh()->can('attendance.view_all'));
+        $this->assertFalse($admin->fresh()->can('system.user.view'));
     }
 
     public function test_super_admin_keeps_every_other_ability_when_denied_one(): void
     {
         Role::findOrCreate('Super Admin', 'web');
-        Permission::findOrCreate('attendance.view_all', 'web');
+        Permission::findOrCreate('system.user.view', 'web');
         Permission::findOrCreate('leave.report.view', 'web');
 
         $admin = User::factory()->create();
         $admin->assignRole('Super Admin');
-        $this->deny($admin, 'attendance.view_all');
+        $this->deny($admin, 'system.user.view');
 
-        $this->assertFalse($admin->fresh()->can('attendance.view_all'));
+        $this->assertFalse($admin->fresh()->can('system.user.view'));
         $this->assertTrue($admin->fresh()->can('leave.report.view'));
     }
 
@@ -146,12 +146,12 @@ class PermissionEvaluatorTest extends TestCase
     {
         config(['authorization.use_new_engine' => false]);
 
-        $user = $this->userWithLegacyPermission('view_all_attendances');
+        $user = $this->userWithLegacyPermission('view_users');
 
         // พฤติกรรมเดิม: ชื่อ canonical ไม่มีในฐานข้อมูลจึงถูกปฏิเสธ
-        $this->assertFalse($user->can('attendance.view_all'));
+        $this->assertFalse($user->can('system.user.view'));
         // แต่ชื่อเก่าที่ถืออยู่ยังใช้ได้
-        $this->assertTrue($user->can('view_all_attendances'));
+        $this->assertTrue($user->can('view_users'));
     }
 
     private function deny(User $user, string $ability): void

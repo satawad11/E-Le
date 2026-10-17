@@ -28,15 +28,15 @@ return new class extends Migration
     private const ROLES = [
         'HR Officer' => [
             'description' => 'เจ้าหน้าที่งานบริหารและพัฒนาทรัพยากรบุคคล',
-            'permissions' => ['view_users', 'view_all_attendances', 'export_reports', 'leave.report.view', 'system.position.manage', 'attendance.ot', 'attendance.ot_summary', 'overtime.operation.execute'],
+            'permissions' => ['view_users', 'attendance.view_all', 'leave.report.view', 'system.position.manage', 'attendance.ot_summary', 'overtime.operation.execute'],
         ],
         'Auditor' => [
             'description' => 'ผู้ตรวจสอบ (งานติดตามและประเมินผล) — ดูรายงานอย่างเดียว',
-            'permissions' => ['leave.report.view', 'view_all_attendances', 'export_reports', 'attendance.ot_summary', 'saraban.document.report'],
+            'permissions' => ['leave.report.view', 'attendance.view_all', 'attendance.ot_summary', 'saraban.document.report'],
         ],
         'Overtime Operator' => [
             'description' => 'ผู้จัดทำคำสั่งปฏิบัติงานล่วงเวลา',
-            'permissions' => ['attendance.ot', 'overtime.operation.execute'],
+            'permissions' => ['overtime.operation.execute'],
         ],
     ];
 

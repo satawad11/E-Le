@@ -270,7 +270,7 @@ class AccessGovernancePhase2Test extends TestCase
         $auditor = Role::findByName('Auditor', 'web');
         $operator = Role::findByName('Overtime Operator', 'web');
 
-        $this->assertTrue($hrOfficer->hasPermissionTo('view_all_attendances'));
+        $this->assertTrue($hrOfficer->hasPermissionTo('attendance.view_all'));
         $this->assertFalse($hrOfficer->hasPermissionTo('leave.management.manage'));
         $this->assertFalse($hrOfficer->hasPermissionTo('admin.users.manage_permissions'));
         $this->assertTrue($auditor->hasPermissionTo('leave.report.view'));

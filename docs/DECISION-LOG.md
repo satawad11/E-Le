@@ -381,3 +381,14 @@
 - Staff memberships are a separate table from `org_unit_managers` so that no membership can ever make someone an approver.
 - Role expiry returns the user to one configured base role, because the user form keeps one role per user.
 - New roles were added, not swapped in: moving users to them is an owner decision made on the user page.
+
+## ADR-RBAC-CLEANUP-01: One name per right, no alias may widen access
+
+- **Status**: Accepted
+- **Date**: 2026-10-17
+- **Context**: The owner asked whether RBAC + ABAC is correct and to delete what is unused. Aliases meant to keep old names working had become grants: `attendance.ot_summary` granted OT approval and `export_reports` granted leave reports. 18 permissions were shown on the role page but checked nowhere.
+- **Decision**:
+  1. An alias may only map a name to a permission of the same meaning; aliases that widen access are removed.
+  2. Legacy names with a canonical twin are merged (grants copied, then the legacy row deleted); legacy names still checked by name in routes (`view_users`, `edit_users`, `manage_settings`) stay until those routes are migrated.
+  3. Permissions with no enforcement point are deleted, and a test keeps the role-page catalogue limited to existing permissions.
+- **Consequences**: HR Head, HR Officer and Auditor lose OT approval; Document Officer loses leave reports. No other effective access changes.

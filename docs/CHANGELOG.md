@@ -4,6 +4,17 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [RBAC-CLEANUP-01] - 2026-10-17 — RBAC + ABAC audit: remove unused permissions and over-granting aliases
+#### Security
+- Removed the alias `attendance.ot_summary` → `overtime.management.review`: HR Head, HR Officer and Auditor could permit and certify overtime, so the HR Head who issues an OT order could also approve it. Viewing the OT summary is now view-only. The reporting-center OT report and the evaluation OT metrics use `attendance.ot_summary` (read-only) instead of the approval permission, so HR and auditors keep the report without approval rights.
+- Removed the alias `export_reports` → `leave.report.view` and the permission itself (no code checks it): the Document Officer could read college-wide leave reports. Director, Deputy Director and HR Head get `leave.report.view` directly.
+#### Removed
+- Legacy duplicates merged into their canonical names, with role, direct, menu and scope grants copied first: `approve_leave`/`approve_leaves` → `leave.approval.dept`, `view_all_attendances` → `attendance.view_all`, `attendance.ot` → `overtime.operation.execute`.
+- Permissions no code enforces: `leave.view/create/cancel/approve/hr_verify/export`, `saraban.view/config.manage/document.archive/document.dispatch`, `attendance.export`, `document.generate/final.view/audit.view`, `leave.audit.view`, `leave.evidence.verify`, `delete_users`. The role page lists only enforced permissions.
+- Checks for permissions that never existed (`system.manage`, `leave.approval.director`, front-end `system.role.manage` → `system.menu.manage`).
+- Unused seeders `StandardRolesAndPermissionsSeeder` and `PurgeAndMigrateTo7StandardRolesSeeder`.
+- Migration `2026_10_19_100000_clean_up_rbac_permissions` (data only).
+
 ### [ACCESS-GOV-01] - 2026-10-16 — Access governance for the 2569 school administration regulation
 #### Added
 - **Approver type `ORG_UNIT_MANAGER`** ("head of a named unit"): a leave step can point at one org unit, e.g. the deputy director in charge of the resource-management division, who then approves leaves of every division (owner answer Q3). It never falls back to role names. `approval_steps.org_unit_id` and the pinned `leave_approvals.org_unit_id` (migration `2026_10_18_100000`). The workflow page gains the option and a unit picker.

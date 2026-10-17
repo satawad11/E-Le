@@ -293,7 +293,7 @@
         </div>
 
         <!-- ระบบสารบรรณอิเล็กทรอนิกส์ Collapsible -->
-        <div v-if="settingStore.isSarabanEnabled && (authStore.isAdmin || authStore.hasAnyPermission(['saraban.view', 'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast', 'saraban.setting.manage']))">
+        <div v-if="settingStore.isSarabanEnabled && (authStore.isAdmin || authStore.hasAnyPermission(['saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast', 'saraban.setting.manage']))">
           <button
             @click="sarabanMenuOpen = !sarabanMenuOpen; if(isSidebarCollapsed) isSidebarCollapsed = false"
             class="nav-link w-full flex justify-between items-center"
@@ -468,7 +468,7 @@
             </router-link>
             -->
             <router-link
-              v-if="authStore.isAdmin || authStore.hasPermission('system.role.manage')"
+              v-if="authStore.isAdmin || authStore.hasPermission('system.menu.manage')"
               to="/admin/roles"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -737,7 +737,7 @@
           </div>
 
           <!-- ระบบสารบรรณ Collapsible (Mobile) -->
-          <div v-if="settingStore.isSarabanEnabled && (authStore.isAdmin || authStore.hasAnyPermission(['saraban.view', 'saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast', 'saraban.setting.manage']))">
+          <div v-if="settingStore.isSarabanEnabled && (authStore.isAdmin || authStore.hasAnyPermission(['saraban.document.view', 'saraban.document.create', 'saraban.document.approve', 'saraban.document.sign', 'saraban.circular.broadcast', 'saraban.setting.manage']))">
             <button
               @click="sarabanMenuOpen = !sarabanMenuOpen"
               class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-white/80 hover:bg-white/10"
@@ -841,7 +841,7 @@
                 โครงสร้างหน่วยงาน
               </router-link>
               <!-- ซ่อน "จัดการเมนูตามสิทธิ์" ไว้ก่อน ดูเหตุผลประกอบที่เมนูฝั่ง desktop -->
-              <router-link v-if="authStore.isAdmin || authStore.hasPermission('system.role.manage')" to="/admin/roles" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+              <router-link v-if="authStore.isAdmin || authStore.hasPermission('system.menu.manage')" to="/admin/roles" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 จัดการบทบาทและสิทธิ์
               </router-link>
             </div>

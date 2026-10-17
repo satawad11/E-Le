@@ -130,7 +130,6 @@ class LeaveApprovalSigner
     public function canRecord(User $actor): bool
     {
         return $actor->can('leave.management.manage')
-            || $actor->can('system.manage')
             || $actor->roles->contains(fn ($role) => in_array($role->name, ['Super Admin', 'SuperAdmin'], true));
     }
 

@@ -21,14 +21,14 @@ class RolesAndPermissionsSeeder extends Seeder
         $permissions = [
             'view_users',
             'edit_users',
-            'delete_users',
             'manage_settings',
             'manage_departments',
             'manage_leave_types',
             'manage_workflow_steps',
-            'approve_leave',
-            'view_all_attendances',
-            'export_reports',
+            // RBAC-CLEANUP-01: ชื่อใหม่แทน approve_leave / view_all_attendances · export_reports ลบแล้ว
+            'leave.approval.dept',
+            'attendance.view_all',
+            'leave.report.view',
             // งานบุคลากร: จัดการวันลา บันทึกวันลาแทน ทะเบียนการปฏิบัติหน้าที่แทน (DELEGATION-01)
             'leave.management.manage',
             // งานบุคลากร: ทะเบียนตำแหน่งและผูกตำแหน่งบุคลากร (ORG-ACCESS-02)
@@ -51,9 +51,10 @@ class RolesAndPermissionsSeeder extends Seeder
         $hrHeadRole = Role::firstOrCreate(['name' => 'HR Head', 'guard_name' => 'web']);
         $hrHeadRole->syncPermissions([
             'view_users',
-            'approve_leave',
-            'view_all_attendances',
-            'export_reports',
+            // RBAC-CLEANUP-01: ชื่อใหม่แทน approve_leave / view_all_attendances · export_reports ลบแล้ว
+            'leave.approval.dept',
+            'attendance.view_all',
+            'leave.report.view',
             'leave.management.manage',
             // ORG-ACCESS-02: ทะเบียนตำแหน่งเท่านั้น — ไม่ใช่ system.user.manage (เปิดช่องมอบบทบาท/สิทธิ์)
             'system.position.manage',
@@ -62,24 +63,25 @@ class RolesAndPermissionsSeeder extends Seeder
         // 3. Deputy Director
         $deputyRole = Role::firstOrCreate(['name' => 'Deputy Director', 'guard_name' => 'web']);
         $deputyRole->syncPermissions([
-            'approve_leave',
-            'view_all_attendances',
-            'export_reports',
+            // RBAC-CLEANUP-01: ชื่อใหม่แทน approve_leave / view_all_attendances · export_reports ลบแล้ว
+            'leave.approval.dept',
+            'attendance.view_all',
+            'leave.report.view',
         ]);
 
         // 4. Director
         $directorRole = Role::firstOrCreate(['name' => 'Director', 'guard_name' => 'web']);
         $directorRole->syncPermissions([
-            'approve_leave',
-            'view_all_attendances',
-            'export_reports',
+            // RBAC-CLEANUP-01: ชื่อใหม่แทน approve_leave / view_all_attendances · export_reports ลบแล้ว
+            'leave.approval.dept',
+            'attendance.view_all',
+            'leave.report.view',
         ]);
 
         // 5. Document Officer
         $docOfficerRole = Role::firstOrCreate(['name' => 'Document Officer', 'guard_name' => 'web']);
         $docOfficerRole->syncPermissions([
-            'view_all_attendances',
-            'export_reports',
+            'attendance.view_all',
         ]);
 
         // 6. Super Admin

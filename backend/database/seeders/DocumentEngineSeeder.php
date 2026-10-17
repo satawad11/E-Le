@@ -26,10 +26,7 @@ class DocumentEngineSeeder extends Seeder
         'document.template.manage' => 'จัดการแม่แบบ เวอร์ชัน และตำแหน่งฟิลด์',
         'document.report.view' => 'ดูรายงานที่สร้างจากศูนย์เอกสาร',
         'document.report.manage' => 'จัดการนิยามรายงาน',
-        'document.generate' => 'สั่งออกเอกสารจากระบบ',
-        'document.final.view' => 'ดูเอกสารฉบับสมบูรณ์ที่ออกไปแล้ว',
         'document.final.download' => 'ดาวน์โหลดเอกสารฉบับสมบูรณ์',
-        'document.audit.view' => 'ดูประวัติการใช้งานศูนย์เอกสาร',
     ];
 
     public function run(): void

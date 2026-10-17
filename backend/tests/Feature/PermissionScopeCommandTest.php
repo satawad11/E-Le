@@ -45,6 +45,8 @@ class PermissionScopeCommandTest extends TestCase
         Permission::findOrCreate('leave.approval.dept', 'web');
         Permission::findOrCreate('attendance.view_all', 'web');
         Permission::findOrCreate('leave.report.view', 'web');
+        Permission::findOrCreate('view_users', 'web');
+        Permission::findOrCreate('system.user.view', 'web');
         Permission::findOrCreate(PermissionScopeService::MANAGE_ABILITY, 'web');
 
         $this->resolver = app(OrgScopeResolver::class);
@@ -111,7 +113,7 @@ class PermissionScopeCommandTest extends TestCase
         DB::table('permission_scopes')->insert([
             'model_type' => $this->deputy->getMorphClass(),
             'model_id' => $this->deputy->id,
-            'permission_name' => 'approve_leave',
+            'permission_name' => 'view_users',
             'scope' => 'UNIT',
             'created_at' => now(),
             'updated_at' => now(),
@@ -119,7 +121,7 @@ class PermissionScopeCommandTest extends TestCase
 
         $this->artisan('access:scope-grant', [
             'user' => 'deputy@test.local',
-            'permission' => 'approve_leave',
+            'permission' => 'view_users',
             'scope' => 'organization',
             '--by' => 'admin@test.local',
             '--reason' => 'คำสั่งที่ 2/2569',
@@ -127,11 +129,11 @@ class PermissionScopeCommandTest extends TestCase
 
         $rows = DB::table('permission_scopes')->where('model_id', $this->deputy->id)->get();
         $this->assertCount(1, $rows);
-        $this->assertSame('leave.approval.dept', $rows->first()->permission_name);
+        $this->assertSame('system.user.view', $rows->first()->permission_name);
         $this->assertSame('ORGANIZATION', $rows->first()->scope);
 
         $log = DB::table('audit_logs')->where('action', 'access.scope.granted')->first();
-        $this->assertStringContainsString('approve_leave', (string) $log->before);
+        $this->assertStringContainsString('view_users', (string) $log->before);
     }
 
     public function test_custom_scope_requires_unit_and_other_scopes_reject_unit(): void
@@ -203,7 +205,7 @@ class PermissionScopeCommandTest extends TestCase
 
         $this->artisan('access:scope-revoke', [
             'user' => 'deputy@test.local',
-            'permission' => 'approve_leave',
+            'permission' => 'leave.approval.dept',
             '--by' => 'admin@test.local',
             '--reason' => 'พ้นตำแหน่งตามคำสั่งที่ 9/2569',
         ])->assertExitCode(0);

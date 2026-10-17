@@ -79,7 +79,7 @@ class SecureFileAccessService
         }
 
         return (int) $attendance->user_id === (int) $user->id
-            || $user->hasAnyPermission(['attendance.view_all', 'view_all_attendances']);
+            || $user->can('attendance.view_all');
     }
 
     private function isAccessibleLeaveAsset(User $user, string $stored): bool

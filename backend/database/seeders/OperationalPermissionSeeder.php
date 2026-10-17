@@ -38,7 +38,6 @@ class OperationalPermissionSeeder extends Seeder
         // Decision 1 — 7 ตัวที่ route บังคับใช้แต่ไม่เคยถูกสร้าง
         'attendance.checkin' => 'บันทึกเวลาเข้า-ออกงานของตนเอง',
         'attendance.view_self' => 'ดูประวัติการลงเวลาของตนเอง',
-        'attendance.ot' => 'บันทึกเวลาทำงานล่วงเวลา (OT)',
         'attendance.ot_summary' => 'ดูสรุปการทำงานล่วงเวลาของทั้งองค์กร',
         'system.menu.manage' => 'จัดการเมนูและบทบาทของระบบ',
         'admin.users.manage_permissions' => 'กำหนดสิทธิ์รายบุคคล',
@@ -140,7 +139,6 @@ class OperationalPermissionSeeder extends Seeder
         'HR Head' => [
             'attendance.checkin',
             'attendance.view_self',
-            'attendance.ot',
             'attendance.ot_summary',
             'overtime.operation.execute',
         ],

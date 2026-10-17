@@ -96,7 +96,7 @@ class PrivilegeEscalationGuardTest extends TestCase
 
         $this->assertTrue($hr->can('view_users'));
         $this->assertTrue($hr->can('attendance.view_all'));
-        $this->assertTrue($hr->can('export_reports'));
+        $this->assertTrue($hr->can('leave.report.view'));
 
         $this->actingAs($hr)->getJson('/api/admin/users')->assertOk();
     }
@@ -324,26 +324,26 @@ class PrivilegeEscalationGuardTest extends TestCase
     {
         $editor = $this->hrEditor();
         $target = $this->userWithRole('Employee');
-        $target->givePermissionTo('export_reports');
+        $target->givePermissionTo('leave.report.view');
 
         $this->actingAs($editor)
             ->putJson("/api/admin/users/{$target->id}", $this->userPayload($target, ['custom_permissions' => json_encode([])]))
             ->assertForbidden();
 
-        $this->assertTrue($target->fresh()->hasDirectPermission('export_reports'));
+        $this->assertTrue($target->fresh()->hasDirectPermission('leave.report.view'));
     }
 
     public function test_user_editor_can_still_edit_names_and_profiles(): void
     {
         $editor = $this->hrEditor();
         $target = $this->userWithRole('Employee');
-        $target->givePermissionTo('export_reports');
+        $target->givePermissionTo('leave.report.view');
 
         // ค่าบทบาท/สิทธิ์เดิมที่ส่งกลับมา ต้องบันทึกผ่าน
         $this->actingAs($editor)
             ->putJson("/api/admin/users/{$target->id}", $this->userPayload($target, [
                 'name' => 'ชื่อใหม่',
-                'custom_permissions' => json_encode(['export_reports']),
+                'custom_permissions' => json_encode(['leave.report.view']),
                 'profile' => ['first_name' => 'สมหญิง', 'position' => 'ครู'],
             ]))
             ->assertOk();
@@ -357,7 +357,7 @@ class PrivilegeEscalationGuardTest extends TestCase
         $this->assertSame('สมหญิง', $target->profile->first_name);
         $this->assertSame('ครู', $target->profile->position);
         $this->assertTrue($target->hasRole('Employee'));
-        $this->assertTrue($target->hasDirectPermission('export_reports'));
+        $this->assertTrue($target->hasDirectPermission('leave.report.view'));
         $this->assertSame('ชื่อของฉัน', $editor->fresh()->name);
         $this->assertTrue($editor->fresh()->hasDirectPermission('edit_users'), 'แก้บัญชีตนเองต้องไม่ล้างสิทธิ์ที่มีอยู่');
     }
@@ -439,11 +439,11 @@ class PrivilegeEscalationGuardTest extends TestCase
         $this->actingAs($manager->fresh())
             ->putJson("/api/admin/users/{$target->id}", $this->userPayload($target, [
                 'role_id' => Role::findByName('Director', 'web')->id,
-                'custom_permissions' => json_encode(['export_reports']),
+                'custom_permissions' => json_encode(['leave.report.view']),
             ]))
             ->assertOk();
 
         $this->assertTrue($target->fresh()->hasRole('Director'));
-        $this->assertTrue($target->fresh()->hasDirectPermission('export_reports'));
+        $this->assertTrue($target->fresh()->hasDirectPermission('leave.report.view'));
     }
 }

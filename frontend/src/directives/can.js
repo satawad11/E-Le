@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/auth';
  * 
  * Usage in templates:
  *  v-can="'saraban.document.sign'"
- *  v-can="['saraban.view', 'leave.view']"
+ *  v-can="['saraban.document.view', 'leave.report.view']"
  */
 export const canDirective = {
   mounted(el, binding) {

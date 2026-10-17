@@ -55,7 +55,7 @@ class ApproverResolverService
         }
 
         // 2. Super Admin ผ่านทุกข้อ (เฉพาะใบลาของผู้อื่น)
-        if ($actor->can('system.manage') || $actor->roles->contains('name', 'Super Admin') || $actor->roles->contains('name', 'SuperAdmin')) {
+        if ($actor->roles->contains('name', 'Super Admin') || $actor->roles->contains('name', 'SuperAdmin')) {
             return true;
         }
 
@@ -165,7 +165,7 @@ class ApproverResolverService
             }
         }
 
-        return $this->fallback($fallbackRoleId, 'leave.approval.director', ['Deputy Director', 'รองผู้อำนวยการ']);
+        return $this->fallback($fallbackRoleId, null, ['Deputy Director', 'รองผู้อำนวยการ']);
     }
 
     private function resolveDirectorIds(string $date, ?int $fallbackRoleId): array
@@ -182,7 +182,7 @@ class ApproverResolverService
             }
         }
 
-        return $this->fallback($fallbackRoleId, 'leave.approval.director', ['Director', 'ผู้อำนวยการ']);
+        return $this->fallback($fallbackRoleId, null, ['Director', 'ผู้อำนวยการ']);
     }
 
     private function resolveHROfficerIds(?int $fallbackRoleId): array
@@ -234,7 +234,7 @@ class ApproverResolverService
      * ส่วน permission กลางและชื่อบทบาทมาตรฐานทำให้ "ทุกคนที่มีบทบาทนั้น" อนุมัติได้ทุกฝ่าย
      * จึงปิดได้ด้วย workflow.approver_role_fallback (production ควรปิดหลังกรอกหัวหน้าหน่วยงานครบ)
      */
-    private function fallback(?int $fallbackRoleId, string $permissionName, array $roleNames): array
+    private function fallback(?int $fallbackRoleId, ?string $permissionName, array $roleNames): array
     {
         if (! $this->roleFallbackEnabled()) {
             return $fallbackRoleId ? $this->resolveByRoleIdOrPermission($fallbackRoleId) : [];
