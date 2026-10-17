@@ -76,7 +76,7 @@
               </svg>
             </div>
             <span class="font-bold text-lg">เข้างาน</span>
-            <span class="text-xs opacity-80 mt-1">Check In</span>
+            <span class="text-xs opacity-80 mt-1">ลงเวลาเข้างาน</span>
           </button>
 
           <button @click="handleCheckOut" 
@@ -90,7 +90,7 @@
               </svg>
             </div>
             <span class="font-bold text-lg">ออกงาน</span>
-            <span class="text-xs opacity-80 mt-1">Check Out</span>
+            <span class="text-xs opacity-80 mt-1">ลงเวลาออกงาน</span>
           </button>
         </div>
 

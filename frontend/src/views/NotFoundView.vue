@@ -7,7 +7,7 @@
     </div>
 
     <span class="px-3.5 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded-full uppercase tracking-wider mb-3">
-      404 Not Found
+      ไม่พบหน้า (404)
     </span>
 
     <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">

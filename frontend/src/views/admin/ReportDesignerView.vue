@@ -123,11 +123,11 @@
                 class="px-3 py-1.5 rounded-lg border border-gray-200 text-xs bg-white"
               >
                 <option value="">ไม่มีผลรวม</option>
-                <option value="SUM">รวม (SUM)</option>
-                <option value="COUNT">นับจำนวน (COUNT)</option>
-                <option value="AVG">เฉลี่ย (AVG)</option>
-                <option value="MIN">ต่ำสุด (MIN)</option>
-                <option value="MAX">สูงสุด (MAX)</option>
+                <option value="SUM">ผลรวม</option>
+                <option value="COUNT">นับจำนวน</option>
+                <option value="AVG">ค่าเฉลี่ย</option>
+                <option value="MIN">ค่าต่ำสุด</option>
+                <option value="MAX">ค่าสูงสุด</option>
               </select>
 
               <div v-if="isSelected(column.key)" class="flex items-center gap-1">

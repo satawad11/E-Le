@@ -140,14 +140,14 @@
             <label class="flex items-center cursor-pointer p-3 border rounded-lg hover:bg-gray-50 flex-1" :class="{'border-[#800000] bg-red-50': form.creation_mode === 'physical'}">
               <input type="radio" v-model="form.creation_mode" value="physical" class="w-4 h-4 text-[#800000] focus:ring-[#800000]" />
               <div class="ml-3">
-                <span class="block font-medium text-gray-900">อัปโหลดเอกสาร (Scanned PDF)</span>
+                <span class="block font-medium text-gray-900">อัปโหลดเอกสาร (ไฟล์สแกน PDF)</span>
                 <span class="block text-sm text-gray-500">สำหรับเอกสารกระดาษที่สแกนเข้าระบบ</span>
               </div>
             </label>
             <label class="flex items-center cursor-pointer p-3 border rounded-lg hover:bg-gray-50 flex-1" :class="{'border-[#800000] bg-red-50': form.creation_mode === 'digital'}">
               <input type="radio" v-model="form.creation_mode" value="digital" class="w-4 h-4 text-[#800000] focus:ring-[#800000]" />
               <div class="ml-3">
-                <span class="block font-medium text-gray-900">สร้างเอกสารอิเล็กทรอนิกส์ (E-Doc)</span>
+                <span class="block font-medium text-gray-900">สร้างเอกสารอิเล็กทรอนิกส์</span>
                 <span class="block text-sm text-gray-500">พิมพ์เนื้อหาและสร้าง PDF โดยอัตโนมัติ</span>
               </div>
             </label>
@@ -190,7 +190,7 @@
             </div>
             <div v-for="(link, index) in form.links" :key="index" class="flex gap-2 mb-2">
               <input v-model="link.title" placeholder="ชื่อลิงก์" type="text" class="w-1/3 px-3 py-1 border rounded-lg focus:ring-2 focus:ring-[#800000] outline-none" />
-              <input v-model="link.url" placeholder="URL (เช่น https://...)" type="url" class="flex-1 px-3 py-1 border rounded-lg focus:ring-2 focus:ring-[#800000] outline-none" />
+              <input v-model="link.url" placeholder="ที่อยู่ลิงก์ (เช่น https://...)" type="url" class="flex-1 px-3 py-1 border rounded-lg focus:ring-2 focus:ring-[#800000] outline-none" />
               <button type="button" @click="removeLink(index)" class="px-2 text-red-500 hover:text-red-700">ลบ</button>
             </div>
           </div>

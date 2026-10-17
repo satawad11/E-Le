@@ -31,7 +31,7 @@
           </div>
           <div class="ml-4 flex-shrink-0 flex">
             <button @click="alertStore.removeAlert(alert.id)" class="bg-white rounded-md inline-flex text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#800000]">
-              <span class="sr-only">Close</span>
+              <span class="sr-only">ปิดข้อความ</span>
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.x"/>
               </svg>

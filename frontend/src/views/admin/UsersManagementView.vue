@@ -265,7 +265,7 @@
                 <button @click="activeTab = 'personal'" :class="activeTab === 'personal' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลส่วนตัวบุคลากร</button>
                 <button @click="activeTab = 'address'" :class="activeTab === 'address' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลที่อยู่</button>
                 <button @click="activeTab = 'employment'" :class="activeTab === 'employment' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลการจ้าง</button>
-                <button @click="activeTab = 'system'" :class="activeTab === 'system' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลระบบ (Account)</button>
+                <button @click="activeTab = 'system'" :class="activeTab === 'system' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลบัญชีผู้ใช้</button>
                 <button v-if="canManageAccess" @click="activeTab = 'permissions'" :class="activeTab === 'permissions' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">สิทธิ์การเข้าถึงพิเศษ</button>
               </div>
 
@@ -379,11 +379,11 @@
                     <input v-model="form.phone" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
-                    <label class="block text-xs text-gray-700 mb-1">Fax</label>
+                    <label class="block text-xs text-gray-700 mb-1">โทรสาร</label>
                     <input v-model="form.profile.fax" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
-                    <label class="block text-xs text-gray-700 mb-1">E-Mail</label>
+                    <label class="block text-xs text-gray-700 mb-1">อีเมล</label>
                     <input v-model="form.email" type="email" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
@@ -497,7 +497,7 @@
                     <input v-model="form.password" type="password" :required="!modal.isEdit" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
-                    <label class="block text-xs text-gray-700 mb-1">Telegram Chat ID</label>
+                    <label class="block text-xs text-gray-700 mb-1">รหัสแชต Telegram</label>
                     <input v-model="form.telegram_chat_id" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                 </div>
@@ -509,7 +509,7 @@
                       <svg class="w-4 h-4 flex-shrink-0 text-amber-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.info"/>
                       </svg>
-                      <span>กำหนดสิทธิ์การเข้าถึงระบบเพิ่มเติมให้กับผู้ใช้งานคนนี้เป็นกรณีพิเศษ (Direct Custom Permissions)</span>
+                      <span>กำหนดสิทธิ์การเข้าถึงระบบเพิ่มเติมให้กับผู้ใช้งานคนนี้เป็นกรณีพิเศษ</span>
                     </p>
                   </div>
                   

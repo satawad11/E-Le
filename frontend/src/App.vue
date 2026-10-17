@@ -185,7 +185,7 @@
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
             >
-              จัดการ/ซิงค์วันลา (HR)
+              จัดการและปรับยอดวันลา
             </router-link>
 
             <!-- คัดกรองเกณฑ์เลื่อนเงินเดือน -->
@@ -685,7 +685,7 @@
                 <span v-if="pendingCancelBadge > 0" class="bg-orange-400 text-orange-900 text-xs font-bold px-1.5 py-0.5 rounded-full">{{ pendingCancelBadge }}</span>
               </router-link>
               <router-link v-if="authStore.isUserManager || authStore.hasPermission('leave.management.manage')" to="/admin/leaves-management" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                จัดการ/ซิงค์วันลา (HR)
+                จัดการและปรับยอดวันลา
               </router-link>
               <router-link v-if="authStore.hasAnyPermission(['leave.report.view', 'leave.management.manage'])" to="/admin/promotion-screening" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 คัดกรองเลื่อนเงินเดือน

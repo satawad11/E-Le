@@ -7,10 +7,10 @@
           <svg class="w-7 h-7 flex-shrink-0 text-[#800000]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.users"/>
           </svg>
-          จัดการบทบาทและสิทธิ์ (Role & Permission Management)
+          จัดการบทบาทและสิทธิ์
         </h2>
         <p class="mt-1 text-sm text-gray-500">
-          บริหารจัดการบทบาทในระบบ (Roles) และกำหนดชุดสิทธิ์การใช้งาน (Permission Matrix) สำหรับแต่ละกลุ่มผู้ใช้
+          บริหารจัดการบทบาทในระบบและกำหนดชุดสิทธิ์การใช้งาน สำหรับแต่ละกลุ่มผู้ใช้
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
@@ -121,7 +121,7 @@
               <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.shieldCheck"/>
               </svg>
-              สิทธิ์เต็มรูปแบบ (All System Permissions)
+              สิทธิ์ทั้งหมดของระบบ
             </div>
             <div v-else-if="role.permissions && role.permissions.length > 0" class="flex flex-wrap gap-1 max-h-36 overflow-y-auto pr-1">
               <span
@@ -184,7 +184,7 @@
           <div class="p-6 max-h-[70vh] overflow-y-auto space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">ชื่อบทบาท (Role Name) <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">ชื่อบทบาท <span class="text-red-500">*</span></label>
                 <input
                   type="text"
                   v-model="form.name"
@@ -194,7 +194,7 @@
                 />
               </div>
               <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">คำอธิบายหน้าที่ (Description)</label>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">คำอธิบายหน้าที่</label>
                 <input
                   type="text"
                   v-model="form.description"
@@ -208,7 +208,7 @@
             <div>
               <div class="flex justify-between items-center mb-3">
                 <label class="block text-sm font-semibold text-gray-900">
-                  เลือกชุดสิทธิ์การใช้งาน (Permissions Matrix):
+                  เลือกชุดสิทธิ์การใช้งาน:
                 </label>
                 <input
                   type="text"

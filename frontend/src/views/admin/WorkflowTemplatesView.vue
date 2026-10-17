@@ -1,7 +1,7 @@
 <template>
   <div class="p-6">
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-2xl font-bold">จัดการสายการอนุมัติ (Workflow Templates)</h2>
+      <h2 class="text-2xl font-bold">จัดการแม่แบบสายการอนุมัติ</h2>
       <button @click="openModal()" class="px-4 py-2 bg-[#800000] text-white rounded-lg text-sm hover:bg-red-800 flex items-center gap-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
         สร้างเทมเพลตใหม่
@@ -79,7 +79,7 @@
             
             <div class="pt-4 border-t">
               <div class="flex justify-between items-center mb-3">
-                <label class="block text-sm font-medium text-gray-700">ลำดับขั้นตอน (Steps)</label>
+                <label class="block text-sm font-medium text-gray-700">ลำดับขั้นตอน</label>
                 <button type="button" @click="addStep" class="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center gap-1">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                   เพิ่มขั้นตอน

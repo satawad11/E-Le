@@ -392,3 +392,19 @@
   2. Legacy names with a canonical twin are merged (grants copied, then the legacy row deleted); legacy names still checked by name in routes (`view_users`, `edit_users`, `manage_settings`) stay until those routes are migrated.
   3. Permissions with no enforcement point are deleted, and a test keeps the role-page catalogue limited to existing permissions.
 - **Consequences**: HR Head, HR Officer and Auditor lose OT approval; Document Officer loses leave reports. No other effective access changes.
+
+## ADR-REDESIGN-2569: Leave rules, approval authority and balances redesigned for production use
+
+- **Status**: Proposed
+- **Date**: 2026-10-17
+- **Context**: The owner asked for a full redesign so the system can be used for real, based on the 2555 civil-servant leave regulation (via the BICT leave manual), the 2569 vocational school administration regulation, and earlier analyses (banking-style ledger, accounts and roles, positions). Findings: one role-based approval chain for every leave type; ordination/Hajj policies do not enforce 60-day notice; no first-year, childcare, notification-mode or report-back rules; balances are mutable counters fixed by a reconcile command; validation and API error text falls back to English because `lang/th` is missing.
+- **Decision (proposed, per phase)**: see `docs/redesign-2569/`.
+  1. Phase 0: nine decisions (D-01 to D-09) must be answered by the authority before the phases that depend on them.
+  2. Phase 1: data-only fixes (versioned policies, personnel types per article 40, unit heads all at once).
+  3. Phase 3 before 2: versioned leave authority table selects a chain; approvers come only from unit-head orders.
+  4. Phase 2: new eligibility-rule keys, childcare leave type, notification mode, report-back and recall.
+  5. Phase 4: five-layer personnel/account/position/assignment/role model; positions no longer encode status or duties.
+  6. Phase 5: append-only leave ledger, tamper-evident audit, idempotency keys, period closing.
+  7. Phase 6: automated test matrix, one-semester parallel run, go-live and rollback plan.
+  8. Thai-only UI standard with CI checks.
+- **Consequences**: Phases 2-5 change schema and need separate Production Freeze exceptions. No code, data or schema changed by this ADR.

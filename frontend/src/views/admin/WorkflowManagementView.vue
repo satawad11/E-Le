@@ -9,7 +9,7 @@
             ยังไม่ได้บันทึก
           </span>
         </div>
-        <p class="text-gray-500 mt-1 text-sm">กำหนดขั้นตอนและเงื่อนไขการค้นหาผู้อนุมัติใบลาตามโครงสร้างองค์กร (Personnel & Org Structure)</p>
+        <p class="text-gray-500 mt-1 text-sm">กำหนดขั้นตอนและเงื่อนไขการค้นหาผู้อนุมัติใบลาตามโครงสร้างหน่วยงานและบุคลากร</p>
       </div>
 
       <div class="flex items-center gap-2 flex-wrap">
@@ -82,11 +82,11 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
             </svg>
-            หลักการทำงาน & Approver Resolvers
+            หลักการทำงานและวิธีหาผู้อนุมัติ
           </h3>
-          <p class="mb-2">ระบบค้นหาผู้อนุมัติอัตโนมัติตาม<strong>สังกัดของผู้ยื่นคำขอ</strong> และโครงสร้างหน่วยงาน (Org Structure)</p>
-          <p class="mb-2">คำขอลาเดิมที่สร้างไว้แล้วจะยึด <strong>Snapshot</strong> ขั้นตอน ณ เวลาที่สร้างคำขอ ไม่ถูกเปลี่ยนแปลงย้อนหลัง</p>
-          <p>รองรับการทำหน้าที่แทน (Delegation) ของทุกระดับอย่างถูกต้อง</p>
+          <p class="mb-2">ระบบค้นหาผู้อนุมัติอัตโนมัติตาม<strong>สังกัดของผู้ยื่นคำขอ</strong> และโครงสร้างหน่วยงาน</p>
+          <p class="mb-2">คำขอลาเดิมที่สร้างไว้แล้วจะยึด<strong>ขั้นตอนที่บันทึกไว้</strong> ณ เวลาที่สร้างคำขอ ไม่ถูกเปลี่ยนแปลงย้อนหลัง</p>
+          <p>รองรับการปฏิบัติหน้าที่แทนของทุกระดับอย่างถูกต้อง</p>
         </div>
 
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
@@ -171,7 +171,7 @@
 
               <div>
                 <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">
-                  เงื่อนไขผู้อนุมัติ (Resolver) <span class="text-red-500">*</span>
+                  วิธีหาผู้อนุมัติ <span class="text-red-500">*</span>
                 </label>
                 <select
                   v-model="step.approver_type"
@@ -440,7 +440,7 @@
           </svg>
         </div>
         <div class="text-center">
-          <h3 class="text-lg font-bold text-gray-900">ตรวจพบการแก้ไขซ้ำซ้อน (Conflict)</h3>
+          <h3 class="text-lg font-bold text-gray-900">ตรวจพบการแก้ไขซ้ำซ้อน</h3>
           <p class="text-sm text-gray-500 mt-2">
             ข้อมูลสายการอนุมัติถูกแก้ไขหรือบันทึกโดยผู้ดูแลระบบท่านอื่นก่อนหน้านี้ เพื่อความถูกต้องของข้อมูล กรุณารีเฟรชเพื่อโหลดข้อมูลล่าสุด
           </p>
