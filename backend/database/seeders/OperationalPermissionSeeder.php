@@ -57,7 +57,7 @@ class OperationalPermissionSeeder extends Seeder
         'saraban.document.sign' => 'ลงนามหนังสือราชการ',
 
         // สายคำสั่ง OT (เจ้าของระบบกำหนด 2026-08-19)
-        'overtime.operation.execute' => 'ออกคำสั่งปฏิบัติงานล่วงเวลาและลงเวลา OT',
+        'overtime.operation.execute' => 'ออกคำสั่งปฏิบัติงานล่วงเวลา',
         'overtime.management.review' => 'อนุญาต/อนุมัติคำสั่ง OT มอบหมายผู้ปฏิบัติงาน และรับรองเวลา',
     ];
 

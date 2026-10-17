@@ -107,7 +107,7 @@ return [
         'route_files' => [],
         'menus' => [],
         'permissions' => [
-            'overtime.operation.execute' => 'บันทึกและจัดทำคำสั่งปฏิบัติงานล่วงเวลา',
+            'overtime.operation.execute' => 'ออกคำสั่งปฏิบัติงานล่วงเวลา (การลงเวลา OT ของตนเองไม่ต้องใช้สิทธิ์นี้)',
             'overtime.management.review' => 'อนุมัติ รับรอง และดูรายงานการปฏิบัติงานล่วงเวลา',
         ],
         'policies' => [],

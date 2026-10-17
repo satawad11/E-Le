@@ -34,6 +34,7 @@ class OvertimeCriticalPathTest extends TestCase
         Permission::findOrCreate('overtime.operation.execute', 'web');
         Permission::findOrCreate('overtime.management.review', 'web');
         Permission::findOrCreate('attendance.ot_summary', 'web');
+        Permission::findOrCreate('attendance.checkin', 'web');
         $this->unit = $this->orgUnit('OT-A');
         $this->creator = User::factory()->create(['org_unit_id' => $this->unit])->fresh();
         $this->creator->givePermissionTo('overtime.operation.execute');
@@ -82,9 +83,32 @@ class OvertimeCriticalPathTest extends TestCase
         CarbonImmutable::setTestNow();
     }
 
+    /**
+     * OT-PUNCH-01: ผู้ปฏิบัติงานลงเวลา OT ด้วยสิทธิ์ลงเวลาปกติ แต่ออกคำสั่ง OT เองไม่ได้
+     */
+    public function test_assigned_worker_punches_ot_without_the_order_issuing_permission(): void
+    {
+        $this->createApproveAndAssign();
+        $this->assertFalse($this->employee->fresh()->can('overtime.operation.execute'));
+
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-17 18:15:00', 'Asia/Bangkok'));
+        $this->actingAs($this->employee)->postJson('/api/attendances/ot-check-in')->assertOk();
+        $this->actingAs($this->employee)->postJson('/api/overtime/orders', [
+            'title' => 'ออกคำสั่งเอง', 'org_unit_id' => $this->unit,
+        ])->assertForbidden();
+        CarbonImmutable::setTestNow();
+    }
+
+    public function test_ot_punch_still_requires_the_normal_check_in_permission(): void
+    {
+        $outsider = User::factory()->create(['org_unit_id' => $this->unit])->fresh();
+
+        $this->actingAs($outsider)->postJson('/api/attendances/ot-check-in')->assertForbidden();
+    }
+
     public function test_overtime_punch_requires_an_approved_assignment(): void
     {
-        $this->employee->givePermissionTo('overtime.operation.execute');
+        $this->employee->givePermissionTo('attendance.checkin');
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-17 18:30:00', 'Asia/Bangkok'));
 
         $this->actingAs($this->employee)
@@ -204,7 +228,7 @@ class OvertimeCriticalPathTest extends TestCase
         $this->actingAs($this->reviewer)->postJson("/api/overtime/orders/{$order->uuid}/assignments", [
             'user_ids' => [$this->employee->id],
         ])->assertOk();
-        $this->employee->givePermissionTo('overtime.operation.execute');
+        $this->employee->givePermissionTo('attendance.checkin');
 
         return $order->fresh();
     }

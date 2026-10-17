@@ -447,7 +447,7 @@ const alertStore = useAlertStore()
 
 /*
  * สิทธิ์ตรงกับที่ routes/api.php บังคับไว้:
- *   overtime.operation.execute  ออกคำสั่ง + ลงเวลา OT
+ *   overtime.operation.execute  ออกคำสั่ง OT (การลงเวลา OT ของตนเองใช้สิทธิ์ลงเวลาปกติ)
  *   overtime.management.review  อนุมัติ / มอบหมาย / รับรอง / รายงาน
  */
 const canExecute = computed(() => authStore.hasPermission('overtime.operation.execute'))
