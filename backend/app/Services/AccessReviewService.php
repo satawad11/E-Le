@@ -24,7 +24,7 @@ class AccessReviewService
 {
     /** สิทธิ์ที่ถือว่า "สิทธิ์สูง" ในรายงาน — กำหนดว่าใครอนุมัติ ใครให้สิทธิ์ หรือแก้ข้อมูลของคนอื่นได้ */
     public const PRIVILEGED_PERMISSIONS = [
-        'admin.users.manage_permissions', 'system.role.manage', 'system.org_structure.manage', 'manage_workflow_steps',
+        'admin.users.manage_permissions', 'system.menu.manage', 'system.org_structure.manage', 'manage_workflow_steps',
         'leave.management.manage', 'leave.delete', 'edit_users', 'system.user.manage', 'manage_settings',
         'system.setting.manage', 'saraban.document.view_classified', 'saraban.setting.manage',
     ];

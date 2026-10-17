@@ -31,13 +31,15 @@ class OvertimeCriticalPathTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Permission::findOrCreate('attendance.ot', 'web');
+        Permission::findOrCreate('overtime.operation.execute', 'web');
+        Permission::findOrCreate('overtime.management.review', 'web');
         Permission::findOrCreate('attendance.ot_summary', 'web');
         $this->unit = $this->orgUnit('OT-A');
         $this->creator = User::factory()->create(['org_unit_id' => $this->unit])->fresh();
-        $this->creator->givePermissionTo('attendance.ot');
+        $this->creator->givePermissionTo('overtime.operation.execute');
         $this->reviewer = User::factory()->create(['org_unit_id' => $this->unit])->fresh();
-        $this->reviewer->givePermissionTo('attendance.ot_summary');
+        // RBAC-CLEANUP-01: ผู้อนุญาต/รับรอง OT ถือสิทธิ์อนุมัติโดยตรง — สิทธิ์ดูสรุปไม่ได้ให้สิทธิ์อนุมัติอีกแล้ว
+        $this->reviewer->givePermissionTo(['overtime.management.review', 'attendance.ot_summary']);
         $this->employee = User::factory()->create(['org_unit_id' => $this->unit])->fresh();
     }
 
@@ -82,7 +84,7 @@ class OvertimeCriticalPathTest extends TestCase
 
     public function test_overtime_punch_requires_an_approved_assignment(): void
     {
-        $this->employee->givePermissionTo('attendance.ot');
+        $this->employee->givePermissionTo('overtime.operation.execute');
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-17 18:30:00', 'Asia/Bangkok'));
 
         $this->actingAs($this->employee)
@@ -127,7 +129,7 @@ class OvertimeCriticalPathTest extends TestCase
         $otherUnit = $this->orgUnit('OT-B');
         DB::table('permission_scopes')->insert([
             'model_type' => $this->reviewer->getMorphClass(), 'model_id' => $this->reviewer->id,
-            'permission_name' => 'attendance.ot_summary', 'scope' => 'UNIT',
+            'permission_name' => 'overtime.management.review', 'scope' => 'UNIT',
             'created_at' => now(), 'updated_at' => now(),
         ]);
         $otherUser = User::factory()->create(['org_unit_id' => $otherUnit])->fresh();
@@ -202,7 +204,7 @@ class OvertimeCriticalPathTest extends TestCase
         $this->actingAs($this->reviewer)->postJson("/api/overtime/orders/{$order->uuid}/assignments", [
             'user_ids' => [$this->employee->id],
         ])->assertOk();
-        $this->employee->givePermissionTo('attendance.ot');
+        $this->employee->givePermissionTo('overtime.operation.execute');
 
         return $order->fresh();
     }

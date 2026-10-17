@@ -317,3 +317,30 @@ ROOT  วิทยาลัย…                              หัวหน�
 4. ตั้ง "ผู้อนุญาตคำสั่ง OT" = หัวหน้าของฝ่ายบริหารทรัพยากร · บันทึกเจ้าหน้าที่ประจำงานตามคำสั่ง · ย้ายผู้ใช้ไปบทบาท HR Officer / Auditor / Overtime Operator ตามหน้าที่
 5. ตั้ง `WORKFLOW_APPROVER_ROLE_FALLBACK=false` บน production แล้วรีสตาร์ต
 6. ต้นปีการศึกษาถัดไป: `access:review` → หัวหน้างานตรวจไฟล์ → ผู้อำนวยการ `access:review-signoff`
+
+## 11. ตรวจ RBAC + ABAC (2026-10-17) และสิ่งที่ลบ — RBAC-CLEANUP-01
+
+### 11.1 สิ่งที่ผิดและแก้แล้ว
+
+| # | ปัญหา | ผล | แก้ |
+|---|---|---|---|
+| 1 | alias `attendance.ot_summary` → `overtime.management.review` | HR Head (ผู้ออกคำสั่ง OT), HR Officer, Auditor อนุญาต/รับรอง OT ได้ — ผู้ออกคำสั่งอนุมัติคำสั่งของตนเองได้ | เลิก alias · "ดูสรุป OT" เป็นสิทธิ์ดูอย่างเดียว · รายงาน OT ในศูนย์รายงานใช้สิทธิ์ดูสรุป OT แทนสิทธิ์อนุมัติ |
+| 2 | alias `export_reports` → `leave.report.view` (export_reports ไม่ถูกตรวจที่ใดเลย) | เจ้าหน้าที่สารบรรณเห็นรายงานการลาทั้งวิทยาลัย | เลิก alias และลบ export_reports · มอบ `leave.report.view` ตรง ๆ ให้ Director / Deputy Director / HR Head |
+| 3 | ชื่อสิทธิ์ซ้ำสองชื่อ (`approve_leave`, `view_all_attendances`, `attendance.ot`) | ตรวจยากว่าใครได้อะไร | ย้ายการมอบ (บทบาท/รายบุคคล/เมนู/ขอบเขต) ไปชื่อใหม่ แล้วลบชื่อเดิม — ไม่มีใครเสียสิทธิ์ |
+| 4 | โค้ดตรวจสิทธิ์ที่ไม่มีอยู่จริง (`system.manage`, `leave.approval.director`, `system.role.manage` ในหน้าเว็บ) | เงื่อนไขไม่เคยเป็นจริง / เมนูบทบาทไม่ขึ้นให้ผู้ถือสิทธิ์จริง | ลบการตรวจที่ตาย · เมนูบทบาทใช้ `system.menu.manage` ตามที่ API บังคับ |
+| 5 | สิทธิ์ที่ไม่มีโค้ดตรวจ 18 ตัว (`leave.view/create/cancel/approve/hr_verify/export`, `saraban.view/config.manage/document.archive/document.dispatch`, `attendance.export`, `document.generate/final.view/audit.view`, `leave.audit.view`, `leave.evidence.verify`, `delete_users`, `export_reports`) | ติ๊กในหน้าบทบาทแล้วไม่มีผล | ลบทิ้ง · หน้าบทบาทแสดงเฉพาะสิทธิ์ที่ระบบบังคับจริง |
+| 6 | seeder `StandardRolesAndPermissionsSeeder`, `PurgeAndMigrateTo7StandardRolesSeeder` ไม่ได้ถูกเรียก แต่ถ้าเผลอรันจะเขียนทับบทบาททั้งระบบ | ความเสี่ยงตั้งค่าผิด | ลบไฟล์ |
+
+### 11.2 สิ่งที่ถูกต้องอยู่แล้ว (คงไว้)
+
+- ทุก endpoint ตรวจสิทธิ์ฝั่ง server (RouteAuthorizationAuditTest) · ลำดับตัดสิน deny > scope > role > ปฏิเสธเป็นค่าเริ่มต้น (`PermissionEvaluator`)
+- ABAC: ขอบเขตตามต้นสังกัด + หัวหน้าหน่วยงาน (มีวันมีผล) + เจ้าหน้าที่ประจำงาน + `permission_scopes` · ผู้อนุมัติตามทะเบียนหัวหน้าหน่วยงาน · กันอนุมัติของตนเอง/ผู้รับมอบอนุมัติของตนเอง
+- alias ที่ยังเหลือ 3 ตัว (`view_users`, `edit_users`, `manage_settings`) ยังถูกตรวจโดยชื่อในหลาย route จึงคงไว้ — ไม่ให้สิทธิ์เกิน
+- `permission_denies` (ปฏิเสธรายบุคคล) ยังไม่มีข้อมูล แต่เป็นกลไกตามมาตรฐาน docs/06 จึงคงไว้
+
+### 11.3 ยังต้องทำ (ข้อมูล ไม่ใช่โค้ด)
+
+- ขอบเขตยังกว้างตามค่าเริ่มต้นจนกว่าจะกรอกหัวหน้าหน่วยงาน · `WORKFLOW_APPROVER_ROLE_FALLBACK` ยังเปิด (รองฯ ทุกคนอนุมัติได้ทุกฝ่าย)
+- เมื่อตั้งรองฯ เป็นหัวหน้าฝ่าย ขอบเขตการเห็นการลา/ลงเวลาจะแคบลงเหลือฝ่ายตน — ถ้ายังต้องเห็นทั้งวิทยาลัย (Q6 เดิม) ให้ `access:scope-grant … ORGANIZATION` ในวันเดียวกัน
+- Super Admin ยังผ่านทุกการตรวจและอนุมัติได้ (เจ้าของระบบตัดสิน Q6)
+- การลงเวลา OT ของผู้ปฏิบัติงานใช้สิทธิ์เดียวกับการออกคำสั่ง OT (`overtime.operation.execute`) ตามการออกแบบเดิม — ผู้ที่ต้องลงเวลา OT จึงออกคำสั่งได้ด้วย ควรแยกเป็นสิทธิ์ลงเวลาเฉพาะในงานถัดไป

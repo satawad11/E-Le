@@ -95,7 +95,7 @@ const router = createRouter({
       path: '/admin/leaves-management',
       name: 'admin-leaves-management',
       component: () => import('../views/admin/LeaveManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['approve_leave', 'leave.management.manage'], title: 'จัดการ/ซิงค์วันลา (HR)', parent: 'ระบบลางาน' }
+      meta: { requiresAuth: true, permissions: ['leave.management.manage'], title: 'จัดการ/ซิงค์วันลา (HR)', parent: 'ระบบลางาน' }
     },
     {
       path: '/admin/promotion-screening',
@@ -141,19 +141,19 @@ const router = createRouter({
       path: '/admin/attendances',
       name: 'admin-attendances',
       component: () => import('../views/admin/AttendanceReportView.vue'),
-      meta: { requiresAuth: true, permissions: ['view_all_attendances', 'attendance.view_all'], title: 'รายงานการลงเวลา', parent: 'ระบบลงเวลาออนไลน์' }
+      meta: { requiresAuth: true, permissions: ['attendance.view_all'], title: 'รายงานการลงเวลา', parent: 'ระบบลงเวลาออนไลน์' }
     },
     {
       path: '/admin/attendances/summary',
       name: 'admin-attendances-summary',
       component: () => import('../views/admin/AttendanceSummaryView.vue'),
-      meta: { requiresAuth: true, permissions: ['view_all_attendances', 'attendance.view_all'], title: 'สรุปผลการปฏิบัติงาน', parent: 'ระบบลงเวลาออนไลน์' }
+      meta: { requiresAuth: true, permissions: ['attendance.view_all'], title: 'สรุปผลการปฏิบัติงาน', parent: 'ระบบลงเวลาออนไลน์' }
     },
     {
       path: '/admin/ot-summary',
       name: 'admin-ot-summary',
       component: () => import('../views/admin/AttendanceOTSummaryView.vue'),
-      meta: { requiresAuth: true, permissions: ['view_all_attendances', 'attendance.ot', 'attendance.ot_summary'], title: 'สรุปผลการปฏิบัติงาน (OT)', parent: 'ระบบลงเวลาออนไลน์' }
+      meta: { requiresAuth: true, permissions: ['attendance.view_all', 'overtime.operation.execute', 'attendance.ot_summary'], title: 'สรุปผลการปฏิบัติงาน (OT)', parent: 'ระบบลงเวลาออนไลน์' }
     },
     {
       path: '/admin/overtime-orders',
@@ -265,7 +265,7 @@ const router = createRouter({
       path: '/admin/roles',
       name: 'admin-roles',
       component: () => import('../views/admin/RolesManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['edit_users', 'system.role.manage'], title: 'จัดการบทบาทและสิทธิ์', parent: 'จัดการผู้ใช้งาน' }
+      meta: { requiresAuth: true, permissions: ['system.menu.manage'], title: 'จัดการบทบาทและสิทธิ์', parent: 'จัดการผู้ใช้งาน' }
     },
 
     // === ตั้งค่าระบบ ===

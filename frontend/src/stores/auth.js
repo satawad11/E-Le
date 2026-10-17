@@ -87,8 +87,7 @@ export const useAuthStore = defineStore('auth', {
     isManager: (state) => {
       const perms = getPermissionNames(state);
       return perms.includes('leave.approval.dept')
-        || perms.includes('approve_leave')
-        || perms.includes('approve_leaves');
+        || perms.includes('leave.approval.dept');
     },
 
     /** เข้าหน้าตั้งค่าระบบได้ — เดิมคือ Super Admin เท่านั้น */
@@ -162,20 +161,20 @@ export const useAuthStore = defineStore('auth', {
     canViewAllAttendance: (state) => {
       if (isSuperAdminUser(state)) return true;
       const perms = getPermissionNames(state);
-      return perms.some(p => ['attendance.view_all', 'view_all_attendances', 'attendance.report.view_all'].includes(p));
+      return perms.some(p => ['attendance.view_all'].includes(p));
     },
     // ดู/บันทึก OT
     canManageOT: (state) => {
       if (isSuperAdminUser(state)) return true;
       const perms = getPermissionNames(state);
-      return perms.some(p => ['attendance.ot', 'attendance.ot_summary', 'attendance.summary.export'].includes(p));
+      return perms.some(p => ['overtime.operation.execute', 'attendance.ot_summary'].includes(p));
     },
     // ใช้โมดูล attendance (ใช้แสดง/ซ่อนเมนูหลัก)
     hasAttendanceAccess: (state) => {
       if (isSuperAdminUser(state)) return true;
       const attendancePerms = [
         'attendance.checkin', 'attendance.view_self', 'attendance.view_all',
-        'attendance.ot', 'attendance.ot_summary', 'attendance.export',
+        'overtime.operation.execute', 'attendance.ot_summary',
         'attendance.record.create', 'attendance.record.view_my', 'attendance.report.view_all', 'attendance.summary.export',
         // คำสั่ง OT อยู่ใต้เมนูนี้ ผู้ที่มีสิทธิ์เฉพาะ OT จึงต้องเห็นกลุ่มเมนูด้วย
         'overtime.operation.execute', 'overtime.management.review'
@@ -187,7 +186,7 @@ export const useAuthStore = defineStore('auth', {
     // Check if user has any admin menu permission
     hasAnyAdminMenu: (state) => {
       if (isSuperAdminUser(state)) return true;
-      const adminPerms = ['view_users', 'edit_users', 'manage_departments', 'manage_leave_types', 'manage_settings', 'attendance.view_all', 'view_all_attendances', 'system.user.view', 'system.role.manage', 'system.menu.manage'];
+      const adminPerms = ['view_users', 'edit_users', 'manage_departments', 'manage_leave_types', 'manage_settings', 'attendance.view_all', 'system.user.view', 'system.menu.manage'];
       const perms = getPermissionNames(state);
       return perms.some(p => adminPerms.includes(p));
     },

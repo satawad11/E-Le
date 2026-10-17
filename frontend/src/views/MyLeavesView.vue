@@ -354,7 +354,7 @@ const filters = [
   { label: 'งานที่ได้รับมอบหมาย', value: 'Substitute' },
 ]
 
-const allAllowed = computed(() => authStore.isSuperAdmin || authStore.isHRHead || authStore.isManager || authStore.hasAnyPermission(['leave.report.view', 'leave.approval.dept', 'leave.approval.director']))
+const allAllowed = computed(() => authStore.isSuperAdmin || authStore.isHRHead || authStore.isManager || authStore.hasAnyPermission(['leave.report.view', 'leave.approval.dept']))
 const isAdminOrHR = computed(() => authStore.isSuperAdmin || authStore.isHRHead || authStore.hasPermission('leave.management.manage'))
 const canDeleteAny = computed(() => authStore.hasPermission('leave.delete'))
 

@@ -16,7 +16,8 @@ class ReportingScopeService
         'attendance' => 'attendance.view_all',
         'late' => 'attendance.view_all',
         'absence' => 'attendance.view_all',
-        'ot' => 'overtime.management.review',
+        // RBAC-CLEANUP-01: รายงานเป็นการดูอย่างเดียว — ผู้ดูสรุป OT (งานบุคลากร/ผู้ตรวจสอบ) ดูได้โดยไม่ต้องมีสิทธิ์อนุมัติ OT
+        'ot' => 'attendance.ot_summary',
         'saraban' => 'saraban.document.report',
     ];
 

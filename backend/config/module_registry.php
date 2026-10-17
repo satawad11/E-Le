@@ -26,7 +26,7 @@ return [
         'audit_events' => ['user.created', 'user.updated', 'user.deleted'],
         'providers' => [],
         'route_patterns' => [],
-        'legacy_permissions' => ['view_users', 'edit_users', 'delete_users', 'admin.users.manage_permissions', 'manage_departments', 'manage_workflow_steps', 'manage_leave_types', 'manage_settings'],
+        'legacy_permissions' => ['view_users', 'edit_users', 'admin.users.manage_permissions', 'manage_departments', 'manage_workflow_steps', 'manage_leave_types', 'manage_settings'],
     ],
     'leave' => [
         'code' => 'leave',
@@ -47,7 +47,7 @@ return [
         'audit_events' => ['leave.created', 'leave.updated', 'leave.cancelled', 'leave.approved', 'leave.rejected'],
         'providers' => [LeaveModuleServiceProvider::class],
         'route_patterns' => ['api/leaves*', 'api/approvals*', 'api/admin/leaves*', 'api/reports/summary', 'api/reports/export-*', 'api/reports/leave-card*', 'api/reports/promotion-screening*', 'api/reports/government-leave*'],
-        'legacy_permissions' => ['leave.view', 'leave.create', 'leave.cancel', 'leave.approve', 'leave.hr_verify', 'leave.export'],
+        'legacy_permissions' => [],
     ],
     'attendance' => [
         'code' => 'attendance',
@@ -68,7 +68,7 @@ return [
         'audit_events' => ['attendance.created', 'attendance.updated', 'attendance.deleted', 'attendance.correction.approved'],
         'providers' => [AttendanceModuleServiceProvider::class],
         'route_patterns' => ['api/attendances*', 'api/admin/attendances*', 'api/admin/attendance-corrections*'],
-        'legacy_permissions' => ['attendance.checkin', 'attendance.view_self', 'attendance.view_all', 'attendance.export', 'attendance.ot', 'attendance.ot_summary'],
+        'legacy_permissions' => ['attendance.checkin', 'attendance.view_self', 'attendance.view_all', 'attendance.ot_summary'],
     ],
     'saraban' => [
         'code' => 'saraban',
@@ -89,7 +89,7 @@ return [
         'audit_events' => ['saraban.document.created', 'saraban.document.updated', 'saraban.document.deleted'],
         'providers' => [SarabanModuleServiceProvider::class],
         'route_patterns' => ['api/saraban*'],
-        'legacy_permissions' => ['saraban.view'],
+        'legacy_permissions' => ['saraban.circular.broadcast'],
     ],
     'overtime' => [
         'id' => 'overtime',

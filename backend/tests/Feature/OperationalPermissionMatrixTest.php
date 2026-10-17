@@ -44,7 +44,7 @@ class OperationalPermissionMatrixTest extends TestCase
         $approved = [
             'attendance.checkin',
             'attendance.view_self',
-            'attendance.ot',
+            'overtime.operation.execute',
             'attendance.ot_summary',
             'system.menu.manage',
             'admin.users.manage_permissions',
@@ -92,9 +92,7 @@ class OperationalPermissionMatrixTest extends TestCase
 
         $mustNotHave = [
             'attendance.view_all',
-            'view_all_attendances',
-            'attendance.export',
-            'attendance.ot',
+            'overtime.operation.execute',
             'attendance.ot_summary',
             'system.menu.manage',
             'admin.users.manage_permissions',
@@ -117,12 +115,12 @@ class OperationalPermissionMatrixTest extends TestCase
      */
     public function test_overtime_permissions_follow_actual_duty(): void
     {
-        $this->assertTrue($this->userWithRole('HR Head')->can('attendance.ot'), 'HR เป็นผู้ดูแล OT จึงต้องบันทึก OT ได้');
+        $this->assertTrue($this->userWithRole('HR Head')->can('overtime.operation.execute'), 'HR เป็นผู้ดูแล OT จึงต้องบันทึก OT ได้');
 
         foreach (['Employee', 'Document Officer', 'Director', 'Deputy Director'] as $role) {
             $this->assertFalse(
-                $this->userWithRole($role)->can('attendance.ot'),
-                "role `{$role}` ไม่ใช่ผู้ดูแล OT จึงต้องไม่ได้ `attendance.ot`",
+                $this->userWithRole($role)->can('overtime.operation.execute'),
+                "role `{$role}` ไม่ใช่ผู้ดูแล OT จึงต้องไม่ได้ `overtime.operation.execute`",
             );
         }
 

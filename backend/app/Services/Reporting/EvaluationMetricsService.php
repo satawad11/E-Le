@@ -45,8 +45,8 @@ class EvaluationMetricsService
             ->groupBy('user_id')->get()->keyBy('user_id');
 
         $overtime = collect();
-        if ($viewer->can('overtime.management.review')) {
-            $visible = $this->scope->visibleOrgUnitIds($viewer, 'overtime.management.review', $filter);
+        if ($viewer->can('attendance.ot_summary')) {
+            $visible = $this->scope->visibleOrgUnitIds($viewer, 'attendance.ot_summary', $filter);
             $approvedMinutes = DB::connection()->getDriverName() === 'sqlite'
                 ? 'CAST((julianday(ot_orders.approved_end) - julianday(ot_orders.approved_start)) * 1440 AS INTEGER)'
                 : 'TIMESTAMPDIFF(MINUTE, ot_orders.approved_start, ot_orders.approved_end)';

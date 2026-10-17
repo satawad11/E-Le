@@ -54,7 +54,7 @@ class MenuSeeder extends Seeder
                         'route_name' => 'LeaveApprovals',
                         'route_path' => '/approvals',
                         'sort_order' => 2,
-                        'permissions' => ['approve_leaves'],
+                        'permissions' => ['leave.approval.dept'],
                     ],
                     [
                         'code' => 'leave.calendar',
@@ -99,7 +99,7 @@ class MenuSeeder extends Seeder
                         'route_name' => 'AllAttendance',
                         'route_path' => '/admin/attendances',
                         'sort_order' => 2,
-                        'permissions' => ['view_all_attendances'],
+                        'permissions' => ['attendance.view_all'],
                     ],
                 ],
             ],

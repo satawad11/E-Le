@@ -215,7 +215,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::put('/admin/users/{user}/permissions', [PermissionController::class, 'updateUserPermissions']);
     });
 
-    Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->middleware('can:delete_users');
+    // ระบบไม่ลบบัญชี (destroy ตอบ 409 พร้อมคำแนะนำให้ระงับ/บันทึกพ้นสภาพ) — RBAC-CLEANUP-01 เลิกสิทธิ์ delete_users
+    Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->middleware('permission:edit_users|system.user.manage');
 
     // Admin: Departments CRUD
     Route::group(['middleware' => ['can:manage_departments']], function () {
