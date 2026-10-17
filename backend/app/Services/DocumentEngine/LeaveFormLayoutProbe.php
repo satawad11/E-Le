@@ -2,6 +2,7 @@
 
 namespace App\Services\DocumentEngine;
 
+use App\Models\ApprovalStep;
 use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveType;
@@ -126,9 +127,9 @@ class LeaveFormLayoutProbe
             'stats' => [],
             'extra' => $extra,
             'requester_signature' => '',
-            'approverBlocks' => collect(['HR Head', 'Deputy Director', 'Director'])->map(fn (string $role) => [
+            'approverBlocks' => collect([ApprovalStep::CAPACITY_CHECKER, ApprovalStep::CAPACITY_DEPUTY, ApprovalStep::CAPACITY_DIRECTOR])->map(fn (string $capacity) => [
                 'name' => '', 'position' => '', 'comment' => '', 'date' => null,
-                'signature' => null, 'signature_path' => null, 'status' => '', 'role_name' => $role, 'acting_line' => '',
+                'signature' => null, 'signature_path' => null, 'status' => '', 'role_name' => '', 'capacity' => $capacity, 'acting_line' => '',
             ])->all(),
             'leave' => $leave,
             'settings' => collect(),

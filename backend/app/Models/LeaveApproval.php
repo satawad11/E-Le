@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['leave_id', 'stage', 'approver_id', 'approver_name', 'approver_position', 'signature_path', 'status', 'comment', 'approved_at', 'step_order', 'step_name', 'required_role_id', 'approver_type', 'specific_user_id', 'permission_name', 'allow_self_approval', 'delegated_from_user_id', 'is_self_approval', 'acted_at', 'acting_type', 'acting_position', 'acting_order_ref', 'recorded_by_user_id'])]
+#[Fillable(['leave_id', 'stage', 'approver_id', 'approver_name', 'approver_position', 'signature_path', 'status', 'comment', 'approved_at', 'step_order', 'step_name', 'required_role_id', 'approver_type', 'specific_user_id', 'permission_name', 'org_unit_id', 'allow_self_approval', 'delegated_from_user_id', 'is_self_approval', 'acted_at', 'acting_type', 'acting_position', 'acting_order_ref', 'recorded_by_user_id'])]
 class LeaveApproval extends Model
 {
     /** สายอนุมัติของการขอลา */

@@ -70,6 +70,7 @@ $modules = [
             'admin.users.manage_permissions' => 'จัดการสิทธิ์รายบุคคล (Individual Permissions)',
             'system.position.manage' => 'จัดการทะเบียนตำแหน่งและผูกตำแหน่งบุคลากร',
             'manage_departments' => 'จัดการฝ่าย / แผนก / โครงสร้างองค์กร',
+            'system.org_structure.manage' => 'จัดการโครงสร้างหน่วยงานและแต่งตั้งหัวหน้าหน่วยงาน (กำหนดผู้อนุมัติ)',
             'manage_workflow_steps' => 'จัดการขั้นตอนการเดินเรื่องอนุมัติ',
             'manage_leave_types' => 'จัดการประเภทการลา',
             'manage_settings' => 'จัดการตั้งค่าระบบหลักและปีงบประมาณ',

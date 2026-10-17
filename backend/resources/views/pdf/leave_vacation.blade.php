@@ -45,7 +45,7 @@
 
 @php
     $blocks = collect($approverBlocks ?? []);
-    $checker = $blocks->firstWhere('role_name', 'HR Head') ?? $blocks->first();
+    $checker = $blocks->first(fn ($b) => \App\Services\DocumentEngine\LeaveFormFieldMap::isChecker($b)) ?? $blocks->first();
     $order = $blocks->last();
     $commander = $blocks->filter(fn ($b) => $b !== $checker && $b !== $order)->first() ?? $order;
     $statRow = collect($stats ?? [])->first(fn ($row, $name) => str_contains((string) $name, 'พักผ่อน')) ?? [];

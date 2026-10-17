@@ -11,10 +11,12 @@ use App\Models\PersonnelType;
 use App\Models\Position;
 use App\Models\User;
 use App\Models\UserProfile;
+use App\Services\AccountSeparationService;
 use App\Services\AuditLogger;
 use App\Services\LeavePolicyService;
 use App\Services\PersonalDataAccessLogger;
 use App\Services\PersonnelSyncService;
+use App\Services\RoleGrantService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -39,7 +41,7 @@ class UserController extends Controller
     {
         // `permissions` = สิทธิ์รายบุคคล (direct) ของ Spatie — ฟอร์มแก้ไขใช้ตั้ง checkbox และส่งกลับมาทุกครั้งที่บันทึก
         // ถ้าไม่ส่งไป ฟอร์มจะส่ง [] แล้วการบันทึกจะลบสิทธิ์รายบุคคลทิ้ง
-        $users = User::with(['roles', 'permissions:id,name', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType'])->orderBy('name', 'asc')->get();
+        $users = User::with(['roles', 'permissions:id,name', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType', 'currentRoleGrant'])->orderBy('name', 'asc')->get();
 
         // คืนทะเบียนประวัติของบุคลากรทุกคน จึงถือเป็นการเข้าถึงข้อมูลส่วนบุคคลแบบรวม
         app(PersonalDataAccessLogger::class)
@@ -88,7 +90,10 @@ class UserController extends Controller
             'position_uuid' => 'nullable|uuid',
             'profile' => 'nullable|array',
             'custom_permissions' => 'nullable',
-        ]);
+            // ACCESS-GOV-01 · C3 — เลขคำสั่งและวันหมดอายุของบทบาท (ใช้เฉพาะผู้มีสิทธิ์กำหนดสิทธิ์)
+            'role_order_number' => 'nullable|string|max:100',
+            'role_expires_at' => 'nullable|date|after:today',
+        ], ['role_expires_at.after' => 'วันหมดอายุของบทบาทต้องเป็นวันหลังจากวันนี้']);
 
         $position = $this->requestedPosition($request, null);
 
@@ -121,6 +126,7 @@ class UserController extends Controller
 
             if ($role) {
                 $user->syncRoles([$role->name]);
+                $this->recordRoleGrant($request, $user, $role);
             }
 
             if ($request->has('custom_permissions')) {
@@ -276,6 +282,7 @@ class UserController extends Controller
 
                 if ($role = Role::find($valid['role_id'])) {
                     $user->syncRoles([$role->name]);
+                    app(RoleGrantService::class)->record($user, $role, request()->user());
                 }
 
                 // id_card_number เข้ารหัสด้วย cast และ UserProfile::saving() เติม id_card_number_hash ให้
@@ -312,7 +319,7 @@ class UserController extends Controller
         app(PersonalDataAccessLogger::class)
             ->record($request, $user->id, 'user_profile', 'เปิดดูทะเบียนประวัติบุคลากร');
 
-        return response()->json($user->load(['roles', 'permissions:id,name', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType']));
+        return response()->json($user->load(['roles', 'permissions:id,name', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType', 'currentRoleGrant']));
     }
 
     public function update(Request $request, User $user)
@@ -330,7 +337,10 @@ class UserController extends Controller
             'position_uuid' => 'nullable|uuid',
             'profile' => 'nullable|array',
             'custom_permissions' => 'nullable',
-        ]);
+            // ACCESS-GOV-01 · C3 — เลขคำสั่งและวันหมดอายุของบทบาท (ใช้เฉพาะผู้มีสิทธิ์กำหนดสิทธิ์)
+            'role_order_number' => 'nullable|string|max:100',
+            'role_expires_at' => 'nullable|date|after:today',
+        ], ['role_expires_at.after' => 'วันหมดอายุของบทบาทต้องเป็นวันหลังจากวันนี้']);
 
         $position = $this->requestedPosition($request, $user);
 
@@ -380,6 +390,7 @@ class UserController extends Controller
             $role = Role::find($request->role_id);
             if ($role) {
                 $user->syncRoles([$role->name]);
+                $this->recordRoleGrant($request, $user, $role);
             }
         }
 
@@ -475,14 +486,72 @@ class UserController extends Controller
             return response()->json(['message' => 'ไม่สามารถระงับการใช้งานบัญชีของตนเองได้'], 422);
         }
 
-        // การเปลี่ยน is_active ถูก audit (user.updated) และ token ถูกยกเลิก (UserObserver) ใน model hook แล้ว
-        $user->is_active = ! $user->is_active;
-        $user->save();
+        if (! $user->is_active && $user->separated_at !== null) {
+            // บัญชีที่พ้นสภาพแล้ว: เปิดใช้งาน = กลับเข้ารับราชการ/ต่อสัญญา ล้างวันพ้นสภาพพร้อม audit
+            abort_unless($this->canManageAccess($request->user()) || $this->accessWithinActor($request->user(), $user), 403, 'ไม่มีสิทธิ์เปิดใช้งานบัญชีนี้');
+            app(AccountSeparationService::class)->reinstate($request->user(), $user);
+        } else {
+            // การเปลี่ยน is_active ถูก audit (user.updated) และ token ถูกยกเลิก (UserObserver) ใน model hook แล้ว
+            $user->is_active = ! $user->is_active;
+            $user->save();
+        }
 
         return response()->json([
             'message' => $user->is_active ? 'เปิดใช้งานผู้ใช้แล้ว' : 'ระงับการใช้งานผู้ใช้แล้ว',
             'user' => $user->fresh()->load(['roles', 'department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'currentAssignment.positionRef.group', 'orgUnit', 'personnelType']),
         ]);
+    }
+
+    /**
+     * ทะเบียนการมอบบทบาท (ACCESS-GOV-01 · C3) — เลขคำสั่ง/วันหมดอายุรับเฉพาะจากผู้มีสิทธิ์กำหนดสิทธิ์
+     * ผู้อื่น (ให้บทบาทแรกตาม K-ORG-01) บันทึกได้เฉพาะว่าใครให้บทบาทอะไร
+     */
+    private function recordRoleGrant(Request $request, User $user, Role $role): void
+    {
+        $actor = $request->user();
+        $manage = $this->canManageAccess($actor);
+        $current = $user->currentRoleGrant()->first();
+
+        app(RoleGrantService::class)->record(
+            $user,
+            $role,
+            $actor,
+            $manage ? $request->input('role_order_number') : $current?->order_number,
+            $manage ? $request->input('role_expires_at') : $current?->expires_at?->toDateString(),
+        );
+    }
+
+    /**
+     * บันทึกบุคลากรพ้นสภาพ (ACCESS-GOV-01) — ระงับบัญชีและปิดอำนาจทั้งหมด ณ วันพ้นสภาพ ไม่ลบบัญชี
+     *
+     * ผู้ที่ไม่มีสิทธิ์กำหนดสิทธิ์ (เช่น งานบุคลากร) บันทึกได้เฉพาะบัญชีที่สิทธิ์ไม่เกินของตน
+     * เพื่อไม่ให้ใช้การพ้นสภาพปิดบัญชีผู้ดูแลระบบ
+     */
+    public function separate(Request $request, User $user)
+    {
+        $actor = $request->user();
+        abort_unless($this->canManageAccess($actor) || $this->accessWithinActor($actor, $user), 403, 'ไม่มีสิทธิ์บันทึกการพ้นสภาพของบัญชีนี้');
+
+        $data = $request->validate([
+            'separated_at' => ['required', 'date'],
+            'reason' => ['required', 'string', 'max:255'],
+        ], [
+            'separated_at.required' => 'กรุณาระบุวันที่พ้นสภาพ',
+            'reason.required' => 'กรุณาระบุเหตุที่พ้นสภาพ เช่น ย้ายไปวิทยาลัยอื่น เกษียณอายุราชการ หมดสัญญาจ้าง',
+        ]);
+
+        try {
+            $result = app(AccountSeparationService::class)->separate($actor, $user, $data['separated_at'], $data['reason']);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $message = 'บันทึกการพ้นสภาพแล้ว ระงับบัญชี ปิดวาระหัวหน้า '.$result['managers_ended'].' รายการ เพิกถอนการทำการแทน '.$result['delegations_revoked'].' รายการ';
+        if ($result['pending_leaves'] > 0) {
+            $message .= ' · มีใบลารออนุมัติค้าง '.$result['pending_leaves'].' ใบ กรุณาพิจารณา';
+        }
+
+        return response()->json(['message' => $message, 'result' => $result]);
     }
 
     /**

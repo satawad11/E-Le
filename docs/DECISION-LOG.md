@@ -354,3 +354,30 @@
   - Reports group people by their current assignment; people not linked yet show as "ยังไม่ระบุ".
   - The seeded division names follow the 4-division structure in the mapping document and have not been checked against the latest regulation text; they are data and can be edited.
   - HR Head manages the catalog and links positions through a dedicated permission `system.position.manage` (migration `2026_10_17_110000`) and `PUT /api/admin/users/{uuid}/position`. The owner first asked for `system.user.manage`, but that permission opens the user form, which accepts any `role_id` / `custom_permissions` (K-ORG-01) and would let every HR officer make themselves Super Admin; the owner chose the narrower permission.
+
+## ADR-ACCESS-GOV-01: Access follows unit-head appointments under the 2569 school administration regulation
+
+- **Status**: Accepted
+- **Date**: 2026-10-16
+- **Context**:
+  The owner supplied the OVEC regulation on school administration B.E. 2569 (effective academic year 2569, repealing the 2552 regulation and its 2566 amendment) and asked for roles, permissions, accounts, approval and cancellation to be planned for go-live (`docs/ACCESS-GOVERNANCE-2569.md`). The regulation defines four divisions and their sections (clauses 8–12), lets the director assign one deputy to one or more divisions (clause 13) and requires appointments to be reported (clause 47), but does not set who approves which leave. The owner chose to follow the leave regulation (Q1) with the real chain HR → deputy of the resource-management division → director (Q3), cancellation through every original step (Q4), Super Admin unchanged and still able to approve (Q5, Q6), no faculty/department layer above academic departments (Q8), an annual review per academic year (Q9), and approved all schema and code changes during PROD-00 (Q7). The system had no screen for org units or unit heads, so Q2 ("enter the data later") needed one.
+- **Decision**:
+  1. A step can resolve to the head of a named unit (`ORG_UNIT_MANAGER`); the target unit is pinned with the step. It has no role-name fallback.
+  2. Cancellation without a separately configured chain copies the leave's own pinned steps.
+  3. Role-name/permission fallback stays on by default and is switched off with `WORKFLOW_APPROVER_ROLE_FALLBACK=false` once unit heads are entered; production should switch it off.
+  4. Unit heads are managed only through `system.org_structure.manage` (Super Admin by default), must cite an order number and date, and are ended, never deleted.
+  5. Separation is a recorded state (`users.separated_at`), not a delete, and closes heads, delegations and scopes in the same transaction.
+  6. The annual review is signed off by the director (head of the root unit), never by the admin who generated it.
+  7. All schema changes are additive (migrations `2026_10_18_100000`–`120000`).
+- **Consequences**:
+  - Until the owner enters the 2569 structure and unit heads, approvals still use the old fallback.
+  - The approval chain is still one chain for every leave type; leaves beyond the director's authority are still recorded by hand.
+  - Role names are still read by PDF signature blocks and the OT workflow provisioner; removing them is the next phase.
+
+### ADR-ACCESS-GOV-01 addendum (2026-10-17): phase 2
+
+- Forms decide the checker block by the step's signer capacity; role names remain only as the reading of legacy `ROLE` steps, in one constant (`ApprovalStep::LEGACY_ROLE_CAPACITY`).
+- The OT chain keeps its stored workflow version; a subject resolver answers from unit heads first, so no workflow data had to be rewritten.
+- Staff memberships are a separate table from `org_unit_managers` so that no membership can ever make someone an approver.
+- Role expiry returns the user to one configured base role, because the user form keeps one role per user.
+- New roles were added, not swapped in: moving users to them is an owner decision made on the user page.

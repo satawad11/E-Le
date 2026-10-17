@@ -62,6 +62,9 @@ class AuthController extends Controller
 
         RateLimiter::clear($lockKey);
 
+        // ใช้ในรายงานทบทวนสิทธิ์รายปี (ACCESS-GOV-01) — saveQuietly เพื่อไม่ให้ไปซิงก์ทะเบียนบุคลากรทุกครั้งที่ login
+        $user->forceFill(['last_login_at' => now()])->saveQuietly();
+
         Auth::login($user);
         $expiration = (int) config('sanctum.expiration', 480);
         $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;

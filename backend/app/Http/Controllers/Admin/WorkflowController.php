@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalStep;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AuditLogger;
@@ -21,7 +22,7 @@ class WorkflowController extends Controller
      */
     private function computeFingerprint($steps): string
     {
-        return md5($steps->map(fn ($s) => $s->step_order.':'.($s->approver_type ?? 'ROLE').':'.($s->role_id ?? '0').':'.($s->specific_user_id ?? '0').':'.(int) $s->allow_self_approval.':'.trim($s->name))->implode('|'));
+        return md5($steps->map(fn ($s) => $s->step_order.':'.($s->approver_type ?? 'ROLE').':'.($s->role_id ?? '0').':'.($s->specific_user_id ?? '0').':'.($s->org_unit_id ?? '0').':'.(int) $s->allow_self_approval.':'.trim($s->name))->implode('|'));
     }
 
     /**
@@ -39,7 +40,7 @@ class WorkflowController extends Controller
     /** @return Collection<int,ApprovalStep> */
     private function stepsOf(string $chain)
     {
-        return ApprovalStep::with(['role', 'specificUser:id,name,email'])
+        return ApprovalStep::with(['role', 'specificUser:id,name,email', 'orgUnit:id,uuid,name'])
             ->chain($chain)->orderBy('step_order', 'asc')->get();
     }
 
@@ -78,8 +79,9 @@ class WorkflowController extends Controller
             'requester_id' => 'required|integer|exists:users,id',
             'steps' => 'nullable|array',
             'steps.*.name' => 'nullable|string|max:255',
-            'steps.*.approver_type' => 'nullable|string|in:HR_OFFICER,REQUESTER_SUPERVISOR,DEPARTMENT_HEAD,DIVISION_DIRECTOR,DIRECTOR,ROLE,SPECIFIC_USER',
+            'steps.*.approver_type' => 'nullable|string|in:'.implode(',', ApprovalStep::RESOLVERS),
             'steps.*.role_id' => 'nullable|integer|exists:roles,id',
+            'steps.*.org_unit_id' => 'nullable|integer|exists:org_units,id',
             'steps.*.specific_user_id' => 'nullable|integer|exists:users,id',
         ], [
             'requester_id.required' => 'กรุณาเลือกผู้ยื่นคำขอที่ต้องการทดลอง',
@@ -99,6 +101,7 @@ class WorkflowController extends Controller
                 'role_id' => ! empty($step['role_id']) ? (int) $step['role_id'] : null,
                 'specific_user_id' => ! empty($step['specific_user_id']) ? (int) $step['specific_user_id'] : null,
                 'permission_name' => $step['permission_name'] ?? null,
+                'org_unit_id' => ! empty($step['org_unit_id']) ? (int) $step['org_unit_id'] : null,
                 'allow_self_approval' => (bool) ($step['allow_self_approval'] ?? false),
             ])
             : ApprovalStep::stepsFor($chain)->map(fn ($step) => [
@@ -108,6 +111,7 @@ class WorkflowController extends Controller
                 'role_id' => $step->role_id,
                 'specific_user_id' => $step->specific_user_id,
                 'permission_name' => $step->permission_name,
+                'org_unit_id' => $step->org_unit_id,
                 'allow_self_approval' => (bool) $step->allow_self_approval,
             ]);
 
@@ -167,8 +171,9 @@ class WorkflowController extends Controller
         $request->validate([
             'steps' => ($chain === ApprovalStep::CHAIN_LEAVE ? 'required|array|min:1' : 'present|array'),
             'steps.*.name' => 'required|string|max:255',
-            'steps.*.approver_type' => 'nullable|string|in:HR_OFFICER,REQUESTER_SUPERVISOR,DEPARTMENT_HEAD,DIVISION_DIRECTOR,DIRECTOR,ROLE,SPECIFIC_USER',
+            'steps.*.approver_type' => 'nullable|string|in:'.implode(',', ApprovalStep::RESOLVERS),
             'steps.*.role_id' => 'nullable|integer|exists:roles,id',
+            'steps.*.org_unit_id' => 'nullable|integer|exists:org_units,id',
             'steps.*.specific_user_id' => 'nullable|integer|exists:users,id',
             'steps.*.allow_self_approval' => 'nullable|boolean',
             'fingerprint' => 'nullable|string',
@@ -197,6 +202,12 @@ class WorkflowController extends Controller
                 if (empty($step['role_id']) || ! in_array((int) $step['role_id'], $roleIds, true)) {
                     throw ValidationException::withMessages([
                         "steps.{$index}.role_id" => ['กรุณาเลือกบทบาทที่ถูกต้องในลำดับที่ '.($index + 1)],
+                    ]);
+                }
+            } elseif ($approverType === ApprovalStep::RESOLVER_ORG_UNIT_MANAGER) {
+                if (empty($step['org_unit_id']) || ! OrgUnit::whereKey($step['org_unit_id'])->where('is_active', true)->exists()) {
+                    throw ValidationException::withMessages([
+                        "steps.{$index}.org_unit_id" => ['กรุณาเลือกหน่วยงานที่ยังใช้งานอยู่ในลำดับที่ '.($index + 1)],
                     ]);
                 }
             } elseif ($approverType === ApprovalStep::RESOLVER_SPECIFIC_USER) {
@@ -248,6 +259,8 @@ class WorkflowController extends Controller
                     'step_order' => $index + 1,
                     'approver_type' => $approverType,
                     'specific_user_id' => ! empty($stepData['specific_user_id']) ? (int) $stepData['specific_user_id'] : null,
+                    // ใช้เฉพาะขั้นแบบหัวหน้าของหน่วยงานที่ระบุ — ขั้นแบบอื่นไม่เก็บไว้ให้สับสน
+                    'org_unit_id' => $approverType === ApprovalStep::RESOLVER_ORG_UNIT_MANAGER ? (int) $stepData['org_unit_id'] : null,
                     // LEAVE-APPROVAL-02 — ผู้อนุมัติขั้นนี้อนุมัติใบลาของตนเองได้
                     'allow_self_approval' => (bool) ($stepData['allow_self_approval'] ?? false),
                 ]);
@@ -273,8 +286,8 @@ class WorkflowController extends Controller
                 app(AuditLogger::class)->log(
                     action: 'approval_workflow_updated',
                     resource: 'ApprovalStep',
-                    before: ['chain' => $chain, 'steps' => $currentSteps->map->only(['step_order', 'name', 'approver_type', 'role_id', 'specific_user_id', 'allow_self_approval'])->all()],
-                    after: ['chain' => $chain, 'steps' => array_map(fn (ApprovalStep $step) => $step->only(['step_order', 'name', 'approver_type', 'role_id', 'specific_user_id', 'allow_self_approval']), $created)],
+                    before: ['chain' => $chain, 'steps' => $currentSteps->map->only(['step_order', 'name', 'approver_type', 'role_id', 'specific_user_id', 'org_unit_id', 'allow_self_approval'])->all()],
+                    after: ['chain' => $chain, 'steps' => array_map(fn (ApprovalStep $step) => $step->only(['step_order', 'name', 'approver_type', 'role_id', 'specific_user_id', 'org_unit_id', 'allow_self_approval']), $created)],
                     actorId: $request->user()?->id,
                 );
             } catch (\Throwable $e) {

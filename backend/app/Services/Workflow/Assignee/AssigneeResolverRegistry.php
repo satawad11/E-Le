@@ -16,6 +16,7 @@ class AssigneeResolverRegistry
     /** @var array<int,class-string<SubjectAssigneeResolver>> */
     private const RESOLVERS = [
         LeaveAssigneeResolver::class,
+        OvertimeAssigneeResolver::class,
     ];
 
     public function __construct(private readonly Container $container) {}

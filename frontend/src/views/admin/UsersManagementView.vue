@@ -144,6 +144,10 @@
                       </svg>
                       {{ user.is_active ? 'ระงับ' : 'เปิดใช้งาน' }}
                     </button>
+                    <button v-if="user.is_active && user.id !== authStore.user?.id" @click="openSeparation(user)" class="inline-flex items-center gap-1 px-3 py-1 rounded text-xs bg-gray-600 hover:bg-gray-700 text-white transition" :disabled="submitting" title="บันทึกพ้นสภาพ (ย้าย ลาออก เกษียณ หมดสัญญา)">
+                      พ้นสภาพ
+                    </button>
+                    <span v-if="!user.is_active && user.separated_at" class="text-xs text-gray-500">พ้นสภาพ {{ formatDate(user.separated_at) }}</span>
                     <button @click="openPermissionModal(user)" class="inline-flex items-center gap-1 px-3 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 transition" title="จัดการสิทธิ์การเข้าถึงรายบุคคล">
                       <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.shieldCheck"/>
@@ -169,6 +173,29 @@
     </div>
 
     <!-- ORG-ACCESS-02: กำหนดตำแหน่งอย่างเดียว (งานบุคลากร) — ไม่แตะบทบาท/สิทธิ์ของผู้ใช้ -->
+    <AppModal v-model="separation.show" :title="`บันทึกพ้นสภาพ: ${separation.name}`" size="sm">
+      <form id="separation-form" class="space-y-4" @submit.prevent="saveSeparation">
+        <div>
+          <label for="separation-date" class="block text-sm font-medium text-gray-700 mb-1">วันที่พ้นสภาพ</label>
+          <input id="separation-date" v-model="separation.separated_at" type="date" required class="w-full border rounded px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label for="separation-reason" class="block text-sm font-medium text-gray-700 mb-1">เหตุที่พ้นสภาพ</label>
+          <input id="separation-reason" v-model="separation.reason" type="text" required maxlength="255" class="w-full border rounded px-3 py-2 text-sm" placeholder="เช่น ย้ายไปวิทยาลัยอื่น ตามคำสั่งที่ ... / เกษียณอายุราชการ / หมดสัญญาจ้าง">
+        </div>
+        <p class="text-xs text-gray-500">
+          ระบบจะระงับบัญชี ปิดวาระหัวหน้าหน่วยงาน เพิกถอนการรักษาราชการแทน/ปฏิบัติราชการแทน และลบขอบเขตสิทธิ์พิเศษ ณ วันที่ระบุ
+          บัญชีและประวัติการลา การลงเวลาไม่ถูกลบ
+        </p>
+      </form>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="px-4 py-2 rounded border border-gray-300 text-sm" @click="separation.show = false">ยกเลิก</button>
+          <button type="submit" form="separation-form" :disabled="submitting" class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-800 text-white text-sm disabled:opacity-50">บันทึกพ้นสภาพ</button>
+        </div>
+      </template>
+    </AppModal>
+
     <AppModal v-model="positionAssign.show" title="กำหนดตำแหน่ง" size="sm">
       <p class="text-sm text-gray-600 mb-3">{{ positionAssign.user?.personnel?.full_name || positionAssign.user?.name }}</p>
       <label class="block text-sm text-gray-700">
@@ -455,6 +482,16 @@
                       <span class="text-xs text-gray-400">เปลี่ยนบทบาทได้เฉพาะผู้มีสิทธิ์ "กำหนดสิทธิ์รายบุคคล"</span>
                     </template>
                   </div>
+                  <!-- ACCESS-GOV-01 · C3: ทะเบียนการมอบบทบาท -->
+                  <div v-if="canManageAccess" class="md:col-span-1">
+                    <label class="block text-xs text-gray-700 mb-1">เลขที่คำสั่งมอบบทบาท</label>
+                    <input v-model="form.role_order_number" type="text" maxlength="100" placeholder="เช่น 123/2569" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                  </div>
+                  <div v-if="canManageAccess" class="md:col-span-1">
+                    <label class="block text-xs text-gray-700 mb-1">บทบาทหมดอายุ (เว้นว่าง = ไม่กำหนด)</label>
+                    <input v-model="form.role_expires_at" type="date" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
+                    <span class="text-xs text-gray-400">ถึงวันนั้นระบบจะคืนเป็นบทบาทพื้นฐานอัตโนมัติ</span>
+                  </div>
                   <div class="md:col-span-1">
                     <label class="block text-xs text-gray-700 mb-1">รหัสผ่าน <span v-if="modal.isEdit" class="text-gray-400 font-normal">(เว้นว่างหากไม่เปลี่ยน)</span></label>
                     <input v-model="form.password" type="password" :required="!modal.isEdit" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
@@ -672,6 +709,8 @@ const form = reactive({
   password: '',
   department_id: '',
   role_id: '',
+  role_order_number: '',
+  role_expires_at: '',
   telegram_chat_id: '',
   work_start_time: '',
   work_end_time: '',
@@ -812,6 +851,8 @@ const openAddModal = () => {
   form.password = ''
   form.department_id = ''
   form.role_id = ''
+  form.role_order_number = ''
+  form.role_expires_at = ''
   form.telegram_chat_id = ''
   form.work_start_time = ''
   form.work_end_time = ''
@@ -837,6 +878,8 @@ const openEditModal = (user) => {
   form.department_id = user.department_id || ''
   form.role_id = user.role_id || user.role?.id || (user.roles && user.roles[0] ? user.roles[0].id : '')
   editingRoleName.value = user.role?.name || (user.roles && user.roles[0] ? user.roles[0].name : '')
+  form.role_order_number = user.current_role_grant?.order_number || ''
+  form.role_expires_at = (user.current_role_grant?.expires_at || '').slice(0, 10)
   form.telegram_chat_id = user.telegram_chat_id || ''
   form.work_start_time = user.work_start_time || ''
   form.work_end_time = user.work_end_time || ''
@@ -875,6 +918,10 @@ const submitForm = async () => {
     if (form.password) formData.append('password', form.password)
     formData.append('department_id', form.department_id)
     formData.append('role_id', form.role_id)
+    if (canManageAccess.value) {
+      formData.append('role_order_number', form.role_order_number || '')
+      formData.append('role_expires_at', form.role_expires_at || '')
+    }
     formData.append('telegram_chat_id', form.telegram_chat_id || '')
     if (form.work_start_time) formData.append('work_start_time', form.work_start_time)
     if (form.work_end_time) formData.append('work_end_time', form.work_end_time)
@@ -923,6 +970,32 @@ const submitForm = async () => {
   }
 }
 
+// ACCESS-GOV-01: บุคลากรพ้นสภาพ — ระงับบัญชีและปิดอำนาจทั้งหมด ไม่ลบบัญชี
+const separation = reactive({ show: false, user: null, name: '', separated_at: '', reason: '' })
+const openSeparation = (user) => {
+  Object.assign(separation, {
+    show: true,
+    user,
+    name: user.personnel?.full_name || user.name,
+    separated_at: new Date().toISOString().slice(0, 10),
+    reason: '',
+  })
+}
+const saveSeparation = async () => {
+  submitting.value = true
+  try {
+    const res = await api.post(`/admin/users/${separation.user.id}/separate`, { separated_at: separation.separated_at, reason: separation.reason })
+    alertStore.success(res.data.message)
+    separation.user.is_active = false
+    separation.user.separated_at = separation.separated_at
+    separation.show = false
+  } catch (e) {
+    alertStore.error(getErrorMessage(e, 'บันทึกการพ้นสภาพไม่สำเร็จ'))
+  } finally {
+    submitting.value = false
+  }
+}
+
 const toggleStatus = async (user) => {
   if (!confirm(`คุณต้องการ ${user.is_active ? 'ระงับ' : 'เปิดใช้งาน'} ผู้ใช้นี้ใช่หรือไม่?`)) return
   
@@ -931,6 +1004,7 @@ const toggleStatus = async (user) => {
     const res = await api.post(`/admin/users/${user.id}/toggle-status`)
     alertStore.success(res.data.message)
     user.is_active = res.data.user?.is_active ?? !user.is_active
+    if (user.is_active) user.separated_at = null
   } catch (e) {
     alertStore.error(e.response?.data?.message || 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะ')
   } finally {

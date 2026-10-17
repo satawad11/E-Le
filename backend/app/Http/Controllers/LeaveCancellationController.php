@@ -12,6 +12,7 @@ use App\Services\LeaveApprovalSigner;
 use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  *
  * - ใบที่ยังรออนุมัติ: ผู้ยื่นยกเลิกเองได้ทันที คืนยอดที่จองไว้
  * - ใบที่อนุมัติแล้ว: ต้องยื่นคำขอยกเลิก แล้วเดินสายอนุมัติของคำขอยกเลิก
- *   (ตั้งแยกได้ที่หน้าจัดการลำดับการอนุมัติ ถ้ายังไม่ตั้งใช้สายของการขอลา)
+ *   (ตั้งแยกได้ที่หน้าจัดการลำดับการอนุมัติ ถ้ายังไม่ตั้งจะผ่านทุกขั้นตอนเดิมที่ใบลานั้นผ่านมา)
  *   เมื่อขั้นสุดท้ายอนุมัติ ใบลาเป็น Cancelled และคืนวันลาที่ใช้ไป
  *
  * สายของคำขอยกเลิกผนึก snapshot ของตัวเอง (stage = cancellation) ณ วันที่ขอ
@@ -59,8 +60,7 @@ class LeaveCancellationController extends Controller
         if ($leave->status === 'Approved') {
             $request->validate(['cancellation_reason' => 'required|string|max:1000']);
 
-            // สายของคำขอยกเลิกโดยเฉพาะ — ถ้าผู้ดูแลยังไม่ได้ตั้งค่าไว้ จะได้สายของใบลามาแทน
-            $steps = ApprovalStep::stepsFor(ApprovalStep::CHAIN_CANCELLATION);
+            $steps = $this->cancellationSteps($leave);
             if ($steps->isEmpty()) {
                 return response()->json(['message' => 'ยังไม่ได้ตั้งค่าลำดับการอนุมัติในระบบ กรุณาตั้งค่าที่เมนูจัดการลำดับการอนุมัติก่อน'], 422);
             }
@@ -77,16 +77,9 @@ class LeaveCancellationController extends Controller
                  */
                 $locked->cancellationApprovals()->delete();
                 foreach ($steps as $step) {
-                    LeaveApproval::create([
+                    LeaveApproval::create($step + [
                         'leave_id' => $locked->id,
                         'stage' => LeaveApproval::STAGE_CANCELLATION,
-                        'step_order' => $step->step_order,
-                        'step_name' => $step->name,
-                        'required_role_id' => $step->role_id,
-                        'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
-                        'specific_user_id' => $step->specific_user_id,
-                        'permission_name' => $step->permission_name,
-                        'allow_self_approval' => (bool) $step->allow_self_approval,
                         'status' => 'Pending',
                     ]);
                 }
@@ -95,7 +88,7 @@ class LeaveCancellationController extends Controller
                     'cancellation_status' => 'Pending',
                     'cancellation_reason' => $request->cancellation_reason,
                     'cancellation_date' => now(),
-                    'cancellation_approval_level' => $steps->first()->step_order,
+                    'cancellation_approval_level' => $steps->first()['step_order'],
                 ])->save();
                 LeaveActionLog::create(['leave_id' => $locked->id, 'user_id' => $user->id, 'action' => 'Cancellation Requested', 'details' => ['reason' => $request->cancellation_reason]]);
                 $this->audit($request, $locked, 'cancellation_requested');
@@ -223,15 +216,40 @@ class LeaveCancellationController extends Controller
             'leave_id' => $leave->id,
             'stage' => LeaveApproval::STAGE_CANCELLATION,
             'step_order' => $legacy->step_order,
-        ], [
-            'step_name' => $legacy->name,
-            'required_role_id' => $legacy->role_id,
-            'approver_type' => $legacy->approver_type ?: ApprovalStep::RESOLVER_ROLE,
-            'specific_user_id' => $legacy->specific_user_id,
-            'permission_name' => $legacy->permission_name,
-            'allow_self_approval' => (bool) $legacy->allow_self_approval,
-            'status' => 'Pending',
-        ]);
+        ], $legacy->snapshotAttributes() + ['status' => 'Pending']);
+    }
+
+    /**
+     * ขั้นตอนของคำขอยกเลิกใบลาที่อนุมัติแล้ว (ACCESS-GOV-01 · Q4)
+     *
+     * - ผู้ดูแลตั้งสายยกเลิกแยกไว้ → ใช้สายนั้น
+     * - ไม่ได้ตั้ง → "ผ่านทุกขั้นตอนเดิม" คือคัดลอกขั้นที่ใบลานี้ถูก pin ไว้ตอนยื่น
+     *   ไม่ใช่สายของใบลาในวันนี้ ซึ่งอาจถูกแก้ไปแล้วหลังใบลาอนุมัติ
+     * - ใบลาเก่าที่ไม่มี snapshot → ใช้สายของใบลาปัจจุบัน (พฤติกรรมเดิม)
+     *
+     * @return Collection<int,array<string,mixed>>
+     */
+    private function cancellationSteps(Leave $leave): Collection
+    {
+        if (! ApprovalStep::cancellationChainIsConfigured()) {
+            $original = $leave->approvals()->orderBy('step_order')->get();
+            if ($original->isNotEmpty()) {
+                return $original->map(fn (LeaveApproval $step) => [
+                    'step_order' => $step->step_order,
+                    'step_name' => $step->step_name,
+                    'required_role_id' => $step->required_role_id,
+                    'approver_type' => $step->approver_type ?: ApprovalStep::RESOLVER_ROLE,
+                    'specific_user_id' => $step->specific_user_id,
+                    'permission_name' => $step->permission_name,
+                    'org_unit_id' => $step->org_unit_id,
+                    'allow_self_approval' => (bool) $step->allow_self_approval,
+                ])->values();
+            }
+        }
+
+        return ApprovalStep::stepsFor(ApprovalStep::CHAIN_CANCELLATION)
+            ->map(fn (ApprovalStep $step) => ['step_order' => $step->step_order] + $step->snapshotAttributes())
+            ->values();
     }
 
     private function audit(Request $request, Leave $leave, string $action, array $after = []): void
