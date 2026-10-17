@@ -49,7 +49,7 @@
 
 - `leave:reconcile-balances` เปลี่ยนเป็น **ตรวจอย่างเดียว** รันทุกคืน เทียบ `leave_balances` กับผลรวม ledger และกับใบลาจริง ถ้าไม่ตรงให้แจ้งงานบุคลากรและผู้ดูแลระบบ พร้อมรายการที่ต่าง — **ไม่แก้เอง**
 - การแก้ทำผ่าน `ADJUST` พร้อมเหตุผลและผู้ตรวจคนที่สอง
-- ปิดงวด (D-09): ตาราง `leave_period_closings` (ปี ผู้ปิด วันที่ ยอดรวม checksum) หลังปิด ledger ของปีนั้นรับเฉพาะ `ADJUST` ที่ลงในงวดปัจจุบันโดยอ้างปีเดิม
+- ~~ปิดงวด~~ — **D-09 (18/10/2569): ยังไม่ปิดงวด** แก้ปีเก่าได้ แต่ทุกการแก้ต้องเป็นรายการใน ledger และ audit เท่านั้น ออกแบบตาราง `leave_period_closings` ไว้ก่อน (ปี ผู้ปิด วันที่ ยอดรวม checksum) เพื่อเปิดใช้ภายหลังโดยไม่ต้องรื้อ
 - `CarryForwardLeaves` ทำงานเป็นส่วนหนึ่งของการปิดงวด และเขียน `CARRY_FORWARD`
 
 ## 5.4 การย้ายไปใช้ ledger
@@ -65,7 +65,9 @@
 - trigger `BEFORE UPDATE` และ `BEFORE DELETE` ที่ `SIGNAL SQLSTATE '45000'` บนตาราง audit และ ledger
 - ผู้ใช้ฐานข้อมูลของแอปไม่มีสิทธิ์ `DROP TRIGGER` (แยกบัญชี migration ออกจากบัญชีแอป — ต้องแก้ `docker-compose` และ `.env` ของ production)
 - คำสั่ง `audit:verify-chain` ตรวจ hash chain ทุกคืน แจ้งเตือนเมื่อพบรอยแก้
-- ถ้า D-07 ไม่รับการห้ามแก้ ให้ใช้เฉพาะ hash chain
+- **ทำแล้ว (D-07 · 18/10/2569):** migration `2026_10_19_130000_make_audit_logs_append_only.php` สร้าง trigger กัน UPDATE/DELETE บน `audit_logs`, `leave_audit_logs`, `saraban_audit_logs`, `setting_audit_logs` และกัน UPDATE บน `leave_action_logs`, `personal_data_access_logs` (สองตารางนี้มี FK แบบ CASCADE จึงยังลบตามแถวต้นทางได้ — เปลี่ยนเป็น RESTRICT เป็นงานแยก) · ยอมให้ FK ที่ nullable เปลี่ยนเป็น NULL ได้เท่านั้น · ทดสอบแล้วบน SQLite (test) และ MySQL 8 (ฐานข้อมูลทดสอบแยก)
+- ข้อควรรู้: trigger อ่านรายชื่อคอลัมน์ตอน migrate — **เพิ่มคอลัมน์ในตารางเหล่านี้ภายหลังต้องรัน migration สร้าง trigger ใหม่** (เรียก `up()` ซ้ำได้) · บน MySQL ที่เปิด binary log ผู้ใช้ที่รัน migration ต้องมีสิทธิ์สร้าง trigger (`TRIGGER` และ `SUPER` หรือ `log_bin_trust_function_creators=1`)
+- ยังไม่ทำ: hash chain (`prev_hash`/`row_hash`) และ `audit:verify-chain`
 
 ## 5.6 กันส่งซ้ำ (Idempotency)
 
