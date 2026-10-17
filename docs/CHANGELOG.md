@@ -4,6 +4,11 @@ All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
 
+### [OT-PUNCH-01] - 2026-10-17 — Recording one's own OT time no longer needs the order-issuing permission
+#### Security
+- `POST /api/attendances/ot-check-in`, `POST /api/attendances/ot-check-out` and `GET /api/overtime/my-active` now require the ordinary `attendance.checkin`. `OvertimeTimeService` still accepts a punch only from someone assigned to an approved order inside its approved window.
+- `POST /api/overtime/orders` alone keeps `overtime.operation.execute`. Before, every worker who had to record OT also had to hold the right to issue OT orders.
+
 ### [RBAC-CLEANUP-01] - 2026-10-17 — RBAC + ABAC audit: remove unused permissions and over-granting aliases
 #### Security
 - Removed the alias `attendance.ot_summary` → `overtime.management.review`: HR Head, HR Officer and Auditor could permit and certify overtime, so the HR Head who issues an OT order could also approve it. Viewing the OT summary is now view-only. The reporting-center OT report and the evaluation OT metrics use `attendance.ot_summary` (read-only) instead of the approval permission, so HR and auditors keep the report without approval rights.
