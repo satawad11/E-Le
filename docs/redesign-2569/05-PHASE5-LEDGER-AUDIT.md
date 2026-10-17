@@ -66,7 +66,8 @@
 - ผู้ใช้ฐานข้อมูลของแอปไม่มีสิทธิ์ `DROP TRIGGER` (แยกบัญชี migration ออกจากบัญชีแอป — ต้องแก้ `docker-compose` และ `.env` ของ production)
 - คำสั่ง `audit:verify-chain` ตรวจ hash chain ทุกคืน แจ้งเตือนเมื่อพบรอยแก้
 - **ทำแล้ว (D-07 · 18/10/2569):** migration `2026_10_19_130000_make_audit_logs_append_only.php` สร้าง trigger กัน UPDATE/DELETE บน `audit_logs`, `leave_audit_logs`, `saraban_audit_logs`, `setting_audit_logs` และกัน UPDATE บน `leave_action_logs`, `personal_data_access_logs` (สองตารางนี้มี FK แบบ CASCADE จึงยังลบตามแถวต้นทางได้ — เปลี่ยนเป็น RESTRICT เป็นงานแยก) · ยอมให้ FK ที่ nullable เปลี่ยนเป็น NULL ได้เท่านั้น · ทดสอบแล้วบน SQLite (test) และ MySQL 8 (ฐานข้อมูลทดสอบแยก)
-- ข้อควรรู้: trigger อ่านรายชื่อคอลัมน์ตอน migrate — **เพิ่มคอลัมน์ในตารางเหล่านี้ภายหลังต้องรัน migration สร้าง trigger ใหม่** (เรียก `up()` ซ้ำได้) · บน MySQL ที่เปิด binary log ผู้ใช้ที่รัน migration ต้องมีสิทธิ์สร้าง trigger (`TRIGGER` และ `SUPER` หรือ `log_bin_trust_function_creators=1`)
+- **สิทธิ์ฐานข้อมูล:** MySQL ที่เปิด binary log (ค่าเริ่มต้นของ MySQL 8) ไม่ยอมให้บัญชีที่ไม่มีสิทธิ์ `SUPER` สร้าง trigger — migration จึง **ไม่ล้ม** แต่เตือนและข้ามไป ให้ผู้ดูแลฐานข้อมูลรัน `DB_USERNAME=<บัญชีที่มีสิทธิ์> php artisan audit:protect` หลัง migrate แล้วยืนยันด้วย `php artisan audit:protect --check` (CI ทำตามขั้นตอนนี้ทุกครั้ง)
+- trigger อ่านรายชื่อคอลัมน์ตอนติดตั้ง — **เพิ่มคอลัมน์ในตารางเหล่านี้ภายหลังต้องรัน `audit:protect` ใหม่**
 - ยังไม่ทำ: hash chain (`prev_hash`/`row_hash`) และ `audit:verify-chain`
 
 ## 5.6 กันส่งซ้ำ (Idempotency)

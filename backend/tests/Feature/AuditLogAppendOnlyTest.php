@@ -6,6 +6,7 @@ use App\Models\Leave;
 use App\Models\LeaveActionLog;
 use App\Models\LeaveType;
 use App\Models\User;
+use App\Support\AuditLogGuard;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -93,6 +94,23 @@ class AuditLogAppendOnlyTest extends TestCase
 
         $leave->forceDelete();
         $this->assertFalse(DB::table('leave_action_logs')->where('id', $log->id)->exists(), 'ลบตามใบลาที่ถูกลบจริงได้ (ON DELETE CASCADE)');
+    }
+
+    public function test_protect_command_reports_and_reinstalls_missing_triggers(): void
+    {
+        $this->artisan('audit:protect --check')
+            ->expectsOutputToContain('ได้รับการป้องกันครบทุกตาราง')
+            ->assertSuccessful();
+
+        AuditLogGuard::remove();
+        $this->artisan('audit:protect --check')
+            ->expectsOutputToContain('ตารางที่ยังไม่ได้ป้องกัน')
+            ->assertFailed();
+
+        $this->artisan('audit:protect')->assertSuccessful();
+        $this->assertSame([], AuditLogGuard::unprotectedTables());
+        $id = $this->auditRow();
+        $this->assertBlocked(fn () => DB::table('audit_logs')->where('id', $id)->delete());
     }
 
     public function test_down_removes_the_triggers(): void
