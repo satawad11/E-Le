@@ -1,13 +1,13 @@
 ﻿<template>
   <div class="p-6">
-    <h2 class="text-2xl font-bold mb-6">ตั้งค่าระบบงานสารบรรณ (e-Saraban)</h2>
+    <h2 class="text-2xl font-bold mb-6">ตั้งค่าระบบงานสารบรรณอิเล็กทรอนิกส์</h2>
     
     <div class="bg-white rounded-xl shadow p-6 mb-6">
-      <h3 class="text-lg font-bold mb-4 border-b pb-2">ความปลอดภัย (Security)</h3>
+      <h3 class="text-lg font-bold mb-4 border-b pb-2">ความปลอดภัย</h3>
       
       <div class="flex items-center justify-between">
         <div>
-          <h4 class="font-semibold text-gray-800">บังคับใช้รหัสผ่านก่อนลงนาม (PIN/Password)</h4>
+          <h4 class="font-semibold text-gray-800">บังคับใช้รหัสผ่านหรือ PIN ก่อนลงนาม</h4>
           <p class="text-sm text-gray-500">ผู้ใช้จะต้องกรอกรหัสผ่านทุกครั้งก่อนยืนยันการประทับลายเซ็นอิเล็กทรอนิกส์ลงบนเอกสาร</p>
         </div>
         
@@ -46,7 +46,7 @@
           </div>
         </div>
         <div class="flex-1">
-          <h4 class="font-semibold text-gray-800">อัปโหลดตราครุฑสำหรับเอกสาร E-Document</h4>
+          <h4 class="font-semibold text-gray-800">อัปโหลดตราครุฑสำหรับเอกสารอิเล็กทรอนิกส์</h4>
           <p class="text-sm text-gray-500 mt-1">ไฟล์ภาพตราครุฑ (PNG/JPG) ที่จะถูกนำไปประทับบนหัวกระดาษตอนระบบสร้างไฟล์ PDF อัตโนมัติ พื้นหลังควรเป็นแบบโปร่งใส (Transparent PNG)</p>
           <div class="mt-4">
             <label class="px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-200 cursor-pointer inline-block transition-colors">
@@ -60,17 +60,17 @@
     </div>
 
     <div class="bg-white rounded-xl shadow p-6">
-      <h3 class="text-lg font-bold mb-4 border-b pb-2">รูปแบบเลขหนังสือ (Document Number)</h3>
+      <h3 class="text-lg font-bold mb-4 border-b pb-2">รูปแบบเลขที่หนังสือ</h3>
       
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">รูปแบบเอกสารรับเข้า (Incoming)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">รูปแบบเลขที่หนังสือรับ</label>
           <input type="text" v-model="formatIncoming" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-[#800000] focus:ring-[#800000]" @blur="saveSettings">
           <p class="text-xs text-gray-500 mt-1">ตัวแปร: {dept_code}, {year}, {running_number}</p>
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">รูปแบบเอกสารส่งออก (Outgoing)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">รูปแบบเลขที่หนังสือส่ง</label>
           <input type="text" v-model="formatOutgoing" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-[#800000] focus:ring-[#800000]" @blur="saveSettings">
         </div>
       </div>

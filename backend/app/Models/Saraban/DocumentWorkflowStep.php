@@ -3,6 +3,7 @@
 namespace App\Models\Saraban;
 
 use App\Models\User;
+use App\Support\Labels\SarabanWorkflowActionLabel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -25,6 +26,14 @@ class DocumentWorkflowStep extends Model
     protected $casts = [
         'action_at' => 'datetime',
     ];
+
+    /** ป้ายภาษาไทยสำหรับแสดงผล — `action` เป็นรหัสภายใน ห้ามแสดงตรง ๆ */
+    protected $appends = ['action_label'];
+
+    public function getActionLabelAttribute(): string
+    {
+        return SarabanWorkflowActionLabel::label($this->action);
+    }
 
     public function document()
     {

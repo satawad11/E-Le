@@ -14,7 +14,7 @@
           ภาพรวมโมดูลและสิทธิ์การเข้าถึง
         </h2>
         <p class="mt-1 text-sm text-gray-500">
-          แสดงโครงสร้างโมดูลทั้งหมดในระบบ พร้อมรายการสิทธิ์ (Permissions) ที่กำหนดไว้ในแต่ละโมดูล<br>
+          แสดงโครงสร้างโมดูลทั้งหมดในระบบ พร้อมรายการสิทธิ์ที่กำหนดไว้ในแต่ละโมดูล<br>
           หากต้องการกำหนดสิทธิ์รายบุคคล ให้ไปที่ <router-link to="/admin/users" class="text-indigo-600 hover:underline font-medium">จัดการผู้ใช้งาน → ปุ่มสิทธิ์</router-link>
         </p>
       </div>
@@ -45,8 +45,8 @@
         <div class="text-sm text-blue-800">
           <strong class="font-bold">วิธีการทำงานของระบบสิทธิ์ปัจจุบัน:</strong>
           สิทธิ์ทั้งหมดถูกกำหนดจากโค้ด (<code class="bg-blue-100 px-1 rounded font-mono text-xs">config/modules.php</code>)
-          เมนูใน Sidebar จะแสดงหรือซ่อนโดยอัตโนมัติตาม <strong>สิทธิ์สุทธิ (Effective Permissions)</strong> ของผู้ใช้แต่ละคน
-          ซึ่งประกอบด้วยสิทธิ์จากบทบาท (Role) + สิทธิ์เฉพาะบุคคล (Direct Permission)
+          เมนูด้านข้างจะแสดงหรือซ่อนโดยอัตโนมัติตาม <strong>สิทธิ์สุทธิ</strong> ของผู้ใช้แต่ละคน
+          ซึ่งประกอบด้วยสิทธิ์จากบทบาท + สิทธิ์เฉพาะบุคคล
         </div>
       </div>
 
@@ -147,7 +147,7 @@
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h3 class="text-sm font-bold text-slate-900">สรุปสิทธิ์ที่ผู้ใช้งานได้รับ</h3>
-            <p class="text-xs text-slate-500 mt-0.5">แสดงจำนวนผู้ใช้งานที่ได้รับสิทธิ์แต่ละรายการ (ทั้งจาก Role และ Direct Permission)</p>
+            <p class="text-xs text-slate-500 mt-0.5">แสดงจำนวนผู้ใช้งานที่ได้รับสิทธิ์แต่ละรายการ (ทั้งจากบทบาทและสิทธิ์เฉพาะบุคคล)</p>
           </div>
           <router-link
             to="/admin/users"
@@ -164,7 +164,7 @@
           <table class="w-full text-sm">
             <thead class="bg-slate-50 border-b border-slate-100">
               <tr>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">สิทธิ์ (Permission)</th>
+                <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">สิทธิ์</th>
                 <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">คำอธิบาย</th>
                 <th class="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">โมดูล</th>
                 <th class="text-center px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">จำนวนผู้ใช้</th>

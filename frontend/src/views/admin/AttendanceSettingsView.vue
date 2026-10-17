@@ -32,11 +32,11 @@
         <h3 class="text-lg leading-6 font-medium text-red-700 border-b pb-2">พิกัดและขอบเขตการลงเวลา</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm text-gray-700 mb-1">พิกัด GPS ละติจูด (Latitude)</label>
+            <label class="block text-sm text-gray-700 mb-1">พิกัด GPS ละติจูด</label>
             <input type="number" step="any" min="-90" max="90" v-model="settings.college_latitude" placeholder="เช่น 13.7563" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
           </div>
           <div>
-            <label class="block text-sm text-gray-700 mb-1">พิกัด GPS ลองจิจูด (Longitude)</label>
+            <label class="block text-sm text-gray-700 mb-1">พิกัด GPS ลองจิจูด</label>
             <input type="number" step="any" min="-180" max="180" v-model="settings.college_longitude" placeholder="เช่น 100.5018" class="block w-full border border-gray-300 rounded shadow-sm py-1 px-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
           </div>
         </div>

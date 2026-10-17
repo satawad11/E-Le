@@ -19,7 +19,7 @@
             </svg>
           </div>
           <div>
-            <h3 id="perm-modal-title" class="text-lg font-bold">กำหนดสิทธิ์รายบุคคล (Individual Permissions)</h3>
+            <h3 id="perm-modal-title" class="text-lg font-bold">กำหนดสิทธิ์รายบุคคล</h3>
             <p class="text-xs text-indigo-200" v-if="userData">
               จัดการสิทธิ์สำหรับ {{ userData.name }} ({{ userData.email }})
             </p>
@@ -45,7 +45,7 @@
           <!-- User Summary Card -->
           <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
             <div>
-              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">บทบาทหลัก (Roles)</span>
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">บทบาทหลัก</span>
               <div class="flex flex-wrap gap-1.5 mt-1">
                 <span 
                   v-for="role in userData?.roles || []" 
@@ -72,7 +72,7 @@
             </svg>
             <div>
               <strong class="font-bold">คำแนะนำ:</strong>
-              สิทธิ์ที่เป็นแถบสีเทาพร้อมตรา <span class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded text-[10px]">สิทธิ์จากบทบาท</span> คือสิทธิ์ที่ได้จาก Role หลักอัตโนมัติ สิทธิ์ที่ติ๊กถูกได้ด้านล่างจะเป็น <strong>สิทธิ์พิเศษเฉพาะบุคคล (Direct Permission)</strong>
+              สิทธิ์ที่เป็นแถบสีเทาพร้อมตรา <span class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded text-[10px]">สิทธิ์จากบทบาท</span> คือสิทธิ์ที่ได้จากบทบาทหลักโดยอัตโนมัติ สิทธิ์ที่ติ๊กถูกได้ด้านล่างจะเป็น <strong>สิทธิ์พิเศษเฉพาะบุคคล</strong>
             </div>
           </div>
 

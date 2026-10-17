@@ -135,7 +135,7 @@
       <!-- Field Dictionary -->
       <section v-else-if="activeTab === 'fields'" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <p class="text-sm text-gray-500 mb-4">
-          ตัวแปรทั้งหมดที่แบบฟอร์มและรายงานอ้างถึงได้ ค่าเหล่านี้มาจากแหล่งข้อมูลที่ระบบลงทะเบียนไว้ ไม่ได้มาจากการเขียน SQL เอง
+          ตัวแปรทั้งหมดที่แบบฟอร์มและรายงานอ้างถึงได้ ค่าเหล่านี้มาจากแหล่งข้อมูลที่ระบบลงทะเบียนไว้ ไม่ได้มาจากการเขียนคำสั่งฐานข้อมูลเอง
         </p>
         <div v-for="(fields, group) in groupedFields" :key="group" class="mb-5">
           <h3 class="font-bold text-gray-800 text-sm mb-2">{{ group }}</h3>
@@ -462,7 +462,7 @@
             <label class="block text-[11px] font-bold text-gray-500 uppercase mb-1">วิธีเรนเดอร์</label>
             <select v-model="createForm.render_mode" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white">
               <option value="pdf_overlay">วางฟิลด์บนแบบฟอร์ม PDF (แนะนำสำหรับแบบฟอร์มราชการ)</option>
-              <option value="html">แม่แบบ HTML แบบเดิม</option>
+              <option value="html">แม่แบบหน้าเว็บแบบเดิม</option>
             </select>
           </div>
         </div>

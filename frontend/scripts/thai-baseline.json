@@ -1,0 +1,18 @@
+{
+  "src/views/UserProfileView.vue": [
+    "placeholder=\"เช่น U1234567890abcdef...\""
+  ],
+  "src/views/admin/DocumentCenterView.vue": [
+    "DOCUMENT_ENGINE_ENABLED=false",
+    "placeholder=\"form_leave_vacation\""
+  ],
+  "src/views/admin/LeaveTypesManagementView.vue": [
+    "&#123;&#123; $extra['คีย์'] &#125;&#125;"
+  ],
+  "src/views/admin/ReportDesignerView.vue": [
+    "placeholder=\"LEAVE_MONTHLY_STATISTICS\""
+  ],
+  "src/views/admin/RolesManagementView.vue": [
+    "placeholder=\"เช่น AcademicOfficer, DepartmentHead\""
+  ]
+}

@@ -32,6 +32,21 @@
 
 ตัวเลขข้างบนมาจากการค้นด้วยรูปแบบข้อความ อาจมีจุดที่ค้นไม่เจอ (เช่น ข้อความที่ประกอบจากตัวแปร) — ตรวจครบด้วยเครื่องมือในข้อ 4
 
+### ความคืบหน้า (2026-10-17)
+
+| รายการ | สถานะ |
+|---|---|
+| L1 | ทำแล้ว — `lang/th/validation.php` (ครบทุกกฎของ Laravel + ชื่อฟิลด์ไทยทุกฟิลด์ที่ controller ตรวจ), `auth.php`, `passwords.php`, `pagination.php`, `th.json` |
+| L2 | ทำแล้ว — ค่าเริ่มต้น `APP_LOCALE` / `APP_FALLBACK_LOCALE` = `th` ทั้งใน `config/app.php` และ `.env.example` |
+| L3 | ทำแล้ว — `App\Support\ThaiApiErrorResponse` แทนข้อความ error ภาษาอังกฤษของ API ด้วยข้อความไทยตามรหัสสถานะ (คงข้อความไทยที่โค้ดเขียนเอง) และไม่เปิดเผยชื่อ model ในข้อความ 404 อีก |
+| L4 | ทำแล้ว — `action_label` ใน `LeaveActionLog` และ `DocumentWorkflowStep` แสดงในไทม์ไลน์ของใบลาและหนังสือสารบรรณ |
+| L5 | ทำแล้ว — แปลข้อความในหน้าจอราว 95 จุดใน 29 ไฟล์ |
+| L6 | ทำแล้ว — ลบ `HelloWorld.vue` |
+| L7, L8 | ยังไม่ทำ |
+| เครื่องมือตรวจ | ทำแล้ว — `npm run check:thai` ใน CI ล้มเมื่อพบข้อความอังกฤษใหม่ ค้างใน `frontend/scripts/thai-baseline.json` 6 รายการ (ตัวอย่างรหัสในหน้าผู้ดูแลระบบ) |
+
+**พบระหว่างตรวจ:** `saraban/DocumentDetailView.vue` มีบรรทัด `import { ICONS } ...` อยู่ในแม่แบบแทนที่จะอยู่ใน `<script>` ข้อความนี้จึงแสดงบนหน้าจอ และไอคอน 4 จุดในหน้านั้นอ้าง `ICONS` ที่ไม่ได้ import — แก้แล้ว
+
 ## 3. ตารางป้ายกลาง
 
 - backend: `app/Support/Labels/` หนึ่งคลาสต่อชุดรหัส (`LeaveStatusLabel`, `LeaveActionLabel`, `ApprovalActionKindLabel`, `LedgerEntryTypeLabel`, `PermissionLabel`, `ScopeLabel` …) แต่ละคลาสมี `label(string $code): string` และ **ต้องครอบคลุมทุกรหัส** — test วนทุกค่าคงที่/ทุกค่าในฐานข้อมูลแล้วต้องได้ข้อความไทยที่ไม่ใช่รหัสเดิม
