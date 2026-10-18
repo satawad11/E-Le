@@ -4,10 +4,10 @@
 Modular Monolith + domain boundaries. แต่ละ domain มี application/service/repository/policy/event interfaces ของตนเอง
 
 ## Layers
-UI -> Application/API -> Authorization/Validation -> Domain -> Repository -> PostgreSQL. Background worker consumes queued domain events for notifications, PDF and scheduled work.
+UI -> Application/API -> Authorization/Validation -> Domain -> Repository -> MySQL 8. Background worker consumes queued domain events for notifications, PDF and scheduled work.
 
 ## Dependency rule
-Business modules อ้าง Core contracts; ห้าม business module เขียนข้าม schema ของ module อื่นโดยตรงถ้าไม่มี service contract/event.
+Business modules อ้าง Core contracts (PermissionEngine, OrgTree, PersonnelDirectory, WorkflowEngine, AuditLogger) เท่านั้น; ห้าม business module เขียนข้าม schema ของ module อื่นโดยตรงถ้าไม่มี service contract/event.
 
 ## Internal events
 ตัวอย่าง `LeaveSubmitted`, `LeaveApproved`, `AttendanceImported`, `WorkflowTaskCreated`. Event handlers ต้อง idempotent.

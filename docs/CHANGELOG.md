@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-10-18 — REBUILD-2569 · R-01 กติกาใหม่
+- เริ่มโหมด REBUILD-2569 (ADR-R-001) ยกเลิกกติกาและเอกสารชุด LEGACY/PROD-00
+- ลบเอกสาร checkpoint/audit/governance ชุดเดิม 90+ ไฟล์ (อยู่ใน git history)
+- เขียนใหม่: PROJECT_RULES, AGENTS, CURRENT_PHASE, START-HERE, README, TASKS, CORE-01..04, 00/02/06/08/18, REQUIREMENTS, TRACEABILITY, ACCEPTANCE, DECISION-LOG
+- เพิ่ม: docs/REBUILD-PLAN-2569.md (แผน + ผังเมนู), docs/CODEX-RUNBOOK.md
+- ยังไม่มีการเปลี่ยนโค้ดหรือ schema
+
 All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]
