@@ -9,6 +9,7 @@ use App\Http\Controllers\GovernmentLeaveReportController;
 use App\Http\Controllers\LeaveAdjustmentController;
 use App\Http\Controllers\LeaveCardController;
 use App\Http\Controllers\LeaveEvidenceController;
+use App\Http\Controllers\LeaveExternalForwardingController;
 use App\Http\Controllers\LeaveGovernanceController;
 use App\Http\Controllers\LeaveGovernanceWorklistController;
 use App\Http\Controllers\PromotionScreeningController;
@@ -25,6 +26,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/leave-evidences/{evidence}/verify', [LeaveEvidenceController::class, 'verify']);
     Route::get('/leaves/{leave}/audit', [LeaveGovernanceController::class, 'audit']);
     Route::post('/leaves/{leave}/void', [LeaveGovernanceController::class, 'void']);
+    Route::post('/leaves/{leave}/external-forwarding/dispatch', [LeaveExternalForwardingController::class, 'send']);
+    Route::post('/leaves/{leave}/external-forwarding/result', [LeaveExternalForwardingController::class, 'result']);
     Route::post('/leaves/{leave}/partial-cancellation', [LeaveAdjustmentController::class, 'store']);
     Route::put('/leave-adjustments/{adjustment}/decision', [LeaveAdjustmentController::class, 'decide']);
     Route::get('/reports/leave-card', [LeaveCardController::class, 'show']);

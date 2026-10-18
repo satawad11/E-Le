@@ -12,6 +12,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\LeaveApprovalSigner;
+use App\Services\LeaveExternalForwardingService;
 use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
 use Illuminate\Http\Request;
@@ -85,7 +86,11 @@ class LeaveRequestController extends Controller
         $leave = DB::transaction(function () use ($data, $request, $signatures) {
             $leave = $this->leaveService->createLeaveRequest($data, (int) $data['user_id'], null, ['skip_timing_rules' => true]);
 
-            return $this->leaveService->finalizeRecordedLeave($leave, $request->user(), $signatures, 'บันทึกวันลาแทนโดยฝ่ายบุคคล');
+            $leave = $this->leaveService->finalizeRecordedLeave($leave, $request->user(), $signatures, 'บันทึกวันลาแทนโดยฝ่ายบุคคล');
+            // บันทึกแทนแล้วเกินอำนาจสถานศึกษา — ต้องส่งต่อเหมือนใบลาที่ผู้อำนวยการอนุมัติ (D-01)
+            app(LeaveExternalForwardingService::class)->flagIfRequired($leave, $request->user());
+
+            return $leave;
         });
         LeaveActionLog::create([
             'leave_id' => $leave->id,
