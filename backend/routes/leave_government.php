@@ -38,7 +38,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/government-leave-departments', [GovernmentLeaveReportController::class, 'departments']);
     Route::get('/reports/government-leave-summary', [GovernmentLeaveReportController::class, 'summary']);
     Route::get('/reports/government-leave-register.csv', [GovernmentLeaveReportController::class, 'csv'])->middleware('throttle:exports');
-    Route::middleware('can:leave.approval.hr')->prefix('admin')->group(function () {
+    // controller ตรวจสิทธิ์เอง (leave.management.manage หรือ leave.approval.hr) — เดิม middleware รับแค่
+    // leave.approval.hr หัวหน้างานบุคลากรที่ถือ leave.management.manage จึงเปิดศูนย์งานกำกับการลาไม่ได้
+    Route::prefix('admin')->group(function () {
         Route::get('/leave-governance/worklist', [LeaveGovernanceWorklistController::class, 'worklist']);
         Route::get('/leave-governance/adjustments', [LeaveGovernanceWorklistController::class, 'adjustments']);
     });

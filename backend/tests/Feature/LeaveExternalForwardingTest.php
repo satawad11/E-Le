@@ -148,6 +148,16 @@ class LeaveExternalForwardingTest extends TestCase
         $this->actingAs($this->hr)->postJson("/api/leaves/{$leave->id}/external-forwarding/result", $result)->assertUnprocessable();
     }
 
+    public function test_hr_with_leave_management_alone_can_open_the_worklist(): void
+    {
+        $leave = $this->approvedLeave();
+        $hrHead = User::factory()->create();
+        $hrHead->givePermissionTo(Permission::findOrCreate('leave.management.manage', 'web'));
+
+        $ids = collect($this->actingAs($hrHead)->getJson('/api/admin/leave-governance/worklist?status=external_forwarding')->assertOk()->json('data'))->pluck('id');
+        $this->assertTrue($ids->contains($leave->id), 'หัวหน้างานบุคลากรที่ถือเฉพาะ leave.management.manage ต้องเห็นรายการ');
+    }
+
     public function test_only_hr_can_record_forwarding(): void
     {
         $leave = $this->approvedLeave();
