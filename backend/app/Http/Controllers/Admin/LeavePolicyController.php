@@ -3,14 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Leave;
 use App\Models\LeavePolicy;
 use App\Models\PersonnelType;
+use App\Services\AuditLogger;
 use App\Services\LeavePolicyService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class LeavePolicyController extends Controller
 {
-    public function __construct(private LeavePolicyService $policies) {}
+    public function __construct(private LeavePolicyService $policies, private AuditLogger $audit) {}
 
     public function index(Request $r)
     {
@@ -29,11 +33,60 @@ class LeavePolicyController extends Controller
         return response()->json(['policy' => $policy->load(['personnelType', 'leaveType']), 'sync' => $this->policies->syncBalances($policy)], 201);
     }
 
+    /**
+     * แก้นโยบายที่มีใบลาอ้างถึงแล้ว = ปิดรุ่นเดิมและสร้างรุ่นใหม่ (PROJECT_RULES ข้อ 7 ห้ามเขียนทับประวัติ effective-dated)
+     *
+     * ใบลาที่ยื่นไปแล้วยังผูกกับรุ่นเดิม รุ่นใหม่มีผลตั้งแต่วันที่ระบุ (ไม่ก่อนวันนี้และไม่ก่อนวันเริ่มของรุ่นเดิม)
+     * นโยบายที่ยังไม่มีใบลาอ้างถึง หรือการแก้เฉพาะวันสิ้นสุด/สถานะเปิดใช้ (การปิดรุ่น) แก้ในแถวเดิมได้
+     */
     public function update(Request $r, LeavePolicy $policy)
     {
-        $policy->update($this->validated($r));
+        $data = $this->validated($r);
+        $before = $policy->toArray();
 
-        return response()->json(['policy' => $policy->fresh(['personnelType', 'leaveType']), 'sync' => $this->policies->syncBalances($policy)]);
+        $substantive = collect($data)->except(['effective_to', 'is_active'])
+            ->contains(fn ($value, $key) => $this->differs($policy, $key, $value));
+        $inUse = Leave::withTrashed()->where('leave_policy_id', $policy->id)->exists();
+
+        if (! $inUse || ! $substantive) {
+            $policy->update($data);
+            $this->audit->log('leave_policy.updated', $policy, null, $before, $policy->fresh()->toArray());
+
+            return response()->json(['policy' => $policy->fresh(['personnelType', 'leaveType']), 'sync' => $this->policies->syncBalances($policy), 'versioned' => false]);
+        }
+
+        $from = collect([Carbon::parse($data['effective_from'])->startOfDay(), today(), $policy->effective_from->copy()->addDay()])->max();
+
+        $next = DB::transaction(function () use ($policy, $data, $from, $before) {
+            $policy->update(['effective_to' => $from->copy()->subDay()->toDateString()]);
+            $next = LeavePolicy::create(array_merge($data, ['effective_from' => $from->toDateString()]));
+            $this->audit->log('leave_policy.versioned', $next, null, $before, $next->toArray(), "ปิดรุ่น #{$policy->id} เพราะมีใบลาอ้างถึงแล้ว");
+
+            return $next;
+        });
+
+        return response()->json([
+            'policy' => $next->load(['personnelType', 'leaveType']),
+            'sync' => $this->policies->syncBalances($next),
+            'versioned' => true,
+            'message' => 'นโยบายนี้มีใบลาอ้างถึงแล้ว ระบบจึงปิดรุ่นเดิมและสร้างรุ่นใหม่มีผลตั้งแต่ '.$from->format('j/n/').($from->year + 543).' ใบลาที่ยื่นไปแล้วยังใช้ค่าเดิม',
+        ]);
+    }
+
+    private function differs(LeavePolicy $policy, string $key, mixed $value): bool
+    {
+        $current = $policy->getAttribute($key);
+        if ($current instanceof \DateTimeInterface) {
+            return $value === null || Carbon::parse($value)->toDateString() !== $current->format('Y-m-d');
+        }
+        if (is_array($current) || is_array($value)) {
+            return json_encode($current ?: null) !== json_encode($value ?: null);
+        }
+        if (is_numeric($current) || is_numeric($value)) {
+            return (float) $current !== (float) $value || ($current === null) !== ($value === null);
+        }
+
+        return (string) $current !== (string) $value;
     }
 
     private function validated(Request $r): array
