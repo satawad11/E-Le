@@ -34,7 +34,7 @@ class UserImportTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['view_users', 'edit_users'] as $permission) {
+        foreach (['system.user.view', 'system.user.manage'] as $permission) {
             Permission::findOrCreate($permission, 'web');
         }
 
@@ -42,7 +42,7 @@ class UserImportTest extends TestCase
         $this->employeeRole = Role::findOrCreate('Employee', 'web');
 
         $this->admin = User::factory()->create();
-        $this->admin->givePermissionTo(['view_users', 'edit_users']);
+        $this->admin->givePermissionTo(['system.user.view', 'system.user.manage']);
     }
 
     private function import(string $csv, ?User $as = null)
@@ -180,7 +180,7 @@ class UserImportTest extends TestCase
     public function test_csv_import_requires_the_user_management_permission(): void
     {
         $viewer = User::factory()->create();
-        $viewer->givePermissionTo('view_users');
+        $viewer->givePermissionTo('system.user.view');
 
         $this->import("name,email,role_id,department_id\nผู้ใช้,x@example.com,{$this->employeeRole->id},{$this->department->id}\n", $viewer)
             ->assertForbidden();

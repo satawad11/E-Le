@@ -166,7 +166,7 @@ class PersonalDataProtectionTest extends TestCase
     {
         $this->staff('บุคลากรหนึ่ง');
         $admin = $this->staff('ผู้ดูแลระบบ');
-        $admin->givePermissionTo(Permission::findOrCreate('view_users', 'web'), Permission::findOrCreate('edit_users', 'web'));
+        $admin->givePermissionTo(Permission::findOrCreate('system.user.view', 'web'), Permission::findOrCreate('system.user.manage', 'web'));
 
         $this->actingAs($admin)->getJson('/api/admin/users')->assertOk();
 
@@ -181,7 +181,7 @@ class PersonalDataProtectionTest extends TestCase
     {
         $subject = $this->staff('ผู้ถูกแก้ไขข้อมูล');
         $admin = $this->staff('ผู้ดูแลระบบ');
-        $admin->givePermissionTo(Permission::findOrCreate('view_users', 'web'), Permission::findOrCreate('edit_users', 'web'));
+        $admin->givePermissionTo(Permission::findOrCreate('system.user.view', 'web'), Permission::findOrCreate('system.user.manage', 'web'));
         $role = Role::firstOrCreate(['name' => 'Employee', 'guard_name' => 'web']);
 
         $this->actingAs($admin)->putJson('/api/admin/users/'.$subject->id, [

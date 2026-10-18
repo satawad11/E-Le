@@ -72,7 +72,7 @@ class UserController extends Controller
         }
 
         return response()->json([
-            'roles' => $roles->map(fn (Role $role) => ['id' => $role->id, 'name' => $role->name])->values(),
+            'roles' => $roles->map(fn (Role $role) => ['id' => $role->id, 'name' => $role->name, 'description' => $role->description])->values(),
             'can_manage_access' => $this->canManageAccess($actor),
         ]);
     }

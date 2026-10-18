@@ -222,6 +222,8 @@ class AuthorizationMatrixTest extends TestCase
     public function test_permission_aliases_point_at_real_permissions(): void
     {
         $catalogue = Permission::pluck('name')->all();
+        // หลังรวมชื่อเดิมเข้าชื่อมาตรฐาน (2026_10_19_170000) ตารางนี้อาจว่าง — ว่างก็ถือว่าผ่าน
+        $this->addToAssertionCount(1);
 
         foreach (DB::table('permission_aliases')->get() as $alias) {
             $this->assertContains(

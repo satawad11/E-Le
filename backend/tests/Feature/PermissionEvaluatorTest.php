@@ -29,6 +29,10 @@ class PermissionEvaluatorTest extends TestCase
     {
         parent::setUp();
 
+        // ข้อมูลจริงรวมชื่อ view_users เข้า system.user.view แล้ว (migration 2026_10_19_170000)
+        // test นี้ตั้งคู่ alias เองเพื่อทดสอบกลไกเทียบชื่อข้ามรุ่น ซึ่งยังใช้กับชื่อเดิมคู่อื่นได้
+        DB::table('permission_aliases')->updateOrInsert(['legacy_name' => 'view_users'], ['canonical_name' => 'system.user.view', 'created_at' => now(), 'updated_at' => now()]);
+
         $this->evaluator = app(PermissionEvaluator::class);
     }
 

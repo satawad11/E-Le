@@ -274,7 +274,7 @@ class AccessGovernancePhase2Test extends TestCase
         $this->assertFalse($hrOfficer->hasPermissionTo('leave.management.manage'));
         $this->assertFalse($hrOfficer->hasPermissionTo('admin.users.manage_permissions'));
         $this->assertTrue($auditor->hasPermissionTo('leave.report.view'));
-        $this->assertFalse($auditor->permissions->pluck('name')->contains(fn ($n) => str_contains($n, 'manage') || str_contains($n, 'approve') || $n === 'edit_users'));
+        $this->assertFalse($auditor->permissions->pluck('name')->contains(fn ($n) => str_contains($n, 'manage') || str_contains($n, 'approve') || $n === 'system.user.manage'));
         $this->assertTrue($operator->hasPermissionTo('overtime.operation.execute'));
         $this->assertFalse($operator->hasPermissionTo('overtime.management.review'));
     }

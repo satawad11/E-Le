@@ -196,7 +196,7 @@
                 >
                   <option value="" disabled>เลือกบทบาท</option>
                   <option v-for="role in approvableRoles" :key="role.id" :value="role.id">
-                    {{ roleLabel(role.name) }}
+                    {{ role.display_name || roleLabel(role.name) }}
                   </option>
                 </select>
               </div>

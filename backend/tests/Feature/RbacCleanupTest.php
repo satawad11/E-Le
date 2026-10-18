@@ -73,6 +73,8 @@ class RbacCleanupTest extends TestCase
             'document.audit.view', 'document.final.view', 'document.generate', 'leave.audit.view', 'leave.evidence.verify',
             'leave.view', 'leave.create', 'leave.cancel', 'leave.approve', 'leave.hr_verify', 'leave.export',
             'attendance.export', 'saraban.view', 'saraban.config.manage', 'saraban.document.archive', 'saraban.document.dispatch',
+            // รวมเข้าชื่อมาตรฐานแล้ว (2026_10_19_170000)
+            'edit_users', 'view_users', 'manage_settings',
         ];
 
         $this->assertSame([], Permission::whereIn('name', $gone)->pluck('name')->all());

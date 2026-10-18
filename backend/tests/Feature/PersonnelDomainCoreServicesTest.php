@@ -145,7 +145,7 @@ class PersonnelDomainCoreServicesTest extends TestCase
 
         // Grant permission to viewer
         $viewer = User::factory()->create();
-        $viewer->givePermissionTo(Permission::firstOrCreate(['name' => 'view_users', 'guard_name' => 'web']));
+        $viewer->givePermissionTo(Permission::firstOrCreate(['name' => 'system.user.view', 'guard_name' => 'web']));
 
         $reportingService = app(ReportingDataService::class);
         // ReportFilter รับ CarbonImmutable ไม่ใช่ string

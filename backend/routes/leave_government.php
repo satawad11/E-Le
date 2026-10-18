@@ -49,7 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/leave-policies', [LeavePolicyController::class, 'store']);
         Route::put('/leave-policies/{policy}', [LeavePolicyController::class, 'update']);
     });
-    Route::middleware('can:edit_users')->prefix('admin')->group(function () {
+    Route::middleware('can:system.user.manage')->prefix('admin')->group(function () {
         Route::post('/personnel-types', [PersonnelTypeController::class, 'store']);
         Route::put('/personnel-types/{personnelType}', [PersonnelTypeController::class, 'update']);
         Route::put('/users/{user}/personnel-type', [PersonnelTypeController::class, 'assign']);

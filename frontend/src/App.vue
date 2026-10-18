@@ -407,7 +407,7 @@
         </div>
 
         <!-- SuperAdmin & HR: จัดการผู้ใช้งาน Collapsible -->
-        <div v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasAnyPermission(['view_users', 'edit_users', 'system.user.view', 'system.user.manage'])">
+        <div v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasAnyPermission(['system.user.view', 'system.user.manage'])">
           <button
             @click="userMenuOpen = !userMenuOpen; if(isSidebarCollapsed) isSidebarCollapsed = false"
             class="nav-link w-full flex justify-between items-center"
@@ -427,11 +427,11 @@
           </button>
 
           <div v-show="userMenuOpen && !isSidebarCollapsed" class="mt-1 space-y-1 pl-9">
-            <router-link v-if="authStore.isAdmin || authStore.hasAnyPermission(['view_users', 'system.user.view'])" to="/admin/users" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+            <router-link v-if="authStore.isAdmin || authStore.hasAnyPermission(['system.user.view'])" to="/admin/users" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
               รายชื่อผู้ใช้งาน
             </router-link>
             <router-link
-              v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage'])"
+              v-if="authStore.isAdmin || authStore.hasAnyPermission(['system.user.manage'])"
               to="/admin/personnel-assignments"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -439,7 +439,7 @@
               กำหนดประเภทบุคลากร
             </router-link>
             <router-link
-              v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage', 'system.position.manage'])"
+              v-if="authStore.isAdmin || authStore.hasAnyPermission(['system.user.manage', 'system.position.manage'])"
               to="/admin/positions"
               class="nav-link !py-2 !text-sm"
               active-class="nav-link-active"
@@ -791,7 +791,7 @@
           </div>
 
           <!-- จัดการผู้ใช้งาน Collapsible (Mobile) -->
-          <div v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasAnyPermission(['view_users', 'edit_users', 'system.user.view', 'system.user.manage'])">
+          <div v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasAnyPermission(['system.user.view', 'system.user.manage'])">
             <button
               @click="userMenuOpen = !userMenuOpen"
               class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-white/80 hover:bg-white/10"
@@ -810,11 +810,11 @@
             </button>
 
             <div v-show="userMenuOpen" class="mt-1 pl-6 space-y-1">
-              <router-link v-if="authStore.isAdmin || authStore.hasAnyPermission(['view_users', 'system.user.view'])" to="/admin/users" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+              <router-link v-if="authStore.isAdmin || authStore.hasAnyPermission(['system.user.view'])" to="/admin/users" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
                 รายชื่อผู้ใช้งาน
               </router-link>
               <router-link
-                v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage'])"
+                v-if="authStore.isAdmin || authStore.hasAnyPermission(['system.user.manage'])"
                 to="/admin/personnel-assignments"
                 @click="mobileMenu = false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
@@ -823,7 +823,7 @@
                 กำหนดประเภทบุคลากร
               </router-link>
               <router-link
-                v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage', 'system.position.manage'])"
+                v-if="authStore.isAdmin || authStore.hasAnyPermission(['system.user.manage', 'system.position.manage'])"
                 to="/admin/positions"
                 @click="mobileMenu = false"
                 class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10"
@@ -1168,9 +1168,8 @@ const pendingCancelBadge = computed(() => leaveStore.approvals?.filter(l => l.ca
 
 // Role label for display
 const roleLabel = computed(() => {
-  const role = authStore.user?.role?.name || authStore.roleName || ''
-  if (role) return role
-  return 'บุคลากร'
+  // ชื่อบทบาทภาษาไทยอยู่ใน description — ชื่อภายใน (เช่น Super Admin) ไม่แสดงบนหน้าจอ
+  return authStore.user?.role?.description || 'บุคลากร'
 })
 
 // Role badge color

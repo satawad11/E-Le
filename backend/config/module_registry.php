@@ -26,7 +26,8 @@ return [
         'audit_events' => ['user.created', 'user.updated', 'user.deleted'],
         'providers' => [],
         'route_patterns' => [],
-        'legacy_permissions' => ['view_users', 'edit_users', 'admin.users.manage_permissions', 'manage_departments', 'manage_workflow_steps', 'manage_leave_types', 'manage_settings'],
+        // ชื่อที่ไม่ขึ้นต้นด้วยรหัสโมดูล (คงไว้เพราะ route ตรวจด้วยชื่อนี้) — แสดงในหน้าจัดการบทบาทใต้โมดูลนี้
+        'legacy_permissions' => ['admin.users.manage_permissions', 'manage_departments', 'manage_workflow_steps', 'manage_leave_types', 'document.template.view', 'document.template.manage', 'document.report.view', 'document.report.manage', 'document.final.download'],
     ],
     'leave' => [
         'code' => 'leave',
@@ -47,7 +48,7 @@ return [
         'audit_events' => ['leave.created', 'leave.updated', 'leave.cancelled', 'leave.approved', 'leave.rejected'],
         'providers' => [LeaveModuleServiceProvider::class],
         'route_patterns' => ['api/leaves*', 'api/approvals*', 'api/admin/leaves*', 'api/reports/summary', 'api/reports/export-*', 'api/reports/leave-card*', 'api/reports/promotion-screening*', 'api/reports/government-leave*'],
-        'legacy_permissions' => [],
+        'legacy_permissions' => ['leave.delete'],
     ],
     'attendance' => [
         'code' => 'attendance',

@@ -167,7 +167,7 @@ class MenuSeeder extends Seeder
                         'route_name' => 'AdminUsers',
                         'route_path' => '/admin/users',
                         'sort_order' => 1,
-                        'permissions' => ['view_users'],
+                        'permissions' => ['system.user.view'],
                     ],
                     [
                         'code' => 'admin.menus',
@@ -178,7 +178,7 @@ class MenuSeeder extends Seeder
                         'route_name' => 'AdminMenus',
                         'route_path' => '/admin/menus',
                         'sort_order' => 2,
-                        'permissions' => ['edit_users'],
+                        'permissions' => ['system.user.manage'],
                     ],
                 ],
             ],

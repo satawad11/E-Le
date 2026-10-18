@@ -48,7 +48,7 @@ class PositionCatalogTest extends TestCase
         parent::setUp();
 
         Permission::findOrCreate('system.user.manage', 'web');
-        Permission::findOrCreate('view_users', 'web');
+        Permission::findOrCreate('system.user.view', 'web');
         Permission::findOrCreate('leave.report.view', 'web');
         $this->employeeRole = Role::findOrCreate('Employee', 'web');
         $this->department = Department::create(['name' => 'แผนกทดสอบ']);
@@ -58,7 +58,7 @@ class PositionCatalogTest extends TestCase
         $this->unitB = $this->orgUnit('DIV-B', $root);
 
         $this->admin = User::factory()->create(['email' => 'admin@test.local', 'is_active' => true]);
-        $this->admin->givePermissionTo(['system.user.manage', 'view_users']);
+        $this->admin->givePermissionTo(['system.user.manage', 'system.user.view']);
     }
 
     // ------------------------------------------------------------- migration
@@ -275,7 +275,7 @@ class PositionCatalogTest extends TestCase
 
         $this->assertTrue($hrHead->hasPermissionTo('system.position.manage'));
         $this->assertFalse($hrHead->hasPermissionTo('system.user.manage'));
-        $this->assertFalse($hrHead->hasPermissionTo('edit_users'));
+        $this->assertFalse($hrHead->hasPermissionTo('system.user.manage'));
     }
 
     public function test_migration_grants_position_permission_to_existing_hr_head_role(): void
@@ -421,7 +421,7 @@ class PositionCatalogTest extends TestCase
         $unlinked = $this->staff($this->unitA);
 
         $viewer = $this->staff($this->unitA);
-        $viewer->givePermissionTo('view_users');
+        $viewer->givePermissionTo('system.user.view');
 
         $rows = collect($this->actingAs($viewer)->getJson('/api/reporting/personnel')->assertOk()->json('rows'));
         $this->assertSame('ครู', $rows->firstWhere('user_id', $teacher->id)['position_group']);
@@ -503,7 +503,7 @@ class PositionCatalogTest extends TestCase
     {
         Permission::findOrCreate('system.position.manage', 'web');
         $role = Role::findOrCreate('HR Head', 'web');
-        $role->givePermissionTo(['system.position.manage', 'view_users']);
+        $role->givePermissionTo(['system.position.manage', 'system.user.view']);
 
         $hr = $this->staff($this->unitA);
         $hr->syncRoles(['HR Head']);

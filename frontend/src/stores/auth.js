@@ -81,7 +81,7 @@ export const useAuthStore = defineStore('auth', {
     /** ผู้มีสิทธิ์อนุมัติใบลา — เดิมคือ SuperAdmin/Director/Deputy/HR Head ซึ่งล้วนถือสิทธิ์นี้ */
     isHRHead: (state) => {
       const perms = getPermissionNames(state);
-      return perms.includes('system.user.view') || perms.includes('view_users');
+      return perms.includes('system.user.view');
     },
 
     isManager: (state) => {
@@ -93,15 +93,15 @@ export const useAuthStore = defineStore('auth', {
     /** เข้าหน้าตั้งค่าระบบได้ — เดิมคือ Super Admin เท่านั้น */
     isAdmin: (state) => {
       const perms = getPermissionNames(state);
-      return perms.includes('system.setting.manage') || perms.includes('manage_settings');
+      return perms.includes('system.setting.manage');
     },
 
     /** เข้าหน้าจัดการผู้ใช้ได้ — เดิมคือ Super Admin กับ HR Head */
     isUserManager: (state) => {
       const perms = getPermissionNames(state);
-      return perms.includes('view_users')
+      return perms.includes('system.user.view')
         || perms.includes('system.user.view')
-        || perms.includes('edit_users')
+        || perms.includes('system.user.manage')
         || perms.includes('system.user.manage');
     },
 
@@ -186,7 +186,7 @@ export const useAuthStore = defineStore('auth', {
     // Check if user has any admin menu permission
     hasAnyAdminMenu: (state) => {
       if (isSuperAdminUser(state)) return true;
-      const adminPerms = ['view_users', 'edit_users', 'manage_departments', 'manage_leave_types', 'manage_settings', 'attendance.view_all', 'system.user.view', 'system.menu.manage'];
+      const adminPerms = ['system.user.view', 'system.user.manage', 'manage_departments', 'manage_leave_types', 'system.setting.manage', 'attendance.view_all', 'system.menu.manage'];
       const perms = getPermissionNames(state);
       return perms.some(p => adminPerms.includes(p));
     },
@@ -195,7 +195,7 @@ export const useAuthStore = defineStore('auth', {
     canManageSettings: (state) => {
       if (isSuperAdminUser(state)) return true;
       const perms = getPermissionNames(state);
-      return perms.includes('manage_settings') || perms.includes('system.setting.manage');
+      return perms.includes('system.setting.manage');
     },
 
     /*
@@ -206,7 +206,7 @@ export const useAuthStore = defineStore('auth', {
      */
     canManageDocumentCenter: (state) => {
       if (isSuperAdminUser(state)) return true;
-      const documentPerms = ['document.template.view', 'document.template.manage', 'document.report.view', 'document.report.manage', 'manage_settings', 'system.setting.manage'];
+      const documentPerms = ['document.template.view', 'document.template.manage', 'document.report.view', 'document.report.manage', 'system.setting.manage'];
       const perms = getPermissionNames(state);
       return perms.some(p => documentPerms.includes(p));
     },
@@ -214,7 +214,7 @@ export const useAuthStore = defineStore('auth', {
     // Check if user has any settings menu permission
     hasAnySettingsMenu: (state) => {
       if (isSuperAdminUser(state)) return true;
-      const settingsPerms = ['manage_departments', 'manage_workflow_steps', 'manage_leave_types', 'manage_settings', 'system.setting.manage'];
+      const settingsPerms = ['manage_departments', 'manage_workflow_steps', 'manage_leave_types', 'system.setting.manage'];
       const perms = getPermissionNames(state);
       return perms.some(p => settingsPerms.includes(p));
     },

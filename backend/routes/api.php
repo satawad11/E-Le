@@ -170,13 +170,13 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         ->whereIn('report', ReportingDataService::REPORTS);
 
     // Admin routes
-    Route::group(['middleware' => ['can:view_users']], function () {
+    Route::group(['middleware' => ['can:system.user.view']], function () {
         Route::get('/admin/users', [UserController::class, 'index']);
         Route::get('/admin/roles', [UserController::class, 'roles']);
         Route::get('/admin/departments-list', [UserController::class, 'departments']);
     });
 
-    Route::group(['middleware' => ['permission:edit_users|system.user.manage']], function () {
+    Route::group(['middleware' => ['permission:system.user.manage']], function () {
         // K-ORG-01: บทบาทที่ผู้ใช้คนนี้มอบได้ (ผู้ไม่มีสิทธิ์กำหนดสิทธิ์จะเห็นเฉพาะบทบาทที่ไม่เกินของตน)
         Route::get('/admin/assignable-roles', [UserController::class, 'assignableRoles']);
         Route::post('/admin/users', [UserController::class, 'store']);
@@ -190,7 +190,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // ORG-ACCESS-02: ทะเบียนตำแหน่ง — อ่านได้ทุกคน (ฟอร์มผู้ใช้/ตัวกรองรายงาน) ไม่มีการลบ
     // แก้ไข/ผูกตำแหน่งใช้ system.position.manage (งานบุคลากร) โดยไม่ต้องมีสิทธิ์แก้บทบาท/สิทธิ์ของผู้ใช้
     Route::get('/positions', [PositionController::class, 'index']);
-    Route::group(['middleware' => ['permission:edit_users|system.user.manage|system.position.manage']], function () {
+    Route::group(['middleware' => ['permission:system.user.manage|system.position.manage']], function () {
         Route::post('/admin/position-groups', [PositionController::class, 'storeGroup']);
         Route::put('/admin/position-groups/{positionGroup}', [PositionController::class, 'updateGroup']);
         Route::post('/admin/positions', [PositionController::class, 'store']);
@@ -216,7 +216,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     });
 
     // ระบบไม่ลบบัญชี (destroy ตอบ 409 พร้อมคำแนะนำให้ระงับ/บันทึกพ้นสภาพ) — RBAC-CLEANUP-01 เลิกสิทธิ์ delete_users
-    Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->middleware('permission:edit_users|system.user.manage');
+    Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->middleware('permission:system.user.manage');
 
     // Admin: Departments CRUD
     Route::group(['middleware' => ['can:manage_departments']], function () {
@@ -275,7 +275,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      *
      * ค่าที่เป็นของงานสารบรรณย้ายไปที่ `/api/saraban/settings` ด้านล่าง
      */
-    Route::middleware('permission:manage_settings|system.setting.manage')->group(function () {
+    Route::middleware('permission:system.setting.manage')->group(function () {
         Route::get('/admin/settings', [SecureSettingController::class, 'adminIndex']);
         Route::post('/admin/settings', [SecureSettingController::class, 'update']);
         Route::post('/admin/settings/upload-logo', [SecureSettingController::class, 'uploadLogo']);
@@ -308,7 +308,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      * ยอมรับทั้งสิทธิ์เฉพาะชุดใหม่และสิทธิ์ตั้งค่าระบบเดิม เพื่อให้ผู้ดูแลที่ใช้งานอยู่
      * ไม่ถูกตัดสิทธิ์ในวันที่อัปเกรด แล้วค่อยถอดสิทธิ์เดิมออกเมื่อกำหนดบทบาทใหม่ครบ
      */
-    Route::middleware('permission:document.template.view|document.template.manage|manage_settings|system.setting.manage')->group(function () {
+    Route::middleware('permission:document.template.view|document.template.manage|system.setting.manage')->group(function () {
         Route::get('/admin/document-engine/overview', [DocumentEngineController::class, 'overview']);
         Route::get('/admin/document-engine/templates', [DocumentEngineController::class, 'templates']);
         Route::get('/admin/document-engine/templates/{template}', [DocumentEngineController::class, 'showTemplate']);
@@ -323,7 +323,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::get('/admin/document-engine/generated', [DocumentEngineController::class, 'generatedFiles']);
     });
 
-    Route::middleware('permission:document.template.manage|manage_settings|system.setting.manage')->group(function () {
+    Route::middleware('permission:document.template.manage|system.setting.manage')->group(function () {
         Route::post('/admin/document-engine/templates', [DocumentEngineController::class, 'storeTemplate']);
         Route::post('/admin/document-engine/templates/{template}/versions', [DocumentEngineController::class, 'createVersion']);
         Route::post('/admin/document-engine/versions/{version}/pdf', [DocumentEngineController::class, 'uploadPdf']);
@@ -340,7 +340,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/admin/document-engine/calibrations', [DocumentEngineController::class, 'saveCalibration']);
     });
 
-    Route::middleware('permission:document.report.view|document.report.manage|manage_settings|system.setting.manage')->group(function () {
+    Route::middleware('permission:document.report.view|document.report.manage|system.setting.manage')->group(function () {
         Route::get('/admin/document-reports', [DocumentReportController::class, 'index']);
         Route::get('/admin/document-reports/{report}/run', [DocumentReportController::class, 'run']);
         Route::get('/admin/document-reports/{report}/export/{format}', [DocumentReportController::class, 'export'])
@@ -349,10 +349,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     });
 
     Route::post('/admin/document-reports', [DocumentReportController::class, 'store'])
-        ->middleware('permission:document.report.manage|manage_settings|system.setting.manage');
+        ->middleware('permission:document.report.manage|system.setting.manage');
 
     Route::get('/admin/document-engine/generated/{file}/download', [DocumentEngineController::class, 'downloadGenerated'])
-        ->middleware(['permission:document.final.download|manage_settings|system.setting.manage', 'throttle:documents']);
+        ->middleware(['permission:document.final.download|system.setting.manage', 'throttle:documents']);
 
     // Saraban Document routes.
     // Route-level `permission:` middleware is the coarse gate; DocumentPolicy

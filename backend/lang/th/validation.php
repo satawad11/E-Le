@@ -214,6 +214,7 @@ return [
 
         // บทบาท สิทธิ์ และการมอบหมาย
         'role_id' => 'บทบาท',
+        'display_name' => 'ชื่อที่แสดง',
         'role_expires_at' => 'วันหมดอายุของบทบาท',
         'role_order_number' => 'เลขที่คำสั่งมอบบทบาท',
         'permission_ids' => 'สิทธิ์',

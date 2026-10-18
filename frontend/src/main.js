@@ -16,7 +16,7 @@ router.addRoute({ path: '/admin/promotion-screening', name: 'admin-promotion-scr
 // เดิมรับแค่ leave.approval.hr และทับค่าใน router/index.js หัวหน้างานบุคลากรจึงเห็นเมนูแต่เปิดหน้าไม่ได้
 router.addRoute({ path: '/admin/leave-governance', name: 'admin-leave-governance', component: () => import('./views/admin/LeaveGovernanceView.vue'), meta: { requiresAuth: true, permissions: ['leave.management.manage', 'leave.approval.hr'], title: 'ศูนย์งานกำกับการลา', parent: 'ระบบลางาน' } })
 router.addRoute({ path: '/admin/leave-policies', name: 'admin-leave-policies', component: () => import('./views/admin/LeavePoliciesView.vue'), meta: { requiresAuth: true, permission: 'leave.policy.manage' } })
-router.addRoute({ path: '/admin/personnel-types', name: 'admin-personnel-types', component: () => import('./views/admin/PersonnelAssignmentsView.vue'), meta: { requiresAuth: true, permission: 'edit_users' } })
+router.addRoute({ path: '/admin/personnel-types', name: 'admin-personnel-types', component: () => import('./views/admin/PersonnelAssignmentsView.vue'), meta: { requiresAuth: true, permission: 'system.user.manage' } })
 router.addRoute({ path: '/admin/leave-calendar', name: 'admin-leave-calendar', component: () => import('./views/admin/WorkCalendarView.vue'), meta: { requiresAuth: true, permission: 'leave.calendar.manage' } })
 
 const app = createApp(App)

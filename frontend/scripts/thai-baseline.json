@@ -11,8 +11,5 @@
   ],
   "src/views/admin/ReportDesignerView.vue": [
     "placeholder=\"LEAVE_MONTHLY_STATISTICS\""
-  ],
-  "src/views/admin/RolesManagementView.vue": [
-    "placeholder=\"เช่น AcademicOfficer, DepartmentHead\""
   ]
 }
