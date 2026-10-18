@@ -10,11 +10,14 @@
 - [ ] Q4 ชื่อประเภทหน่วย L4 และรายชื่อหน่วยที่มี L4
 - [ ] Q5 ผู้ลงนามรับรอง Permission Matrix
 - [ ] Q6 ยืนยัน MFA แบบ TOTP
+- [ ] Q7 (R-02) เทสต์ชุดเดิม 85 ไฟล์พักไว้ที่ `backend/tests/Legacy/` ไม่อยู่ใน testsuite ปกติ เพราะ fixture ใช้ spatie/departments ที่ถูกตัด — ยืนยันแนวทาง: เขียนใหม่ในเฟสที่ระบุใน README แล้วลบไฟล์เดิม · กลุ่ม "ล้าสมัยโดยแผน" 16 ไฟล์ลบได้เมื่อ R-04 มี persona/IDOR tests (ADR-R-010)
+- [ ] Q8 (R-02) ระเบียบการลาของบุคลากร 8 ประเภทใหม่ใช้ชุดของประเภทเดิม 4 ประเภท (`LeaveRegulationSeeder::LEGACY_TYPE_MAP`: ข้าราชการ→ข้าราชการครู/ครูผู้ช่วย/ม.38 ค.(2) · ลูกจ้างชั่วคราว→ครูอัตราจ้าง/ลูกจ้างชั่วคราว/เจ้าหน้าที่ตามสัญญา) และค่า `has_license`/`has_contract_end` ใน `PersonnelTypeSeeder` — งานบุคคลยืนยันหรือแก้
+- [ ] Q9 (R-02) ช่องทางแจ้งเตือนรายบุคคล (`telegram_chat_id`, `line_user_id`, `notification_channel`, `phone`) ไม่อยู่ใน `users` ตาม CORE-03 แล้ว — เสนอเก็บใน `notification_preferences` (R-08 notification) หรือ `personnel_profiles` · และ PLAN §4.2 ระบุ `grant_attributes` แต่ CORE-04/TASKS ใช้ `role_grants.attributes` (json) ซึ่ง R-02 ทำตามแบบหลัง
 
 ## R-00 สำรองและปิดระบบเดิม (เจ้าของระบบ)
 - [ ] R00-1 backup ฐานข้อมูล + storage และทดสอบ restore บนเครื่องแยก
 - [ ] R00-2 export ใบลา บัตรลา ลงเวลา OT สารบรรณ เป็น PDF/CSV เก็บถาวร
-- [ ] R00-3 สร้าง tag `legacy-final` บน main และ push
+- [x] R00-3 สร้าง tag `legacy-final` บน main และ push
 - [ ] R00-4 ผู้บริหารลงนามรับทราบการล้างข้อมูลและ Permission Matrix
 
 ## R-01 กติกาใหม่
@@ -26,19 +29,19 @@
 - [x] R01-6 รายงาน `docs/checkpoints/R-01-REPORT.md`
 
 ## R-02 Schema baseline
-- [ ] R02-1 ย้าย migration เดิมทั้งหมดไป `backend/database/migrations-legacy/` (ไม่โหลด) แล้วสร้างชุด baseline ใหม่ใน `backend/database/migrations/`
-- [ ] R02-2 baseline: ตาราง framework (users, cache, jobs, sessions, personal_access_tokens, notifications)
-- [ ] R02-3 baseline core: CORE-01 (org_unit_types, org_units, position_groups, positions)
-- [ ] R02-4 baseline core: CORE-02 (personnel_types, personnel, personnel_profiles, personnel_educations, personnel_trainings, personnel_licenses, personnel_documents, assignments, field_classifications, personnel_change_requests, sensitive_access_logs)
-- [ ] R02-5 baseline core: CORE-03 (users ใหม่, mfa_credentials, login_events)
-- [ ] R02-6 baseline core: CORE-04 (modules, module_features, permissions, permission_templates, template_permissions, position_templates, role_grants, permission_overrides, permission_change_requests, access_reviews, access_review_items, permission_audit_logs)
-- [ ] R02-7 baseline โมดูลเดิม: สร้างตารางลา ลงเวลา OT สารบรรณ แจ้งเตือน document engine workflow engine ปฏิทิน ในรูปสุดท้าย (รวม alter ทั้งหมดของชุดเดิม) โดย **ตัด** `departments`, `department_org_unit_map`, ตาราง spatie, `permission_aliases`, `permission_denies`, `permission_scopes`, `user_role_grants`, `org_unit_members`, `org_unit_managers`, `personnel_assignments`, `user_profiles`, `approval_steps`, `workflow_shadow_comparisons`, `menus`, คอลัมน์ `users.custom_permissions`, `users.department_id`; FK ที่ชี้ `users.department_id` เปลี่ยนเป็น `org_unit_id` หรือ `personnel_id` ตามความหมาย
-- [ ] R02-8 ถอด `spatie/laravel-permission` จาก composer และ config/permission.php · ลบ seeders ตาม PLAN §4.3
-- [ ] R02-9 seeders ข้อมูลตั้งต้น: org_unit_types, root + 4 ฝ่าย, personnel_types, ระเบียบการลา/ประเภทการลา, วันหยุดราชการ 2569–2570, ปีงบประมาณ (ADR-R-005)
-- [ ] R02-10 Model ใหม่ของ core (Eloquent + casts encrypted) · ลบ/แยก Model ที่อ้างตารางที่ตัด
-- [ ] R02-11 ลบ `Gate::before` และทุกจุดที่เรียก spatie · ระหว่าง R-02–R-04 ให้ทุก route ที่ต้องการสิทธิ์ตอบ 403 (deny by default) จน R-04 ต่อ engine
-- [ ] R02-12 เทสต์: `migrate:fresh --seed` ผ่าน · schema test ตรวจว่าตารางที่ตัดไม่มีอยู่ · grep ไม่พบ `Spatie\\Permission`, `hasRole(`, `Gate::before`
-- [ ] R02-13 รายงาน `docs/checkpoints/R-02-REPORT.md`
+- [x] R02-1 ย้าย migration เดิมทั้งหมดไป `backend/database/migrations-legacy/` (ไม่โหลด) แล้วสร้างชุด baseline ใหม่ใน `backend/database/migrations/`
+- [x] R02-2 baseline: ตาราง framework (users, cache, jobs, sessions, personal_access_tokens, notifications)
+- [x] R02-3 baseline core: CORE-01 (org_unit_types, org_units, position_groups, positions)
+- [x] R02-4 baseline core: CORE-02 (personnel_types, personnel, personnel_profiles, personnel_educations, personnel_trainings, personnel_licenses, personnel_documents, assignments, field_classifications, personnel_change_requests, sensitive_access_logs)
+- [x] R02-5 baseline core: CORE-03 (users ใหม่, mfa_credentials, login_events)
+- [x] R02-6 baseline core: CORE-04 (modules, module_features, permissions, permission_templates, template_permissions, position_templates, role_grants, permission_overrides, permission_change_requests, access_reviews, access_review_items, permission_audit_logs)
+- [x] R02-7 baseline โมดูลเดิม: สร้างตารางลา ลงเวลา OT สารบรรณ แจ้งเตือน document engine workflow engine ปฏิทิน ในรูปสุดท้าย (รวม alter ทั้งหมดของชุดเดิม) โดย **ตัด** `departments`, `department_org_unit_map`, ตาราง spatie, `permission_aliases`, `permission_denies`, `permission_scopes`, `user_role_grants`, `org_unit_members`, `org_unit_managers`, `personnel_assignments`, `user_profiles`, `approval_steps`, `workflow_shadow_comparisons`, `menus`, คอลัมน์ `users.custom_permissions`, `users.department_id`; FK ที่ชี้ `users.department_id` เปลี่ยนเป็น `org_unit_id` หรือ `personnel_id` ตามความหมาย
+- [x] R02-8 ถอด `spatie/laravel-permission` จาก composer และ config/permission.php · ลบ seeders ตาม PLAN §4.3
+- [x] R02-9 seeders ข้อมูลตั้งต้น: org_unit_types, root + 4 ฝ่าย, personnel_types, ระเบียบการลา/ประเภทการลา, วันหยุดราชการ 2569–2570, ปีงบประมาณ (ADR-R-005)
+- [x] R02-10 Model ใหม่ของ core (Eloquent + casts encrypted) · ลบ/แยก Model ที่อ้างตารางที่ตัด
+- [x] R02-11 ลบ `Gate::before` และทุกจุดที่เรียก spatie · ระหว่าง R-02–R-04 ให้ทุก route ที่ต้องการสิทธิ์ตอบ 403 (deny by default) จน R-04 ต่อ engine
+- [x] R02-12 เทสต์: `migrate:fresh --seed` ผ่าน · schema test ตรวจว่าตารางที่ตัดไม่มีอยู่ · grep ไม่พบ `Spatie\\Permission`, `hasRole(`, `Gate::before`
+- [x] R02-13 รายงาน `docs/checkpoints/R-02-REPORT.md`
 
 ## R-03 Core องค์กรและบุคลากร
 - [ ] R03-1 `OrgTree` service + path maintenance + tests (CORE-01)
