@@ -2,16 +2,15 @@
 
 use App\Http\Middleware\AttachRequestContext;
 use App\Http\Middleware\CanViewClassifiedDocument;
+use App\Http\Middleware\DenyUntilPermissionEngine;
 use App\Http\Middleware\EnsureModuleEnabled;
+use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Spatie\Permission\Middleware\PermissionMiddleware;
-use Spatie\Permission\Middleware\RoleMiddleware;
-use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -24,15 +23,17 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // R02-11: deny by default จนกว่า R-04 จะต่อ PermissionEngine — ต้องทำงานก่อน route model binding
+        $middleware->api(prepend: [
+            DenyUntilPermissionEngine::class,
+        ]);
         $middleware->api(append: [
             EnsureModuleEnabled::class,
             AttachRequestContext::class,
             SecurityHeaders::class,
         ]);
         $middleware->alias([
-            'role' => RoleMiddleware::class,
-            'permission' => PermissionMiddleware::class,
-            'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'permission' => RequirePermission::class,
             'saraban.classified' => CanViewClassifiedDocument::class,
         ]);
     })

@@ -3,18 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ApprovalStep;
-use App\Models\Department;
 use App\Models\DocumentTemplate;
 use App\Models\Leave;
 use App\Models\LeaveType;
+use App\Models\Personnel;
 use App\Models\User;
-use App\Models\UserProfile;
 use App\Services\AuditLogger;
 use App\Services\DefaultDocumentTemplateService;
 use App\Services\LeaveDocumentFields;
 use App\Services\LeaveDocumentTemplateResolver;
 use App\Services\ThaiDateService;
+use App\Support\Leave\SignerCapacity;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -133,10 +132,9 @@ class DocumentTemplateController extends Controller
     {
         $today = Carbon::today();
 
-        $user = new User(['name' => 'นายตัวอย่าง ทดสอบระบบ', 'phone' => '08X-XXX-XXXX']);
-        $user->setRelation('department', new Department(['name' => 'แผนกวิชาช่างยนต์']));
-        $user->setRelation('profile', new UserProfile(['title' => 'นาย', 'first_name' => 'ตัวอย่าง', 'last_name' => 'ทดสอบระบบ', 'position' => 'ครู']));
-        $user->setRelation('roles', collect());
+        // R02: ชื่อ สังกัด ตำแหน่งย้ายไปอยู่ที่ข้อมูลบุคลากร — แม่แบบเอกสารปรับให้อ่านจาก personnel ใน R-08
+        $user = new User;
+        $user->setRelation('personnel', new Personnel(['title' => 'นาย', 'first_name' => 'ตัวอย่าง', 'last_name' => 'ทดสอบระบบ']));
 
         $leave = new Leave([
             'document_number' => 'ตัวอย่าง 0001/'.($today->year + 543),
@@ -164,9 +162,9 @@ class DocumentTemplateController extends Controller
     private function sampleApproverBlocks(): array
     {
         return collect([
-            ApprovalStep::CAPACITY_CHECKER => 'หัวหน้างานบุคลากร',
-            ApprovalStep::CAPACITY_DEPUTY => 'รองผู้อำนวยการ',
-            ApprovalStep::CAPACITY_DIRECTOR => 'ผู้อำนวยการ',
+            SignerCapacity::CHECKER => 'หัวหน้างานบุคลากร',
+            SignerCapacity::DEPUTY => 'รองผู้อำนวยการ',
+            SignerCapacity::DIRECTOR => 'ผู้อำนวยการ',
         ])
             ->map(fn (string $position, string $capacity) => [
                 'name' => 'ตัวอย่าง ผู้ลงนาม',

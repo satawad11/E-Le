@@ -79,7 +79,7 @@ class LeaveDocumentController extends Controller
         // SEC-003 — เอกสารมีเหตุผลการลา ที่อยู่ติดต่อ และลายเซ็นของผู้ลาอยู่ในนั้น
         $this->authorize('view', $leave);
 
-        $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
+        $leave->load(['user.personnel', 'type', 'approvals.approver']);
         $isCancel = $request->query('form') === 'cancel';
 
         /*
@@ -130,7 +130,7 @@ class LeaveDocumentController extends Controller
         // SEC-003 — เช่นเดียวกับ exportPdf
         $this->authorize('view', $leave);
 
-        $leave->load(['user.department', 'user.roles', 'user.profile', 'type', 'approvals.approver']);
+        $leave->load(['user.personnel', 'type', 'approvals.approver']);
         $isCancel = $request->query('form') === 'cancel';
         $data = $this->formData($leave, $isCancel, $thaiDateService);
 

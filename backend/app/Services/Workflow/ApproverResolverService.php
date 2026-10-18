@@ -54,10 +54,7 @@ class ApproverResolverService
             return $this->canSelfApprove($requester, $step, $on);
         }
 
-        // 2. Super Admin ผ่านทุกข้อ (เฉพาะใบลาของผู้อื่น)
-        if ($actor->roles->contains('name', 'Super Admin') || $actor->roles->contains('name', 'SuperAdmin')) {
-            return true;
-        }
+        // 2. (R02-11) ยกเลิกทางผ่านของ Super Admin — ผู้ดูแลระบบไม่อยู่ในสายอนุมัติ (PROJECT_RULES ข้อ 8)
 
         $date = $on ?? now()->toDateString();
         $eligibleIds = $this->resolveEligibleApproverIds($requester, $step, $date);
@@ -251,44 +248,10 @@ class ApproverResolverService
     private function resolveByRoleIdOrPermission(?int $roleId, ?string $permissionName = null, array $roleNameFallbacks = []): array
     {
         /*
-         * ไม่มีเกณฑ์คัดเลย = ไม่มีใครมีสิทธิ์ (fail-closed)
-         *
-         * เดิมกรณีนี้ปล่อยให้ query เหลือแค่ `is_active = true` ซึ่งคืนผู้ใช้ที่ยัง
-         * ใช้งานอยู่ "ทุกคน" เป็นผู้มีสิทธิ์อนุมัติ — เกิดขึ้นจริงกับขั้นตอนแบบ
-         * ผู้ใช้เจาะจงที่ไม่มี role กำกับ ทำให้ใครก็ได้อนุมัติใบลาแทนผู้อำนวยการได้
+         * R02-11 — ตาราง role/permission ของ spatie ถูกตัดแล้ว (ADR-R-003) จึงไม่มีผู้ใดผ่านเกณฑ์นี้
+         * (fail-closed) จนกว่า R-04 จะแทน resolver นี้ด้วย `head_of_level` / `functional_template`
+         * / `specific_assignment` ตาม CORE-05 ซึ่งไม่มี fallback ตามชื่อ role
          */
-        if ($roleId === null && $permissionName === null && empty($roleNameFallbacks)) {
-            return [];
-        }
-
-        $query = User::query()->where('is_active', true);
-
-        $query->where(function ($sub) use ($roleId, $permissionName, $roleNameFallbacks) {
-            $hasCondition = false;
-
-            if ($roleId) {
-                $sub->whereHas('roles', fn ($rq) => $rq->where('roles.id', $roleId));
-                $hasCondition = true;
-            }
-
-            if (! empty($roleNameFallbacks)) {
-                if ($hasCondition) {
-                    $sub->orWhereHas('roles', fn ($rq) => $rq->whereIn('roles.name', $roleNameFallbacks));
-                } else {
-                    $sub->whereHas('roles', fn ($rq) => $rq->whereIn('roles.name', $roleNameFallbacks));
-                    $hasCondition = true;
-                }
-            }
-
-            if ($permissionName) {
-                if ($hasCondition) {
-                    $sub->orWhereHas('permissions', fn ($pq) => $pq->where('permissions.name', $permissionName));
-                } else {
-                    $sub->whereHas('permissions', fn ($pq) => $pq->where('permissions.name', $permissionName));
-                }
-            }
-        });
-
-        return $query->pluck('id')->map(fn ($id) => (int) $id)->all();
+        return [];
     }
 }

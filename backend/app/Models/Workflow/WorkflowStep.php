@@ -3,14 +3,13 @@
 namespace App\Models\Workflow;
 
 use App\Models\Concerns\HasPublicUuid;
-use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'workflow_version_id', 'code', 'name', 'step_order', 'type',
-    'assignee_type', 'assignee_role_id', 'assignee_user_id', 'assignee_permission',
+    'assignee_type', 'assignee_user_id', 'assignee_permission',
     'completion_policy', 'conditions', 'sla_hours', 'on_timeout', 'escalate_to_step_id', 'is_final',
 ])]
 class WorkflowStep extends Model
@@ -41,11 +40,6 @@ class WorkflowStep extends Model
     public function version()
     {
         return $this->belongsTo(WorkflowVersion::class, 'workflow_version_id');
-    }
-
-    public function assigneeRole()
-    {
-        return $this->belongsTo(Role::class, 'assignee_role_id');
     }
 
     public function assigneeUser()

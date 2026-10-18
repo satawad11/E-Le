@@ -1,25 +1,18 @@
 <?php
 
 use App\Http\Controllers\Admin\DelegationController;
-use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\DocumentEngineController;
 use App\Http\Controllers\Admin\DocumentReportController;
 use App\Http\Controllers\Admin\DocumentTemplateController;
 use App\Http\Controllers\Admin\LeaveTypeController;
-use App\Http\Controllers\Admin\OrgStructureController;
-use App\Http\Controllers\Admin\PermissionController;
-use App\Http\Controllers\Admin\PositionController;
 use App\Http\Controllers\Admin\SecureExportSettingController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\WorkflowController;
-use App\Http\Controllers\Api\MenuController;
-use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\Saraban\CircularController;
 use App\Http\Controllers\Api\Saraban\DocumentController;
 use App\Http\Controllers\Api\Saraban\DocumentTypeController;
 use App\Http\Controllers\Api\Saraban\DocumentWorkflowTemplateController;
 use App\Http\Controllers\Api\Saraban\SettingController as SarabanSettingController;
 use App\Http\Controllers\Api\Saraban\SignatureController;
+use App\Http\Controllers\Api\Saraban\WorkflowController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AttendanceCorrectionController;
@@ -70,7 +63,6 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh-token', [AuthController::class, 'refresh'])->middleware('throttle:token-refresh');
     Route::get('/user', [AuthController::class, 'user']);
-    Route::get('/users/list', [UserController::class, 'list']);
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile', [ProfileController::class, 'update']);
     // สิทธิขอรับสำเนาข้อมูลส่วนบุคคลของตนเอง (ม.30 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล)
@@ -174,85 +166,11 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/reporting/{report}', [ReportingController::class, 'show'])
         ->whereIn('report', ReportingDataService::REPORTS);
 
-    // Admin routes
-    Route::group(['middleware' => ['can:view_users']], function () {
-        Route::get('/admin/users', [UserController::class, 'index']);
-        Route::get('/admin/roles', [UserController::class, 'roles']);
-        Route::get('/admin/departments-list', [UserController::class, 'departments']);
-    });
-
-    Route::group(['middleware' => ['permission:edit_users|system.user.manage']], function () {
-        // K-ORG-01: บทบาทที่ผู้ใช้คนนี้มอบได้ (ผู้ไม่มีสิทธิ์กำหนดสิทธิ์จะเห็นเฉพาะบทบาทที่ไม่เกินของตน)
-        Route::get('/admin/assignable-roles', [UserController::class, 'assignableRoles']);
-        Route::post('/admin/users', [UserController::class, 'store']);
-        Route::post('/admin/users/import', [UserController::class, 'importCsv']);
-        Route::put('/admin/users/{user}', [UserController::class, 'update']);
-        Route::post('/admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus']);
-        // ACCESS-GOV-01: บุคลากรพ้นสภาพ — ระงับบัญชีและปิดวาระหัวหน้า/การทำการแทน/ขอบเขตสิทธิ์ ไม่ลบบัญชี
-        Route::post('/admin/users/{user}/separate', [UserController::class, 'separate']);
-    });
-
-    // ORG-ACCESS-02: ทะเบียนตำแหน่ง — อ่านได้ทุกคน (ฟอร์มผู้ใช้/ตัวกรองรายงาน) ไม่มีการลบ
-    // แก้ไข/ผูกตำแหน่งใช้ system.position.manage (งานบุคลากร) โดยไม่ต้องมีสิทธิ์แก้บทบาท/สิทธิ์ของผู้ใช้
-    Route::get('/positions', [PositionController::class, 'index']);
-    Route::group(['middleware' => ['permission:edit_users|system.user.manage|system.position.manage']], function () {
-        Route::post('/admin/position-groups', [PositionController::class, 'storeGroup']);
-        Route::put('/admin/position-groups/{positionGroup}', [PositionController::class, 'updateGroup']);
-        Route::post('/admin/positions', [PositionController::class, 'store']);
-        Route::put('/admin/positions/{position}', [PositionController::class, 'update']);
-        Route::put('/admin/users/{user:uuid}/position', [PositionController::class, 'assign']);
-    });
-
     /*
-     * การกำหนดสิทธิ์รายบุคคล — LEGACY-04 (ปิดงาน)
-     *
-     * เดิมสี่ endpoint นี้อยู่ในกลุ่มเดียวกับการแก้ไขผู้ใช้ ซึ่งยอมรับ `edit_users`
-     * ด้วย แปลว่าผู้ที่แก้ไขข้อมูลผู้ใช้ได้ (เช่น HR) จะ **มอบสิทธิ์ใด ๆ ให้ตนเอง
-     * หรือผู้อื่นได้ทันที** เป็นช่องยกระดับสิทธิ์ที่มีมาก่อนหน้านี้
-     *
-     * แยกออกมาให้ต้องมี `admin.users.manage_permissions` โดยเฉพาะ ตามข้อกำหนด
-     * least privilege ของงานนี้ที่ระบุ "การจัดการ permission" ไว้ชัดเจน
+     * R02: ตัด route จัดการผู้ใช้ บทบาท สิทธิ์ เมนู หน่วยงาน (departments) โครงสร้างหน่วยงาน ตำแหน่ง
+     * และลำดับขั้นอนุมัติ (approval_steps) ของระบบเดิมออก เพราะตารางและ controller ถูกตัดตาม
+     * REBUILD-PLAN-2569 §4.2–4.3 · สร้างใหม่ใน R-03 (องค์กร/ตำแหน่ง), R-04 (เมนู), R-05/R-07 (บัญชีและสิทธิ์)
      */
-    Route::group(['middleware' => ['permission:admin.users.manage_permissions']], function () {
-        Route::get('/admin/permissions/modules', [PermissionController::class, 'modules']);
-        Route::get('/admin/permissions/user-counts', [PermissionController::class, 'userCounts']);
-        Route::get('/admin/users/{user}/permissions', [PermissionController::class, 'getUserPermissions']);
-        Route::put('/admin/users/{user}/permissions', [PermissionController::class, 'updateUserPermissions']);
-    });
-
-    // ระบบไม่ลบบัญชี (destroy ตอบ 409 พร้อมคำแนะนำให้ระงับ/บันทึกพ้นสภาพ) — RBAC-CLEANUP-01 เลิกสิทธิ์ delete_users
-    Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->middleware('permission:edit_users|system.user.manage');
-
-    // Admin: Departments CRUD
-    Route::group(['middleware' => ['can:manage_departments']], function () {
-        Route::get('/admin/departments', [DepartmentController::class, 'index']);
-        Route::post('/admin/departments', [DepartmentController::class, 'store']);
-        Route::put('/admin/departments/{department}', [DepartmentController::class, 'update']);
-        Route::delete('/admin/departments/{department}', [DepartmentController::class, 'destroy']);
-        Route::put('/admin/departments/{department}/toggle-status', [DepartmentController::class, 'toggleStatus']);
-    });
-
-    // Admin: โครงสร้างหน่วยงานและทะเบียนหัวหน้าหน่วยงาน (ACCESS-GOV-01) — ไม่มี delete โดยตั้งใจ
-    // หน้าลำดับการอนุมัติอ่านรายการหน่วยงานได้ด้วย เพื่อเลือกหน่วยของขั้นแบบ ORG_UNIT_MANAGER
-    Route::get('/admin/org-units', [OrgStructureController::class, 'index'])->middleware('permission:system.org_structure.manage|manage_workflow_steps');
-    Route::group(['middleware' => ['permission:system.org_structure.manage']], function () {
-        Route::post('/admin/org-units', [OrgStructureController::class, 'store']);
-        Route::put('/admin/org-units/{uuid}', [OrgStructureController::class, 'update']);
-        Route::get('/admin/org-units/{uuid}/managers', [OrgStructureController::class, 'managerHistory']);
-        Route::post('/admin/org-units/{uuid}/managers', [OrgStructureController::class, 'storeManager']);
-        Route::post('/admin/org-unit-managers/{uuid}/end', [OrgStructureController::class, 'endManager']);
-        Route::put('/admin/org-structure/overtime-permit-unit', [OrgStructureController::class, 'updateOvertimePermitUnit']);
-        Route::post('/admin/org-units/{uuid}/members', [OrgStructureController::class, 'storeMember']);
-        Route::post('/admin/org-unit-members/{uuid}/end', [OrgStructureController::class, 'endMember']);
-    });
-
-    // Admin: Workflow Steps
-    Route::group(['middleware' => ['can:manage_workflow_steps']], function () {
-        Route::get('/admin/workflow-steps', [WorkflowController::class, 'index']);
-        Route::post('/admin/workflow-steps', [WorkflowController::class, 'store']);
-        // ทดลองว่าใครคือผู้อนุมัติจริงของแต่ละขั้น ก่อนบันทึกการตั้งค่า
-        Route::post('/admin/workflow-steps/preview', [WorkflowController::class, 'preview']);
-    });
 
     // Admin: ทะเบียนการรักษาราชการแทน / ปฏิบัติราชการแทน (DELEGATION-01) — ไม่มี delete โดยตั้งใจ
     // สิทธิ์ตรวจใน DelegationController (LeaveApprovalSigner::canRecord) แบบเดียวกับงานจัดการวันลาอื่น
@@ -424,11 +342,11 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
         // Saraban Workflow
         Route::middleware('permission:saraban.document.view')->group(function () {
-            Route::post('/documents/{id}/workflow/submit', [App\Http\Controllers\Api\Saraban\WorkflowController::class, 'submit']);
+            Route::post('/documents/{id}/workflow/submit', [WorkflowController::class, 'submit']);
         });
         Route::middleware(['permission:saraban.document.approve', 'saraban.classified'])->group(function () {
-            Route::post('/documents/{id}/workflow/approve', [App\Http\Controllers\Api\Saraban\WorkflowController::class, 'approve']);
-            Route::post('/documents/{id}/workflow/reject', [App\Http\Controllers\Api\Saraban\WorkflowController::class, 'reject']);
+            Route::post('/documents/{id}/workflow/approve', [WorkflowController::class, 'approve']);
+            Route::post('/documents/{id}/workflow/reject', [WorkflowController::class, 'reject']);
         });
 
         // Saraban Signatures
@@ -464,23 +382,6 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
     Route::get('/notification-preferences', [NotificationController::class, 'preferences']);
     Route::put('/notification-preferences', [NotificationController::class, 'updatePreference']);
-    // Dynamic Menu & Role Management routes
-    Route::get('/user/menus', [MenuController::class, 'index']);
-    /*
-     * จัดการเมนูและบทบาท — LEGACY-04 (ปิดงาน)
-     *
-     * เดิมกลุ่มนี้ยอมรับ `edit_users` ด้วย ผู้ที่แก้ไขผู้ใช้ได้จึง **สร้าง role
-     * และผูก permission ใดก็ได้เข้ากับ role นั้น** แล้วมอบให้ตนเอง
-     * เป็นช่องยกระดับสิทธิ์แบบเดียวกับการกำหนดสิทธิ์รายบุคคลด้านบน
-     *
-     * เหลือเฉพาะ `system.menu.manage` ซึ่งเป็นสิทธิ์ของผู้ดูแลระบบ
-     */
-    Route::group(['middleware' => ['permission:system.menu.manage']], function () {
-        Route::get('/admin/menus', [MenuController::class, 'adminIndex']);
-        Route::put('/admin/menus/{menu}/permissions', [MenuController::class, 'updatePermissions']);
-        Route::get('/admin/permissions', [RoleController::class, 'permissions']);
-        Route::apiResource('/admin/roles', RoleController::class);
-    });
 
 });
 

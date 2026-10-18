@@ -13,9 +13,9 @@ class WorkCalendarException extends Model
         'is_active' => 'boolean',
     ];
 
-    public function department()
+    public function orgUnit()
     {
-        return $this->belongsTo(Department::class);
+        return $this->belongsTo(OrgUnit::class);
     }
 
     public function getIsWorkingDayAttribute(): bool

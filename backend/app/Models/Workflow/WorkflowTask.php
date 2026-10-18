@@ -3,14 +3,13 @@
 namespace App\Models\Workflow;
 
 use App\Models\Concerns\HasPublicUuid;
-use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
     'workflow_instance_id', 'workflow_step_id', 'status', 'sequence',
-    'assignee_role_id', 'assignee_user_id', 'completed_by', 'effective_actor_id',
+    'assignee_user_id', 'completed_by', 'effective_actor_id',
     'delegated_by_id', 'due_at', 'completed_at', 'comment',
 ])]
 class WorkflowTask extends Model
@@ -45,11 +44,6 @@ class WorkflowTask extends Model
     public function step()
     {
         return $this->belongsTo(WorkflowStep::class, 'workflow_step_id');
-    }
-
-    public function assigneeRole()
-    {
-        return $this->belongsTo(Role::class, 'assignee_role_id');
     }
 
     /** ผู้กดจริง — อาจเป็นผู้รับมอบอำนาจ */

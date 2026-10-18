@@ -3,7 +3,6 @@
 namespace App\Services\Workflow;
 
 use App\Models\User;
-use App\Models\UserDelegation;
 use App\Models\Workflow\WorkflowDelegation;
 use Illuminate\Support\Facades\Schema;
 
@@ -112,20 +111,13 @@ class DelegationResolver
             return null;
         }
 
-        // นับเฉพาะรายการที่รับรองแล้วในทะเบียนการทำหน้าที่แทน (DELEGATION-01) — คำขอที่รอรับรองยังใช้ไม่ได้
-        $delegation = UserDelegation::query()
-            ->where('delegate_id', $actor->getKey())
-            ->inEffect($date)
-            ->whereHas('user.roles', fn ($query) => $query->where('roles.id', $requiredRoleId))
-            ->first();
-
-        return $delegation === null ? null : (int) $delegation->user_id;
+        // R02-11: การจับคู่ตาม role ของ spatie ถูกตัดแล้ว (ADR-R-003) — รักษาการใช้ assignment `acting` แทน (R-03/R-04)
+        return null;
     }
 
     private function holdsRole(int $userId, int $roleId): bool
     {
-        return User::whereKey($userId)
-            ->whereHas('roles', fn ($query) => $query->where('roles.id', $roleId))
-            ->exists();
+        // R02-11: ไม่มีตาราง role ให้ตรวจแล้ว — fail-closed จนกว่า R-04 จะแทนด้วย PermissionEngine
+        return false;
     }
 }

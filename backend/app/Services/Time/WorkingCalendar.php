@@ -18,7 +18,7 @@ use Carbon\CarbonInterface;
  *
  * ลำดับการตัดสินว่าวันหนึ่งเป็นวันทำงานหรือไม่:
  *   1. `work_calendar_exceptions` ของหน่วยงานนั้นโดยตรง  (ชนะเสมอ)
- *   2. `work_calendar_exceptions` ระดับองค์กร (department_id = null)
+ *   2. `work_calendar_exceptions` ระดับองค์กร (org_unit_id = null)
  *   3. `holidays` — วันหยุดราชการ
  *   4. ตารางเวลาทำงาน (เสาร์อาทิตย์ปกติไม่ใช่วันทำงาน)
  */
@@ -47,15 +47,15 @@ class WorkingCalendar
      *
      * คืน true = บังคับเป็นวันทำงาน · false = บังคับเป็นวันหยุด · null = ไม่มีข้อยกเว้น
      */
-    public function calendarException(CarbonInterface $date, ?int $departmentId = null): ?bool
+    public function calendarException(CarbonInterface $date, ?int $orgUnitId = null): ?bool
     {
         $exception = WorkCalendarException::query()
             ->whereDate('date', $date->toDateString())
             ->where('is_active', true)
-            ->where(fn ($query) => $query->whereNull('department_id')
-                ->when($departmentId, fn ($inner) => $inner->orWhere('department_id', $departmentId)))
+            ->where(fn ($query) => $query->whereNull('org_unit_id')
+                ->when($orgUnitId, fn ($inner) => $inner->orWhere('org_unit_id', $orgUnitId)))
             // ข้อยกเว้นของหน่วยงานตัวเองชนะข้อยกเว้นระดับองค์กร
-            ->orderByRaw('CASE WHEN department_id IS NULL THEN 1 ELSE 0 END')
+            ->orderByRaw('CASE WHEN org_unit_id IS NULL THEN 1 ELSE 0 END')
             ->first();
 
         return $exception === null ? null : (bool) $exception->is_working_day;
