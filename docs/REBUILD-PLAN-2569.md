@@ -157,7 +157,7 @@ MFA (TOTP + รหัสสำรอง) บังคับ L1–L3, งาน�
 | **ปรับให้ใช้ core ใหม่** | Leave, Attendance, Overtime, Saraban, Notification, Document Engine, Workflow Engine — เปลี่ยนทุกจุดตรวจสิทธิ์ให้เรียก `PermissionEngine` และทุกสายอนุมัติให้ใช้ resolver ใหม่ |
 | **เก็บ** | ตรรกะระเบียบการลา (`LeavePolicyService`, `LeaveBalanceService`, `LeaveEligibilityRuleService`), `ThaiDateService`, document engine, notification adapters (LINE/Telegram/Email) |
 
-### 4.4 โค้ด frontend
+### 4.4 โค้ด frontend (ผังเมนูละเอียดดูหัวข้อ 8)
 
 | การจัดการ | หน้า |
 |---|---|
@@ -214,3 +214,175 @@ R-06 กับ R-07 ทำคู่ขนานได้หากมีนัก
 | Q4 | ชื่อประเภทหน่วย L4 ที่ใช้จริง (สาขางาน/กลุ่มงาน) และหน่วยใดบ้างที่มี L4 | ยืนยันจากคำสั่งวิทยาลัย |
 | Q5 | ผู้ลงนามรับรอง Permission Matrix | ผอ. ตามข้อ 47 ระเบียบบริหารสถานศึกษา 2569 |
 | Q6 | MFA ใช้แอป TOTP ทั่วไปได้หรือไม่ | TOTP + รหัสสำรอง |
+
+---
+
+## 8. ผังเมนูทั้งระบบ
+
+เมนูทั้งหมดประกาศใน manifest ของแต่ละโมดูล (หัวข้อ 3.4) และสร้างอัตโนมัติด้วย `modules:sync`
+ไม่มีตาราง `menus` ที่แก้จากหน้าจอแล้ว ตารางนี้คือ **ข้อกำหนด** ที่ manifest ต้องตรงกัน
+
+### 8.1 กติกาการแสดงเมนู
+
+1. **เมนูแสดงเมื่อ** ผู้ใช้มี permission ที่กำหนดในคอลัมน์ "ต้องมีสิทธิ์" อย่างน้อยหนึ่ง scope
+2. **กลุ่มเมนูแสดงเมื่อ** มีเมนูย่อยที่มองเห็นอย่างน้อยหนึ่งรายการ กลุ่มว่างไม่แสดง
+3. **การซ่อนเมนูไม่ใช่การป้องกัน** ทุก route มี guard ฝั่ง frontend และทุก API ตรวจด้วย `PermissionEngine` ซ้ำ
+4. **ชื่อเมนูปรับตาม scope** ถ้าผู้ใช้มีสิทธิ์แคบกว่า `all` ให้แสดงชื่อหน่วย เช่น "บุคลากรแผนกวิชาช่างยนต์" (ต้นแบบหน้า 12)
+5. **ตัวเลขบนเมนู (badge)** มาจาก endpoint นับงานค้างของโมดูล เฉพาะรายการในขอบเขตสิทธิ์ของผู้ใช้
+6. **โมดูลที่ปิดใน registry** ไม่แสดงเมนูใดเลย และ API ของโมดูลตอบ 404
+7. **หน้ารายละเอียด** (ประวัติบุคลากร, รายละเอียดบัญชี ฯลฯ) ไม่อยู่ในเมนู เข้าจากรายการเท่านั้น แต่มี guard ของตัวเอง
+8. ลำดับกลุ่มตามคอลัมน์ `order` ใน manifest ลำดับในกลุ่มตามตารางด้านล่าง
+
+### 8.2 ผังเมนู
+
+ตัวย่อ scope: **S** = ตนเอง · **U** = หน่วยตน · **T** = หน่วยตนและหน่วยย่อย · **A** = ทั้งวิทยาลัย
+คอลัมน์ "ต้นแบบ" อ้างถึงหน้าในผืนผ้าใบ "ระบบบุคลากร DMTC"
+
+#### ก. ส่วนบุคคล (`core`, order 0) — ทุกคนเห็น
+
+| # | เมนู | Route | ต้องมีสิทธิ์ | ต้นแบบ | เฟส |
+|---|---|---|---|---|---|
+| 1 | หน้าหลัก | `/` | — (ผู้ใช้ที่เข้าสู่ระบบ) | 2 | R-06 |
+| 2 | งานรออนุมัติของฉัน | `/inbox` | `*.*.approve` หรือ `*.*.review` อย่างน้อยหนึ่งรายการ | 2 (กล่องงาน) | R-08 |
+| 3 | ข้อมูลของฉัน | `/me` | `personnel.profile.view` S | 4 (มุมมองตนเอง) | R-06 |
+| 3.1 | └ ประวัติการเข้าถึงข้อมูลของฉัน | `/me/access-history` | `personnel.profile.view` S | 4 (แท็บ) | R-06 |
+| 4 | การแจ้งเตือน | `/notifications` | — | — | R-08 |
+
+> **งานรออนุมัติของฉัน** รวมงานรออนุมัติจากทุกโมดูลไว้ที่เดียว แยกกลุ่มตาม "ในฐานะตำแหน่งใด" แทนเมนูอนุมัติแยกรายโมดูลของระบบเดิม (`/approvals`, `/cancel-approvals`, `/saraban/approve`)
+
+#### ข. ข้อมูลบุคลากร (`personnel`, order 10)
+
+| # | เมนู | Route | ต้องมีสิทธิ์ | ใครเห็นโดยค่าเริ่มต้น | ต้นแบบ | เฟส |
+|---|---|---|---|---|---|---|
+| 1 | รายชื่อบุคลากร | `/personnel` | `personnel.profile.view` U/T/A | L1 (A) · L2–L4 (T) · งานบุคคล (A) · ผู้ได้รับมอบ (ตามที่มอบ) | 3, 12 | R-06 |
+| — | ประวัติบุคลากร *(ไม่อยู่ในเมนู)* | `/personnel/:uuid` | `personnel.profile.view` ตาม scope | ตามรายชื่อ | 4 | R-06 |
+| 2 | คำขอแก้ไขรอตรวจ | `/personnel/change-requests` | `personnel.change_request.review` | HR ทะเบียนประวัติ | 5 | R-06 |
+| 3 | โครงสร้างองค์กร | `/org` | `org.unit.view` (ดู) · `org.unit.manage` (แก้) | ทุกคนดูได้ · งานบุคคลแก้ได้ | 6 | R-03 |
+| 4 | ตำแหน่ง | `/org/positions` | `org.position.manage` | งานบุคคล | — | R-03 |
+| 5 | คำสั่งแต่งตั้งและมอบหมาย | `/org/assignments` | `personnel.assignment.manage` | งานบุคคล | 4 (แท็บตำแหน่ง) | R-03 |
+| 6 | รายงานบุคลากร | `/personnel/reports` | `personnel.report.view` T/A | L1 · L2 · HR รายงาน | — | R-06 |
+
+#### ค. ระบบการลา (`leave`, order 20)
+
+| # | เมนู | Route | ต้องมีสิทธิ์ | ใครเห็นโดยค่าเริ่มต้น | เฟส |
+|---|---|---|---|---|---|
+| 1 | ยื่นใบลา | `/leave/request` | `leave.request.create` S | ทุกคน | R-08 |
+| 2 | ใบลาของฉัน | `/leave/my` | `leave.request.view` S | ทุกคน | R-08 |
+| 3 | บัตรบันทึกการลา | `/leave/card` | `leave.request.view` S | ทุกคน | R-08 |
+| 4 | ปฏิทินการลา | `/leave/calendar` | `leave.request.view` U/T/A | L1–L4 · HR | R-08 |
+| 5 | จัดการวันลาและบันทึกแทน | `/leave/manage` | `leave.balance.manage` A | งานบุคคล | R-08 |
+| 6 | คัดกรองการเลื่อนเงินเดือน | `/leave/promotion-screening` | `leave.report.promotion` A | งานบุคคล | R-08 |
+| 7 | รายงานการลา | `/leave/reports` | `leave.report.view` T/A | L1–L3 · HR · ผู้ตรวจสอบ (อ่าน) | R-08 |
+| 8 | ตั้งค่าการลา | `/leave/settings` | `leave.settings.manage` A *(ความเสี่ยงสูง)* | หัวหน้างานบุคคล | R-08 |
+| 8.1 | └ ประเภทการลา · ระเบียบการลา · ปีงบประมาณ | แท็บใน `/leave/settings` | เหมือนข้อ 8 | | |
+
+#### ง. ลงเวลาปฏิบัติงาน (`attendance`, order 30)
+
+| # | เมนู | Route | ต้องมีสิทธิ์ | ใครเห็นโดยค่าเริ่มต้น | เฟส |
+|---|---|---|---|---|---|
+| 1 | ลงเวลา | `/attendance/check-in` | `attendance.record.create` S | ทุกคน | R-08 |
+| 2 | ประวัติลงเวลาของฉัน | `/attendance/my` | `attendance.record.view` S | ทุกคน | R-08 |
+| 3 | ขอแก้ไขเวลา | `/attendance/corrections` | `attendance.correction.create` S | ทุกคน | R-08 |
+| 4 | ตรวจสอบการลงเวลา | `/attendance/records` | `attendance.record.view` U/T/A | L1–L4 · HR | R-08 |
+| 5 | สรุปและรายงานการลงเวลา | `/attendance/reports` | `attendance.report.view` T/A | L1–L3 · HR · ผู้ตรวจสอบ (อ่าน) | R-08 |
+| 6 | ตั้งค่าเวลาราชการและปฏิทินทำงาน | `/attendance/settings` | `attendance.settings.manage` A | หัวหน้างานบุคคล | R-08 |
+
+#### จ. ปฏิบัติงานล่วงเวลา (`overtime`, order 40)
+
+| # | เมนู | Route | ต้องมีสิทธิ์ | ใครเห็นโดยค่าเริ่มต้น | เฟส |
+|---|---|---|---|---|---|
+| 1 | OT ของฉัน | `/overtime/my` | `overtime.assignment.view` S | ผู้ที่เคยได้รับคำสั่ง OT | R-08 |
+| 2 | คำสั่งปฏิบัติงานล่วงเวลา | `/overtime/orders` | `overtime.order.create` U | หัวหน้าหน่วย · ผู้จัดทำคำสั่ง OT · HR (A) | R-08 |
+| 3 | รับรองเวลาปฏิบัติงานจริง | `/overtime/certify` | `overtime.actual.certify` U | หัวหน้าหน่วย | R-08 |
+| 4 | สรุป OT | `/overtime/reports` | `overtime.report.view` T/A | L1–L3 · HR | R-08 |
+
+#### ฉ. สารบรรณอิเล็กทรอนิกส์ (`saraban`, order 50)
+
+| # | เมนู | Route | ต้องมีสิทธิ์ | ใครเห็นโดยค่าเริ่มต้น | เฟส |
+|---|---|---|---|---|---|
+| 1 | หนังสือถึงฉัน | `/saraban/my` | `saraban.document.view` S | ทุกคน | R-08 |
+| 2 | สร้างหนังสือ | `/saraban/create` | `saraban.document.create` S | ทุกคน (ร่าง) | R-08 |
+| 3 | ทะเบียนหนังสือรับ | `/saraban/incoming` | `saraban.registry.manage` A | เจ้าหน้าที่สารบรรณ | R-08 |
+| 4 | ทะเบียนหนังสือส่ง | `/saraban/outgoing` | `saraban.registry.manage` A | เจ้าหน้าที่สารบรรณ | R-08 |
+| 5 | หนังสือเวียน | `/saraban/circulars` | `saraban.circular.view` S/A | ทุกคน (ที่ส่งถึง) · สารบรรณ (A) | R-08 |
+| 6 | รายงานสารบรรณ | `/saraban/reports` | `saraban.report.view` A | สารบรรณ · ผู้ตรวจสอบ | R-08 |
+| 7 | ตั้งค่าสารบรรณ | `/saraban/settings` | `saraban.settings.manage` A | หัวหน้างานบริหารงานทั่วไป | R-08 |
+| 7.1 | └ ประเภทหนังสือ · เลขทะเบียน · แม่แบบสายงาน | แท็บใน `/saraban/settings` | เหมือนข้อ 7 | | |
+
+#### ช. บัญชีและสิทธิ์ (`access`, order 90)
+
+| # | เมนู | Route | ต้องมีสิทธิ์ | ใครเห็นโดยค่าเริ่มต้น | ต้นแบบ | เฟส |
+|---|---|---|---|---|---|---|
+| 1 | บัญชีผู้ใช้ | `/access/accounts` | `access.account.view` A | ผู้ดูแลระบบ · งานบุคคล (อ่าน) · ผู้ตรวจสอบ (อ่าน) | 7 | R-05 |
+| — | รายละเอียดบัญชีและ Simulator *(ไม่อยู่ในเมนู)* | `/access/accounts/:uuid` | `access.account.view` A | ตามข้อ 1 | 8 | R-07 |
+| 2 | บทบาทและสิทธิ์ | `/access/roles` | `access.role.view` A | ผู้ดูแลระบบ · ผู้ตรวจสอบ (อ่าน) | 9 | R-07 |
+| 3 | ตั้งค่าสิทธิ์รายโมดูล | `/access/modules` | `access.template.manage` A *(ความเสี่ยงสูง)* | ผู้ดูแลระบบ | 10 | R-07 |
+| 4 | คำขอเปลี่ยนสิทธิ์รอยืนยัน | `/access/change-requests` | `access.change.approve` A | ผู้ดูแลคนที่สอง · ผอ. | — | R-07 |
+| 5 | ทบทวนสิทธิ์รายภาคเรียน | `/access/reviews` | `access.review.confirm` T · `access.review.manage` A | หัวหน้าหน่วย (ยืนยัน) · ผู้ตรวจสอบ (ออกรอบ) · ผอ. (รับรอง) | — | R-05 |
+| 6 | บันทึกการใช้งาน | `/access/audit` | `audit.log.view` A | ผู้ตรวจสอบ · ผู้ดูแลระบบ (เฉพาะ log ระบบ) | 11 | R-07 |
+
+#### ซ. ตั้งค่าระบบ (`system`, order 99)
+
+| # | เมนู | Route | ต้องมีสิทธิ์ | ใครเห็นโดยค่าเริ่มต้น | เฟส |
+|---|---|---|---|---|---|
+| 1 | โมดูลในระบบ | `/system/modules` | `system.module.manage` A | ผู้ดูแลระบบ | R-04 |
+| 2 | สายอนุมัติ | `/system/workflows` | `workflow.definition.manage` A *(ความเสี่ยงสูง · ผอ. อนุมัติ)* | ผู้ดูแลระบบ · หัวหน้างานบุคคล (เสนอ) | R-08 |
+| 3 | ศูนย์เอกสารและแม่แบบ | `/system/documents` | `document.template.manage` A | ผู้ดูแลระบบ · งานที่เป็นเจ้าของแบบฟอร์ม | R-08 |
+| 4 | ช่องทางแจ้งเตือน | `/system/notifications` | `notification.channel.manage` A | ผู้ดูแลระบบ | R-08 |
+| 5 | ตั้งค่าทั่วไป | `/system/settings` | `system.setting.manage` A | ผู้ดูแลระบบ | R-04 |
+
+#### เมนูผู้ใช้ (มุมขวาบน) — ทุกคน
+
+ข้อมูลของฉัน · ความปลอดภัยบัญชี (`/me/security`: รหัสผ่าน, MFA, อุปกรณ์และเซสชัน) · ออกจากระบบ
+
+### 8.3 ตัวอย่างเมนูที่แต่ละคนเห็น (ค่าเริ่มต้น)
+
+| กลุ่มเมนู | บุคลากร L5 | หัวหน้า L3/L4 | รองฯ L2 | ผอ. L1 | งานบุคคล | ผู้ดูแลระบบ | ผู้ตรวจสอบ |
+|---|---|---|---|---|---|---|---|
+| ส่วนบุคคล | ✔ (ไม่มีงานรออนุมัติ) | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| ข้อมูลบุคลากร | โครงสร้างองค์กรเท่านั้น | รายชื่อ (T) + โครงสร้าง | รายชื่อ (T) + รายงาน | รายชื่อ (A) + รายงาน | ครบทุกเมนู | — | — |
+| ระบบการลา | ข้อ 1–3 | 1–4, 7 | 1–4, 7 | 1–4, 7 | ครบ | ข้อ 1–3 | 7 (อ่าน) |
+| ลงเวลา | ข้อ 1–3 | 1–5 | 1–5 | 1–5 | ครบ | ข้อ 1–3 | 5 (อ่าน) |
+| OT | ข้อ 1 | 1–4 | 1, 4 | 1, 4 | ครบ | ข้อ 1 | — |
+| สารบรรณ | 1, 2, 5 | 1, 2, 5 | 1, 2, 5 | 1, 2, 5 | 1, 2, 5 | 1, 2, 5 | 6 |
+| บัญชีและสิทธิ์ | — | 5 (ยืนยันการทบทวน) | 5 | 4, 5 | 1 (อ่าน) | ครบ ยกเว้น 4 ของตนเอง | 1, 2, 5, 6 (อ่าน) |
+| ตั้งค่าระบบ | — | — | — | — | 2 (เสนอ) | ครบ | — |
+
+> ผู้ดูแลระบบใช้เมนูส่วนบุคคลของตนได้ตามปกติ แต่ **ไม่เห็นเมนูข้อมูลบุคลากร** และไม่อยู่ในสายอนุมัติใด (หลักการข้อ 8)
+
+### 8.4 แมปเมนูเดิม → เมนูใหม่
+
+| Route เดิม | ใหม่ | หมายเหตุ |
+|---|---|---|
+| `/` (dashboard) | `/` | เขียนใหม่ตามต้นแบบหน้า 2 |
+| `/request`, `/leaves`, `/leave-card`, `/leave-services`, `/team-calendar` | `/leave/request`, `/leave/my`, `/leave/card`, รวมเข้า `/leave/my`, `/leave/calendar` | |
+| `/approvals`, `/cancel-approvals` | `/inbox` | รวมทุกโมดูล |
+| `/reports` | `/leave/reports` | |
+| `/profile`, `/profile/access-history` | `/me`, `/me/access-history` | |
+| `/attendance/check-in`, `/attendance/history` | `/attendance/check-in`, `/attendance/my` | |
+| `/admin/attendances`, `/admin/attendances/summary` | `/attendance/records`, `/attendance/reports` | |
+| `/admin/overtime-orders`, `/admin/ot-summary` | `/overtime/orders`, `/overtime/reports` | แยกเป็นกลุ่มเมนูของตัวเอง |
+| `/saraban/*` | `/saraban/*` | จัดกลุ่มตาม 8.2 ฉ · ตั้งค่ารวมเป็นแท็บ |
+| `/admin/users` | `/access/accounts` | ต้นแบบหน้า 7–8 |
+| `/admin/roles` | `/access/roles` | ต้นแบบหน้า 9 |
+| `/admin/org-structure`, `/admin/departments` | `/org` | รวมเป็นหน้าเดียว ต้นแบบหน้า 6 |
+| `/admin/positions` | `/org/positions` | |
+| `/admin/personnel-assignments`, `/admin/delegations` | `/org/assignments` | รักษาการเป็น assignment `acting` |
+| `/admin/leaves-management`, `/admin/promotion-screening` | `/leave/manage`, `/leave/promotion-screening` | |
+| `/admin/leave-policies`, `/admin/leave-types`, `/admin/fiscal-years` | `/leave/settings` (แท็บ) | |
+| `/admin/attendance-settings`, `/admin/work-calendar` | `/attendance/settings` (แท็บ) | |
+| `/admin/workflow` | `/system/workflows` | ใช้ workflow engine อย่างเดียว |
+| `/admin/document-templates`, `/admin/document-center/*` | `/system/documents` | |
+| `/admin/notifications` | `/system/notifications` | |
+| `/admin/settings`, `/admin/export-settings` | `/system/settings` | |
+| `/admin/modules` | `/system/modules` | |
+| `/admin/menus` | **ลบ** | เมนูมาจาก manifest |
+| `/admin/leave-governance` | **ลบ** | ย้ายไป `/access/modules` |
+| — | `/personnel`, `/personnel/:uuid`, `/personnel/change-requests`, `/personnel/reports`, `/access/modules`, `/access/change-requests`, `/access/reviews`, `/access/audit`, `/me/security` | **ใหม่** |
+
+### 8.5 ผลต่อเฟส
+
+- **R-04** เพิ่มชนิด `menus` ใน manifest และ endpoint `GET /api/me/menu` ที่คืนเมนูหลังกรองสิทธิ์ ชื่อตาม scope และ badge
+- **R-06/R-07** สร้างหน้าตาม 8.2 ข. และ ช.
+- **R-08** ย้าย route ตาม 8.4 ทีละโมดูล และเพิ่ม redirect จาก route เดิมไป route ใหม่ 1 ภาคเรียน
+- เทสต์: สำหรับทุกแถวใน 8.3 สร้างผู้ใช้ตัวอย่างแล้วตรวจว่า `GET /api/me/menu` คืนเมนูตรงตาราง
