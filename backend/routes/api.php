@@ -113,12 +113,17 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/attendances/{attendance:uuid}/corrections', [AttendanceCorrectionController::class, 'store'])
         ->middleware('permission:attendance.view_self|attendance.view_all');
 
-    Route::group(['middleware' => ['can:overtime.operation.execute']], function () {
+    /*
+     * OT-PUNCH-01: ลงเวลา OT ของตนเองใช้สิทธิ์ลงเวลาปกติ — OvertimeTimeService อนุญาตเฉพาะผู้ที่ได้รับมอบหมาย
+     * ในคำสั่งที่อนุมัติแล้วและอยู่ในช่วงเวลาที่อนุมัติ จึงไม่ต้องให้ผู้ปฏิบัติงานถือสิทธิ์ออกคำสั่ง OT
+     */
+    Route::group(['middleware' => ['permission:attendance.checkin']], function () {
         Route::post('/attendances/ot-check-in', [OvertimeTimeController::class, 'checkIn']);
         Route::post('/attendances/ot-check-out', [OvertimeTimeController::class, 'checkOut']);
         Route::get('/overtime/my-active', [OvertimeTimeController::class, 'active']);
-        Route::post('/overtime/orders', [OvertimeOrderController::class, 'store']);
     });
+
+    Route::post('/overtime/orders', [OvertimeOrderController::class, 'store'])->middleware('can:overtime.operation.execute');
 
     Route::group(['middleware' => ['can:overtime.management.review']], function () {
         Route::get('/overtime/orders', [OvertimeOrderController::class, 'index']);
