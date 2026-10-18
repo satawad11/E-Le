@@ -4,10 +4,10 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * กลุ่มบุคลากรสำหรับรายงาน เช่น ผู้บริหาร / ครู / เจ้าหน้าที่ (ORG-ACCESS-02)
- * ไม่ให้สิทธิ์ใด ๆ — ใช้แสดงผลและจัดกลุ่มรายงานเท่านั้น
+ * กลุ่มตำแหน่งสำหรับจัดกลุ่มรายงาน (CORE-01) — ไม่ให้สิทธิ์ใด ๆ
  */
 class PositionGroup extends Model
 {
@@ -24,7 +24,7 @@ class PositionGroup extends Model
         return 'uuid';
     }
 
-    public function positions()
+    public function positions(): HasMany
     {
         return $this->hasMany(Position::class);
     }
