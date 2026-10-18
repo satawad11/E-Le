@@ -1,0 +1,182 @@
+[
+    {
+        "code": "leave.submitted",
+        "module": "leave",
+        "name": "ส่งคำขอลา",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "leave.approval_requested",
+        "module": "leave",
+        "name": "มีใบลารออนุมัติ",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "leave.approved",
+        "module": "leave",
+        "name": "ใบลาได้รับอนุมัติ",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "leave.rejected",
+        "module": "leave",
+        "name": "ใบลาไม่ได้รับอนุมัติ",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "leave.returned",
+        "module": "leave",
+        "name": "ใบลาถูกส่งกลับ",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "attendance.correction",
+        "module": "attendance",
+        "name": "คำขอแก้ไขเวลาปฏิบัติงาน",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "attendance.late",
+        "module": "attendance",
+        "name": "แจ้งเตือนการมาสาย",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "attendance.early_leave",
+        "module": "attendance",
+        "name": "แจ้งเตือนออกก่อนเวลา",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "overtime.approval",
+        "module": "overtime",
+        "name": "สถานะคำสั่ง OT",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "saraban.task",
+        "module": "saraban",
+        "name": "งานสารบรรณใหม่",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "leave.cancellation_requested",
+        "module": "leave",
+        "name": "มีคำขอยกเลิกวันลารอพิจารณา",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "leave.cancellation_approved",
+        "module": "leave",
+        "name": "อนุมัติยกเลิกวันลาแล้ว",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "leave.cancellation_rejected",
+        "module": "leave",
+        "name": "ไม่อนุมัติการยกเลิกวันลา",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "leave.substitute_requested",
+        "module": "leave",
+        "name": "ได้รับมอบหมายให้ปฏิบัติงานแทน",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    },
+    {
+        "code": "leave.substitute_responded",
+        "module": "leave",
+        "name": "ผู้ปฏิบัติงานแทนตอบกลับแล้ว",
+        "description": null,
+        "default_channels": [
+            "in_app",
+            "email"
+        ],
+        "is_mandatory": 0,
+        "is_active": 1
+    }
+]
