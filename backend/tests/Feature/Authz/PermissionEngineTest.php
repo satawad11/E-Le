@@ -112,6 +112,15 @@ class PermissionEngineTest extends TestCase
 
         $this->assertFalse($this->engine->allows($director, 'personnel.profile.view', $this->f->people['teacher']));
         $this->assertTrue($this->engine->allows($director, 'personnel.profile.view', $this->f->people['hr_staff']));
+
+        // ระดับรายการ: scope all ของ ผอ. ต้องไม่คืนบุคลากรในแผนกช่างยนต์ (รวมสาขางานยานยนต์)
+        $listed = $this->engine->scopeQuery($director, 'personnel.profile.view', Personnel::query())->pluck('personnel_code')->all();
+        foreach (['T001', 'T002', 'T003'] as $code) {
+            $this->assertNotContains($code, $listed, "{$code} อยู่ในหน่วยที่ถูก deny");
+        }
+        $this->assertContains('S001', $listed);
+        $this->assertContains('D001', $listed);
+
     }
 
     public function test_allow_override_needs_an_expiry_and_expired_grants_have_no_effect(): void
@@ -135,15 +144,54 @@ class PermissionEngineTest extends TestCase
         $this->assertFalse($this->engine->allows($teacher->fresh(), 'personnel.import.manage'), 'ถอนแล้วไม่มีผล');
     }
 
-    public function test_admin_and_auditor_templates_deny_personnel_data_of_others_but_keep_their_own(): void
+    public function test_admin_and_auditor_sets_add_no_personnel_rights_and_admin_cannot_reveal_or_approve(): void
     {
         foreach (['admin', 'auditor'] as $key) {
             $user = $this->user($key);
             $this->assertTrue($this->engine->allows($user, 'personnel.profile.view', $this->f->people[$key]), "{$key} ดูข้อมูลตนเองได้");
-            $this->assertFalse($this->engine->allows($user, 'personnel.profile.view', $this->f->people['teacher']), "{$key} ไม่เห็นข้อมูลบุคลากรผู้อื่น");
-            $this->assertFalse($this->engine->allows($user, 'org.unit.view'), "{$key} ไม่เห็นเมนูโครงสร้าง");
+            $this->assertFalse($this->engine->allows($user, 'personnel.profile.view', $this->f->people['teacher']), "{$key} ไม่ได้สิทธิ์ดูผู้อื่นเพิ่มจากชุดสิทธิ์");
+            $this->assertTrue($this->engine->allows($user, 'org.unit.view'), "{$key} ดูโครงสร้างองค์กรได้แบบบุคลากรทั่วไป");
         }
-        $this->assertTrue($this->engine->allows($this->user('admin'), 'system.setting.manage'));
+
+        $admin = $this->user('admin');
+        $this->assertFalse($this->engine->allows($admin, 'personnel.profile.reveal', $this->f->people['admin']), 'ผู้ดูแลระบบไม่เห็นข้อมูลอ่อนไหว แม้ของตนเอง');
+        $this->assertTrue($this->engine->allows($this->user('auditor'), 'personnel.profile.reveal', $this->f->people['auditor']), 'ผู้ตรวจสอบไม่มี deny');
+        $this->assertTrue($this->engine->allows($admin, 'access.change.approve'), 'ยืนยันคำขอเปลี่ยนสิทธิ์ในฐานะผู้ดูแลคนที่สองได้ (ชุดสิทธิ์ให้เอง)');
+        $this->assertTrue($this->engine->allows($admin, 'system.setting.manage'));
+    }
+
+    public function test_department_head_who_is_also_auditor_keeps_viewing_their_department(): void
+    {
+        $this->f->grant('section_head', 'audit.auditor', 'คำสั่ง 40/2569');
+        $head = $this->user('section_head');
+
+        $this->assertTrue($this->engine->allows($head, 'personnel.profile.view', $this->f->people['hr_staff']));
+        $this->assertTrue($this->engine->allows($head, 'audit.log.view'));
+        $this->assertSame(['S001', 'S002', 'S003'], $this->engine->scopeQuery($head, 'personnel.profile.view', Personnel::query())
+            ->orderBy('personnel_code')->pluck('personnel_code')->all());
+    }
+
+    public function test_administrator_who_is_also_department_head_views_but_never_approves_or_reveals(): void
+    {
+        $this->f->grant('section_head', 'system.admin', 'คำสั่ง 41/2569');
+        $head = $this->user('section_head');
+        $staff = $this->f->people['hr_staff'];
+
+        // ดูข้อมูลทั่วไปในแผนกตนได้ตามตำแหน่งหัวหน้า
+        $this->assertTrue($this->engine->allows($head, 'personnel.profile.view', $staff));
+        $this->assertNotNull(app(PersonnelPresenter::class)->present($staff->fresh(['profile']), $head)['personnel']['personnel_code']);
+
+        // แต่ไม่อนุมัติ/ตรวจ และไม่เปิดดูข้อมูลอ่อนไหว แม้มีสิทธิ์จากแหล่งอื่นมาเพิ่ม
+        PermissionOverride::create(['user_id' => $head->id, 'permission_id' => Permission::where('name', 'personnel.change_request.review')->value('id'),
+            'effect' => 'allow', 'scope' => 'subtree', 'org_unit_id' => $this->f->units['hr']->id, 'reason' => 'ช่วยตรวจคำขอ',
+            'granted_by' => $this->f->users['director']->id, 'expires_at' => '2026-12-31']);
+        $this->f->grant('section_head', 'personnel.hr_officer', 'คำสั่ง 42/2569');
+        $head = $head->fresh();
+
+        $this->assertFalse($this->engine->allows($head, 'personnel.change_request.review'));
+        $this->assertFalse($this->engine->allows($head, 'personnel.profile.reveal', $staff));
+        $this->assertFalse($this->engine->allows($head, 'personnel.profile.reveal', $this->f->people['section_head']));
+        $this->assertTrue($this->engine->allows($head, 'personnel.profile.edit', $staff), 'สิทธิ์ที่ไม่ใช่การอนุมัติ/เปิดดูข้อมูลอ่อนไหวยังใช้ได้');
     }
 
     public function test_disabled_module_and_inactive_account_deny_everything(): void

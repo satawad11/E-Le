@@ -116,6 +116,26 @@ class ManifestSyncTest extends TestCase
         $this->assertSame('own', TemplatePermission::firstOrFail()->scope, '--reset-defaults คืนค่าตาม manifest');
     }
 
+    public function test_denies_follow_the_manifest_exactly_and_patterns_skip_the_templates_own_permissions(): void
+    {
+        $manifest = $this->demo(['templates' => ['admin' => ['name' => 'ผู้ดูแล', 'kind' => 'functional',
+            'permissions' => ['demo.item.approve' => 'all'], 'denies' => ['*.*.approve' => null, 'demo.item.view' => 'own']]]]);
+        $this->writeManifest('Demo', $manifest);
+        $this->synchronizer()->sync();
+
+        $template = PermissionTemplate::where('code', 'demo.admin')->firstOrFail();
+        $rows = fn () => TemplatePermission::where('template_id', $template->id)->with('permission')->get()
+            ->mapWithKeys(fn ($r) => [$r->permission->name => $r->effect.':'.($r->scope ?? 'null')])->sort()->all();
+
+        $this->assertSame(['demo.item.approve' => 'allow:all', 'demo.item.view' => 'deny:own'], $rows(), 'pattern ไม่ปฏิเสธสิทธิ์ที่ชุดสิทธิ์ให้เอง');
+
+        unset($manifest['templates']['admin']['denies']);
+        $this->writeManifest('Demo', $manifest);
+        $this->synchronizer()->sync();
+
+        $this->assertSame(['demo.item.approve' => 'allow:all'], $rows(), 'deny ที่ manifest เลิกประกาศต้องหายไปโดยไม่ต้อง --reset-defaults');
+    }
+
     public function test_permission_removed_from_manifest_is_retired_not_deleted(): void
     {
         $this->writeManifest('Demo', $this->demo());

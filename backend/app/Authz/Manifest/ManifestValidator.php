@@ -7,7 +7,7 @@ namespace App\Authz\Manifest;
  *
  * - รหัสโมดูล/feature/action เป็น snake_case · scope อยู่ในชุดที่รองรับ · risk และ rules รู้จัก
  * - `requires` และ permission ใน template/เมนูต้องมีอยู่จริง · scope ใน template อยู่ใน allowed_scopes
- * - template ระบุ `denies` ด้วย pattern `module.*` หรือชื่อเต็ม · เพดานเป็น scope ที่รองรับหรือ null
+ * - template ระบุ `denies` ด้วย pattern (`module.*`, `*.*.approve`) หรือชื่อเต็ม · เพดานเป็น scope ที่รองรับหรือ null
  * - defaults อ้าง template แบบ positional ที่มีอยู่ ระดับ 1–5 · เมนูอ้างกลุ่มและ parent ที่มีอยู่ รหัสไม่ซ้ำ
  */
 class ManifestValidator
@@ -81,8 +81,8 @@ class ManifestValidator
                     }
                 }
                 foreach ($template['denies'] as $pattern => $ceiling) {
-                    if (! str_ends_with($pattern, '.*') && ! isset($permissions[$pattern])) {
-                        $errors[] = "template {$template['code']}: denies {$pattern} ไม่ใช่ pattern module.* หรือ permission ที่มีอยู่";
+                    if (! str_contains($pattern, '*') && ! isset($permissions[$pattern])) {
+                        $errors[] = "template {$template['code']}: denies {$pattern} ไม่ใช่ pattern หรือ permission ที่มีอยู่";
                     }
                     if ($ceiling !== null && ! in_array($ceiling, ModuleRegistry::SCOPES, true)) {
                         $errors[] = "template {$template['code']}: เพดาน {$ceiling} ไม่ถูกต้อง";

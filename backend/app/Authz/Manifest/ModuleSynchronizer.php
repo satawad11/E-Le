@@ -159,6 +159,10 @@ class ModuleSynchronizer
         }
         foreach ($template['denies'] as $pattern => $ceiling) {
             foreach ($this->expand($pattern) as $name) {
+                // pattern ไม่ปฏิเสธสิทธิ์ที่ชุดสิทธิ์เดียวกันให้ไว้ชัดเจน (เช่น ผู้ดูแลระบบ: *.*.approve ยกเว้น access.change.approve)
+                if (isset($template['permissions'][$name]) && $pattern !== $name) {
+                    continue;
+                }
                 $wanted[$name] = ['effect' => 'deny', 'scope' => $ceiling];
             }
         }
@@ -170,11 +174,23 @@ class ModuleSynchronizer
             $this->stats['template_permissions_reset'] += $removed;
         }
 
+        // deny มาจาก manifest เท่านั้น (ผู้ดูแลปรับได้เฉพาะการจับคู่ allow) — deny ที่ manifest ไม่ประกาศแล้วต้องหายไปทุกครั้งที่ sync
+        $wantedDenyIds = collect($wanted)->filter(fn ($e) => $e['effect'] === 'deny')->keys()->map(fn ($name) => $ids[$name])->all();
+        $staleDenies = TemplatePermission::where('template_id', $row->id)->where('effect', 'deny')->whereNotIn('permission_id', $wantedDenyIds)->get();
+        foreach ($staleDenies as $stale) {
+            $stale->delete();
+            $this->log('template.deny_removed', 'permission_template', $row->id, ['permission_id' => $stale->permission_id, 'scope' => $stale->scope], null, $actorId);
+            $this->stats['template_permissions_reset']++;
+        }
+
         foreach ($wanted as $name => $entry) {
-            $exists = TemplatePermission::where('template_id', $row->id)->where('permission_id', $ids[$name])->exists();
-            if (! $exists) {
+            $existing = TemplatePermission::where('template_id', $row->id)->where('permission_id', $ids[$name])->first();
+            if ($existing === null) {
                 TemplatePermission::create(['template_id' => $row->id, 'permission_id' => $ids[$name]] + $entry);
                 $this->stats['template_permissions_added']++;
+            } elseif ($entry['effect'] === 'deny' && ($existing->effect !== 'deny' || $existing->scope !== $entry['scope'])) {
+                // deny ที่ manifest ประกาศบังคับเสมอ (ไม่ใช่การปรับที่ผู้ดูแลคงไว้ได้)
+                $existing->update($entry);
             }
         }
 
@@ -207,12 +223,11 @@ class ModuleSynchronizer
     /** @return array<int, string> */
     private function expand(string $pattern): array
     {
-        if (! str_ends_with($pattern, '.*')) {
+        if (! str_contains($pattern, '*')) {
             return [$pattern];
         }
-        $prefix = substr($pattern, 0, -1);
 
-        return array_values(array_filter(array_keys($this->registry->permissions()), fn ($name) => str_starts_with($name, $prefix)));
+        return array_values(array_filter(array_keys($this->registry->permissions()), fn ($name) => fnmatch($pattern, $name)));
     }
 
     /**

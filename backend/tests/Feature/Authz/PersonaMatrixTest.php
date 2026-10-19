@@ -15,6 +15,9 @@ use Tests\TestCase;
  * และ Permission Matrix (persona × permission → scope ที่กว้างที่สุด)
  *
  * แถว ระบบการลา / ลงเวลา / OT / สารบรรณ ของตาราง 8.3 ทดสอบใน R-08 เมื่อโมดูลเหล่านั้นมี manifest
+ *
+ * "—" ในตาราง 8.3 = ชุดสิทธิ์ของ persona นั้นไม่ให้สิทธิ์เพิ่ม ไม่ใช่ตัดสิทธิ์จากตำแหน่งอื่น (ADR-R-015 ฉบับแก้ไข)
+ * ผู้ดูแลระบบ/ผู้ตรวจสอบที่เป็นบุคลากรจึงเห็น "โครงสร้างองค์กร" แบบบุคลากรทั่วไป แต่ไม่เห็นรายชื่อ/ประวัติผู้อื่น
  */
 class PersonaMatrixTest extends TestCase
 {
@@ -64,11 +67,13 @@ class PersonaMatrixTest extends TestCase
             ]],
             'ผู้ดูแลระบบ' => ['admin', [
                 'core' => $withInbox,
+                'personnel' => ['org.structure'],
                 'access' => ['access.accounts', 'access.roles', 'access.modules', 'access.change_requests', 'access.reviews', 'access.audit'],
                 'system' => ['system.modules', 'system.workflows', 'system.documents', 'system.notifications', 'system.settings'],
             ]],
             'ผู้ตรวจสอบ' => ['auditor', [
                 'core' => $personal,
+                'personnel' => ['org.structure'],
                 'access' => ['access.accounts', 'access.roles', 'access.reviews', 'access.audit'],
             ]],
         ];
@@ -127,14 +132,14 @@ class PersonaMatrixTest extends TestCase
     private const MATRIX = [
         'personnel.profile.view' => ['own', 'subtree', 'subtree', 'subtree', 'all', 'all', 'own', 'own'],
         'personnel.profile.view_confidential' => ['own', 'own', 'own', 'subtree', 'all', 'all', 'own', 'own'],
-        'personnel.profile.reveal' => ['own', 'own', 'own', 'own', 'own', 'all', 'own', 'own'],
+        'personnel.profile.reveal' => ['own', 'own', 'own', 'own', 'own', 'all', null, 'own'],
         'personnel.profile.edit' => [null, null, null, null, null, 'all', null, null],
         'personnel.change_request.create' => ['own', 'own', 'own', 'own', 'own', 'own', 'own', 'own'],
         'personnel.change_request.review' => [null, null, null, null, null, 'all', null, null],
         'personnel.assignment.manage' => [null, null, null, null, null, 'all', null, null],
         'personnel.report.view' => [null, null, null, 'subtree', 'all', 'all', null, null],
         'personnel.import.manage' => [null, null, null, null, null, 'all', null, null],
-        'org.unit.view' => ['all', 'all', 'all', 'all', 'all', 'all', null, null],
+        'org.unit.view' => ['all', 'all', 'all', 'all', 'all', 'all', 'all', 'all'],
         'org.unit.manage' => [null, null, null, null, null, 'all', null, null],
         'org.position.manage' => [null, null, null, null, null, 'all', null, null],
         'access.account.view' => [null, null, null, null, null, 'all', 'all', 'all'],
