@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Authz\Contracts\AuthzResource;
+use App\Authz\Contracts\ScopedByAuthz;
+use App\Models\Concerns\AuthorizesByPersonnel;
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,9 +17,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  *
  * ข้อมูลที่ส่งออก API ต้องผ่าน PersonnelPresenter (R-03) เพื่อปิดบังตามชั้นความลับ
  */
-class Personnel extends Model
+class Personnel extends Model implements AuthzResource, ScopedByAuthz
 {
-    use HasFactory, HasPublicUuid;
+    use AuthorizesByPersonnel, HasFactory, HasPublicUuid;
 
     public const STATUSES = ['pending', 'active', 'study_leave', 'seconded', 'suspended', 'separated'];
 
@@ -86,5 +89,20 @@ class Personnel extends Model
     public function changeRequests(): HasMany
     {
         return $this->hasMany(PersonnelChangeRequest::class);
+    }
+
+    public function authzPersonnelId(): ?int
+    {
+        return $this->id;
+    }
+
+    public function authzPersonnelColumn(): string
+    {
+        return 'id';
+    }
+
+    public function authzMakerUserId(): ?int
+    {
+        return null;
     }
 }
