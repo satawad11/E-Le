@@ -8,8 +8,7 @@ use App\Models\User;
 /**
  * จุดตัดสินว่าผู้ใช้เห็น/เปิดดู/แก้ข้อมูลบุคลากรได้แค่ไหน (CORE-02)
  *
- * R-03 ผูกกับ `DenyByDefaultPersonnelFieldAccess` (เจ้าของข้อมูลเห็นของตนเอง ผู้อื่นเห็นเฉพาะชั้น public)
- * R-04 เปลี่ยนการผูกเป็นตัวที่ถาม PermissionEngine ตาม permission + scope ของ assignment
+ * ผูกกับ EnginePersonnelFieldAccess (R-04) ซึ่งถาม PermissionEngine ตาม permission + scope ของแต่ละแหล่งสิทธิ์
  */
 interface PersonnelFieldAccess
 {

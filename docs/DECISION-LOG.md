@@ -86,3 +86,25 @@ production เดิมทำงานต่อบน tag `legacy-final` ระ�
 ตัวนำเข้า (R03-5) อ่านเฉพาะค่าในแผ่นงาน ไม่ต้องการสูตรหรือรูปแบบ จึงใช้ `App\Support\Spreadsheet\SheetReader` ที่อ่าน `.xlsx` ด้วย ext-zip + XMLReader และ `.csv` ด้วย fgetcsv
 ไม่เพิ่ม dependency ใหม่ในเฟส core · หมายเหตุ: โค้ดส่งออกเดิม (`LeaveExcelService`, `ReportExportService`) อ้าง PhpSpreadsheet ซึ่งไม่อยู่ใน composer.lock มาก่อน R-02 — ตัดสินใน R-08 ว่าจะเพิ่มแพ็กเกจหรือเขียนตัวเขียนเอง
 
+## ADR-R-015 ชุดสิทธิ์ประกาศ denies (deny ชนะ) · ผู้ดูแลระบบและผู้ตรวจสอบไม่เห็นข้อมูลบุคลากร
+2026-10-19 · R-04
+PROJECT_RULES ข้อ 8 และ PLAN §8.3 กำหนดว่าผู้ดูแลระบบ/ผู้ตรวจสอบไม่เห็นเมนูข้อมูลบุคลากร แต่ทั้งคู่เป็นบุคลากรที่มีตำแหน่งหลักจึงได้ชุดสิทธิ์ L5 (รวม org.unit.view)
+จึงเพิ่ม `template_permissions.effect` (allow/deny) — manifest ประกาศ `denies: ['personnel.*' => 'own', 'org.*' => null]` (เพดาน own = เหลือเฉพาะข้อมูลของตนเอง · null = ปฏิเสธทั้งหมด)
+engine ใช้ deny หลังรวม allow จากทุกแหล่ง (deny ชนะเสมอ) · override deny ระบุหน่วยได้ = ตัด subtree นั้นออกจากทุกแหล่ง
+
+## ADR-R-016 deny by default ระดับ route แทนการปิดทั้งระบบ
+2026-10-19 · R-04
+route ที่ต้องยืนยันตัวตนผ่านได้เมื่อประกาศ `->permission()` ด้วยชื่อที่อยู่ใน manifest (ต่อ PermissionEngine) หรือเป็น self-service (logout, refresh-token, user, me/permissions, me/menu)
+route ของโมดูลเดิมที่ยังตรวจแบบเก่ายังตอบ 403 จนย้ายใน R-08 — จึงถอด `DenyUntilPermissionEngine` ได้โดยไม่เปิด endpoint ที่ไม่ถาม engine
+resource-level: controller เรียก `authorizeResource()` — นอก scope = 404 (ไม่บอกว่ามีอยู่) · ผิดกฎกลาง = 403
+
+## ADR-R-017 ชั้นข้อมูลบุคลากรที่เห็นมาจาก permission แยก view / view_confidential / reveal
+2026-10-19 · R-04 (ต่อจาก matrix ตั้งต้นของ R-03)
+public เห็นเสมอ · internal ← `personnel.profile.view` · confidential ← `personnel.profile.view_confidential` · sensitive ← `personnel.profile.reveal` + เหตุผล + log
+ค่าเริ่มต้น: L1 ทั้งวิทยาลัย · L2 subtree (รวมชั้นลับ) · L3/L4 subtree (ไม่รวมชั้นลับ) · L5 เฉพาะตนเอง · งานบุคคล (functional) ทั้งหมดรวม reveal
+
+## ADR-R-018 ทะเบียน manifest ใหม่อยู่คู่กับทะเบียนโมดูลธุรกิจเดิมจนถึง R-08
+2026-10-19 · R-04
+`App\Authz\Manifest\ModuleRegistry` (manifest: สิทธิ์ ชุดสิทธิ์ เมนู) ใช้กับ core ทั้งหมด · `App\Services\Modules\ModuleRegistry` + `config/modules.php` ยังโหลด providers/route ของโมดูลลา ลงเวลา OT สารบรรณ แจ้งเตือน
+R-08 ย้ายข้อมูลของแต่ละโมดูลเข้า manifest แล้วลบทะเบียนเดิม
+
