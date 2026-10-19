@@ -78,17 +78,35 @@ class OrgUnit extends Model implements AuthzResource, ScopedByAuthz
 
     public function applyAuthzScope(Builder $query, AuthzScope $scope): Builder
     {
-        if ($scope->all) {
+        if ($scope->isUnrestricted()) {
             return $query;
         }
 
-        return $query->where(function (Builder $q) use ($scope) {
-            $q->whereRaw('1 = 0');
-            if ($scope->unitIds !== []) {
-                $q->orWhereIn($q->getModel()->qualifyColumn('id'), $scope->unitIds);
-            }
-            foreach ($scope->subtreePaths as $path) {
-                $q->orWhere($q->getModel()->qualifyColumn('path'), 'like', $path.'%');
+        $id = $query->getModel()->qualifyColumn('id');
+        $pathColumn = $query->getModel()->qualifyColumn('path');
+
+        // กติกาเดียวกับ PermissionEngine::can(): เข้าเงื่อนไขของแหล่งใดแหล่งหนึ่ง และไม่อยู่ใต้หน่วยที่แหล่งนั้นถูก deny
+        return $query->where(function (Builder $outer) use ($scope, $id, $pathColumn) {
+            $outer->whereRaw('1 = 0');
+
+            foreach ($scope->terms as $term) {
+                if ($term['type'] === 'own') {
+                    continue; // หน่วยงานไม่มีเจ้าของรายบุคคล
+                }
+                $outer->orWhere(function (Builder $q) use ($term, $id, $pathColumn) {
+                    match ($term['type']) {
+                        'all' => $q->whereRaw('1 = 1'),
+                        'units' => $q->whereIn($id, $term['unit_ids']),
+                        'subtree' => $q->where(function (Builder $paths) use ($term, $pathColumn) {
+                            foreach ($term['paths'] as $path) {
+                                $paths->orWhere($pathColumn, 'like', $path.'%');
+                            }
+                        }),
+                    };
+                    foreach ($term['excluded_paths'] as $excluded) {
+                        $q->where($pathColumn, 'not like', $excluded.'%');
+                    }
+                });
             }
         });
     }

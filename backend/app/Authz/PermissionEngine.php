@@ -145,23 +145,10 @@ class PermissionEngine
     public function scopeFor(User $user, string $permission): AuthzScope
     {
         if (! $this->can($user, $permission)->allowed) {
-            return new AuthzScope(false, [], [], null);
+            return new AuthzScope([]);
         }
 
-        $all = false;
-        $units = [];
-        $paths = [];
-        $own = null;
-        foreach ($this->grantsFor($user, $permission) as $grant) {
-            match ($grant->scope) {
-                'all' => $all = true,
-                'own' => $own = $user->personnel_id,
-                'unit', 'assigned' => $units = array_merge($units, array_keys($grant->anchors)),
-                'subtree' => $paths = array_merge($paths, array_values($grant->anchors)),
-            };
-        }
-
-        return new AuthzScope($all, array_values(array_unique($units)), array_values(array_unique($paths)), $own);
+        return AuthzScope::fromGrants($this->grantsFor($user, $permission), $user->personnel_id);
     }
 
     /**
@@ -484,29 +471,32 @@ class PermissionEngine
         return Assignment::where('personnel_id', $user->personnel_id)->where('kind', Assignment::KIND_PRIMARY)->effectiveOn($date)->value('org_unit_id');
     }
 
+    /**
+     * resource อยู่ในขอบเขตของแหล่งนี้หรือไม่
+     *
+     * หน่วยใดของ resource อยู่ใต้หน่วยที่ถูก deny (override จำกัดหน่วย) = ไม่ครอบคลุม ทุก scope รวม all และ own
+     * (deny ชนะเสมอ) — กติกาเดียวกับ AuthzScope ที่ scopeQuery ใช้ ผลของ can() กับรายการจึงตรงกันทุกคู่
+     */
     private function grantCovers(User $user, Grant $grant, AuthzResource $resource): bool
     {
-        if ($grant->scope === 'own') {
-            return $user->personnel_id !== null && $resource->authzOwnerPersonnelId() === $user->personnel_id;
-        }
-
+        $paths = [];
         foreach ($resource->authzOrgUnitIds() as $unitId) {
             $path = $this->pathOf($unitId);
-            if ($path === null || $this->excluded($grant, $path)) {
+            if ($path === null) {
                 continue;
             }
-            if ($grant->scope === 'all') {
-                return true;
+            if ($this->excluded($grant, $path)) {
+                return false;
             }
-            foreach ($grant->anchors as $anchorId => $anchorPath) {
-                if ($grant->scope === 'subtree' ? str_starts_with($path, $anchorPath) : $anchorId === $unitId) {
-                    return true;
-                }
-            }
+            $paths[$unitId] = $path;
         }
 
-        // resource ที่ไม่สังกัดหน่วยใด เห็นได้เฉพาะ scope all
-        return $grant->scope === 'all' && $resource->authzOrgUnitIds() === [] && $grant->excludedPaths === [];
+        return match ($grant->scope) {
+            'own' => $user->personnel_id !== null && $resource->authzOwnerPersonnelId() === $user->personnel_id,
+            'all' => true,
+            'subtree' => collect($paths)->contains(fn (string $path) => collect($grant->anchors)->contains(fn (string $anchor) => str_starts_with($path, $anchor))),
+            default => array_intersect(array_keys($paths), array_map('intval', array_keys($grant->anchors))) !== [],
+        };
     }
 
     private function excluded(Grant $grant, string $path): bool
