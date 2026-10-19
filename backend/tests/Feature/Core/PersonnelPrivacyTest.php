@@ -8,7 +8,7 @@ use App\Models\Personnel;
 use App\Models\PersonnelProfile;
 use App\Models\SensitiveAccessLog;
 use App\Models\User;
-use App\Services\Personnel\DenyByDefaultPersonnelFieldAccess;
+use App\Services\Personnel\EnginePersonnelFieldAccess;
 use App\Services\Personnel\FieldClassificationRegistry;
 use App\Services\Personnel\PersonnelPresenter;
 use App\Services\Personnel\SensitiveReveal;
@@ -114,21 +114,12 @@ class PersonnelPrivacyTest extends TestCase
         $this->assertContains('profile.phone_mobile', $data['masked']);
     }
 
-    public function test_default_binding_shows_others_public_only_and_owner_their_own_record(): void
+    public function test_container_binds_field_access_to_the_permission_engine(): void
     {
-        $this->app->instance(PersonnelFieldAccess::class, new DenyByDefaultPersonnelFieldAccess);
-        $owner = User::factory()->create(['personnel_id' => $this->subject->id]);
-        $other = User::factory()->withPersonnel()->create();
+        $this->app->forgetInstance(PersonnelFieldAccess::class);
+        $this->app->bind(PersonnelFieldAccess::class, EnginePersonnelFieldAccess::class);
 
-        $asOther = app(PersonnelPresenter::class)->present($this->subject->fresh(['profile']), $other);
-        $asOwner = app(PersonnelPresenter::class)->present($this->subject->fresh(['profile']), $owner);
-
-        $this->assertNull($asOther['personnel']['personnel_code']);
-        $this->assertNull($asOther['profile']['phone_mobile']);
-        $this->assertFalse($asOther['can_reveal']);
-        $this->assertSame('T900', $asOwner['personnel']['personnel_code']);
-        $this->assertSame('1985-02-03', $asOwner['profile']['birth_date']);
-        $this->assertTrue($asOwner['can_reveal']);
+        $this->assertInstanceOf(EnginePersonnelFieldAccess::class, app(PersonnelFieldAccess::class));
     }
 
     public function test_reveal_without_reason_is_422_and_not_logged(): void

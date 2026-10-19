@@ -2,6 +2,7 @@
 
 namespace App\Models\Authz;
 
+use App\Authz\Contracts\AuthzResource;
 use App\Models\Concerns\HasPublicUuid;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * คำขอเปลี่ยนสิทธิ์ความเสี่ยงสูงที่ต้องให้ผู้ดูแลคนที่สองยืนยัน (`two_person`, CORE-04)
  */
-class PermissionChangeRequest extends Model
+class PermissionChangeRequest extends Model implements AuthzResource
 {
     use HasPublicUuid;
 
@@ -38,5 +39,21 @@ class PermissionChangeRequest extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function authzOwnerPersonnelId(): ?int
+    {
+        return $this->requester?->personnel_id;
+    }
+
+    /** @return array<int, int> */
+    public function authzOrgUnitIds(): array
+    {
+        return [];
+    }
+
+    public function authzMakerUserId(): ?int
+    {
+        return $this->requested_by;
     }
 }

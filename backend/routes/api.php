@@ -25,6 +25,7 @@ use App\Http\Controllers\LeaveQueryController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\LeaveVerificationController;
 use App\Http\Controllers\LeaveWorkflowActionController;
+use App\Http\Controllers\MeController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Org\AssignmentController;
 use App\Http\Controllers\Org\OrgUnitController;
@@ -177,28 +178,31 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      */
 
     /*
-     * R03-2 — core องค์กรและบุคลากร (CORE-01, CORE-02)
-     * `permission:` คือสิทธิ์จาก manifest ที่ R-04 จะต่อ PermissionEngine — ระหว่าง R-03 ทุก route ตอบ 403
+     * core องค์กรและบุคลากร (CORE-01, CORE-02) — ทุก route ประกาศ ->permission() ที่ต่อ PermissionEngine (R04-5)
+     * การตรวจระดับรายการ (scope / กฎกลาง) อยู่ใน controller · รายการนอก scope ตอบ 404
      */
+    Route::get('/me/permissions', [MeController::class, 'permissions']);
+    Route::get('/me/menu', [MeController::class, 'menu']);
+
     Route::prefix('org')->group(function () {
-        Route::get('/units', [OrgUnitController::class, 'index'])->middleware('permission:org.unit.view');
-        Route::post('/units', [OrgUnitController::class, 'store'])->middleware('permission:org.unit.manage');
-        Route::put('/units/{unit:uuid}', [OrgUnitController::class, 'update'])->middleware('permission:org.unit.manage');
-        Route::post('/units/{unit:uuid}/move', [OrgUnitController::class, 'move'])->middleware('permission:org.unit.manage');
-        Route::post('/units/{unit:uuid}/close', [OrgUnitController::class, 'close'])->middleware('permission:org.unit.manage');
-        Route::get('/positions', [PositionController::class, 'index'])->middleware('permission:org.position.manage');
-        Route::post('/positions', [PositionController::class, 'store'])->middleware('permission:org.position.manage');
-        Route::put('/positions/{position:uuid}', [PositionController::class, 'update'])->middleware('permission:org.position.manage');
-        Route::post('/assignments/{assignment:uuid}/end', [AssignmentController::class, 'end'])->middleware('permission:personnel.assignment.manage');
+        Route::get('/units', [OrgUnitController::class, 'index'])->permission('org.unit.view');
+        Route::post('/units', [OrgUnitController::class, 'store'])->permission('org.unit.manage');
+        Route::put('/units/{unit:uuid}', [OrgUnitController::class, 'update'])->permission('org.unit.manage');
+        Route::post('/units/{unit:uuid}/move', [OrgUnitController::class, 'move'])->permission('org.unit.manage');
+        Route::post('/units/{unit:uuid}/close', [OrgUnitController::class, 'close'])->permission('org.unit.manage');
+        Route::get('/positions', [PositionController::class, 'index'])->permission('org.position.manage');
+        Route::post('/positions', [PositionController::class, 'store'])->permission('org.position.manage');
+        Route::put('/positions/{position:uuid}', [PositionController::class, 'update'])->permission('org.position.manage');
+        Route::post('/assignments/{assignment:uuid}/end', [AssignmentController::class, 'end'])->permission('personnel.assignment.manage');
     });
     Route::prefix('personnel')->group(function () {
-        Route::post('/import', [PersonnelController::class, 'import'])->middleware('permission:personnel.import.manage');
-        Route::post('/change-requests/{changeRequest:uuid}/review', [PersonnelController::class, 'reviewChange'])->middleware('permission:personnel.change_request.review');
-        Route::get('/{personnel:uuid}', [PersonnelController::class, 'show'])->middleware('permission:personnel.profile.view');
-        Route::post('/{personnel:uuid}/reveal', [PersonnelController::class, 'reveal'])->middleware('permission:personnel.profile.reveal');
-        Route::post('/{personnel:uuid}/change-requests', [PersonnelController::class, 'submitChange'])->middleware('permission:personnel.change_request.create');
-        Route::get('/{personnel:uuid}/assignments', [AssignmentController::class, 'index'])->middleware('permission:personnel.profile.view');
-        Route::post('/{personnel:uuid}/assignments', [AssignmentController::class, 'store'])->middleware('permission:personnel.assignment.manage');
+        Route::post('/import', [PersonnelController::class, 'import'])->permission('personnel.import.manage')->middleware('throttle:imports');
+        Route::post('/change-requests/{changeRequest:uuid}/review', [PersonnelController::class, 'reviewChange'])->permission('personnel.change_request.review');
+        Route::get('/{personnel:uuid}', [PersonnelController::class, 'show'])->permission('personnel.profile.view');
+        Route::post('/{personnel:uuid}/reveal', [PersonnelController::class, 'reveal'])->permission('personnel.profile.reveal')->middleware('throttle:personal-data');
+        Route::post('/{personnel:uuid}/change-requests', [PersonnelController::class, 'submitChange'])->permission('personnel.change_request.create');
+        Route::get('/{personnel:uuid}/assignments', [AssignmentController::class, 'index'])->permission('personnel.profile.view');
+        Route::post('/{personnel:uuid}/assignments', [AssignmentController::class, 'store'])->permission('personnel.assignment.manage');
     });
 
     // Admin: ทะเบียนการรักษาราชการแทน / ปฏิบัติราชการแทน (DELEGATION-01) — ไม่มี delete โดยตั้งใจ

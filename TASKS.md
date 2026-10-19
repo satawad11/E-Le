@@ -54,15 +54,15 @@
 - [x] R03-7 รายงาน R-03
 
 ## R-04 Permission Engine + manifest + เมนู
-- [ ] R04-1 รูปแบบ manifest + `ModuleRegistry` + คำสั่ง `modules:sync` (idempotent, retire ไม่ลบ)
-- [ ] R04-2 manifest ของ core: `personnel`, `org`, `access`, `audit`, `system` ตาม PLAN §8.2 ข., ช., ซ.
-- [ ] R04-3 `PermissionEngine` (`can`, `scopeQuery`, `effective`, `explain`) + cache + invalidation
-- [ ] R04-4 กฎกลาง `not_own`, `maker_checker`, `hr_field_guard`, `grant_ceiling`, `two_person`
-- [ ] R04-5 middleware/route macro `->permission('x.y.z')` แทนการตรวจแบบเดิม · ต่อทุก route ของ core
-- [ ] R04-6 `GET /api/me/permissions`, `GET /api/me/menu` (กรองสิทธิ์ ชื่อตาม scope badge)
-- [ ] R04-7 Workflow resolver `head_of_level`, `functional_template`, `specific_assignment` + skip/merge rules (CORE-05)
-- [ ] R04-8 Permission Matrix fixture + persona tests ตาม PLAN §8.3 + IDOR tests + CI grep
-- [ ] R04-9 รายงาน R-04
+- [x] R04-1 รูปแบบ manifest + `ModuleRegistry` + คำสั่ง `modules:sync` (idempotent, retire ไม่ลบ)
+- [x] R04-2 manifest ของ core: `personnel`, `org`, `access`, `audit`, `system` ตาม PLAN §8.2 ข., ช., ซ.
+- [x] R04-3 `PermissionEngine` (`can`, `scopeQuery`, `effective`, `explain`) + cache + invalidation
+- [x] R04-4 กฎกลาง `not_own`, `maker_checker`, `hr_field_guard`, `grant_ceiling`, `two_person`
+- [x] R04-5 middleware/route macro `->permission('x.y.z')` แทนการตรวจแบบเดิม · ต่อทุก route ของ core
+- [x] R04-6 `GET /api/me/permissions`, `GET /api/me/menu` (กรองสิทธิ์ ชื่อตาม scope badge)
+- [x] R04-7 Workflow resolver `head_of_level`, `functional_template`, `specific_assignment` + skip/merge rules (CORE-05)
+- [x] R04-8 Permission Matrix fixture + persona tests ตาม PLAN §8.3 + IDOR tests + CI grep
+- [x] R04-9 รายงาน R-04
 
 ## R-05 บัญชีและความปลอดภัย
 - [ ] R05-1 สถานะบัญชี + listener JML + job `accounts:reconcile`

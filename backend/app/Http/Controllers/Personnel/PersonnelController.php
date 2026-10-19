@@ -9,6 +9,7 @@ use App\Services\Import\PersonnelImporter;
 use App\Services\Personnel\PersonnelChangeRequestService;
 use App\Services\Personnel\PersonnelPresenter;
 use App\Services\Personnel\SensitiveReveal;
+use App\Support\Spreadsheet\SheetReader;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,17 +21,22 @@ class PersonnelController extends Controller
 {
     public function show(Request $request, Personnel $personnel, PersonnelPresenter $presenter): JsonResponse
     {
+        $this->authorizeResource('personnel.profile.view', $personnel);
+
         return response()->json($presenter->present($personnel->load(['type', 'profile']), $request->user()));
     }
 
     public function reveal(Request $request, Personnel $personnel, SensitiveReveal $reveal): JsonResponse
     {
+        // นอก scope การดูประวัติ = ไม่บอกว่ามีอยู่ · ใน scope แต่ไม่มีสิทธิ์เปิดดู = 403 จาก SensitiveReveal
+        $this->authorizeResource('personnel.profile.view', $personnel);
+
         $values = $reveal->reveal(
             $personnel->load('profile'),
             (array) $request->input('fields', []),
             $request->input('reason'),
             $request->user(),
-            ['ip' => $request->ip(), 'user_agent' => $request->userAgent()],
+            ['ip' => $request->ip(), 'user_agent' => $request->userAgent(), 'acting_as' => ['permission' => 'personnel.profile.reveal']],
         );
 
         return response()->json(['fields' => $values]);
@@ -38,6 +44,8 @@ class PersonnelController extends Controller
 
     public function submitChange(Request $request, Personnel $personnel, PersonnelChangeRequestService $service): JsonResponse
     {
+        $this->authorizeResource('personnel.change_request.create', $personnel);
+
         $data = $request->validate([
             'entity' => ['required', Rule::in(['personnel', 'personnel_profile'])],
             'payload' => ['required', 'array', 'min:1'],
@@ -52,6 +60,8 @@ class PersonnelController extends Controller
 
     public function reviewChange(Request $request, PersonnelChangeRequest $changeRequest, PersonnelChangeRequestService $service): JsonResponse
     {
+        $this->authorizeResource('personnel.change_request.review', $changeRequest);
+
         $data = $request->validate([
             'decision' => ['required', Rule::in(PersonnelChangeRequestService::DECISIONS)],
             'review_note' => ['nullable', 'string', 'max:1000'],
@@ -62,19 +72,24 @@ class PersonnelController extends Controller
         return response()->json(['uuid' => $changeRequest->uuid, 'status' => $changeRequest->status]);
     }
 
-    public function import(Request $request, PersonnelImporter $importer): JsonResponse
+    public function import(Request $request, PersonnelImporter $importer, SheetReader $reader): JsonResponse
     {
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240'],
+            'sheet' => ['nullable', Rule::in(PersonnelImporter::SHEETS)],
             'commit' => ['sometimes', 'boolean'],
         ]);
 
         $file = $request->file('file');
-        $path = $file->getRealPath().'.'.$file->getClientOriginalExtension();
+        // นามสกุลจากเนื้อไฟล์ (mime) ไม่ใช่ชื่อไฟล์ที่ผู้ใช้ส่งมา — csv อาจได้ txt ซึ่ง SheetReader อ่านเป็น csv
+        $extension = $file->guessExtension();
+        abort_unless(in_array($extension, ['xlsx', 'csv', 'txt'], true), 422, 'รองรับเฉพาะไฟล์ .xlsx และ .csv');
+        abort_if($extension !== 'xlsx' && ! $request->filled('sheet'), 422, 'ไฟล์ .csv ต้องระบุแผ่นงาน (sheet)');
+        $path = $file->getRealPath().'.'.$extension;
         copy($file->getRealPath(), $path);
 
         try {
-            $result = $importer->importFile($path, $request->boolean('commit'), $request->user()->id);
+            $result = $importer->import($reader->read($path, $request->input('sheet')), $request->boolean('commit'), $request->user()->id);
         } finally {
             @unlink($path);
         }

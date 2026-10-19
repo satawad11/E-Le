@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Authz\Contracts\AuthzResource;
+use App\Authz\Contracts\ScopedByAuthz;
+use App\Models\Concerns\AuthorizesByPersonnel;
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,9 +13,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * คำขอแก้ไขข้อมูลบุคลากร (CORE-02) — Maker–Checker: ผู้ตรวจ ≠ ผู้ยื่น และ ≠ เจ้าของข้อมูล (ตรวจใน service R-03/R-06)
  * ค่าเดิมยังแสดงจนกว่าคำขอได้รับอนุมัติ
  */
-class PersonnelChangeRequest extends Model
+class PersonnelChangeRequest extends Model implements AuthzResource, ScopedByAuthz
 {
-    use HasPublicUuid;
+    use AuthorizesByPersonnel, HasPublicUuid;
 
     public const STATUSES = ['pending', 'approved', 'returned', 'rejected'];
 
@@ -43,5 +46,20 @@ class PersonnelChangeRequest extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function authzPersonnelId(): ?int
+    {
+        return $this->personnel_id;
+    }
+
+    public function authzPersonnelColumn(): string
+    {
+        return 'personnel_id';
+    }
+
+    public function authzMakerUserId(): ?int
+    {
+        return $this->requested_by;
     }
 }

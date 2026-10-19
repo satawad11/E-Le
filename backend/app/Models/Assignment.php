@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Authz\Contracts\AuthzResource;
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * มีวันที่มีผล ห้ามเขียนทับ: แก้โดยปิดแถวเดิม (`effective_to`, `ended_by`, `end_reason`) แล้วเพิ่มแถวใหม่
  * กฎ primary ซ้อน / management ซ้อน และ event `AssignmentChanged` อยู่ใน AssignmentService (R-03)
  */
-class Assignment extends Model
+class Assignment extends Model implements AuthzResource
 {
     use HasPublicUuid;
 
@@ -66,5 +67,21 @@ class Assignment extends Model
     {
         return $query->whereDate('effective_from', '<=', $date)
             ->where(fn (Builder $q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $date));
+    }
+
+    public function authzOwnerPersonnelId(): ?int
+    {
+        return $this->personnel_id;
+    }
+
+    /** @return array<int, int> */
+    public function authzOrgUnitIds(): array
+    {
+        return [$this->org_unit_id];
+    }
+
+    public function authzMakerUserId(): ?int
+    {
+        return $this->created_by;
     }
 }

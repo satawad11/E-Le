@@ -2,17 +2,28 @@
 
 namespace App\Providers;
 
+use App\Authz\Manifest\ModuleRegistry;
+use App\Authz\PermissionEngine;
 use App\Contracts\Personnel\PersonnelFieldAccess;
+use App\Events\AssignmentChanged;
+use App\Models\Authz\Permission;
+use App\Models\Authz\PermissionOverride;
+use App\Models\Authz\PermissionTemplate;
+use App\Models\Authz\PositionTemplate;
+use App\Models\Authz\RoleGrant;
+use App\Models\Authz\TemplatePermission;
 use App\Models\User;
 use App\Observers\UserObserver;
 use App\Services\AuditLogger;
-use App\Services\Personnel\DenyByDefaultPersonnelFieldAccess;
+use App\Services\Personnel\EnginePersonnelFieldAccess;
 use App\Services\Personnel\FieldClassificationRegistry;
 use App\Services\SystemSettingService;
 use App\Support\ProductionEnvironmentGuard;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route as RoutingRoute;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -25,9 +36,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // R03: deny by default จนกว่า R-04 จะผูกตัวที่ถาม PermissionEngine
-        $this->app->bind(PersonnelFieldAccess::class, DenyByDefaultPersonnelFieldAccess::class);
+        // R-04: จุดตัดสินสิทธิ์จุดเดียว — memo ต่อ request (scoped) + cache ต่อผู้ใช้ที่ล้างตาม version
+        $this->app->scoped(ModuleRegistry::class);
+        $this->app->scoped(PermissionEngine::class);
         $this->app->scoped(FieldClassificationRegistry::class);
+        $this->app->bind(PersonnelFieldAccess::class, EnginePersonnelFieldAccess::class);
     }
 
     /**
@@ -36,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureRateLimiters();
+        $this->configureAuthorization();
 
         ResetPassword::createUrlUsing(function (object $notifiable, string $token): string {
             return rtrim((string) config('app.frontend_url'), '/')
@@ -112,6 +126,27 @@ class AppServiceProvider extends ServiceProvider
      *
      * named limiter ผูกชื่อ limiter ไว้ในกุญแจ (md5(ชื่อ.กุญแจ)) แต่ละกลุ่มจึงแยกถังกันจริง
      */
+    /**
+     * R04-5 — `Route::...->permission('x.y.z')` และการล้าง cache ของ PermissionEngine
+     */
+    private function configureAuthorization(): void
+    {
+        RoutingRoute::macro('permission', function (string ...$permissions) {
+            /** @var RoutingRoute $this */
+            return $this->middleware('permission:'.implode('|', $permissions));
+        });
+
+        Event::listen(AssignmentChanged::class, function (AssignmentChanged $event): void {
+            app(PermissionEngine::class)->flushUser(User::where('personnel_id', $event->assignment->personnel_id)->first());
+        });
+
+        foreach ([RoleGrant::class, PermissionOverride::class, TemplatePermission::class, PositionTemplate::class, PermissionTemplate::class, Permission::class] as $model) {
+            $model::saved(fn () => app(PermissionEngine::class)->flushAll());
+            $model::deleted(fn () => app(PermissionEngine::class)->flushAll());
+        }
+        User::saved(fn (User $user) => app(PermissionEngine::class)->flushUser($user));
+    }
+
     private function configureRateLimiters(): void
     {
         $perUser = fn (Request $request) => $request->user()?->getAuthIdentifier() ?: $request->ip();
@@ -123,6 +158,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('password', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
         RateLimiter::for('token-refresh', fn (Request $request) => Limit::perMinute(10)->by($perUser($request)));
         RateLimiter::for('personal-data', fn (Request $request) => Limit::perMinute(10)->by($perUser($request)));
+
+        // R-04: นำเข้าข้อมูลบุคลากรทั้งไฟล์ — งานหนักและเปลี่ยนข้อมูลจำนวนมาก
+        RateLimiter::for('imports', fn (Request $request) => Limit::perMinute(5)->by($perUser($request)));
 
         // พิมพ์/ดาวน์โหลดเอกสารรายฉบับ (ใบลา ใบยกเลิก บัตรลา ไฟล์แนบ)
         RateLimiter::for('documents', fn (Request $request) => Limit::perMinute(30)->by($perUser($request)));

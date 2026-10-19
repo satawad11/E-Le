@@ -11,8 +11,8 @@ use Illuminate\Database\Seeder;
  * ทุกตัว idempotent รันซ้ำได้โดยไม่สร้างข้อมูลซ้ำและไม่ลบของเดิม
  *
  * สิ่งที่ **ไม่มี** ใน baseline โดยตั้งใจ:
- *   - บัญชีผู้ใช้ทดสอบ บทบาท สิทธิ์ เมนู — สิทธิ์และเมนูมาจาก manifest ของโมดูล (`modules:sync`, R-04)
- *     บัญชีเกิดจากข้อมูลบุคลากร (JML, R-05) ไม่มีรหัสผ่านตั้งต้นในระบบ
+ *   - บัญชีผู้ใช้ทดสอบและรหัสผ่านตั้งต้น — บัญชีเกิดจากข้อมูลบุคลากร (JML, R-05)
+ *   (permission ชุดสิทธิ์ และเมนูมาจาก manifest ผ่าน ModuleManifestSeeder = `modules:sync`)
  *   - หน่วยงานระดับงาน/แผนกวิชา บุคลากร ตำแหน่ง — นำเข้าใน R-03 จากไฟล์ที่งานบุคคลยืนยัน
  *   - สายอนุมัติ (approval_steps / workflow definition ของการลา) — R-04/R-08 สร้างจาก manifest (ADR-R-006)
  */
@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             OrganizationBaselineSeeder::class,
             PersonnelTypeSeeder::class,
             FieldClassificationSeeder::class,
+            ModuleManifestSeeder::class,
 
             // ระเบียบราชการเป็นข้อมูลตั้งต้นที่มีรุ่น (ADR-R-005)
             FiscalYearSeeder::class,

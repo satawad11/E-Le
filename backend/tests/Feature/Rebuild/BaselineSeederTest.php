@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Rebuild;
 
+use App\Authz\Manifest\ModuleRegistry;
 use App\Models\OrgUnit;
 use App\Models\OrgUnitType;
 use App\Models\PersonnelType;
@@ -89,17 +90,18 @@ class BaselineSeederTest extends TestCase
         $this->assertTrue(DB::table('work_schedules')->where('is_default', true)->exists());
     }
 
-    public function test_baseline_seeds_no_accounts_roles_permissions_or_menus(): void
+    public function test_baseline_seeds_no_accounts_and_syncs_permissions_from_manifests(): void
     {
         $this->assertSame(0, DB::table('users')->count(), 'ไม่มีบัญชีหรือรหัสผ่านตั้งต้นใน baseline');
-        $this->assertSame(0, DB::table('permissions')->count(), 'permission มาจาก manifest (R-04) เท่านั้น');
-        $this->assertSame(0, DB::table('permission_templates')->count());
         $this->assertSame(0, DB::table('personnel')->count());
+        $this->assertSame(count(app(ModuleRegistry::class)->permissions()), DB::table('permissions')->whereNull('retired_at')->count(), 'permission มาจาก manifest เท่านั้น');
+        $this->assertGreaterThan(0, DB::table('position_templates')->whereNotNull('org_unit_type_level')->count());
+        $this->assertSame(0, DB::table('role_grants')->count(), 'ไม่มีสิทธิ์เชิงหน้าที่ตั้งต้น');
     }
 
     public function test_seeders_are_idempotent(): void
     {
-        $tables = ['org_unit_types', 'org_units', 'personnel_types', 'leave_types', 'leave_policies', 'holidays',
+        $tables = ['permissions', 'permission_templates', 'template_permissions', 'position_templates', 'org_unit_types', 'org_units', 'personnel_types', 'leave_types', 'leave_policies', 'holidays',
             'fiscal_years', 'notification_types', 'notification_templates', 'work_schedules', 'work_schedule_assignments'];
         $before = collect($tables)->mapWithKeys(fn ($t) => [$t => DB::table($t)->count()])->all();
 

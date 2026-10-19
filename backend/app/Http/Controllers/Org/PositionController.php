@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OrgUnitType;
 use App\Models\Position;
 use App\Models\PositionGroup;
+use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -47,6 +48,8 @@ class PositionController extends Controller
             'sort_order' => $data['sort_order'] ?? 0,
         ]);
 
+        app(AuditLogger::class)->log('position.created', $position, null, null, $position->only(['code', 'name', 'kind', 'org_unit_type_id']));
+
         return response()->json($this->present($position->load(['group', 'orgUnitType'])), 201);
     }
 
@@ -57,7 +60,9 @@ class PositionController extends Controller
             'sort_order' => ['sometimes', 'integer'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
+        $before = $position->only(array_keys($data));
         $position->update($data);
+        app(AuditLogger::class)->log('position.updated', $position, null, $before, $position->only(array_keys($data)));
 
         return response()->json($this->present($position->load(['group', 'orgUnitType'])));
     }

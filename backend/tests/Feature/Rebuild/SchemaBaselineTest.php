@@ -175,7 +175,7 @@ class SchemaBaselineTest extends TestCase
         $files = collect(File::files(database_path('migrations')))->map(fn ($f) => $f->getFilenameWithoutExtension());
 
         $this->assertEqualsCanonicalizing($files->all(), $ran->all());
-        $this->assertTrue($ran->every(fn (string $m) => str_contains($m, '_r02_')), 'migration ทุกไฟล์ต้องเป็นชุด baseline R02');
+        $this->assertTrue($ran->every(fn (string $m) => preg_match('/_r0\d_/', $m) === 1), 'migration ทุกไฟล์ต้องเป็นชุด REBUILD (baseline R02 + เฟสถัดไป)');
         $this->assertFalse(File::exists(database_path('migrations/0001_01_01_000000_create_users_table.php')));
         $this->assertGreaterThan(100, count(File::files(database_path('migrations-legacy'))), 'migration เดิมต้องย้ายไปเก็บที่ migrations-legacy/');
     }

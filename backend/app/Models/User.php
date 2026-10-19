@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Authz\Contracts\AuthzResource;
+use App\Authz\Contracts\ScopedByAuthz;
+use App\Models\Concerns\AuthorizesByPersonnel;
 use App\Models\Concerns\HasPublicUuid;
 use App\Models\Overtime\OvertimeTimeRecord;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -17,14 +20,13 @@ use Laravel\Sanctum\HasApiTokens;
  * บัญชีผู้ใช้ (CORE-03) — บุคลากร ≠ บัญชีผู้ใช้
  *
  * ชื่อ สังกัด และตำแหน่งมาจากข้อมูลบุคลากร (`personnel`, `assignments`) ไม่เก็บซ้ำที่บัญชี
- * สิทธิ์ไม่ได้อยู่ที่บัญชี: คำนวณจาก assignment / role grant / override โดย PermissionEngine (R-04)
- * ระหว่าง R-02–R-03 ยังไม่มี engine ทุกการตรวจสิทธิ์จึงถูกปฏิเสธ (deny by default)
+ * สิทธิ์ไม่ได้อยู่ที่บัญชี: คำนวณจาก assignment / role grant / override โดย App\Authz\PermissionEngine
  */
 #[Fillable(['personnel_id', 'username', 'email', 'password', 'status', 'account_type'])]
 #[Hidden(['id', 'personnel_id', 'password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements AuthzResource, ScopedByAuthz
 {
-    use HasApiTokens, HasFactory, HasPublicUuid, Notifiable;
+    use AuthorizesByPersonnel, HasApiTokens, HasFactory, HasPublicUuid, Notifiable;
 
     public const STATUS_PENDING = 'pending';
 
@@ -102,5 +104,20 @@ class User extends Authenticatable
     public function overtimeTimeRecords(): HasMany
     {
         return $this->hasMany(OvertimeTimeRecord::class);
+    }
+
+    public function authzPersonnelId(): ?int
+    {
+        return $this->personnel_id;
+    }
+
+    public function authzPersonnelColumn(): string
+    {
+        return 'personnel_id';
+    }
+
+    public function authzMakerUserId(): ?int
+    {
+        return null;
     }
 }

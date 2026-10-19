@@ -2,20 +2,37 @@
 
 namespace App\Http\Middleware;
 
+use App\Authz\PermissionEngine;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * alias `permission:` ของ route — แทน middleware ของ spatie ที่ถอดออกแล้ว (ADR-R-003)
+ * `->permission('module.feature.action')` / alias `permission:` (R04-5)
  *
- * ระหว่าง R-02–R-03 ยังไม่มี PermissionEngine จึงปฏิเสธทุกคำขอ (deny by default)
- * R-04 เปลี่ยนให้เรียก `PermissionEngine::can()` และแทนการประกาศแบบเดิมด้วย `->permission('x.y.z')`
+ * ตรวจว่าผู้ใช้มี permission นี้อย่างน้อยหนึ่ง scope จาก PermissionEngine — ไม่มีเลยตอบ 403
+ * การตรวจระดับรายการ (resource อยู่ใน scope ไหม / กฎกลาง) ทำใน controller ด้วย `can()` และตอบ 404 เมื่อนอก scope
+ * ระบุหลายชื่อคั่นด้วย `|` = มีชื่อใดชื่อหนึ่งก็ผ่าน
  */
 class RequirePermission
 {
+    public function __construct(private readonly PermissionEngine $engine) {}
+
     public function handle(Request $request, Closure $next, string ...$permissions): Response
     {
-        return response()->json(['message' => DenyUntilPermissionEngine::MESSAGE], Response::HTTP_FORBIDDEN);
+        $user = $request->user();
+        $names = collect($permissions)->flatMap(fn (string $p) => explode('|', $p))->filter()->values();
+
+        if ($user === null) {
+            return response()->json(['message' => 'กรุณาเข้าสู่ระบบ'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        foreach ($names as $name) {
+            if ($this->engine->allows($user, $name)) {
+                return $next($request);
+            }
+        }
+
+        return response()->json(['message' => 'ไม่มีสิทธิ์ใช้งานฟังก์ชันนี้'], Response::HTTP_FORBIDDEN);
     }
 }
