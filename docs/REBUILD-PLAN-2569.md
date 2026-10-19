@@ -144,7 +144,7 @@ MFA (TOTP + รหัสสำรอง) บังคับ L1–L3, งาน�
 |---|---|
 | **ลบ** | `departments`, `department_org_unit_map`, `roles` (เดิม), ตาราง spatie (`permissions`, `roles`, `model_has_*`, `role_has_permissions`), `permission_aliases`, `permission_denies`, `permission_scopes`, `users.custom_permissions`, `user_role_grants`, `org_unit_members`, `org_unit_managers`, `personnel_assignments`, `user_profiles`, `approval_steps`, `workflow_shadow_comparisons`, `menus` (สร้างจาก manifest แทน) |
 | **สร้างใหม่ (core)** | `org_unit_types`, `org_units` (+`path`, `level`), `positions`, `position_groups`, `personnel_types`, `personnel`, `personnel_profiles` (เข้ารหัสฟิลด์อ่อนไหว), `personnel_educations`, `personnel_trainings`, `personnel_licenses`, `personnel_documents`, `personnel_change_requests`, `assignments`, `field_classifications`, `sensitive_access_logs` |
-| **สร้างใหม่ (สิทธิ์)** | `modules`, `module_features`, `permissions`, `permission_templates`, `template_permissions` (scope), `position_templates`, `role_grants` (functional), `grant_attributes`, `permission_overrides`, `permission_change_requests`, `access_reviews`, `access_review_items` |
+| **สร้างใหม่ (สิทธิ์)** | `modules`, `module_features`, `permissions`, `permission_templates`, `template_permissions` (scope), `position_templates`, `role_grants` (functional, duty attributes ใน `attributes` json — ADR-R-012), `permission_overrides`, `permission_change_requests`, `access_reviews`, `access_review_items` |
 | **สร้างใหม่ (บัญชี)** | `users` (สถานะ, `separated_at`, `last_login_at`), `mfa_credentials`, `login_events` |
 | **เก็บโครงสร้าง ล้างข้อมูล** | ตารางโมดูลลา ลงเวลา OT สารบรรณ แจ้งเตือน document engine workflow engine, `fiscal_years`, `holidays`, `audit_logs` |
 

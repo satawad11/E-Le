@@ -10,9 +10,10 @@
 - [ ] Q4 ชื่อประเภทหน่วย L4 และรายชื่อหน่วยที่มี L4
 - [ ] Q5 ผู้ลงนามรับรอง Permission Matrix
 - [ ] Q6 ยืนยัน MFA แบบ TOTP
-- [ ] Q7 (R-02) เทสต์ชุดเดิม 85 ไฟล์พักไว้ที่ `backend/tests/Legacy/` ไม่อยู่ใน testsuite ปกติ เพราะ fixture ใช้ spatie/departments ที่ถูกตัด — ยืนยันแนวทาง: เขียนใหม่ในเฟสที่ระบุใน README แล้วลบไฟล์เดิม · กลุ่ม "ล้าสมัยโดยแผน" 16 ไฟล์ลบได้เมื่อ R-04 มี persona/IDOR tests (ADR-R-010)
+- [x] Q7 (R-02 → ตัดสิน 2026-10-19) อนุมัติพัก `backend/tests/Legacy/` · รายงาน checkpoint ทุกเฟสต้องระบุเทสต์ใน tests/Legacy ที่ย้ายหรือลบในเฟสนั้น · `tests/Legacy` ต้องว่างก่อนผ่าน R-09 (ADR-R-010)
 - [ ] Q8 (R-02) ระเบียบการลาของบุคลากร 8 ประเภทใหม่ใช้ชุดของประเภทเดิม 4 ประเภท (`LeaveRegulationSeeder::LEGACY_TYPE_MAP`: ข้าราชการ→ข้าราชการครู/ครูผู้ช่วย/ม.38 ค.(2) · ลูกจ้างชั่วคราว→ครูอัตราจ้าง/ลูกจ้างชั่วคราว/เจ้าหน้าที่ตามสัญญา) และค่า `has_license`/`has_contract_end` ใน `PersonnelTypeSeeder` — งานบุคคลยืนยันหรือแก้
-- [ ] Q9 (R-02) ช่องทางแจ้งเตือนรายบุคคล (`telegram_chat_id`, `line_user_id`, `notification_channel`, `phone`) ไม่อยู่ใน `users` ตาม CORE-03 แล้ว — เสนอเก็บใน `notification_preferences` (R-08 notification) หรือ `personnel_profiles` · และ PLAN §4.2 ระบุ `grant_attributes` แต่ CORE-04/TASKS ใช้ `role_grants.attributes` (json) ซึ่ง R-02 ทำตามแบบหลัง
+- [x] Q9 (R-02 → ตัดสิน 2026-10-19) ใช้ `role_grants.attributes` (json) ไม่มีตาราง `grant_attributes` · ช่องทาง LINE/Telegram เก็บในตาราง `notification_channels` ของโมดูลแจ้งเตือน (R-08) (ADR-R-012)
+- [x] Q10 (R-03 ตัดสิน 2026-10-19) ล็อกอินด้วยเลขประจำตัวประชาชนปิดเป็นค่าเริ่มต้น (`config auth.allow_national_id_login` = false) · ล็อกอินหลักคืออีเมลหรือ `personnel_code` (ADR-R-013)
 
 ## R-00 สำรองและปิดระบบเดิม (เจ้าของระบบ)
 - [ ] R00-1 backup ฐานข้อมูล + storage และทดสอบ restore บนเครื่องแยก
@@ -98,10 +99,15 @@
 - [ ] ย้าย route ตาม PLAN §8.4 + redirect จาก route เดิม
 - [ ] งานรออนุมัติของฉัน (`/inbox`) รวมงานของโมดูล
 - [ ] เทสต์ persona + dry-run สายอนุมัติทุกคน × ทุกประเภท (ลา)
-- [ ] รายงาน R-08-<module>
+- [ ] รายงาน R-08-<module> (ระบุเทสต์ใน `tests/Legacy` ที่ย้าย/ลบ)
+
+งานเฉพาะโมดูล:
+- [ ] R08-leave-1 แก้ endpoint สาธารณะ `GET /api/leaves/verify/{hash}` และ `/qrcode` ที่ยังอ้าง `user.profile` ให้อ่านจาก `personnel` (ไม่ส่งข้อมูลอ่อนไหว)
+- [ ] R08-notification-1 ตาราง `notification_channels` (ผู้ใช้ × ช่องทาง LINE/Telegram/อีเมล, ค่าระบุตัวผู้รับ, ยืนยันแล้วเมื่อใด) แทนคอลัมน์ `users.telegram_chat_id`/`line_user_id`/`notification_channel` เดิม (Q9, ADR-R-012)
 
 ## R-09 UAT และเปิดใช้
 - [ ] R09-1 export รอบสุดท้ายจากระบบเดิม · ตัดระบบ · `migrate:fresh --seed` บน production ใหม่
 - [ ] R09-2 นำเข้าข้อมูลจริง (หน่วยงาน บุคลากร คำสั่ง) และตั้งค่าสิทธิ์
 - [ ] R09-3 UAT ตาม ACCEPTANCE-CRITERIA · ทดสอบเจาะระบบ · ตรวจ PDPA
 - [ ] R09-4 อบรมผู้ใช้ · นำร่อง · รายงาน R-09
+- [ ] R09-5 `backend/tests/Legacy/` ต้องว่าง (ทุกไฟล์ถูกเขียนใหม่หรือลบตามที่รายงานแต่ละเฟสระบุ) จึงผ่าน R-09 (Q7)
