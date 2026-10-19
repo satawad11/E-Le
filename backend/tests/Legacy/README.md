@@ -1,0 +1,28 @@
+# tests/Legacy — เทสต์ของระบบเดิมที่พักไว้ระหว่าง REBUILD-2569
+
+> สร้างใน R-02 (2026-10-19) · ADR-R-010 · คำถามเจ้าของระบบ Q7 ใน `TASKS.md`
+
+R-02 ถอด spatie/laravel-permission, ตาราง `departments`, `user_profiles`, `approval_steps`, `org_unit_managers` ฯลฯ
+และให้ทุก route ที่ต้องยืนยันตัวตนตอบ 403 จนถึง R-04 (deny by default) เทสต์ชุดเดิม 85 ไฟล์จึงรันไม่ได้
+เพราะ fixture สร้าง role/department/user_profile หรือคาดหวังให้ endpoint ทำงาน
+
+ไฟล์เหล่านี้ **ไม่ได้ถูกลบ** และ **ไม่อยู่ใน testsuite ปกติ** (`phpunit.xml` รันเฉพาะ `tests/Unit`, `tests/Feature`)
+แต่ละไฟล์มีเฟสที่ต้องเขียนใหม่บนแบบจำลองใหม่ เมื่อเฟสนั้นมีเทสต์ทดแทนครบแล้วจึงลบไฟล์เดิมออกจากที่นี่
+กฎธุรกิจที่ยังมีผล (ระเบียบการลา ADR-R-005, document engine, เวลา) ต้องถูกพอร์ตเป็นเทสต์ใหม่ ห้ามทิ้ง
+
+รันเพื่อดูสถานะได้ด้วย `vendor/bin/phpunit tests/Legacy` (คาดว่าส่วนใหญ่ล้ม)
+
+| กลุ่ม | ไฟล์ | เฟสที่เขียนใหม่ |
+|---|---|---|
+| ระเบียบการลา (กฎที่ต้องคงไว้) | LeaveEntitlementRulesTest, LeaveEligibilityRulesTest, ThaiGovernmentLeaveTypesTest, PromotionScreeningTest | R-08 leave |
+| ใบลา สายอนุมัติ ยกเลิก เอกสาร | ApprovalTest, LeaveTest, LeaveActingOnBehalfTest, LeaveApprovalChainSnapshotTest, LeaveAuthorizationTest, LeaveCancellation{Authorization,Chain,Request}Test, LeaveCardPdfTest, LeaveDeletePermissionTest, LeaveEvidenceAccessTest, LeaveExportTest, LeaveForm{Binding,Data,Designer}Test, LeaveLifecycleFixesTest, LeaveModernizationTest, LeaveRegisterReportTest, LeaveSelfApprovalTest, LeaveVerificationTest, LeaveVisibilityTest, GovernmentLeave{Governance,ReportDepartments}Test, ApprovalResolverAndWorkflowHardeningTest | R-08 leave |
+| ลงเวลา | Attendance{ExportAuthorization,ImageSecurity,Integration}Test, Time/TimeServiceTest, Time/WorkScheduleBackfillTest | R-08 attendance (TimeService ส่วนไม่ขึ้นกับสิทธิ์ย้ายเร็วกว่าได้ใน R-03) |
+| OT | Overtime{ApprovalChain,CriticalPath,OrderProvisioning}Test | R-08 overtime |
+| สารบรรณ | Saraban/* (7 ไฟล์ + SarabanTestCase) | R-08 saraban |
+| แจ้งเตือน | NotificationCenterTest | R-08 notification |
+| Document engine / รายงาน | DocumentEngineTest, DocumentReportEngineTest, DocumentTemplateSecurityTest, ReportingLayerTest, DashboardReportScopeTest | R-04 (สิทธิ์) + R-08 |
+| Workflow engine | Workflow/{ApprovalWorkflowManagement,EngineApproverFidelity,SarabanWorkflowPinning,WorkflowAuthorization,WorkflowEngine}Test | R-04 (resolver) + R-08 |
+| บัญชีและการยืนยันตัวตน | AuthTest, AuthenticationHardeningTest, RateLimitBucketIsolationTest, UserAccountGovernanceTest, UserImportTest, Unit/UserTest | R-05 |
+| องค์กร/บุคลากร | PersonnelApiAlignmentTest, PersonnelDomainCoreServicesTest, PersonnelEntityFoundationTest, PositionCatalogTest, PersonalDataProtectionTest, SecureFileAuthorizationTest | R-03 / R-06 |
+| ตั้งค่าระบบ audit โมดูล | SystemSettingsTest, CentralAuditLogTest, ModuleRegistryTest | R-04 / R-07 |
+| **ล้าสมัยโดยแผน** (ทดสอบกลไกที่ถูกตัด) | AccessGovernance2569Test, AccessGovernancePhase2Test, AuthorizationCleanupAndVerificationTest, AuthorizationMatrixTest, CoreDataFoundationTest, LegacyModernizationMigrationRollbackTest, OperationalPermissionMatrixTest, OrgScopeResolverTest, PermissionEvaluatorTest, PermissionScopeCommandTest, PersonnelSyncTest, PrivilegeEscalationGuardTest, RbacCleanupTest, SchoolStructureCommandTest, UserDirectPermissionTest, Workflow/LeaveWorkflowShadowParityTest | แทนด้วย persona/IDOR/matrix tests ของ R-04 แล้วลบ (ต้องได้รับอนุมัติ Q7) |

@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PersonnelProfile;
 use App\Models\User;
-use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -39,11 +39,10 @@ class AuthController extends Controller
         if (filter_var($loginField, FILTER_VALIDATE_EMAIL)) {
             $user = User::where('email', $loginField)->first();
         } else {
-            // Check if it matches id_card_number in user_profiles
-            $idCardHash = hash('sha256', $loginField.config('app.key'));
-            $profile = UserProfile::where('id_card_number_hash', $idCardHash)->first();
+            // เลขประจำตัวประชาชนค้นผ่าน hash เท่านั้น (CORE-02: national_id เข้ารหัส)
+            $profile = PersonnelProfile::where('national_id_hash', PersonnelProfile::hashNationalId($loginField))->first();
             if ($profile) {
-                $user = $profile->user;
+                $user = User::where('personnel_id', $profile->personnel_id)->first();
             }
         }
 
@@ -54,31 +53,26 @@ class AuthController extends Controller
             ]);
         }
 
-        if (! $user->is_active) {
+        // CORE-03: เข้าสู่ระบบได้เฉพาะบัญชี active ที่ไม่ถูกล็อก · บัญชี service ห้าม interactive login
+        if (! $user->isActive() || $user->account_type === 'service') {
             throw ValidationException::withMessages([
-                'email' => ['บัญชีผู้ใช้นี้ถูกระงับการใช้งาน'],
+                'email' => ['บัญชีผู้ใช้นี้ยังไม่เปิดใช้งานหรือถูกระงับการใช้งาน'],
             ]);
         }
 
         RateLimiter::clear($lockKey);
 
-        // ใช้ในรายงานทบทวนสิทธิ์รายปี (ACCESS-GOV-01) — saveQuietly เพื่อไม่ให้ไปซิงก์ทะเบียนบุคลากรทุกครั้งที่ login
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
 
         Auth::login($user);
         $expiration = (int) config('sanctum.expiration', 480);
         $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;
 
-        $user->load(['department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']);
-        $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
-        $user->direct_permissions = array_values(array_unique($user->getDirectPermissions()->pluck('name')->toArray()));
-        $user->role_names = array_values(array_unique($user->roles->pluck('name')->toArray()));
-
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
             'expires_in' => $expiration * 60,
-            'user' => $user,
+            'user' => $this->present($user),
         ]);
     }
 
@@ -156,11 +150,28 @@ class AuthController extends Controller
 
     public function user(Request $request)
     {
-        $user = $request->user()->load(['department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']);
-        $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
-        $user->direct_permissions = array_values(array_unique($user->getDirectPermissions()->pluck('name')->toArray()));
-        $user->role_names = array_values(array_unique($user->roles->pluck('name')->toArray()));
+        return response()->json($this->present($request->user()));
+    }
 
-        return response()->json($user);
+    /**
+     * ข้อมูลบัญชีของตนเอง — สิทธิ์ว่างไว้จนกว่า R-04 จะต่อ PermissionEngine (`GET /api/me/permissions`)
+     */
+    private function present(User $user): array
+    {
+        $personnel = $user->personnel;
+
+        return [
+            'uuid' => $user->uuid,
+            'username' => $user->username,
+            'email' => $user->email,
+            'status' => $user->status,
+            'account_type' => $user->account_type,
+            'last_login_at' => $user->last_login_at?->toIso8601String(),
+            'personnel' => $personnel ? [
+                'uuid' => $personnel->uuid,
+                'full_name' => $personnel->full_name,
+            ] : null,
+            'permission_names' => [],
+        ];
     }
 }

@@ -119,7 +119,8 @@ class AttendanceController extends Controller
         $attendance = $this->reconciliation->reconcile($recorded['event']);
 
         if ($lateMinutes > 0) {
-            $reviewers = User::permission('attendance.view_all')->get()
+            // R02-11: ยังไม่มี PermissionEngine ให้ค้นผู้ถือสิทธิ์ (deny by default) — R-04/R-08 แทนด้วยผู้รับตามสิทธิ์และ scope
+            $reviewers = collect()
                 ->filter(fn (User $reviewer) => $this->scope->canSee($reviewer, $user));
             $this->notifications->emit('attendance.late', $reviewers, $attendance, [
                 'minutes' => $lateMinutes, 'time' => $time->format('H:i'),
@@ -201,7 +202,8 @@ class AttendanceController extends Controller
         $earlyLeaveMinutes = (int) $attendance->early_leave_minutes;
 
         if ($earlyLeaveMinutes > 0) {
-            $reviewers = User::permission('attendance.view_all')->get()
+            // R02-11: ยังไม่มี PermissionEngine ให้ค้นผู้ถือสิทธิ์ (deny by default) — R-04/R-08 แทนด้วยผู้รับตามสิทธิ์และ scope
+            $reviewers = collect()
                 ->filter(fn (User $reviewer) => $this->scope->canSee($reviewer, $user));
             $this->notifications->emit('attendance.early_leave', $reviewers, $attendance, [
                 'minutes' => $earlyLeaveMinutes, 'time' => $time->format('H:i'),

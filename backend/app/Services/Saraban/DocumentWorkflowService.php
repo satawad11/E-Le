@@ -84,7 +84,8 @@ class DocumentWorkflowService
 
         // Notify the registrars. Selected by permission rather than by a role name
         // string, because the role that holds it differs between installs.
-        $officers = User::permission('saraban.document.register')->get();
+        // R02-11: ยังไม่มี PermissionEngine ให้ค้นผู้ถือสิทธิ์ (deny by default) — R-04/R-08 แทนด้วยผู้รับตามสิทธิ์และ scope
+        $officers = collect();
         $this->notifications->emit('saraban.task', $officers, $document, [
             'status' => 'pending_review', 'action' => 'submitted',
         ], User::find($userId));

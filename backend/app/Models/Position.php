@@ -4,45 +4,46 @@ namespace App\Models;
 
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ทะเบียนตำแหน่ง (ORG-ACCESS-02)
+ * ตำแหน่ง (CORE-01)
  *
- * ตำแหน่ง **ไม่ให้สิทธิ์ใด ๆ** — สิทธิ์มาจากบทบาทและการมอบหมายหน่วยงาน
- * (docs/ORG-POSITION-ACCESS-MAPPING.md หัวข้อ 1) ไม่ลบแถว ใช้ปิดใช้งานแทน
- * เพราะ `personnel_assignments` ในอดีตยังอ้างถึงอยู่
+ * `kind = line` ตำแหน่งงาน (ครู เจ้าหน้าที่ ฯลฯ) · `kind = management` ตำแหน่งบริหาร ผูกกับประเภทหน่วย
+ * ได้ประเภทละหนึ่งตำแหน่ง สิทธิ์ของตำแหน่งแนบผ่าน `position_templates` (CORE-04) ไม่อยู่ที่ตารางนี้
  */
 class Position extends Model
 {
     use HasPublicUuid;
 
-    protected $fillable = ['code', 'name', 'position_group_id', 'sort_order', 'is_active'];
+    public const KIND_LINE = 'line';
+
+    public const KIND_MANAGEMENT = 'management';
+
+    protected $fillable = ['code', 'name', 'kind', 'position_group_id', 'org_unit_type_id', 'sort_order', 'is_active'];
 
     protected $casts = ['is_active' => 'boolean', 'sort_order' => 'integer'];
 
-    protected $hidden = ['id', 'position_group_id'];
+    protected $hidden = ['id', 'position_group_id', 'org_unit_type_id'];
 
     public function getRouteKeyName(): string
     {
         return 'uuid';
     }
 
-    /**
-     * ตำแหน่งที่ผูกให้บุคลากรได้: ต้องใช้งานอยู่ ยกเว้นเป็นตำแหน่งเดิมของคนนั้น (บันทึกซ้ำได้หลังถูกปิดใช้งาน)
-     */
-    public static function assignable(string $uuid, ?int $currentPositionId): ?self
-    {
-        $position = self::where('uuid', $uuid)->first();
-
-        if ($position === null || (! $position->is_active && $currentPositionId !== $position->getKey())) {
-            return null;
-        }
-
-        return $position;
-    }
-
-    public function group()
+    public function group(): BelongsTo
     {
         return $this->belongsTo(PositionGroup::class, 'position_group_id');
+    }
+
+    public function orgUnitType(): BelongsTo
+    {
+        return $this->belongsTo(OrgUnitType::class);
+    }
+
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(Assignment::class);
     }
 }

@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-10-19 — REBUILD-2569 · R-02 Schema baseline
+- migration เดิม 141 ไฟล์ย้ายไป `backend/database/migrations-legacy/` (Laravel ไม่โหลด) · baseline ใหม่ 14 ไฟล์ (`*_r02_2_*` … `*_r02_7i_*`)
+- ตาราง core ใหม่ตาม CORE-01..04: องค์กร 4 · บุคลากร 11 · บัญชี 3 (+ `users` แบบใหม่) · สิทธิ์ 12
+- ตารางโมดูลเดิม 69 ตารางสร้างในรูปสุดท้ายของชุดเดิม (สร้างจาก schema ของฐานข้อมูลทดสอบที่รัน migration เดิมครบ) ตัด 18 ตารางตาม PLAN §4.2 · `department_id` → `org_unit_id` (สารบรรณ 2 ตาราง, ปฏิทิน) · ตัดคอลัมน์อ้าง `roles` 4 จุด
+- ถอด `spatie/laravel-permission` (composer, `config/permission.php`, trait, middleware, seeders) · ถอด allow-all ก่อน Gate ใน `AppServiceProvider`
+- deny by default: `DenyUntilPermissionEngine` ตอบ 403 ทุก route ที่ต้องยืนยันตัวตน ยกเว้น logout/refresh-token/user จนถึง R-04 · alias `permission:` ปฏิเสธเสมอ
+- ลบ model/service/command/controller ที่อ้างตารางที่ตัดหรือ spatie (ดูรายงาน R-02) และ seeders ตาม PLAN §4.3 · ยกเลิก shadow mode ของ workflow (ADR-R-006) · ปิด `approver_role_fallback` ถาวร
+- seeders ใหม่: ประเภทหน่วย 6 · root + 4 ฝ่าย · ประเภทบุคลากร 8 · ระเบียบการลา (fixture JSON) · แคตตาล็อกการแจ้งเตือน (fixture JSON) · ไม่มีบัญชี/บทบาท/รหัสผ่านตั้งต้น
+- model ใหม่ของ core (`App\Models\*`, `App\Models\Authz\*`) พร้อม cast `encrypted` และบันทึกแบบเพิ่มได้อย่างเดียว
+- เทสต์ชุดเดิม 85 ไฟล์พักไว้ที่ `backend/tests/Legacy/` (ADR-R-010) · เทสต์ใหม่ `tests/Feature/Rebuild/*`
+
 ## 2026-10-18 — REBUILD-2569 · R-01 กติกาใหม่
 - เริ่มโหมด REBUILD-2569 (ADR-R-001) ยกเลิกกติกาและเอกสารชุด LEGACY/PROD-00
 - ลบเอกสาร checkpoint/audit/governance ชุดเดิม 90+ ไฟล์ (อยู่ใน git history)

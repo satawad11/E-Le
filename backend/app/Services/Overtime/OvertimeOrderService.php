@@ -43,7 +43,8 @@ class OvertimeOrderService
             ]);
             $this->provisioner->start($order);
             $this->audit->log('overtime.order.created', $order, null, null, $order->toArray(), null, $actor->id);
-            $reviewers = User::permission(['overtime.management.review', 'attendance.ot_summary'])->get()
+            // R02-11: ยังไม่มี PermissionEngine ให้ค้นผู้ถือสิทธิ์ (deny by default) — R-04/R-08 แทนด้วยผู้รับตามสิทธิ์และ scope
+            $reviewers = collect()
                 ->filter(fn (User $reviewer) => $this->scopes->canSeeOrgUnit(
                     $reviewer, 'overtime.management.review', $orgUnitId, OrgScopeResolver::ORGANIZATION
                 ));

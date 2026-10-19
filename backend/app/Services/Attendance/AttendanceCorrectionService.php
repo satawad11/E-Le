@@ -48,7 +48,8 @@ class AttendanceCorrectionService
             $instance = $this->provisioner->start($correction);
             $this->audit->log('attendance.manual_correction.requested', $correction, null, $before, $changes, $reason, $actor->getKey());
 
-            $reviewers = User::permission('attendance.view_all')->get()
+            // R02-11: ยังไม่มี PermissionEngine ให้ค้นผู้ถือสิทธิ์ (deny by default) — R-04/R-08 แทนด้วยผู้รับตามสิทธิ์และ scope
+            $reviewers = collect()
                 ->filter(fn (User $reviewer) => $this->scope->canSee($reviewer, $attendance->user));
             $this->notifications->emit('attendance.correction', $reviewers, $correction, [
                 'status' => 'pending',

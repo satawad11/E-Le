@@ -7,126 +7,99 @@ use App\Models\Overtime\OvertimeTimeRecord;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Traits\HasRoles;
 
-// LEGACY-04 (04-6): ถอด `custom_permissions` ออกแล้ว — คอลัมน์ถูกลบไปใน LEGACY-03
-// และสิทธิ์รายบุคคลต้องมีแหล่งเดียวคือ pivot ของ Spatie (DB-RISK-009)
-#[Fillable(['name', 'email', 'phone', 'telegram_chat_id', 'line_user_id', 'notification_channel', 'password', 'is_active', 'department_id', 'personnel_type_id', 'work_start_time', 'work_end_time'])]
-#[Hidden(['password', 'remember_token'])]
+/**
+ * บัญชีผู้ใช้ (CORE-03) — บุคลากร ≠ บัญชีผู้ใช้
+ *
+ * ชื่อ สังกัด และตำแหน่งมาจากข้อมูลบุคลากร (`personnel`, `assignments`) ไม่เก็บซ้ำที่บัญชี
+ * สิทธิ์ไม่ได้อยู่ที่บัญชี: คำนวณจาก assignment / role grant / override โดย PermissionEngine (R-04)
+ * ระหว่าง R-02–R-03 ยังไม่มี engine ทุกการตรวจสิทธิ์จึงถูกปฏิเสธ (deny by default)
+ */
+#[Fillable(['personnel_id', 'username', 'email', 'password', 'status', 'account_type'])]
+#[Hidden(['id', 'personnel_id', 'password', 'remember_token'])]
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, HasPublicUuid, HasRoles, Notifiable;
+    use HasApiTokens, HasFactory, HasPublicUuid, Notifiable;
+
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_LOCKED = 'locked';
+
+    public const STATUS_SUSPENDED = 'suspended';
+
+    public const STATUS_SEPARATED = 'separated';
 
     protected function casts(): array
     {
-        return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean', 'phone' => 'encrypted', 'separated_at' => 'date', 'last_login_at' => 'datetime'];
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'locked_until' => 'datetime',
+            'separated_at' => 'date',
+            'last_login_at' => 'datetime',
+            'is_break_glass' => 'boolean',
+        ];
     }
 
-    protected $appends = ['full_name_with_title', 'role', 'role_id', 'personnel_uuid', 'personnel_code', 'personnel_status', 'position'];
-
-    public function getPersonnelUuidAttribute(): ?string
+    public function getRouteKeyName(): string
     {
-        return $this->personnel?->uuid;
+        return 'uuid';
     }
 
-    public function getPersonnelCodeAttribute(): ?string
+    public function isActive(): bool
     {
-        return $this->personnel?->personnel_code ?? $this->profile?->personnel_code;
+        return $this->status === self::STATUS_ACTIVE
+            && ($this->locked_until === null || $this->locked_until->isPast());
     }
 
-    public function getPersonnelStatusAttribute(): ?string
+    public function personnel(): BelongsTo
     {
-        return $this->personnel?->status ?? $this->profile?->status;
+        return $this->belongsTo(Personnel::class);
     }
 
-    public function getPositionAttribute(): ?string
+    public function mfaCredentials(): HasMany
     {
-        return $this->currentAssignment?->position ?? $this->profile?->position;
+        return $this->hasMany(MfaCredential::class);
     }
 
-    public function getFullNameWithTitleAttribute()
+    public function loginEvents(): HasMany
     {
-        $title = $this->relationLoaded('profile') && $this->profile ? $this->profile->title : '';
-
-        return $title && ! str_starts_with($this->name, $title) ? $title.$this->name : $this->name;
+        return $this->hasMany(LoginEvent::class);
     }
 
-    public function department()
+    public function roleGrants(): HasMany
     {
-        return $this->belongsTo(Department::class);
+        return $this->hasMany(Authz\RoleGrant::class);
     }
 
-    /** การมอบบทบาทที่ยังเปิดอยู่ (ACCESS-GOV-01 · C3) — เลขคำสั่งและวันหมดอายุของบทบาทปัจจุบัน */
-    public function currentRoleGrant()
+    public function permissionOverrides(): HasMany
     {
-        return $this->hasOne(UserRoleGrant::class)->whereNull('ended_at')->latest('id');
+        return $this->hasMany(Authz\PermissionOverride::class);
     }
 
-    public function orgUnit()
-    {
-        return $this->belongsTo(OrgUnit::class);
-    }
-
-    public function personnelAssignments()
-    {
-        return $this->hasMany(PersonnelAssignment::class);
-    }
-
-    public function currentAssignment()
-    {
-        return $this->hasOne(PersonnelAssignment::class)
-            ->where(function ($q) {
-                $q->whereNull('effective_to')
-                    ->orWhereDate('effective_to', '>=', today());
-            })
-            ->whereDate('effective_from', '<=', today())
-            ->latest('effective_from');
-    }
-
-    public function personnelType()
-    {
-        return $this->belongsTo(PersonnelType::class);
-    }
-
-    public function getRoleAttribute()
-    {
-        return $this->roles->first();
-    }
-
-    public function getRoleIdAttribute()
-    {
-        return $this->roles->first()?->id;
-    }
-
-    public function profile()
-    {
-        return $this->hasOne(UserProfile::class);
-    }
-
-    public function personnel()
-    {
-        return $this->hasOne(Personnel::class);
-    }
-
-    public function leaveBalances()
+    public function leaveBalances(): HasMany
     {
         return $this->hasMany(LeaveBalance::class);
     }
 
-    public function leaves()
+    public function leaves(): HasMany
     {
         return $this->hasMany(Leave::class);
     }
 
-    public function attendances()
+    public function attendances(): HasMany
     {
         return $this->hasMany(Attendance::class);
     }
 
-    public function overtimeTimeRecords()
+    public function overtimeTimeRecords(): HasMany
     {
         return $this->hasMany(OvertimeTimeRecord::class);
     }

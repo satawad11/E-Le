@@ -6,15 +6,15 @@
 **Branch:** งาน rebuild ทั้งหมดอยู่บน `rebuild/2569` · `main` คือระบบเดิมที่ใช้งานจริงจนถึง R-09 ห้าม merge ก่อนนั้น
 
 ## Current Phase
-`R-01 กติกาใหม่` — **เสร็จ รอตรวจ** (2026-10-18)
+`R-02 Schema baseline` — **เสร็จ รอตรวจ** (2026-10-19) · `docs/checkpoints/R-02-REPORT.md`
 
-ถัดไป: `R-02 Schema baseline` — **เริ่มได้หลังเจ้าของระบบยืนยัน R-00 และสั่งเริ่ม**
+ถัดไป: `R-03 Core องค์กรและบุคลากร` — เริ่มหลังตรวจและ merge `rebuild/R-02` เข้า `rebuild/2569`
 
 | เฟส | งาน | สถานะ |
 |---|---|---|
-| R-00 | สำรองข้อมูล export ถาวร tag `legacy-final` ผู้บริหารลงนามรับทราบการล้างข้อมูล | ⏳ เจ้าของระบบดำเนินการ |
-| R-01 | กติกาและเอกสารชุดใหม่ | ✅ เสร็จ รอตรวจ · `docs/checkpoints/R-01-REPORT.md` |
-| R-02 | Schema baseline · ยุบ migration · ลบ spatie | ⬜ |
+| R-00 | สำรองข้อมูล export ถาวร tag `legacy-final` ผู้บริหารลงนามรับทราบการล้างข้อมูล | ⏳ backup + tag แล้ว (2026-10-18) · เหลือทดสอบ restore, export ถาวร, ลงนาม |
+| R-01 | กติกาและเอกสารชุดใหม่ | ✅ เสร็จ · `docs/checkpoints/R-01-REPORT.md` |
+| R-02 | Schema baseline · ยุบ migration · ลบ spatie | ✅ เสร็จ รอตรวจ · `docs/checkpoints/R-02-REPORT.md` |
 | R-03 | Core องค์กรและบุคลากร | ⬜ |
 | R-04 | Permission Engine + manifest + เมนู | ⬜ |
 | R-05 | บัญชี JML MFA ทบทวนสิทธิ์ | ⬜ |
@@ -23,8 +23,8 @@
 | R-08 | ย้ายโมดูลลา ลงเวลา OT สารบรรณ แจ้งเตือน | ⬜ |
 | R-09 | UAT และเปิดใช้ | ⬜ |
 
-## Allowed Work (R-02 เมื่อได้รับคำสั่ง)
-ดู `TASKS.md` หัวข้อ R-02 และ `docs/CODEX-RUNBOOK.md`
+## Allowed Work (R-03 เมื่อได้รับคำสั่ง)
+ดู `TASKS.md` หัวข้อ R-03 และ `docs/CODEX-RUNBOOK.md`
 
 ## Forbidden Work
 - รัน `migrate:fresh` หรือคำสั่งล้างข้อมูลกับฐานข้อมูลจริงก่อน R-00 เสร็จ

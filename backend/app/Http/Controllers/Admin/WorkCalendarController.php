@@ -13,12 +13,12 @@ class WorkCalendarController extends Controller
     {
         $validated = $request->validate([
             'year' => ['nullable', 'integer', 'between:2000,2200'],
-            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'org_unit_id' => ['nullable', 'integer', 'exists:org_units,id'],
         ]);
 
-        return WorkCalendarException::with('department:id,name')
+        return WorkCalendarException::with('orgUnit:id,uuid,name')
             ->when($validated['year'] ?? null, fn ($query, $year) => $query->whereYear('date', $year))
-            ->when(array_key_exists('department_id', $validated), fn ($query) => $query->where('department_id', $validated['department_id']))
+            ->when(array_key_exists('org_unit_id', $validated), fn ($query) => $query->where('org_unit_id', $validated['org_unit_id']))
             ->orderBy('date')->paginate(100);
     }
 
@@ -27,9 +27,9 @@ class WorkCalendarController extends Controller
         $data = $this->validated($request);
 
         return response()->json(WorkCalendarException::updateOrCreate(
-            ['date' => $data['date'], 'department_id' => $data['department_id'] ?? null],
+            ['date' => $data['date'], 'org_unit_id' => $data['org_unit_id'] ?? null],
             $data
-        )->load('department:id,name'), 201);
+        )->load('orgUnit:id,uuid,name'), 201);
     }
 
     public function update(Request $request, WorkCalendarException $calendarException)
@@ -37,7 +37,7 @@ class WorkCalendarController extends Controller
         $data = $this->validated($request, true);
         $calendarException->update($data);
 
-        return $calendarException->fresh()->load('department:id,name');
+        return $calendarException->fresh()->load('orgUnit:id,uuid,name');
     }
 
     public function destroy(WorkCalendarException $calendarException)
@@ -53,7 +53,7 @@ class WorkCalendarController extends Controller
 
         return $request->validate([
             'date' => [$sometimes, 'date'],
-            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'org_unit_id' => ['nullable', 'integer', 'exists:org_units,id'],
             'day_type' => [$sometimes, Rule::in(['holiday', 'working_day'])],
             'name' => [$sometimes, 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],

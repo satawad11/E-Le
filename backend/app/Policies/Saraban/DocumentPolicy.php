@@ -16,12 +16,12 @@ class DocumentPolicy
     /**
      * Users who may see every document regardless of authorship or receivership.
      *
-     * LEGACY-04 (ปิดงาน) · Decision 2 — เดิมบรรทัดนี้เช็ค `hasRole('admin_saraban')`
+     * LEGACY-04 (ปิดงาน) · Decision 2 — เดิมบรรทัดนี้เช็คชื่อ role `admin_saraban`
      * ซึ่งเป็น role ที่ **ไม่มีอยู่จริงบนระบบ** เจ้าหน้าที่สารบรรณตัวจริง
      * (`Document Officer`) จึงไม่เคยถูกนับเป็นเจ้าหน้าที่ทะเบียนเลย
      *
      * ตัดสินจากสิทธิ์ "รับ/ส่งหนังสือ" แทน ตามที่เจ้าของระบบสั่งให้แยกสิทธิ์นี้ออกมา
-     * Super Admin ยังผ่านได้เหมือนเดิมผ่าน Gate::before ที่ `can()` เรียกใช้
+     * (R02-11) ไม่มีบัญชีใดข้ามการตรวจสิทธิ์ ระหว่าง R-02–R-03 ทุก ability ถูกปฏิเสธ
      */
     private function isRegistrar(User $user): bool
     {

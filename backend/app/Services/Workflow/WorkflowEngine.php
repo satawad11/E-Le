@@ -12,7 +12,6 @@ use App\Models\Workflow\WorkflowTransition;
 use App\Models\Workflow\WorkflowVersion;
 use App\Services\AuditLogger;
 use App\Services\OrgScopeResolver;
-use App\Services\PermissionEvaluator;
 use App\Services\Workflow\Assignee\AssigneeResolverRegistry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +35,6 @@ class WorkflowEngine
         private readonly DelegationResolver $delegations,
         private readonly OrgScopeResolver $orgScope,
         private readonly AuditLogger $audit,
-        private readonly PermissionEvaluator $permissions,
         private readonly AssigneeResolverRegistry $assignees,
     ) {}
 
@@ -373,9 +371,8 @@ class WorkflowEngine
                 : [],
             WorkflowStep::ASSIGNEE_INITIATOR => array_filter([$instance->initiated_by]),
             WorkflowStep::ASSIGNEE_ORG_MANAGER => $this->orgManagersFor($instance),
-            default => $roleId === null
-                ? []
-                : User::whereHas('roles', fn ($query) => $query->where('roles.id', $roleId))->pluck('id')->all(),
+            // R02-11: ผู้รับงานตาม role ของ spatie ไม่มีแล้ว — R-04 แทนด้วย resolver ตามระดับหน่วย (CORE-05)
+            default => [],
         };
 
         $ids = array_map('intval', $ids);
@@ -387,13 +384,8 @@ class WorkflowEngine
     /** @return array<int, int> */
     private function permissionCandidates(string $permission): array
     {
-        $names = DB::table('permissions')
-            ->where('guard_name', 'web')
-            ->whereIn('name', $this->permissions->equivalentNames($permission))
-            ->pluck('name')
-            ->all();
-
-        return $names === [] ? [] : User::permission($names)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        // R02-11: ยังไม่มี PermissionEngine ให้ค้นผู้ถือสิทธิ์ (deny by default) — R-04 ต่อ `functional_template`
+        return [];
     }
 
     /**

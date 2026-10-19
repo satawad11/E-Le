@@ -15,7 +15,7 @@ class ProfileController extends Controller
 {
     public function show(Request $request)
     {
-        return response()->json($request->user()->load('profile', 'department', 'roles'));
+        return response()->json($request->user()->load('personnel'));
     }
 
     public function update(Request $request)
@@ -130,7 +130,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'อัปเดตข้อมูลส่วนตัวเรียบร้อยแล้ว',
-            'user' => $user->load('profile', 'department', 'roles'),
+            'user' => $user->load('personnel'),
         ]);
     }
 

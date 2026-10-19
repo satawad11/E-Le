@@ -61,7 +61,6 @@ class PersonalDataController extends Controller
                 'phone' => $user->phone,
                 'department' => $user->department?->name,
                 'personnel_type' => $user->personnelType?->name,
-                'roles' => $user->roles->pluck('name'),
                 'created_at' => $user->created_at?->toIso8601String(),
             ],
             'profile' => $profile ? [
