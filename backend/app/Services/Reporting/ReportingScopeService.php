@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 class ReportingScopeService
 {
     public const REPORT_ABILITIES = [
-        'personnel' => 'view_users',
+        'personnel' => 'system.user.view',
         'leave' => 'leave.report.view',
         'leave_balance' => 'leave.report.view',
         'attendance' => 'attendance.view_all',

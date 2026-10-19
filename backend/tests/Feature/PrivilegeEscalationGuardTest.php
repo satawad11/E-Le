@@ -49,7 +49,7 @@ class PrivilegeEscalationGuardTest extends TestCase
     private function userWhoCanEditUsers(): User
     {
         $user = User::factory()->create();
-        $user->givePermissionTo('edit_users');
+        $user->givePermissionTo('system.user.manage');
 
         return $user->fresh();
     }
@@ -61,7 +61,7 @@ class PrivilegeEscalationGuardTest extends TestCase
 
         // หน้าที่เดิมยังทำได้ — ผ่านด่านสิทธิ์แล้วไปตกที่ validation ของฟอร์ม
         // (422 ไม่ใช่ 403 คือหลักฐานว่า authorization ยังอนุญาตอยู่)
-        $this->assertTrue($editor->can('edit_users'));
+        $this->assertTrue($editor->can('system.user.manage'));
         $this->actingAs($editor)
             ->putJson("/api/admin/users/{$target->id}", ['name' => 'ชื่อใหม่'])
             ->assertStatus(422);
@@ -70,10 +70,10 @@ class PrivilegeEscalationGuardTest extends TestCase
         $this->actingAs($editor)->getJson('/api/admin/permissions/modules')->assertForbidden();
         $this->actingAs($editor)->getJson("/api/admin/users/{$target->id}/permissions")->assertForbidden();
         $this->actingAs($editor)->putJson("/api/admin/users/{$target->id}/permissions", [
-            'permissions' => ['manage_settings'],
+            'permissions' => ['system.setting.manage'],
         ])->assertForbidden();
 
-        $this->assertFalse($target->fresh()->can('manage_settings'), 'ต้องไม่มีสิทธิ์ใดหลุดไปถึงเป้าหมาย');
+        $this->assertFalse($target->fresh()->can('system.setting.manage'), 'ต้องไม่มีสิทธิ์ใดหลุดไปถึงเป้าหมาย');
     }
 
     public function test_editing_users_does_not_let_you_create_roles(): void
@@ -94,7 +94,7 @@ class PrivilegeEscalationGuardTest extends TestCase
     {
         $hr = $this->userWithRole('HR Head');
 
-        $this->assertTrue($hr->can('view_users'));
+        $this->assertTrue($hr->can('system.user.view'));
         $this->assertTrue($hr->can('attendance.view_all'));
         $this->assertTrue($hr->can('leave.report.view'));
 
@@ -171,7 +171,7 @@ class PrivilegeEscalationGuardTest extends TestCase
     private function hrEditor(): User
     {
         $user = $this->userWithRole('HR Head');
-        $user->givePermissionTo('edit_users');
+        $user->givePermissionTo('system.user.manage');
 
         return $user->fresh();
     }
@@ -252,7 +252,7 @@ class PrivilegeEscalationGuardTest extends TestCase
     {
         $editor = $this->hrEditor();
         $above = Role::create(['name' => 'บทบาทที่สูงกว่า', 'guard_name' => 'web']);
-        $above->givePermissionTo('manage_settings');
+        $above->givePermissionTo('system.setting.manage');
 
         $this->actingAs($editor)->postJson('/api/admin/users', [
             'name' => 'ผู้ใช้ใหม่',
@@ -292,7 +292,7 @@ class PrivilegeEscalationGuardTest extends TestCase
         $this->actingAs($editor)
             ->putJson("/api/admin/users/{$editor->id}", $this->userPayload($editor, [
                 'department_id' => $department->id,
-                'custom_permissions' => json_encode(['edit_users', 'admin.users.manage_permissions']),
+                'custom_permissions' => json_encode(['system.user.manage', 'admin.users.manage_permissions']),
             ]))
             ->assertForbidden()
             ->assertJsonPath('message', 'ท่านไม่มีสิทธิ์กำหนดสิทธิ์รายบุคคล (ต้องมีสิทธิ์ "กำหนดสิทธิ์รายบุคคล")');
@@ -301,7 +301,7 @@ class PrivilegeEscalationGuardTest extends TestCase
         $this->actingAs($editor)
             ->putJson("/api/admin/users/{$target->id}", $this->userPayload($target, [
                 'department_id' => $department->id,
-                'custom_permissions' => json_encode(['manage_settings']),
+                'custom_permissions' => json_encode(['system.setting.manage']),
             ]))
             ->assertForbidden();
 
@@ -312,11 +312,11 @@ class PrivilegeEscalationGuardTest extends TestCase
             'password' => 'a-very-long-password',
             'role_id' => Role::findByName('Employee', 'web')->id,
             'department_id' => $department->id,
-            'custom_permissions' => json_encode(['manage_settings']),
+            'custom_permissions' => json_encode(['system.setting.manage']),
         ])->assertForbidden();
 
         $this->assertFalse($editor->fresh()->can('admin.users.manage_permissions'));
-        $this->assertFalse($target->fresh()->hasDirectPermission('manage_settings'));
+        $this->assertFalse($target->fresh()->hasDirectPermission('system.setting.manage'));
         $this->assertDatabaseMissing('users', ['email' => 'with-perms@example.com']);
     }
 
@@ -359,7 +359,7 @@ class PrivilegeEscalationGuardTest extends TestCase
         $this->assertTrue($target->hasRole('Employee'));
         $this->assertTrue($target->hasDirectPermission('leave.report.view'));
         $this->assertSame('ชื่อของฉัน', $editor->fresh()->name);
-        $this->assertTrue($editor->fresh()->hasDirectPermission('edit_users'), 'แก้บัญชีตนเองต้องไม่ล้างสิทธิ์ที่มีอยู่');
+        $this->assertTrue($editor->fresh()->hasDirectPermission('system.user.manage'), 'แก้บัญชีตนเองต้องไม่ล้างสิทธิ์ที่มีอยู่');
     }
 
     public function test_user_editor_cannot_take_over_a_higher_account_through_its_credentials(): void

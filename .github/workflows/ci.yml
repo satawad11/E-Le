@@ -56,6 +56,15 @@ jobs:
         run: vendor/bin/pint --test
       - name: Migrate from empty MySQL 8 database
         run: php artisan migrate --force
+      # บัญชีแอปไม่มีสิทธิ์สร้าง trigger เมื่อเปิด binary log (เหมือน production) — migration จึงแค่เตือน
+      # แล้วให้บัญชีที่มีสิทธิ์ติดตั้ง ขั้นนี้ยืนยันทั้งขั้นตอนนั้นและ trigger บน MySQL จริง (REDESIGN-2569 · D-07)
+      - name: Protect audit logs with a privileged account
+        env:
+          DB_USERNAME: root
+          DB_PASSWORD: root_test_password
+        run: php artisan audit:protect
+      - name: Verify audit log protection
+        run: php artisan audit:protect --check
       # Document Engine เรนเดอร์แบบฟอร์ม PDF ด้วยฟอนต์ไทยที่สร้างจาก TTF ในโครงการ
       # ถ้าไม่ติดตั้ง เทสต์ที่เรนเดอร์เอกสารจะล้มด้วยข้อความ "ยังไม่ได้ติดตั้งฟอนต์ไทย"
       - name: Install document engine Thai fonts
@@ -76,4 +85,6 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - name: Thai-only UI text check
+        run: npm run check:thai
       - run: npm run build

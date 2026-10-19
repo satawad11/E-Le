@@ -76,11 +76,11 @@
                 <p class="text-sm font-medium text-gray-700 text-left">ตราสัญลักษณ์สถานศึกษา</p>
                 <div class="flex justify-start gap-2">
                   <input type="file" ref="logoInput" @change="handleLogoChange" class="hidden" accept="image/jpeg,image/png,image/jpg" />
-                  <button type="button" @click="$refs.logoInput.click()" class="bg-white border border-gray-300 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-50">เลือกรูป (.jpg)</button>
+                  <button type="button" @click="$refs.logoInput.click()" class="bg-white border border-gray-300 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-50">เลือกรูป (ไฟล์ภาพ JPG)</button>
                   <button type="button" @click="deleteLogo" :disabled="isDeletingLogo || !settings.organization_logo" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 disabled:opacity-50">{{ isDeletingLogo ? 'กำลังลบ...' : 'ลบรูปภาพ' }}</button>
                 </div>
                 <div class="mt-4 flex justify-center">
-                  <img v-if="settings.organization_logo" v-secure-src="settings.organization_logo" alt="Logo" class="w-32 h-32 object-contain" />
+                  <img v-if="settings.organization_logo" v-secure-src="settings.organization_logo" alt="ตราสัญลักษณ์สถานศึกษา" class="w-32 h-32 object-contain" />
                   <div v-else class="w-32 h-32 bg-gray-100 flex items-center justify-center rounded-full text-gray-400">ไม่มีรูปภาพ</div>
                 </div>
               </div>

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\AuditLogger;
+use App\Support\Labels\LeaveActionLabel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -12,6 +13,14 @@ class LeaveActionLog extends Model
     protected $casts = [
         'details' => 'array',
     ];
+
+    /** ป้ายภาษาไทยสำหรับแสดงผล — `action` เป็นรหัสภายใน ห้ามแสดงตรง ๆ */
+    protected $appends = ['action_label'];
+
+    public function getActionLabelAttribute(): string
+    {
+        return LeaveActionLabel::label($this->action);
+    }
 
     protected static function booted(): void
     {

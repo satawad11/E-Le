@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Leave;
 use App\Models\LeavePolicy;
+use App\Models\LeaveType;
 use App\Models\User;
+use App\Services\Time\TimeService;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -16,7 +18,9 @@ use Illuminate\Validation\ValidationException;
  *   "once_in_career": true,        // ลาได้ครั้งเดียวตลอดอายุราชการ (ลาอุปสมบท / ลาฮัจญ์)
  *   "gender": "female",            // จำกัดเพศตามข้อมูลในทะเบียนประวัติ (ลาคลอดบุตร)
  *   "min_days_between": 365,       // เว้นระยะจากการลาประเภทเดียวกันครั้งก่อนอย่างน้อยกี่วัน
- *   "max_times_per_year": 2        // จำนวนครั้งสูงสุดต่อรอบปีของนโยบาย
+ *   "max_times_per_year": 2,       // จำนวนครั้งสูงสุดต่อรอบปีของนโยบาย
+ *   "requires_predecessor_leave_type_id": 3  // ต้องเริ่มต่อจากวันสุดท้ายของการลาประเภทนี้ที่อนุมัติแล้ว
+ *                                            // เว้นได้เฉพาะวันหยุดที่คั่น (ลาเลี้ยงดูบุตรต่อจากลาคลอด)
  * }
  */
 class LeaveEligibilityRuleService
@@ -24,7 +28,7 @@ class LeaveEligibilityRuleService
     /** สถานะใบลาที่ถือว่า "ใช้สิทธิ์ไปแล้ว" — ที่ถูกปฏิเสธหรือยกเลิกไม่นับ */
     private const CONSUMING_STATUSES = ['Pending', 'Approved'];
 
-    public function __construct(private LeavePolicyService $policies) {}
+    public function __construct(private LeavePolicyService $policies, private TimeService $time) {}
 
     public function assert(User $user, LeavePolicy $policy, Carbon $start): void
     {
@@ -37,6 +41,42 @@ class LeaveEligibilityRuleService
         $this->assertGender($user, $rules);
         $this->assertSpacing($user, $policy, $start, $rules);
         $this->assertTimesPerYear($user, $policy, $start, $rules);
+        $this->assertPredecessor($user, $start, $rules);
+    }
+
+    /**
+     * ลาต่อเนื่องจากการลาอีกประเภท — ลากิจส่วนตัวเพื่อเลี้ยงดูบุตรต้องเริ่มหลังวันสุดท้ายของลาคลอด
+     * (คู่มือการลาหัวข้อ 4.2 · เจ้าของระบบยืนยัน 18/10/2569) ระหว่างสองใบลาต้องไม่มีวันทำงานคั่น
+     */
+    private function assertPredecessor(User $user, Carbon $start, array $rules): void
+    {
+        $typeId = (int) ($rules['requires_predecessor_leave_type_id'] ?? 0);
+        if ($typeId <= 0) {
+            return;
+        }
+
+        $typeName = LeaveType::whereKey($typeId)->value('name') ?? 'การลาที่กำหนด';
+        $previous = Leave::where('user_id', $user->id)
+            ->where('leave_type_id', $typeId)
+            ->where('status', 'Approved')
+            ->whereDate('end_date', '<', $start->toDateString())
+            ->orderByDesc('end_date')
+            ->first();
+
+        if (! $previous) {
+            throw ValidationException::withMessages([
+                'leave_type_id' => "การลาประเภทนี้ต้องลาต่อเนื่องจาก{$typeName}ที่ได้รับอนุญาตแล้ว",
+            ]);
+        }
+
+        $end = Carbon::parse($previous->end_date)->startOfDay();
+        for ($day = $end->copy()->addDay(); $day->lt($start->copy()->startOfDay()); $day->addDay()) {
+            if ($this->time->isWorkingDay($day, $user)) {
+                throw ValidationException::withMessages([
+                    'start_date' => "ต้องเริ่มลาต่อจากวันสุดท้ายของ{$typeName} (".$end->format('j/n/').($end->year + 543).') โดยไม่มีวันทำงานคั่น',
+                ]);
+            }
+        }
     }
 
     /** ใบลาประเภทเดียวกันของผู้ใช้คนนี้ที่ยังนับเป็นการใช้สิทธิ์ */

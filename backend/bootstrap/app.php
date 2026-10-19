@@ -4,6 +4,7 @@ use App\Http\Middleware\AttachRequestContext;
 use App\Http\Middleware\CanViewClassifiedDocument;
 use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\SecurityHeaders;
+use App\Support\ThaiApiErrorResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -38,4 +39,5 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(fn (Request $request) => $request->is('api/*'));
+        $exceptions->respond(fn ($response, $e, Request $request) => ThaiApiErrorResponse::apply($response, $request));
     })->create();

@@ -125,7 +125,7 @@
         >
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
         </svg>
-        <span>ประวัติการทำรายการอย่างละเอียด (Audit Trail {{ leave.action_logs?.length || 0 }} รายการ)</span>
+        <span>ประวัติการทำรายการอย่างละเอียด ({{ leave.action_logs?.length || 0 }} รายการ)</span>
       </button>
 
       <transition name="slide-down">
@@ -136,7 +136,7 @@
             class="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-slate-600 flex flex-col gap-1"
           >
             <div class="flex items-center justify-between gap-2 flex-wrap">
-              <span class="font-bold text-slate-800">{{ log.action }}</span>
+              <span class="font-bold text-slate-800">{{ log.action_label || 'การดำเนินการ' }}</span>
               <span class="text-slate-400 text-[11px]">{{ formatThaiTime(log.created_at) }}</span>
             </div>
             <div class="text-[11px] text-slate-500 flex items-center gap-1.5">

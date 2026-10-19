@@ -182,13 +182,13 @@
       <div v-if="document.workflow_steps && document.workflow_steps.length > 0" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
           <span class="w-1.5 h-5 bg-purple-500 rounded-full inline-block"></span>
-          เส้นทางเอกสาร (Workflow)
+          เส้นทางเอกสาร
         </h3>
         <div class="space-y-6 border-l-2 border-gray-200 ml-3 pl-6">
           <div v-for="step in document.workflow_steps" :key="step.id" class="relative">
             <span class="absolute -left-[33px] flex items-center justify-center w-6 h-6 bg-white border-2 border-purple-500 rounded-full"></span>
             <div>
-              <p class="font-medium text-gray-900">{{ step.user?.name || 'ระบบ' }} - <span class="text-purple-600 font-bold uppercase text-xs">{{ step.action }}</span></p>
+              <p class="font-medium text-gray-900">{{ step.user?.name || 'ระบบ' }} - <span class="text-purple-600 font-bold text-xs">{{ step.action_label || 'การดำเนินการ' }}</span></p>
               <p class="text-sm text-gray-500">{{ step.action_at ? new Date(step.action_at).toLocaleString('th-TH') : 'ยังไม่ดำเนินการ' }}</p>
               <p v-if="step.comment" class="text-sm text-gray-700 mt-1 italic">"{{ step.comment }}"</p>
             </div>
@@ -205,7 +205,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div v-for="sig in document.signatures" :key="sig.id" class="border rounded-xl p-4 text-center bg-gray-50 flex flex-col items-center">
             <div class="w-24 h-24 mb-3 bg-white p-1 rounded border">
-              <img :src="`/api/saraban/verify/${sig.signature_hash}/qrcode`" alt="QR Code" class="w-full h-full object-cover">
+              <img :src="`/api/saraban/verify/${sig.signature_hash}/qrcode`" alt="คิวอาร์โค้ดตรวจสอบเอกสาร" class="w-full h-full object-cover">
             </div>
             <p class="font-bold text-gray-800">{{ sig.signer?.name }}</p>
             <p class="text-xs text-gray-500">{{ sig.signer?.profile?.position || 'ผู้ลงนาม' }}</p>
@@ -245,7 +245,7 @@
             <div class="flex flex-wrap gap-3 mb-4">
               <label class="flex items-center cursor-pointer">
                 <input type="radio" v-model="signMode" value="esignature" class="text-[#800000] focus:ring-[#800000]">
-                <span class="ml-2 text-sm">e-Signature (ใช้รหัสผ่าน)</span>
+                <span class="ml-2 text-sm">ลายมือชื่ออิเล็กทรอนิกส์ (ใช้รหัสผ่าน)</span>
               </label>
               <label class="flex items-center cursor-pointer">
                 <input type="radio" v-model="signMode" value="text" class="text-[#800000] focus:ring-[#800000]">
@@ -259,7 +259,7 @@
 
             <!-- Mode: e-Signature -->
             <div v-if="signMode === 'esignature'" class="mb-4">
-              <p class="text-sm text-gray-600 mb-2">กรุณาระบุรหัสผ่านของคุณเพื่อยืนยันการลงนามด้วย e-Signature</p>
+              <p class="text-sm text-gray-600 mb-2">กรุณาระบุรหัสผ่านของคุณเพื่อยืนยันการลงนามด้วยลายมือชื่ออิเล็กทรอนิกส์</p>
               <input type="password" v-model="signPassword" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-[#800000] focus:ring-[#800000] p-2" placeholder="รหัสผ่านเข้าสู่ระบบ">
             </div>
 
@@ -292,7 +292,7 @@
                 </div>
               </div>
               <div>
-                <label class="text-xs text-gray-600">หน้ากระดาษ (Page)</label>
+                <label class="text-xs text-gray-600">หน้ากระดาษ</label>
                 <input type="number" v-model="signPage" class="w-full border-gray-300 rounded p-1 text-sm">
               </div>
             </div>
@@ -362,7 +362,6 @@
           </button>
         </div>
       </div>
-import { ICONS } from '../../utils/icons'
     </div>
   </div>
 </template>
@@ -377,6 +376,7 @@ import { sarabanStatusConfig } from '../../utils/statusHelper'
 import { userDisplayName } from '../../utils/userName'
 import Swal from 'sweetalert2'
 import { ThaiDateFormatter } from '../../utils/ThaiDateFormatter'
+import { ICONS } from '../../utils/icons'
 
 const route = useRoute()
 const store = useSarabanDocumentStore()

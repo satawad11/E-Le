@@ -18,7 +18,7 @@ class LeaveGovernanceWorklistController extends Controller
     public function worklist(Request $request)
     {
         abort_unless($request->user()->can('leave.management.manage') || $request->user()->can('leave.approval.hr'), 403);
-        $status = $request->validate(['status' => 'nullable|in:all,pending_evidence,pending_adjustment,overdue'])['status'] ?? 'all';
+        $status = $request->validate(['status' => 'nullable|in:all,pending_evidence,pending_adjustment,overdue,external_forwarding'])['status'] ?? 'all';
         $query = Leave::withTrashed()->with([
             'user:id,name,department_id', 'user.department:id,name', 'type:id,name',
             'evidences.uploader:id,name', 'evidences.verifier:id,name',
@@ -30,6 +30,10 @@ class LeaveGovernanceWorklistController extends Controller
         }
         if ($status === 'pending_adjustment') {
             $query->whereHas('adjustments', fn ($q) => $q->where('status', 'Pending'));
+        }
+        if ($status === 'external_forwarding') {
+            // ผู้อำนวยการอนุมัติแล้ว รองานบุคลากรส่งต่อหรือบันทึกผลจากผู้มีอำนาจ (D-01)
+            $query->where('status', 'Approved')->whereIn('meta_data->external_forwarding->status', ['awaiting_dispatch', 'awaiting_result']);
         }
         if ($status === 'overdue') {
             $query->where('status', 'Pending')->where('submitted_at', '<', now()->subDays(3));

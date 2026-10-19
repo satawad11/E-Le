@@ -7,7 +7,7 @@
     </div>
     
     <span class="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full uppercase tracking-wider mb-3">
-      403 Forbidden
+      ไม่มีสิทธิ์เข้าถึง (403)
     </span>
 
     <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-2">

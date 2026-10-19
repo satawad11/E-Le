@@ -129,7 +129,7 @@
                   <div class="font-medium text-gray-900">{{ user.personnel?.full_name || user.name }}</div>
                   <div v-if="user.personnel_code || user.personnel?.personnel_code" class="text-xs text-gray-500">รหัส: {{ user.personnel?.personnel_code || user.personnel_code }}</div>
                 </td>
-                <td class="px-4 py-3 text-gray-600">{{ user.current_assignment?.position || user.position || user.profile?.position || (user.role ? roleLabel(user.role.name) : '-') }}</td>
+                <td class="px-4 py-3 text-gray-600">{{ user.current_assignment?.position || user.position || user.profile?.position || (user.role ? (user.role.description || roleLabel(user.role.name)) : '-') }}</td>
                 <td class="px-4 py-3 text-center text-gray-600">{{ formatDate(user.personnel?.effective_from || user.profile?.start_date) || '-' }}</td>
                 <td class="px-4 py-3 text-center">
                   <span class="inline-block px-2 py-1 text-xs font-medium rounded-md" :class="(user.personnel?.status || user.personnel_status || user.profile?.status) === 'active' || (user.personnel?.status || user.personnel_status || user.profile?.status) === 'ปฏิบัติหน้าที่' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
@@ -265,7 +265,7 @@
                 <button @click="activeTab = 'personal'" :class="activeTab === 'personal' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลส่วนตัวบุคลากร</button>
                 <button @click="activeTab = 'address'" :class="activeTab === 'address' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลที่อยู่</button>
                 <button @click="activeTab = 'employment'" :class="activeTab === 'employment' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลการจ้าง</button>
-                <button @click="activeTab = 'system'" :class="activeTab === 'system' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลระบบ (Account)</button>
+                <button @click="activeTab = 'system'" :class="activeTab === 'system' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">ข้อมูลบัญชีผู้ใช้</button>
                 <button v-if="canManageAccess" @click="activeTab = 'permissions'" :class="activeTab === 'permissions' ? 'bg-[#800000] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'" class="px-4 py-3 text-left text-sm font-medium rounded transition">สิทธิ์การเข้าถึงพิเศษ</button>
               </div>
 
@@ -379,11 +379,11 @@
                     <input v-model="form.phone" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
-                    <label class="block text-xs text-gray-700 mb-1">Fax</label>
+                    <label class="block text-xs text-gray-700 mb-1">โทรสาร</label>
                     <input v-model="form.profile.fax" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
-                    <label class="block text-xs text-gray-700 mb-1">E-Mail</label>
+                    <label class="block text-xs text-gray-700 mb-1">อีเมล</label>
                     <input v-model="form.email" type="email" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
@@ -474,7 +474,7 @@
                     <label class="block text-xs text-gray-700 mb-1">บทบาทในระบบ *</label>
                     <select v-if="!modal.isEdit || canManageAccess" v-model="form.role_id" required class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
                       <option value="" disabled>เลือกสิทธิ์</option>
-                      <option v-for="role in roles" :key="role.id" :value="role.id">{{ roleLabel(role.name) }}</option>
+                      <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.description || roleLabel(role.name) }}</option>
                     </select>
                     <!-- K-ORG-01: เปลี่ยนบทบาทได้เฉพาะผู้มีสิทธิ์กำหนดสิทธิ์รายบุคคล (backend ตรวจซ้ำ) -->
                     <template v-else>
@@ -497,7 +497,7 @@
                     <input v-model="form.password" type="password" :required="!modal.isEdit" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                   <div class="md:col-span-1">
-                    <label class="block text-xs text-gray-700 mb-1">Telegram Chat ID</label>
+                    <label class="block text-xs text-gray-700 mb-1">รหัสแชต Telegram</label>
                     <input v-model="form.telegram_chat_id" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
                   </div>
                 </div>
@@ -509,12 +509,12 @@
                       <svg class="w-4 h-4 flex-shrink-0 text-amber-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.info"/>
                       </svg>
-                      <span>กำหนดสิทธิ์การเข้าถึงระบบเพิ่มเติมให้กับผู้ใช้งานคนนี้เป็นกรณีพิเศษ (Direct Custom Permissions)</span>
+                      <span>กำหนดสิทธิ์การเข้าถึงระบบเพิ่มเติมให้กับผู้ใช้งานคนนี้เป็นกรณีพิเศษ</span>
                     </p>
                   </div>
                   
                   <div v-for="(groupPerms, groupName) in groupedPermissions" :key="groupName" class="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                    <h5 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                    <h5 class="text-xs font-bold text-gray-700 mb-2.5 flex items-center gap-1.5">
                       <svg class="w-4 h-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="ICONS.folder"/>
                       </svg>
@@ -529,8 +529,8 @@
                           v-model="form.custom_permissions"
                           class="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500 cursor-pointer"
                         />
-                        <label :for="'perm-' + perm.id" class="text-xs font-mono text-gray-800 cursor-pointer w-full select-none">
-                          {{ perm.name }}
+                        <label :for="'perm-' + perm.id" class="text-xs text-gray-800 cursor-pointer w-full select-none">
+                          {{ perm.label || perm.name }}
                         </label>
                       </div>
                     </div>
@@ -624,12 +624,8 @@ const roleLabel = (name) => {
 const groupedPermissions = computed(() => {
   const groups = {}
   availablePermissions.value.forEach(p => {
-    let groupName = 'ทั่วไป (GENERAL)'
-    if (p.name.includes('.')) {
-      groupName = p.name.split('.')[0].toUpperCase() + ' MODULE'
-    } else if (p.name.includes('_')) {
-      groupName = p.name.split('_')[0].toUpperCase() + ' MODULE'
-    }
+    // ชื่อโมดูลภาษาไทยมาจาก backend (PermissionCatalog) — ไม่ตั้งชื่อกลุ่มจากรหัสสิทธิ์
+    const groupName = p.module || 'อื่น ๆ'
     if (!groups[groupName]) groups[groupName] = []
     groups[groupName].push(p)
   })

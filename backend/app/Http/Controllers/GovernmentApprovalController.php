@@ -9,6 +9,7 @@ use App\Models\LeaveAuditLog;
 use App\Models\User;
 use App\Models\UserDelegation;
 use App\Services\LeaveApprovalSigner;
+use App\Services\LeaveExternalForwardingService;
 use App\Services\LeaveRequestNotificationService;
 use App\Services\LeaveService;
 use App\Services\NotificationCenter\NotificationCenter;
@@ -24,6 +25,7 @@ class GovernmentApprovalController extends Controller
         private NotificationCenter $notifications,
         private LeaveRequestNotificationService $leaveNotifications,
         private LeaveApprovalSigner $signer,
+        private LeaveExternalForwardingService $forwarding,
     ) {}
 
     /**
@@ -112,6 +114,10 @@ class GovernmentApprovalController extends Controller
                 abort_unless($this->service->deductBalance($locked), 422, 'วันลาคงเหลือไม่เพียงพอ');
                 $locked->update(['status' => 'Approved']);
             }LeaveAuditLog::create(['leave_id' => $locked->id, 'user_id' => $r->user()->id, 'action' => 'approval_approved', 'after' => ['step' => $step->step_order, 'final' => ! $next, 'self_approved' => $selfApproval, 'capacity' => $capacity['mode'], 'signer_id' => $capacity['signer']->id, 'delegated_from' => $capacity['delegation']?->user_id], 'ip_address' => $r->ip(), 'user_agent' => $r->userAgent()]);
+            if (! $next) {
+                // ผู้อำนวยการอนุมัติแล้ว — ถ้าเกินอำนาจสถานศึกษา ติดสถานะรอส่งต่อ (D-01) บันทึกหลังการอนุมัติให้ประวัติเรียงตามจริง
+                $this->forwarding->flagIfRequired($locked, $r->user());
+            }
         }, 5);
         $leave->refresh();
         $this->shadow($leave, 'approve', $r, $data['comment'] ?? null, $shadowInstanceId);

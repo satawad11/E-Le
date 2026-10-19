@@ -9,6 +9,7 @@ use App\Http\Controllers\GovernmentLeaveReportController;
 use App\Http\Controllers\LeaveAdjustmentController;
 use App\Http\Controllers\LeaveCardController;
 use App\Http\Controllers\LeaveEvidenceController;
+use App\Http\Controllers\LeaveExternalForwardingController;
 use App\Http\Controllers\LeaveGovernanceController;
 use App\Http\Controllers\LeaveGovernanceWorklistController;
 use App\Http\Controllers\PromotionScreeningController;
@@ -25,6 +26,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/leave-evidences/{evidence}/verify', [LeaveEvidenceController::class, 'verify']);
     Route::get('/leaves/{leave}/audit', [LeaveGovernanceController::class, 'audit']);
     Route::post('/leaves/{leave}/void', [LeaveGovernanceController::class, 'void']);
+    Route::post('/leaves/{leave}/external-forwarding/dispatch', [LeaveExternalForwardingController::class, 'send']);
+    Route::post('/leaves/{leave}/external-forwarding/result', [LeaveExternalForwardingController::class, 'result']);
     Route::post('/leaves/{leave}/partial-cancellation', [LeaveAdjustmentController::class, 'store']);
     Route::put('/leave-adjustments/{adjustment}/decision', [LeaveAdjustmentController::class, 'decide']);
     Route::get('/reports/leave-card', [LeaveCardController::class, 'show']);
@@ -35,7 +38,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/government-leave-departments', [GovernmentLeaveReportController::class, 'departments']);
     Route::get('/reports/government-leave-summary', [GovernmentLeaveReportController::class, 'summary']);
     Route::get('/reports/government-leave-register.csv', [GovernmentLeaveReportController::class, 'csv'])->middleware('throttle:exports');
-    Route::middleware('can:leave.approval.hr')->prefix('admin')->group(function () {
+    // controller ตรวจสิทธิ์เอง (leave.management.manage หรือ leave.approval.hr) — เดิม middleware รับแค่
+    // leave.approval.hr หัวหน้างานบุคลากรที่ถือ leave.management.manage จึงเปิดศูนย์งานกำกับการลาไม่ได้
+    Route::prefix('admin')->group(function () {
         Route::get('/leave-governance/worklist', [LeaveGovernanceWorklistController::class, 'worklist']);
         Route::get('/leave-governance/adjustments', [LeaveGovernanceWorklistController::class, 'adjustments']);
     });
@@ -44,7 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/leave-policies', [LeavePolicyController::class, 'store']);
         Route::put('/leave-policies/{policy}', [LeavePolicyController::class, 'update']);
     });
-    Route::middleware('can:edit_users')->prefix('admin')->group(function () {
+    Route::middleware('can:system.user.manage')->prefix('admin')->group(function () {
         Route::post('/personnel-types', [PersonnelTypeController::class, 'store']);
         Route::put('/personnel-types/{personnelType}', [PersonnelTypeController::class, 'update']);
         Route::put('/users/{user}/personnel-type', [PersonnelTypeController::class, 'assign']);

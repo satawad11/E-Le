@@ -235,19 +235,19 @@ const router = createRouter({
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('../views/admin/UsersManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['view_users', 'system.user.view'], title: 'รายชื่อผู้ใช้งาน', parent: 'จัดการผู้ใช้งาน' }
+      meta: { requiresAuth: true, permissions: ['system.user.view'], title: 'รายชื่อผู้ใช้งาน', parent: 'จัดการผู้ใช้งาน' }
     },
     {
       path: '/admin/personnel-assignments',
       name: 'admin-personnel-assignments',
       component: () => import('../views/admin/PersonnelAssignmentsView.vue'),
-      meta: { requiresAuth: true, permissions: ['edit_users', 'system.user.manage'], title: 'กำหนดประเภทบุคลากร', parent: 'จัดการผู้ใช้งาน' }
+      meta: { requiresAuth: true, permissions: ['system.user.manage'], title: 'กำหนดประเภทบุคลากร', parent: 'จัดการผู้ใช้งาน' }
     },
     {
       path: '/admin/positions',
       name: 'admin-positions',
       component: () => import('../views/admin/PositionsManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['edit_users', 'system.user.manage', 'system.position.manage'], title: 'ทะเบียนตำแหน่ง', parent: 'จัดการผู้ใช้งาน' }
+      meta: { requiresAuth: true, permissions: ['system.user.manage', 'system.position.manage'], title: 'ทะเบียนตำแหน่ง', parent: 'จัดการผู้ใช้งาน' }
     },
     {
       path: '/admin/org-structure',
@@ -259,7 +259,7 @@ const router = createRouter({
       path: '/admin/menus',
       name: 'admin-menus',
       component: () => import('../views/admin/MenusManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['edit_users', 'system.menu.manage'], title: 'จัดการเมนูตามสิทธิ์', parent: 'จัดการผู้ใช้งาน' }
+      meta: { requiresAuth: true, permissions: ['system.user.manage', 'system.menu.manage'], title: 'จัดการเมนูตามสิทธิ์', parent: 'จัดการผู้ใช้งาน' }
     },
     {
       path: '/admin/roles',
@@ -273,7 +273,7 @@ const router = createRouter({
       path: '/admin/settings',
       name: 'admin-settings',
       component: () => import('../views/admin/AdminSettingsView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ข้อมูลสถานศึกษาและแบบฟอร์ม', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permissions: ['system.setting.manage'], title: 'ข้อมูลสถานศึกษาและแบบฟอร์ม', parent: 'ตั้งค่าระบบ' }
     },
     {
       // เมนู "ตั้งค่าแบบฟอร์ม & ส่งออก" ถูกยุบเข้าเป็นแท็บของ /admin/settings แล้ว
@@ -285,13 +285,13 @@ const router = createRouter({
       path: '/admin/attendance-settings',
       name: 'admin-attendance-settings',
       component: () => import('../views/admin/AttendanceSettingsView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ตั้งค่าระบบลงเวลา', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permissions: ['system.setting.manage'], title: 'ตั้งค่าระบบลงเวลา', parent: 'ตั้งค่าระบบ' }
     },
     {
       path: '/admin/work-calendar',
       name: 'admin-work-calendar',
       component: () => import('../views/admin/WorkCalendarView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ปฏิทินวันทำการ', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permissions: ['system.setting.manage'], title: 'ปฏิทินวันทำการ', parent: 'ตั้งค่าระบบ' }
     },
     {
       path: '/admin/departments',
@@ -316,7 +316,7 @@ const router = createRouter({
       path: '/admin/leave-policies',
       name: 'admin-leave-policies',
       component: () => import('../views/admin/LeavePoliciesView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'นโยบายสิทธิการลา', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permissions: ['system.setting.manage'], title: 'นโยบายสิทธิการลา', parent: 'ตั้งค่าระบบ' }
     },
     {
       path: '/admin/leave-types',
@@ -328,13 +328,13 @@ const router = createRouter({
       path: '/admin/fiscal-years',
       name: 'admin-fiscal-years',
       component: () => import('../views/admin/FiscalYearManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'ปีงบประมาณ', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permissions: ['system.setting.manage'], title: 'ปีงบประมาณ', parent: 'ตั้งค่าระบบ' }
     },
     {
       path: '/admin/notifications',
       name: 'admin-notifications',
       component: () => import('../views/admin/TelegramSettingsView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'การแจ้งเตือน', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permissions: ['system.setting.manage'], title: 'การแจ้งเตือน', parent: 'ตั้งค่าระบบ' }
     },
     {
       // หน้าแม่แบบเอกสารเดิมรวมเข้ากับศูนย์จัดการเอกสารแล้ว (แท็บ "แบบฟอร์มใบลา")
@@ -348,7 +348,7 @@ const router = createRouter({
       component: () => import('../views/admin/DocumentCenterView.vue'),
       meta: {
         requiresAuth: true,
-        permissions: ['document.template.view', 'document.template.manage', 'manage_settings', 'system.setting.manage'],
+        permissions: ['document.template.view', 'document.template.manage', 'system.setting.manage'],
         title: 'ศูนย์จัดการเอกสารและรายงาน',
         parent: 'ตั้งค่าระบบ',
       }
@@ -359,7 +359,7 @@ const router = createRouter({
       component: () => import('../views/admin/ReportDesignerView.vue'),
       meta: {
         requiresAuth: true,
-        permissions: ['document.report.manage', 'manage_settings', 'system.setting.manage'],
+        permissions: ['document.report.manage', 'system.setting.manage'],
         title: 'ออกแบบรายงาน',
         parent: 'ตั้งค่าระบบ',
       }
@@ -370,7 +370,7 @@ const router = createRouter({
       component: () => import('../views/admin/DocumentDesignerView.vue'),
       meta: {
         requiresAuth: true,
-        permissions: ['document.template.manage', 'manage_settings', 'system.setting.manage'],
+        permissions: ['document.template.manage', 'system.setting.manage'],
         title: 'ออกแบบแบบฟอร์มเอกสาร',
         parent: 'ตั้งค่าระบบ',
       }
@@ -379,7 +379,7 @@ const router = createRouter({
       path: '/admin/modules',
       name: 'admin-modules',
       component: () => import('../views/admin/AdminModulesView.vue'),
-      meta: { requiresAuth: true, permissions: ['manage_settings', 'system.setting.manage'], title: 'โมดูลระบบ', parent: 'ตั้งค่าระบบ' }
+      meta: { requiresAuth: true, permissions: ['system.setting.manage'], title: 'โมดูลระบบ', parent: 'ตั้งค่าระบบ' }
     },
 
     {

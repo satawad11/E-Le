@@ -30,7 +30,7 @@ class ReportingLayerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['view_users', 'leave.report.view', 'attendance.view_all', 'attendance.ot_summary', 'saraban.document.report'] as $permission) {
+        foreach (['system.user.view', 'leave.report.view', 'attendance.view_all', 'attendance.ot_summary', 'saraban.document.report'] as $permission) {
             Permission::findOrCreate($permission, 'web');
         }
 
@@ -44,7 +44,7 @@ class ReportingLayerTest extends TestCase
     public function test_each_report_requires_its_normal_module_permission(): void
     {
         $this->actingAs($this->viewer)->getJson('/api/reporting/personnel')->assertForbidden();
-        $this->viewer->givePermissionTo('view_users');
+        $this->viewer->givePermissionTo('system.user.view');
         $this->actingAs($this->viewer)->getJson('/api/reporting/leave')->assertForbidden();
         $this->actingAs($this->viewer)->getJson('/api/reporting/attendance')->assertForbidden();
         $this->actingAs($this->viewer)->getJson('/api/reporting/ot')->assertForbidden();
@@ -53,7 +53,7 @@ class ReportingLayerTest extends TestCase
 
     public function test_personnel_leave_and_attendance_reports_never_cross_explicit_scope(): void
     {
-        $this->grantScoped('view_users');
+        $this->grantScoped('system.user.view');
         $this->grantScoped('leave.report.view');
         $this->grantScoped('attendance.view_all');
 
@@ -107,7 +107,7 @@ class ReportingLayerTest extends TestCase
 
     public function test_pdf_excel_word_and_csv_exports_keep_response_contract_and_audit(): void
     {
-        $this->grantScoped('view_users');
+        $this->grantScoped('system.user.view');
 
         $pdf = $this->actingAs($this->viewer)->get('/api/reporting/personnel/export/pdf');
         $pdf->assertOk()->assertHeader('content-type', 'application/pdf');
@@ -156,7 +156,7 @@ class ReportingLayerTest extends TestCase
 
     public function test_personnel_report_uses_a_bounded_number_of_queries(): void
     {
-        $this->grantScoped('view_users');
+        $this->grantScoped('system.user.view');
         User::factory()->count(20)->create(['org_unit_id' => $this->unitA, 'is_active' => true]);
         DB::flushQueryLog();
         DB::enableQueryLog();

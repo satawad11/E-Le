@@ -19,9 +19,9 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Create permissions
         $permissions = [
-            'view_users',
-            'edit_users',
-            'manage_settings',
+            'system.user.view',
+            'system.user.manage',
+            'system.setting.manage',
             'manage_departments',
             'manage_leave_types',
             'manage_workflow_steps',
@@ -50,7 +50,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // 2. HR Head
         $hrHeadRole = Role::firstOrCreate(['name' => 'HR Head', 'guard_name' => 'web']);
         $hrHeadRole->syncPermissions([
-            'view_users',
+            'system.user.view',
             // RBAC-CLEANUP-01: ชื่อใหม่แทน approve_leave / view_all_attendances · export_reports ลบแล้ว
             'leave.approval.dept',
             'attendance.view_all',

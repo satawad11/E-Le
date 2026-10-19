@@ -94,20 +94,20 @@
             <input v-model="form.phone" type="text" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
           </div>
           <div>
-            <label class="block text-xs text-gray-700 mb-1">Telegram Chat ID</label>
+            <label class="block text-xs text-gray-700 mb-1">รหัสแชต Telegram</label>
             <input v-model="form.telegram_chat_id" type="text" placeholder="เช่น 123456789" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
           </div>
           <div>
-            <label class="block text-xs text-gray-700 mb-1">LINE User ID / Account</label>
+            <label class="block text-xs text-gray-700 mb-1">รหัสผู้ใช้ LINE</label>
             <input v-model="form.line_user_id" type="text" placeholder="เช่น U1234567890abcdef..." class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500" />
           </div>
           <div>
             <label class="block text-xs text-gray-700 mb-1">ช่องทางการแจ้งเตือนหลัก</label>
             <select v-model="form.notification_channel" class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-red-500">
-              <option value="both">ทั้งสองช่องทาง (LINE & Telegram)</option>
+              <option value="both">ทั้งสองช่องทาง (LINE และ Telegram)</option>
               <option value="line">LINE เท่านั้น</option>
               <option value="telegram">Telegram เท่านั้น</option>
-              <option value="none">ปิดการแจ้งเตือน (None)</option>
+              <option value="none">ปิดการแจ้งเตือน</option>
             </select>
           </div>
           <div class="md:col-span-2">
@@ -161,7 +161,7 @@
           </div>
           <div class="md:col-span-2 flex flex-col md:flex-row gap-4 items-stretch">
             <div class="flex-1 border border-gray-200 p-4 rounded-xl bg-gray-50 flex flex-col items-center justify-center">
-              <p class="text-sm font-medium text-gray-700 mb-3">อัปโหลดไฟล์ลายเซ็น (แนะนำ .png โปร่งใส)</p>
+              <p class="text-sm font-medium text-gray-700 mb-3">อัปโหลดไฟล์ลายเซ็น (แนะนำไฟล์ภาพ PNG พื้นหลังโปร่งใส)</p>
               <div class="w-full bg-white border border-gray-200 rounded-lg h-24 flex items-center justify-center mb-3">
                 <img v-if="sigPreview" :src="sigPreview" class="max-h-full max-w-full object-contain p-1" />
                 <img v-else-if="form.profile.signature_path" v-secure-src="form.profile.signature_path" class="max-h-full max-w-full object-contain p-1" />

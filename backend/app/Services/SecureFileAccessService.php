@@ -55,7 +55,7 @@ class SecureFileAccessService
 
     private function isManagedProfileAsset(User $user, string $stored): bool
     {
-        if (! $user->hasAnyPermission(['view_users', 'edit_users', 'system.user.manage'])) {
+        if (! $user->hasAnyPermission(['system.user.view', 'system.user.manage'])) {
             return false;
         }
 

@@ -48,7 +48,7 @@ class PositionCatalogTest extends TestCase
         parent::setUp();
 
         Permission::findOrCreate('system.user.manage', 'web');
-        Permission::findOrCreate('view_users', 'web');
+        Permission::findOrCreate('system.user.view', 'web');
         Permission::findOrCreate('leave.report.view', 'web');
         $this->employeeRole = Role::findOrCreate('Employee', 'web');
         $this->department = Department::create(['name' => 'แผนกทดสอบ']);
@@ -58,7 +58,7 @@ class PositionCatalogTest extends TestCase
         $this->unitB = $this->orgUnit('DIV-B', $root);
 
         $this->admin = User::factory()->create(['email' => 'admin@test.local', 'is_active' => true]);
-        $this->admin->givePermissionTo(['system.user.manage', 'view_users']);
+        $this->admin->givePermissionTo(['system.user.manage', 'system.user.view']);
     }
 
     // ------------------------------------------------------------- migration
@@ -176,7 +176,7 @@ class PositionCatalogTest extends TestCase
     public function test_assigning_a_position_closes_old_assignment_and_sets_form_text(): void
     {
         $user = $this->staff($this->unitA, 'ครูชำนาญการ', now()->subMonth()->toDateString());
-        $position = Position::where('code', 'CONTRACT_TEACHER')->first();
+        $position = Position::where('code', 'TEACHER_INSTRUCTOR')->first();
 
         $this->updateUser($user, ['position_uuid' => $position->uuid])->assertOk();
 
@@ -186,10 +186,10 @@ class PositionCatalogTest extends TestCase
         $this->assertSame(now()->subDay()->toDateString(), $history[0]->effective_to->toDateString());
         $this->assertNull($history[1]->effective_to);
         $this->assertSame($position->id, (int) $history[1]->position_id);
-        $this->assertSame('ครูจ้างสอน', $history[1]->position);
+        $this->assertSame('ครูผู้สอน', $history[1]->position);
         $this->assertSame($this->unitA, (int) $history[1]->org_unit_id);
-        $this->assertSame('ครูจ้างสอน', $user->profile()->value('position'));
-        $this->assertSame('ครูจ้างสอน', $user->fresh()->position);
+        $this->assertSame('ครูผู้สอน', $user->profile()->value('position'));
+        $this->assertSame('ครูผู้สอน', $user->fresh()->position);
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'personnel.position_assigned', 'resource_id' => (string) $user->id, 'actor_id' => $this->admin->id]);
     }
@@ -275,7 +275,7 @@ class PositionCatalogTest extends TestCase
 
         $this->assertTrue($hrHead->hasPermissionTo('system.position.manage'));
         $this->assertFalse($hrHead->hasPermissionTo('system.user.manage'));
-        $this->assertFalse($hrHead->hasPermissionTo('edit_users'));
+        $this->assertFalse($hrHead->hasPermissionTo('system.user.manage'));
     }
 
     public function test_migration_grants_position_permission_to_existing_hr_head_role(): void
@@ -361,7 +361,7 @@ class PositionCatalogTest extends TestCase
     public function test_hr_can_run_match_command(): void
     {
         $hr = $this->hrOfficer();
-        $exact = $this->staff($this->unitA, 'ครูจ้างสอน', now()->subMonth()->toDateString());
+        $exact = $this->staff($this->unitA, 'ครูผู้สอน', now()->subMonth()->toDateString());
 
         $this->artisan('personnel:match-positions', ['--by' => $hr->email])->assertExitCode(0);
 
@@ -421,7 +421,7 @@ class PositionCatalogTest extends TestCase
         $unlinked = $this->staff($this->unitA);
 
         $viewer = $this->staff($this->unitA);
-        $viewer->givePermissionTo('view_users');
+        $viewer->givePermissionTo('system.user.view');
 
         $rows = collect($this->actingAs($viewer)->getJson('/api/reporting/personnel')->assertOk()->json('rows'));
         $this->assertSame('ครู', $rows->firstWhere('user_id', $teacher->id)['position_group']);
@@ -435,7 +435,7 @@ class PositionCatalogTest extends TestCase
 
     public function test_match_command_dry_run_changes_nothing_and_apply_links_exact_names_only(): void
     {
-        $exact = $this->staff($this->unitA, 'ครูจ้างสอน', now()->subMonth()->toDateString());
+        $exact = $this->staff($this->unitA, 'ครูผู้สอน', now()->subMonth()->toDateString());
         $fuzzy = $this->staff($this->unitA, 'ครู จ้างสอน', now()->subMonth()->toDateString());
 
         $this->artisan('personnel:match-positions', ['--dry-run' => true])
@@ -446,14 +446,14 @@ class PositionCatalogTest extends TestCase
 
         $this->artisan('personnel:match-positions', ['--by' => 'admin@test.local'])->assertExitCode(0);
 
-        $this->assertSame(Position::where('code', 'CONTRACT_TEACHER')->value('id'), (int) PersonnelAssignment::where('user_id', $exact->id)->whereNull('effective_to')->value('position_id'));
+        $this->assertSame(Position::where('code', 'TEACHER_INSTRUCTOR')->value('id'), (int) PersonnelAssignment::where('user_id', $exact->id)->whereNull('effective_to')->value('position_id'));
         $this->assertNull(PersonnelAssignment::where('user_id', $fuzzy->id)->whereNull('effective_to')->value('position_id'));
         $this->assertDatabaseHas('audit_logs', ['action' => 'personnel.position_assigned', 'resource_id' => (string) $exact->id, 'actor_id' => $this->admin->id]);
     }
 
     public function test_match_command_requires_authorised_actor_to_apply(): void
     {
-        $this->staff($this->unitA, 'ครูจ้างสอน');
+        $this->staff($this->unitA, 'ครูผู้สอน');
         User::factory()->create(['email' => 'clerk@test.local', 'is_active' => true]);
 
         $this->artisan('personnel:match-positions')->assertExitCode(1);
@@ -503,7 +503,7 @@ class PositionCatalogTest extends TestCase
     {
         Permission::findOrCreate('system.position.manage', 'web');
         $role = Role::findOrCreate('HR Head', 'web');
-        $role->givePermissionTo(['system.position.manage', 'view_users']);
+        $role->givePermissionTo(['system.position.manage', 'system.user.view']);
 
         $hr = $this->staff($this->unitA);
         $hr->syncRoles(['HR Head']);

@@ -22,8 +22,11 @@ class SyncLeaveQuotas extends Command
         $totalOver = 0;
         $rows = [];
 
+        // ข้ามรุ่นที่ปิดไปแล้ว — มิฉะนั้นรุ่นเก่าจะเขียนทับ quota/leave_policy_id ของปีปัจจุบัน
         LeavePolicy::with(['personnelType', 'leaveType'])
             ->where('is_active', true)
+            ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', today()))
+            ->orderBy('effective_from')
             ->orderBy('id')
             ->each(function (LeavePolicy $policy) use ($policies, &$totalSynced, &$totalOver, &$rows) {
                 $result = $policies->syncBalances($policy);
