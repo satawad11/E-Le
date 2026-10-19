@@ -24,8 +24,7 @@ R-02 ถอด spatie/laravel-permission, ตาราง `departments`, `user_p
 | Workflow engine | Workflow/{ApprovalWorkflowManagement,EngineApproverFidelity,SarabanWorkflowPinning,WorkflowAuthorization,WorkflowEngine}Test | R-04 (resolver) + R-08 |
 | บัญชีและการยืนยันตัวตน | AuthTest, AuthenticationHardeningTest, RateLimitBucketIsolationTest, UserAccountGovernanceTest, Unit/UserTest | R-05 |
 | องค์กร/บุคลากร | PersonnelApiAlignmentTest, PersonnelDomainCoreServicesTest, PositionCatalogTest (เมื่อ API ตำแหน่งเปิดใน R-04), PersonalDataProtectionTest, SecureFileAuthorizationTest | R-04 / R-06 |
-| ตั้งค่าระบบ audit โมดูล | SystemSettingsTest, CentralAuditLogTest, ModuleRegistryTest | R-04 / R-07 |
-| **ล้าสมัยโดยแผน** (ทดสอบกลไกที่ถูกตัด) | AccessGovernance2569Test, AccessGovernancePhase2Test, AuthorizationCleanupAndVerificationTest, AuthorizationMatrixTest, LegacyModernizationMigrationRollbackTest, OperationalPermissionMatrixTest, OrgScopeResolverTest, PermissionEvaluatorTest, PermissionScopeCommandTest, PrivilegeEscalationGuardTest, RbacCleanupTest, UserDirectPermissionTest, Workflow/LeaveWorkflowShadowParityTest | แทนด้วย persona/IDOR/matrix tests ของ R-04 แล้วลบ (ต้องได้รับอนุมัติ Q7) |
+| ตั้งค่าระบบ audit โมดูล | SystemSettingsTest, CentralAuditLogTest, ModuleRegistryTest (ทะเบียนโมดูลธุรกิจเดิม `config/modules.php`) | R-07 / R-08 |
 
 ## บันทึกการย้าย/ลบ (Q7 — ทุกเฟสต้องบันทึก)
 
@@ -37,3 +36,10 @@ R-02 ถอด spatie/laravel-permission, ตาราง `departments`, `user_p
 | R-03 | PersonnelSyncTest | ลบ (การซิงก์ users ↔ personnel ถูกตัด — บุคลากรเป็นแหล่งความจริง) | `Core/AssignmentServiceTest`, `Core/MultiPositionPersonnelTest` |
 | R-03 | SchoolStructureCommandTest | ลบ (คำสั่ง org:apply-structure ถูกตัด) | `Rebuild/BaselineSeederTest`, `Core/PersonnelImportTest` |
 | R-03 | UserImportTest | ลบ | `Core/PersonnelImportTest` (เข้ารหัสเลขประจำตัว + hash, ซ้ำในระบบ/ในไฟล์, ไม่รับรหัสผ่าน/ไม่สร้างบัญชี, รายงานเลขแถว, audit, คอลัมน์ที่จำเป็น) · สิทธิ์: `Core/CoreApiDeniedUntilEngineTest` |
+| R-04 | AccessGovernance2569Test, AccessGovernancePhase2Test | ลบ (ทะเบียนหัวหน้า org_unit_managers, user_role_grants, ขั้นอนุมัติตามชื่อ role ถูกตัด) | `Authz/PersonaMatrixTest`, `Authz/ApproverChainResolverTest`, `Authz/PermissionEngineTest` |
+| R-04 | AuthorizationMatrixTest, OperationalPermissionMatrixTest | ลบ (matrix ของ spatie role) | `Authz/PersonaMatrixTest::test_permission_matrix` (8 persona × 23 permission) |
+| R-04 | AuthorizationCleanupAndVerificationTest, RbacCleanupTest, UserDirectPermissionTest | ลบ (alias/สิทธิ์รายบุคคลแบบไม่หมดอายุของ spatie) | `Authz/PermissionEngineTest` (override ต้องมีวันหมดอายุ, deny ชนะ), `Rebuild/ForbiddenPatternsTest` |
+| R-04 | PermissionEvaluatorTest, PermissionScopeCommandTest, OrgScopeResolverTest | ลบ (PermissionEvaluator/permission_scopes ถูกแทนด้วย PermissionEngine) | `Authz/PermissionEngineTest::test_scope_query_*`, `test_level_two_rights_do_not_leak_*` |
+| R-04 | PrivilegeEscalationGuardTest | ลบ | `Authz/PermissionEngineTest::test_grant_ceiling_and_two_person` |
+| R-04 | LegacyModernizationMigrationRollbackTest | ลบ (migration ชุดเดิมไม่ถูกโหลดแล้ว) | `Rebuild/SchemaBaselineTest` |
+| R-04 | Workflow/LeaveWorkflowShadowParityTest | ลบ (ยกเลิก shadow — ADR-R-006) | `Authz/ApproverChainResolverTest` |

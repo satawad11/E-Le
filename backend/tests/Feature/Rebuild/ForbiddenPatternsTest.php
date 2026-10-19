@@ -74,5 +74,6 @@ class ForbiddenPatternsTest extends TestCase
         foreach (['ApprovalStep', 'Department', 'Menu', 'OrgUnitManager', 'OrgUnitMember', 'PersonnelAssignment', 'Role', 'UserProfile', 'UserRoleGrant'] as $model) {
             $this->assertFileDoesNotExist(app_path("Models/{$model}.php"));
         }
+        $this->assertFileDoesNotExist(app_path('Models/Workflow/WorkflowShadowComparison.php'));
     }
 }
