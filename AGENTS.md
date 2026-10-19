@@ -30,7 +30,7 @@
 - commit ย่อยต่องาน ข้อความ commit ขึ้นต้นด้วยรหัสเฟส เช่น `R-02: create authz baseline tables`
 
 ## Checkpoint (จบเฟส)
-สร้าง `docs/checkpoints/R-xx-REPORT.md`: สิ่งที่ทำ · ไฟล์/migration/API ที่เปลี่ยน · ผลเทสต์ (จำนวน test/assertion) · เกณฑ์ Go/No-Go ของเฟสผ่านหรือไม่ · ข้อจำกัดที่เหลือ แล้ว **หยุดรอคำสั่ง**
+สร้าง `docs/checkpoints/R-xx-REPORT.md`: สิ่งที่ทำ · ไฟล์/migration/API ที่เปลี่ยน · ผลเทสต์ (จำนวน test/assertion) · **เทสต์ใน `backend/tests/Legacy` ที่ย้ายกลับ เขียนใหม่ หรือลบในเฟสนี้** (Q7) · เกณฑ์ Go/No-Go ของเฟสผ่านหรือไม่ · ข้อจำกัดที่เหลือ แล้ว **หยุดรอคำสั่ง**
 
 ## Language
 UI/copy ภาษาไทย 100% · code/schema/identifier ภาษาอังกฤษ

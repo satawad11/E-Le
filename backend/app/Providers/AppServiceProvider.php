@@ -2,9 +2,12 @@
 
 namespace App\Providers;
 
+use App\Contracts\Personnel\PersonnelFieldAccess;
 use App\Models\User;
 use App\Observers\UserObserver;
 use App\Services\AuditLogger;
+use App\Services\Personnel\DenyByDefaultPersonnelFieldAccess;
+use App\Services\Personnel\FieldClassificationRegistry;
 use App\Services\SystemSettingService;
 use App\Support\ProductionEnvironmentGuard;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -20,7 +23,12 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
-    public function register(): void {}
+    public function register(): void
+    {
+        // R03: deny by default จนกว่า R-04 จะผูกตัวที่ถาม PermissionEngine
+        $this->app->bind(PersonnelFieldAccess::class, DenyByDefaultPersonnelFieldAccess::class);
+        $this->app->scoped(FieldClassificationRegistry::class);
+    }
 
     /**
      * Bootstrap any application services.

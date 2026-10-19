@@ -122,19 +122,21 @@ class CoreModelsTest extends TestCase
         $this->assertSame($user->id, $user->personnel->user->id);
     }
 
-    public function test_login_by_email_or_national_id_for_active_accounts_only(): void
+    public function test_login_by_email_or_personnel_code_for_active_accounts_only(): void
     {
         $user = User::factory()->withPersonnel()->create(['email' => 'teacher@example.test', 'password' => 'correct-horse-battery']);
-        PersonnelProfile::create(['personnel_id' => $user->personnel_id, 'national_id' => '1103700012345']);
+        $code = $user->personnel->personnel_code;
 
         $this->postJson('/api/login', ['email' => 'teacher@example.test', 'password' => 'correct-horse-battery'])
             ->assertOk()
             ->assertJsonPath('user.uuid', $user->uuid)
             ->assertJsonPath('user.permission_names', []);
 
-        $this->postJson('/api/login', ['email' => '1103700012345', 'password' => 'correct-horse-battery'])
+        $this->postJson('/api/login', ['login' => $code, 'password' => 'correct-horse-battery'])
             ->assertOk()
             ->assertJsonPath('user.uuid', $user->uuid);
+
+        $this->postJson('/api/login', ['login' => $code, 'password' => 'wrong-password'])->assertStatus(422);
 
         $this->assertNotNull($user->fresh()->last_login_at);
 
@@ -143,6 +145,29 @@ class CoreModelsTest extends TestCase
             $this->postJson('/api/login', ['email' => 'teacher@example.test', 'password' => 'correct-horse-battery'])
                 ->assertStatus(422);
         }
+    }
+
+    public function test_national_id_login_is_disabled_by_default(): void
+    {
+        $this->assertFalse(config('auth.allow_national_id_login'));
+
+        $user = User::factory()->withPersonnel()->create(['password' => 'correct-horse-battery']);
+        PersonnelProfile::create(['personnel_id' => $user->personnel_id, 'national_id' => '1103700012345']);
+
+        $this->postJson('/api/login', ['login' => '1103700012345', 'password' => 'correct-horse-battery'])
+            ->assertStatus(422);
+    }
+
+    public function test_national_id_login_works_only_when_enabled(): void
+    {
+        config(['auth.allow_national_id_login' => true]);
+
+        $user = User::factory()->withPersonnel()->create(['password' => 'correct-horse-battery']);
+        PersonnelProfile::create(['personnel_id' => $user->personnel_id, 'national_id' => '1103700012345']);
+
+        $this->postJson('/api/login', ['login' => '1103700012345', 'password' => 'correct-horse-battery'])
+            ->assertOk()
+            ->assertJsonPath('user.uuid', $user->uuid);
     }
 
     public function test_tokens_are_revoked_when_account_leaves_active_status(): void

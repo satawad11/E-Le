@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             OrgUnitTypeSeeder::class,
             OrganizationBaselineSeeder::class,
             PersonnelTypeSeeder::class,
+            FieldClassificationSeeder::class,
 
             // ระเบียบราชการเป็นข้อมูลตั้งต้นที่มีรุ่น (ADR-R-005)
             FiscalYearSeeder::class,

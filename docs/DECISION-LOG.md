@@ -59,7 +59,7 @@ production เดิมทำงานต่อบน tag `legacy-final` ระ�
 ความลึกของต้นไม้ไม่เท่ากันได้ ระดับอ่านจาก `org_unit_types.level` ชื่อประเภทหน่วย L4 ที่ใช้จริงรอคำตอบ Q4 (ค่าเริ่มต้น: กลุ่มงาน `subsection`, สาขางาน `program`)
 
 ## ADR-R-010 พักเทสต์ชุดเดิมไว้ที่ `tests/Legacy/` ระหว่าง R-02–R-08
-2026-10-19 · R-02 · รอเจ้าของระบบยืนยัน (Q7)
+2026-10-19 · R-02 · **เจ้าของระบบอนุมัติ 2026-10-19 (Q7)** — รายงานทุกเฟสระบุเทสต์ Legacy ที่ย้าย/ลบ · `tests/Legacy` ต้องว่างก่อนผ่าน R-09
 การถอด spatie/ตารางที่ตัด และ deny-by-default ทำให้เทสต์ชุดเดิม 85 ไฟล์รันไม่ได้ (fixture สร้าง role/department/user_profile และคาดหวังให้ endpoint ทำงาน)
 ไม่ลบและไม่แก้ assertion ให้ผ่าน: ย้ายไฟล์ไป `backend/tests/Legacy/` (นอก testsuite ปกติ) พร้อม README ที่ระบุเฟสที่ต้องเขียนใหม่ทีละไฟล์
 กฎธุรกิจที่ยังมีผล (ระเบียบการลา, document engine, เวลา) ต้องพอร์ตเป็นเทสต์ใหม่ก่อนลบไฟล์เดิม
@@ -70,4 +70,19 @@ production เดิมทำงานต่อบน tag `legacy-final` ระ�
 รัน migration เดิมครบ 141 ไฟล์บนฐานข้อมูลทดสอบ (`eleave_r02_legacy`) แล้วแปลง information_schema เป็น Blueprint ด้วยสคริปต์ จึงได้รูปสุดท้ายตรงทุกคอลัมน์/index/FK แทนการถอดความด้วยมือ
 ข้อมูลที่ migration เดิมเคยใส่ (ประเภทการลา นโยบายการลา ประเภท/แม่แบบการแจ้งเตือน) ส่งออกเป็น `database/seeders/data/*.json` และโหลดด้วย seeder · migration ชุดใหม่มีแต่ schema
 ตรวจผลด้วยการเทียบ `mysqldump --no-data` ของสองฐาน: ต่างกันเฉพาะส่วนที่แผนสั่ง (รายการในรายงาน R-02)
+
+## ADR-R-012 duty attributes เก็บใน `role_grants.attributes` · ช่องทางแจ้งเตือนอยู่ที่โมดูลแจ้งเตือน (คำตอบ Q9)
+2026-10-19 · เจ้าของระบบตัดสิน
+ไม่มีตาราง `grant_attributes` (แก้ PLAN §4.2 แล้ว) — attributes ของ functional grant เป็น json ตาม `attributes_schema` ของ template (CORE-04)
+ค่าระบุผู้รับ LINE/Telegram ไม่อยู่ที่บัญชีผู้ใช้ เก็บในตาราง `notification_channels` ของโมดูลแจ้งเตือน สร้างใน R-08
+
+## ADR-R-013 ล็อกอินด้วยอีเมลหรือรหัสบุคลากร · เลขประจำตัวประชาชนปิดเป็นค่าเริ่มต้น (คำตอบ Q10)
+2026-10-19 · เจ้าของระบบตัดสิน
+ตัวระบุหลักคืออีเมลหรือ `personnel.personnel_code` · การใช้เลขประจำตัวประชาชน (ค้นผ่าน `national_id_hash`) เปิดได้ด้วย `config('auth.allow_national_id_login')` (`AUTH_ALLOW_NATIONAL_ID_LOGIN`, ค่าเริ่มต้น false)
+เหตุผล: เลขประจำตัวประชาชนเป็นข้อมูลชั้น sensitive และคาดเดาได้ ไม่ควรเป็นตัวระบุสำหรับเข้าสู่ระบบโดยปริยาย
+
+## ADR-R-014 ตัวอ่าน XLSX/CSV ขนาดเล็กสำหรับนำเข้าข้อมูล แทนการเพิ่ม PhpSpreadsheet
+2026-10-19 · R-03
+ตัวนำเข้า (R03-5) อ่านเฉพาะค่าในแผ่นงาน ไม่ต้องการสูตรหรือรูปแบบ จึงใช้ `App\Support\Spreadsheet\SheetReader` ที่อ่าน `.xlsx` ด้วย ext-zip + XMLReader และ `.csv` ด้วย fgetcsv
+ไม่เพิ่ม dependency ใหม่ในเฟส core · หมายเหตุ: โค้ดส่งออกเดิม (`LeaveExcelService`, `ReportExportService`) อ้าง PhpSpreadsheet ซึ่งไม่อยู่ใน composer.lock มาก่อน R-02 — ตัดสินใน R-08 ว่าจะเพิ่มแพ็กเกจหรือเขียนตัวเขียนเอง
 
