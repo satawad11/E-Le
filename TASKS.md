@@ -45,13 +45,13 @@
 - [x] R02-13 รายงาน `docs/checkpoints/R-02-REPORT.md`
 
 ## R-03 Core องค์กรและบุคลากร
-- [ ] R03-1 `OrgTree` service + path maintenance + tests (CORE-01)
-- [ ] R03-2 API องค์กร: CRUD หน่วย (ปิดแทนลบ), ย้าย parent, ตำแหน่ง
-- [ ] R03-3 Personnel models + `PersonnelPresenter` (ปิดบังตามชั้น) + `field_classifications` seed
-- [ ] R03-4 Assignment service: เพิ่ม/ปิด/รักษาการ, กฎ primary/management ซ้อน, event `AssignmentChanged`
-- [ ] R03-5 นำเข้า Excel: หน่วยงาน, บุคลากร, assignment พร้อม dry-run และรายงานข้อผิดพลาดรายแถว
-- [ ] R03-6 เทสต์ CORE-01, CORE-02 ขั้นต่ำครบ
-- [ ] R03-7 รายงาน R-03
+- [x] R03-1 `OrgTree` service + path maintenance + tests (CORE-01)
+- [x] R03-2 API องค์กร: CRUD หน่วย (ปิดแทนลบ), ย้าย parent, ตำแหน่ง
+- [x] R03-3 Personnel models + `PersonnelPresenter` (ปิดบังตามชั้น) + `field_classifications` seed
+- [x] R03-4 Assignment service: เพิ่ม/ปิด/รักษาการ, กฎ primary/management ซ้อน, event `AssignmentChanged`
+- [x] R03-5 นำเข้า Excel: หน่วยงาน, บุคลากร, assignment พร้อม dry-run และรายงานข้อผิดพลาดรายแถว
+- [x] R03-6 เทสต์ CORE-01, CORE-02 ขั้นต่ำครบ
+- [x] R03-7 รายงาน R-03
 
 ## R-04 Permission Engine + manifest + เมนู
 - [ ] R04-1 รูปแบบ manifest + `ModuleRegistry` + คำสั่ง `modules:sync` (idempotent, retire ไม่ลบ)

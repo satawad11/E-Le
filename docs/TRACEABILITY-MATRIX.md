@@ -4,15 +4,15 @@
 
 | REQ | Implementation (ไฟล์หลัก) | Test | สถานะ |
 |---|---|---|---|
-| REQ-ORG-01 | schema: `r02_3_create_core_organization_tables` (org_unit_types.level, org_units.path/depth) · seed: `OrgUnitTypeSeeder`, `OrganizationBaselineSeeder` | `Rebuild/SchemaBaselineTest`, `Rebuild/BaselineSeederTest` | 🟡 schema (R-02) · service R-03 |
-| REQ-ORG-02 | schema: `positions.kind`, `positions.org_unit_type_id` (unique) | `Rebuild/SchemaBaselineTest` | 🟡 schema (R-02) |
-| REQ-ORG-03 | | | ⬜ |
-| REQ-PER-01 | schema: `r02_4_create_core_personnel_tables` · models `Personnel*` | `Rebuild/SchemaBaselineTest` | 🟡 schema (R-02) |
-| REQ-PER-02 | schema: `assignments` (kind, order_number, effective_from/to, ended_by) · model `Assignment` | `Rebuild/CoreModelsTest::test_assignment_effective_on_scope_respects_dates` | 🟡 schema (R-02) |
-| REQ-PER-03 | schema: `field_classifications` · `PersonnelProfile` cast encrypted + hidden | `Rebuild/CoreModelsTest::test_sensitive_profile_fields_are_encrypted_at_rest_and_searchable_by_hash` | 🟡 schema (R-02) |
-| REQ-PER-04 | schema: `sensitive_access_logs` · model `SensitiveAccessLog` (AppendOnly) | `Rebuild/CoreModelsTest::test_append_only_logs_cannot_be_updated_or_deleted` | 🟡 schema (R-02) |
-| REQ-PER-05 | schema: `personnel_change_requests` · model `PersonnelChangeRequest` | `Rebuild/SchemaBaselineTest` | 🟡 schema (R-02) |
-| REQ-PER-06 | | | ⬜ |
+| REQ-ORG-01 | `Services/Org/OrgTree` (path, depth, level rule, nearestOfLevel, headOf) · schema R02-3 · seed `OrganizationBaselineSeeder` | `Core/OrgTreeTest`, `Core/MultiPositionPersonnelTest`, `Rebuild/BaselineSeederTest` | ✅ service (R-03) · UI R-06 |
+| REQ-ORG-02 | `positions.kind/org_unit_type_id` · `AssignmentService::assertPositionFits` · `Org/PositionController` | `Core/AssignmentServiceTest::test_management_position_must_match_the_unit_type` | ✅ service (R-03) · API เปิด R-04 |
+| REQ-ORG-03 | `OrgTree::move`, `OrgTree::close` (ปิดแทนลบ ไม่มี endpoint ลบ) | `Core/OrgTreeTest` | ✅ service (R-03) |
+| REQ-PER-01 | models `Personnel*` · `FieldClassificationSeeder` | `Rebuild/SchemaBaselineTest`, `Core/PersonnelPrivacyTest::test_every_presented_field_has_a_classification` | 🟡 schema+model (R-03) · หน้าจอ R-06 |
+| REQ-PER-02 | `Services/Personnel/AssignmentService` · `Events/AssignmentChanged` | `Core/AssignmentServiceTest`, `Core/MultiPositionPersonnelTest` | ✅ service (R-03) |
+| REQ-PER-03 | `PersonnelPresenter`, `FieldClassificationRegistry`, `Contracts/Personnel/PersonnelFieldAccess` | `Core/PersonnelPrivacyTest` (L1–L5) | 🟡 presenter (R-03) · สิทธิ์จริง R-04 |
+| REQ-PER-04 | `SensitiveReveal` → `sensitive_access_logs` | `Core/PersonnelPrivacyTest::test_reveal_*` | ✅ service (R-03) · หน้าประวัติการเข้าถึง R-06 |
+| REQ-PER-05 | `PersonnelChangeRequestService`, `PersonnelEditor` (hr_field_guard) | `Core/PersonnelChangeControlTest` | ✅ service (R-03) · หน้าจอ R-06 |
+| REQ-PER-06 | `Services/Import/PersonnelImporter`, `personnel:import`, `personnel:import-template`, `Support/Spreadsheet/*` | `Core/PersonnelImportTest` | 🟡 ตัวนำเข้าพร้อม · รอไฟล์จริงจากงานบุคคล |
 | REQ-AZ-01 | schema: `modules`, `module_features`, `permissions` (retired_at) · seeders ไม่สร้าง permission | `Rebuild/BaselineSeederTest::test_baseline_seeds_no_accounts_roles_permissions_or_menus` | 🟡 schema (R-02) |
 | REQ-AZ-02 | schema: `template_permissions.scope`, `position_templates`, `role_grants` | `Rebuild/SchemaBaselineTest` | 🟡 schema (R-02) |
 | REQ-AZ-03 | `DenyUntilPermissionEngine`, `RequirePermission` · `permission_overrides` · `role_grants.expires_at` NOT NULL | `Rebuild/DenyByDefaultTest`, `Rebuild/SchemaBaselineTest::test_role_grants_require_order_number_and_expiry` | 🟡 deny-all ชั่วคราว (R-02) · engine R-04 |

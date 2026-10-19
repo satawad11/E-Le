@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-10-19 — REBUILD-2569 · R-03 Core องค์กรและบุคลากร
+- บันทึกผลตัดสิน Q7, Q9, Q10 (ADR-R-010 อนุมัติ, ADR-R-012, ADR-R-013) · เพิ่มงาน R08-leave-1, R08-notification-1, R09-5
+- ล็อกอินด้วยอีเมลหรือ `personnel_code` · เลขประจำตัวประชาชนปิดเป็นค่าเริ่มต้น (`auth.allow_national_id_login`)
+- `OrgTree` (create/move/close, ancestors, subtreeIds, nearestOfLevel, headOf) · `AssignmentService` (add/end + event `AssignmentChanged`)
+- `PersonnelPresenter` (ปิดบังตามชั้น, sensitive ไม่ออกจาก presenter), `SensitiveReveal` (เหตุผล + log), `PersonnelEditor` (hr_field_guard), `PersonnelChangeRequestService` (Maker–Checker) · contract `PersonnelFieldAccess` ผูก deny-by-default จนถึง R-04
+- `FieldClassificationSeeder` จัดชั้นฟิลด์บุคลากรครบทุกฟิลด์
+- นำเข้า Excel/CSV: `PersonnelImporter`, `php artisan personnel:import` (dry-run เป็นค่าเริ่มต้น), `personnel:import-template` · ตัวอ่าน/เขียน xlsx ในตัว (ADR-R-014)
+- API `/api/org/*`, `/api/personnel/*` ประกาศ `permission:` ที่จะใช้ — ตอบ 403 ทุก endpoint จนถึง R-04
+- ลบเทสต์ Legacy 5 ไฟล์ที่เทสต์ใหม่ครอบคลุมแล้ว (รายการใน `backend/tests/Legacy/README.md`)
+
 ## 2026-10-19 — REBUILD-2569 · R-02 Schema baseline
 - migration เดิม 141 ไฟล์ย้ายไป `backend/database/migrations-legacy/` (Laravel ไม่โหลด) · baseline ใหม่ 14 ไฟล์ (`*_r02_2_*` … `*_r02_7i_*`)
 - ตาราง core ใหม่ตาม CORE-01..04: องค์กร 4 · บุคลากร 11 · บัญชี 3 (+ `users` แบบใหม่) · สิทธิ์ 12
