@@ -474,11 +474,17 @@ class PermissionEngine
     /**
      * resource อยู่ในขอบเขตของแหล่งนี้หรือไม่
      *
-     * หน่วยใดของ resource อยู่ใต้หน่วยที่ถูก deny (override จำกัดหน่วย) = ไม่ครอบคลุม ทุก scope รวม all และ own
-     * (deny ชนะเสมอ) — กติกาเดียวกับ AuthzScope ที่ scopeQuery ใช้ ผลของ can() กับรายการจึงตรงกันทุกคู่
+     * - scope own: เจ้าของข้อมูลเห็นข้อมูลของตนเองเสมอ (PDPA มาตรา 30) — override deny ที่จำกัดหน่วยไม่ตัด own
+     *   (deny ทั้ง permission หรือเพดานในชุดสิทธิ์ยังตัด own ได้ตามที่ประกาศ)
+     * - scope อื่น: หน่วยใดของ resource อยู่ใต้หน่วยที่ถูก deny = ไม่ครอบคลุม รวม scope all
+     * กติกาเดียวกับ AuthzScope ที่ scopeQuery ใช้ ผลของ can() กับรายการจึงตรงกันทุกคู่
      */
     private function grantCovers(User $user, Grant $grant, AuthzResource $resource): bool
     {
+        if ($grant->scope === 'own') {
+            return $user->personnel_id !== null && $resource->authzOwnerPersonnelId() === $user->personnel_id;
+        }
+
         $paths = [];
         foreach ($resource->authzOrgUnitIds() as $unitId) {
             $path = $this->pathOf($unitId);
@@ -492,7 +498,6 @@ class PermissionEngine
         }
 
         return match ($grant->scope) {
-            'own' => $user->personnel_id !== null && $resource->authzOwnerPersonnelId() === $user->personnel_id,
             'all' => true,
             'subtree' => collect($paths)->contains(fn (string $path) => collect($grant->anchors)->contains(fn (string $anchor) => str_starts_with($path, $anchor))),
             default => array_intersect(array_keys($paths), array_map('intval', array_keys($grant->anchors))) !== [],

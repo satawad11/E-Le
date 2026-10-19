@@ -4,8 +4,9 @@
  * Manifest โมดูล system — กลุ่มเมนู "ตั้งค่าระบบ" (PLAN §8.2 ซ.)
  *
  * ชุดสิทธิ์ผู้ดูแลระบบ (ADR-R-015 ฉบับแก้ไข): ไม่อยู่ในสายอนุมัติและไม่เห็นข้อมูลอ่อนไหว (PROJECT_RULES ข้อ 8)
- * จึง deny เฉพาะ `personnel.profile.reveal` และทุก action approve/review — ยกเว้นที่ชุดสิทธิ์นี้ให้เอง
- * (`access.change.approve` = งานผู้ดูแลคนที่สอง) · สิทธิ์ดูทั่วไปจากตำแหน่งอื่นของบุคคลเดียวกันยังคงอยู่
+ * จึง deny `personnel.profile.reveal` ที่กว้างกว่า own (ยังเปิดดูข้อมูลของตนเองได้ — PDPA มาตรา 30) และทุก action
+ * approve/review ยกเว้นที่ชุดสิทธิ์นี้ให้เอง (`access.change.approve` = งานผู้ดูแลคนที่สอง มี maker_checker)
+ * สิทธิ์ดูทั่วไปจากตำแหน่งอื่นของบุคคลเดียวกันยังคงอยู่
  *
  * เมนูข้อ 2–4 อ้างสิทธิ์ของโมดูล workflow, document, notification ซึ่งประกาศ permission ไว้แล้ว
  * และจะได้ feature ครบเมื่อย้ายโมดูลใน R-08
@@ -43,7 +44,7 @@ return [
                 'access.review.manage' => 'all',
                 'audit.log.view' => 'all',
             ],
-            'denies' => ['personnel.profile.reveal' => null, '*.*.approve' => null, '*.*.review' => null],
+            'denies' => ['personnel.profile.reveal' => 'own', '*.*.approve' => null, '*.*.review' => null],
         ],
     ],
 

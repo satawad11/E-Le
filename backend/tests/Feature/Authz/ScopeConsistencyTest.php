@@ -87,7 +87,8 @@ class ScopeConsistencyTest extends TestCase
         $this->denyUnit('director', 'personnel.profile.view', 'auto');        // scope all ตัด subtree แผนกช่างยนต์
         $this->denyUnit('multi', 'personnel.profile.view', 'hr');             // subtree จาก L2 ตัดงานบุคลากร
         $this->denyUnit('hr', 'personnel.profile.view', 'academic');          // งานบุคคล (all) ตัดฝ่ายวิชาการทั้งฝ่าย
-        $this->denyUnit('teacher', 'personnel.profile.view', 'auto_program'); // own ในหน่วยที่ถูก deny = ไม่เห็นตนเอง
+        $this->denyUnit('teacher', 'personnel.profile.view', 'auto_program'); // own ไม่ถูกตัด: ยังเห็นตนเองแม้หน่วยถูก deny
+        $this->denyUnit('section_head', 'personnel.profile.view', 'hr');     // subtree ถูกตัดทั้งหน่วย เหลือเฉพาะตนเอง
         $this->denyUnit('section_head', 'org.unit.view', 'academic');         // หน่วยงานใช้กติกาเดียวกัน
         $this->denyUnit('admin', 'org.unit.view', 'root');                    // deny ทั้งต้นไม้
 
@@ -96,7 +97,8 @@ class ScopeConsistencyTest extends TestCase
         // ยืนยันว่า deny มีผลจริง ไม่ใช่ตรงกันเพราะไม่มีอะไรเปลี่ยน
         $director = User::find($this->f->users['director']->id);
         $this->assertFalse($this->engine->allows($director, 'personnel.profile.view', $this->f->people['teacher']));
-        $this->assertSame([], $this->engine->scopeQuery(User::find($this->f->users['teacher']->id), 'personnel.profile.view', Personnel::query())->pluck('id')->all());
+        $this->assertSame([$this->f->people['teacher']->id], $this->engine->scopeQuery(User::find($this->f->users['teacher']->id), 'personnel.profile.view', Personnel::query())->pluck('id')->all());
+        $this->assertSame([$this->f->people['section_head']->id], $this->engine->scopeQuery(User::find($this->f->users['section_head']->id), 'personnel.profile.view', Personnel::query())->pluck('id')->all());
         $this->assertSame([], $this->engine->scopeQuery(User::find($this->f->users['admin']->id), 'org.unit.view', OrgUnit::query())->pluck('id')->all());
         $this->assertNotContains($this->f->units['auto']->id,
             $this->engine->scopeQuery(User::find($this->f->users['section_head']->id), 'org.unit.view', OrgUnit::query())->pluck('id')->all());

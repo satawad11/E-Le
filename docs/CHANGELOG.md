@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## 2026-10-19 — REBUILD-2569 · R-04 Permission Engine + manifest + เมนู
+- **แก้ไขหลังตรวจรอบสอง:** ผู้ดูแลระบบ deny reveal เพดาน own (เปิดดูข้อมูลของตนเองได้) · override deny จำกัดหน่วยไม่ตัด scope own ทั้ง can() และ scopeQuery (PDPA มาตรา 30)
 - **แก้ไขหลังตรวจ:** `scopeQuery` เคารพ override deny ที่จำกัดหน่วยทุก scope (AuthzScope แยกเงื่อนไขต่อแหล่งพร้อมหน่วยที่ถูกตัด) และ `can()` ใช้กติกาเดียวกัน · ADR-R-015 แก้ไข: ผู้ดูแลระบบ deny เฉพาะ reveal + approve/review · ผู้ตรวจสอบไม่มี deny · sync บังคับ/ลบ deny ตาม manifest · ลบอักขระ NUL ในไฟล์เทสต์ + เทสต์กันอักขระควบคุมในซอร์ส
 - manifest 9 โมดูล (`app/Modules/*/manifest.php`): core, personnel, org, access, audit, system + workflow/document/notification (เฉพาะสิทธิ์ที่เมนูตั้งค่าระบบต้องใช้) · เมนูตรง PLAN §8.2 ก., ข., ช., ซ. ทุกแถว
 - `App\Authz\Manifest\ModuleRegistry` + `ManifestValidator` + `ModuleSynchronizer` · คำสั่ง `modules:sync` (`--reset-defaults`) idempotent · retire ไม่ลบ · ไม่ทับการปรับของผู้ดูแล · `ModuleManifestSeeder` ใน DatabaseSeeder

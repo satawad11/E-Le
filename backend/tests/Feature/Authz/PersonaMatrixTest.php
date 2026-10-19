@@ -132,7 +132,7 @@ class PersonaMatrixTest extends TestCase
     private const MATRIX = [
         'personnel.profile.view' => ['own', 'subtree', 'subtree', 'subtree', 'all', 'all', 'own', 'own'],
         'personnel.profile.view_confidential' => ['own', 'own', 'own', 'subtree', 'all', 'all', 'own', 'own'],
-        'personnel.profile.reveal' => ['own', 'own', 'own', 'own', 'own', 'all', null, 'own'],
+        'personnel.profile.reveal' => ['own', 'own', 'own', 'own', 'own', 'all', 'own', 'own'],
         'personnel.profile.edit' => [null, null, null, null, null, 'all', null, null],
         'personnel.change_request.create' => ['own', 'own', 'own', 'own', 'own', 'own', 'own', 'own'],
         'personnel.change_request.review' => [null, null, null, null, null, 'all', null, null],

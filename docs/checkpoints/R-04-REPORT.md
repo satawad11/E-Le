@@ -43,7 +43,7 @@
 
 | การตรวจ | ผล |
 |---|---|
-| `php artisan test` | ✅ **216 tests, 1,248 assertions, 0 failures** (หลังแก้ไขหลังตรวจ · ส่งตรวจครั้งแรก 210/1,221 · R-03 จบที่ 166/1,133) |
+| `php artisan test` | ✅ **219 tests, 1,264 assertions, 0 failures** (หลังแก้ไขรอบสอง · รอบแรก 216/1,248 · ส่งตรวจครั้งแรก 210/1,221 · R-03 จบที่ 166/1,133) |
 | `vendor/bin/pint --test` | ✅ 638 files PASS |
 | `bash scripts/check-authz-patterns.sh` (CI grep §2.3) | ✅ ผ่าน — ไม่พบ hasRole/Gate::before/spatie · ชื่อ role เป็น literal เหลือ 7 ไฟล์โมดูลเดิมใน allowlist (ห้ามเพิ่ม ต้องว่างก่อนจบ R-08) |
 | `migrate:fresh --seed` บน MySQL (`eleave_r02_new`) | ✅ รวม sync manifest · `modules:sync` รอบสองไม่สร้างอะไรเพิ่ม (idempotent) |
@@ -81,7 +81,7 @@ Permission Matrix (scope ที่กว้างที่สุด) — 184 ช
 |---|---|---|---|---|---|---|---|---|
 | personnel.profile.view | own | subtree | subtree | subtree | all | all | own | own |
 | personnel.profile.view_confidential | own | own | own | subtree | all | all | own | own |
-| personnel.profile.reveal | own | own | own | own | own | all | — (deny) | own |
+| personnel.profile.reveal | own | own | own | own | own | all | own (deny ตัดเฉพาะที่กว้างกว่า own) | own |
 | personnel.report.view | — | — | — | subtree | all | all | — | — |
 | personnel.change_request.review / assignment.manage / import.manage | — | — | — | — | — | all | — | — |
 | org.unit.view | all | all | all | all | all | all | all | all |
@@ -94,7 +94,7 @@ Permission Matrix (scope ที่กว้างที่สุด) — 184 ช
 **หมายเหตุการตีความตาราง 8.3**
 - "งานรออนุมัติของฉัน" แสดงเมื่อมีสิทธิ์ `*.*.approve` หรือ `*.*.review` — ใน R-04 หัวหน้า L2–L4 ยังไม่มี (ได้เมื่อโมดูลลามี `leave.approval.approve` ใน R-08) จึงยังไม่เห็นเมนูนี้
 - L2/L1 เห็น "โครงสร้างองค์กร" ด้วย เพราะ §8.2 ข.3 กำหนด "ทุกคนดูได้" (ตาราง 8.3 ไม่ได้ระบุซ้ำ)
-- "—" ในตาราง 8.3 = ชุดสิทธิ์ของ persona นั้นไม่ให้สิทธิ์เพิ่ม ไม่ใช่ตัดสิทธิ์จากตำแหน่งอื่น (ADR-R-015 ฉบับแก้ไข) — ผู้ดูแลระบบ/ผู้ตรวจสอบที่เป็นบุคลากรจึงเห็น "โครงสร้างองค์กร" แต่ไม่เห็นรายชื่อ/ประวัติผู้อื่น · ผู้ดูแลระบบถูก deny การเปิดดูข้อมูลอ่อนไหวและการอนุมัติ/ตรวจทุกชนิดตามหลักการข้อ 8
+- "—" ในตาราง 8.3 = ชุดสิทธิ์ของ persona นั้นไม่ให้สิทธิ์เพิ่ม ไม่ใช่ตัดสิทธิ์จากตำแหน่งอื่น (ADR-R-015 ฉบับแก้ไข) — ผู้ดูแลระบบ/ผู้ตรวจสอบที่เป็นบุคลากรจึงเห็น "โครงสร้างองค์กร" แต่ไม่เห็นรายชื่อ/ประวัติผู้อื่น · ผู้ดูแลระบบถูก deny การเปิดดูข้อมูลอ่อนไหวของผู้อื่นและการอนุมัติ/ตรวจทุกชนิดตามหลักการข้อ 8 — **deny ไม่ตัดข้อมูลของตนเอง** (PDPA มาตรา 30)
 - แถว ระบบการลา · ลงเวลา · OT · สารบรรณ ของตาราง 8.3 ทดสอบใน R-08 เมื่อโมดูลเหล่านั้นมี manifest
 
 ## 5. เทสต์ใน `tests/Legacy` ที่ย้ายหรือลบในเฟสนี้ (Q7)
@@ -150,8 +150,20 @@ php artisan modules:sync
 | 2 | deny ในชุดสิทธิ์ตัดสิทธิ์จากทุกแหล่ง ทำให้หัวหน้าแผนกที่ได้ชุดสิทธิ์ผู้ตรวจสอบเสียสิทธิ์ดูบุคลากรในแผนกตน | ผู้ดูแลระบบ: deny เฉพาะ `personnel.profile.reveal` และ `*.*.approve`, `*.*.review` (pattern ไม่ปฏิเสธ `access.change.approve` ที่ชุดสิทธิ์ให้เอง) · ผู้ตรวจสอบ: ไม่มี deny · sync บังคับ deny ตาม manifest และลบ deny ที่เลิกประกาศ (ฐานข้อมูลที่ sync ฉบับแรกไว้ถูกแก้อัตโนมัติ — ตรวจบน MySQL แล้ว เหลือ deny 2 แถวที่ตั้งใจ) · แก้คำอธิบายใต้ตาราง PLAN §8.3 · ADR-R-015 ฉบับแก้ไข | `PermissionEngineTest::test_department_head_who_is_also_auditor_keeps_viewing_their_department` · `test_administrator_who_is_also_department_head_views_but_never_approves_or_reveals` (มี override allow + ชุดสิทธิ์งานบุคคลเพิ่มก็ยังถูก deny) · `test_admin_and_auditor_sets_add_no_personnel_rights_and_admin_cannot_reveal_or_approve` · `ManifestSyncTest::test_denies_follow_the_manifest_exactly_*` · persona matrix/เมนูปรับตามข้อ 4 |
 | 3 | `CoreApiAuthorizationTest.php` มีอักขระ NUL จริง → git มองเป็น binary | เปลี่ยนเป็น escape `"\x00\x01\x02"` · สแกนไฟล์ข้อความใน `backend/` ทั้งหมดแล้วไม่พบอักขระควบคุมอื่น (ไฟล์ binary ที่ git เห็นเหลือเฉพาะฟอนต์ใน `public/fonts` ซึ่งเป็น binary จริง) | **`ForbiddenPatternsTest::test_source_files_contain_no_control_bytes`** กันไม่ให้เกิดซ้ำใน app, bootstrap, config, routes, database, tests, scripts |
 
-ผลกระทบต่อ persona (ข้อ 4): ผู้ดูแลระบบและผู้ตรวจสอบเห็นเมนู "โครงสร้างองค์กร" (สิทธิ์ดูทั่วไปจากตำแหน่งบุคลากร) · ผู้ดูแลระบบ `personnel.profile.reveal` = ไม่มี (deny) · ผู้ตรวจสอบ reveal = own (ข้อมูลของตนเอง) · ส่วนอื่นของตารางไม่เปลี่ยน
+ผลกระทบต่อ persona (ข้อ 4): ผู้ดูแลระบบและผู้ตรวจสอบเห็นเมนู "โครงสร้างองค์กร" (สิทธิ์ดูทั่วไปจากตำแหน่งบุคลากร) · ผู้ตรวจสอบ reveal = own · ส่วนอื่นของตารางไม่เปลี่ยน (ผู้ดูแลระบบ reveal ปรับเป็น own ในรอบสอง)
 
 ผลตรวจหลังแก้: `php artisan test` 216 tests / 1,248 assertions ผ่าน · `pint --test` ผ่าน · `scripts/check-authz-patterns.sh` ผ่าน · `modules:sync` บน MySQL ผ่าน
+
+### แก้ไขหลังตรวจรอบสอง — สิทธิ์เจ้าของข้อมูลดูข้อมูลของตนเองได้เสมอ (PDPA มาตรา 30)
+
+ผลตรวจรอบสอง: ข้อ 1–3 ผ่าน · เจ้าของระบบยืนยัน `access.change.approve` ของผู้ดูแลระบบ (มี maker_checker)
+
+| # | ประเด็น | การแก้ | เทสต์ |
+|---|---|---|---|
+| 1 | ผู้ดูแลระบบเปิดดูข้อมูลอ่อนไหวของตนเองไม่ได้ | deny `personnel.profile.reveal` เปลี่ยนจากเพดาน null เป็น **own** (ตัดเฉพาะ scope ที่กว้างกว่า own) · deny approve/review คงเดิม · `modules:sync` ปรับแถว deny เดิมบน MySQL เป็น own อัตโนมัติ (ตรวจแล้ว) | `CoreApiAuthorizationTest::test_admin_reveals_own_sensitive_data_with_a_log_but_never_others` — ของตนเอง 200 + บันทึก sensitive_access_logs · ผู้ดูแลระบบที่เป็นหัวหน้างานเปิดดูของคนในงาน = **403** (ดูประวัติได้แต่ reveal ไม่ได้) · ผู้ดูแลระบบทั่วไปเปิดดูของผู้อื่นที่ไม่อยู่ใน scope การดู = 404 ตามกติกา IDOR · `PermissionEngineTest` (widestScope = own) |
+| 2 | override deny จำกัดหน่วยตัดข้อมูลของเจ้าของเองเมื่อสังกัดหน่วยนั้น | `excludedPaths` ไม่ใช้กับ grant scope own ทั้งใน `can()` (`grantCovers`) และ `scopeQuery` (`AuthzScope` term own ไม่มี excluded_paths) · deny ทั้ง permission (ไม่ระบุหน่วย) และเพดานในชุดสิทธิ์ยังตัด own ได้ตามที่ประกาศ | `PermissionEngineTest::test_unit_limited_deny_never_hides_the_owners_own_record` · `CoreApiAuthorizationTest::test_unit_denied_owner_still_views_and_reveals_own_record_through_the_api` (ดู/reveal ของตนเอง 200 · คนอื่นในหน่วย 404) · `ScopeConsistencyTest` ผ่านทุกคู่ (เพิ่ม deny หน่วยที่ตนสังกัดของหัวหน้างาน) |
+| 3 | เอกสาร | ADR-R-015 ระบุว่า deny ของผู้ดูแลระบบไม่ตัดข้อมูลของตนเอง · หมายเหตุใต้ PLAN §8.3 · ตาราง persona/Permission Matrix ข้างบน (admin reveal = own) | `PersonaMatrixTest::test_permission_matrix` |
+
+ผลตรวจรอบสอง: `php artisan test` **219 tests / 1,264 assertions** ผ่าน · `pint --test` ผ่าน · `scripts/check-authz-patterns.sh` ผ่าน
 
 **หยุดรอคำสั่ง**

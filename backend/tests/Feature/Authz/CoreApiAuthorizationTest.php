@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Authz;
 
+use App\Models\Authz\Permission;
+use App\Models\Authz\PermissionOverride;
 use App\Models\PersonnelChangeRequest;
 use App\Models\PersonnelProfile;
 use App\Models\SensitiveAccessLog;
@@ -46,7 +48,7 @@ class CoreApiAuthorizationTest extends TestCase
         Sanctum::actingAs($this->f->users['admin']);
         $this->getJson("/api/personnel/{$this->f->people['teacher']->uuid}")->assertNotFound();
         $this->getJson('/api/org/units')->assertOk(); // โครงสร้างองค์กรดูได้แบบบุคลากรทั่วไป (ADR-R-015 ฉบับแก้ไข)
-        $this->postJson("/api/personnel/{$this->f->people['admin']->uuid}/reveal", ['fields' => ['national_id'], 'reason' => 'ตรวจข้อมูลของตนเอง'])->assertForbidden();
+        $this->postJson("/api/personnel/{$this->f->people['teacher']->uuid}/reveal", ['fields' => ['national_id'], 'reason' => 'ตรวจข้อมูลของผู้อื่น'])->assertNotFound();
     }
 
     public function test_user_without_any_scope_gets_403_from_the_route(): void
@@ -104,6 +106,42 @@ class CoreApiAuthorizationTest extends TestCase
 
         $this->postJson("/api/personnel/change-requests/{$uuid}/review", ['decision' => 'approved'])->assertOk();
         $this->assertSame('หลังสมรส', $this->f->people['teacher']->fresh()->last_name);
+    }
+
+    public function test_admin_reveals_own_sensitive_data_with_a_log_but_never_others(): void
+    {
+        foreach (['admin', 'hr_staff'] as $key) {
+            PersonnelProfile::create(['personnel_id' => $this->f->people[$key]->id, 'national_id' => $key === 'admin' ? '1103700012346' : '3101700012340']);
+        }
+
+        // ผู้ดูแลระบบทั่วไป: ของตนเองได้ + log · ของผู้อื่นไม่อยู่ใน scope การดู = 404 (ไม่บอกว่ามีอยู่)
+        Sanctum::actingAs($this->f->users['admin']);
+        $this->postJson("/api/personnel/{$this->f->people['admin']->uuid}/reveal", ['fields' => ['national_id'], 'reason' => 'ตรวจข้อมูลของตนเองก่อนยื่นเอกสาร'])
+            ->assertOk()->assertJsonPath('fields.national_id', '1103700012346');
+        $this->assertSame(1, SensitiveAccessLog::where('actor_user_id', $this->f->users['admin']->id)->where('personnel_id', $this->f->people['admin']->id)->count());
+
+        // ผู้ดูแลระบบที่เป็นหัวหน้างานด้วย: ดูประวัติคนในงานได้ แต่เปิดดูข้อมูลอ่อนไหวของผู้อื่น = 403
+        $this->f->grant('section_head', 'system.admin', 'คำสั่ง 43/2569');
+        Sanctum::actingAs($this->f->users['section_head']->fresh());
+        $this->getJson("/api/personnel/{$this->f->people['hr_staff']->uuid}")->assertOk();
+        $this->postJson("/api/personnel/{$this->f->people['hr_staff']->uuid}/reveal", ['fields' => ['national_id'], 'reason' => 'ตรวจข้อมูลของผู้อื่นในงาน'])
+            ->assertForbidden();
+        $this->assertSame(0, SensitiveAccessLog::where('personnel_id', $this->f->people['hr_staff']->id)->count());
+    }
+
+    public function test_unit_denied_owner_still_views_and_reveals_own_record_through_the_api(): void
+    {
+        PersonnelProfile::create(['personnel_id' => $this->f->people['section_head']->id, 'national_id' => '1103700012346']);
+        foreach (['personnel.profile.view', 'personnel.profile.reveal'] as $permission) {
+            PermissionOverride::create(['user_id' => $this->f->users['section_head']->id, 'permission_id' => Permission::where('name', $permission)->value('id'),
+                'effect' => 'deny', 'org_unit_id' => $this->f->units['hr']->id, 'reason' => 'ส่วนได้เสีย', 'granted_by' => $this->f->users['admin']->id]);
+        }
+
+        Sanctum::actingAs($this->f->users['section_head']->fresh());
+        $this->getJson("/api/personnel/{$this->f->people['section_head']->uuid}")->assertOk();
+        $this->postJson("/api/personnel/{$this->f->people['section_head']->uuid}/reveal", ['fields' => ['national_id'], 'reason' => 'ตรวจข้อมูลของตนเอง'])
+            ->assertOk()->assertJsonPath('fields.national_id', '1103700012346');
+        $this->getJson("/api/personnel/{$this->f->people['hr_staff']->uuid}")->assertNotFound();
     }
 
     public function test_reveal_is_throttled(): void
