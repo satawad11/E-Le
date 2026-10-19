@@ -6,6 +6,8 @@ use App\Authz\Manifest\ModuleRegistry;
 use App\Authz\PermissionEngine;
 use App\Contracts\Personnel\PersonnelFieldAccess;
 use App\Events\AssignmentChanged;
+use App\Events\PersonnelStatusChanged;
+use App\Listeners\SyncAccountLifecycle;
 use App\Models\Authz\Permission;
 use App\Models\Authz\PermissionOverride;
 use App\Models\Authz\PermissionTemplate;
@@ -27,6 +29,8 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\Sanctum;
 use LogicException;
 
 class AppServiceProvider extends ServiceProvider
@@ -140,6 +144,15 @@ class AppServiceProvider extends ServiceProvider
             app(PermissionEngine::class)->flushUser(User::where('personnel_id', $event->assignment->personnel_id)->first());
         });
 
+        // R05-1: JML อัตโนมัติ — Mover แจ้งเจ้าของบัญชี · สถานะบุคลากรเปลี่ยน → บัญชีปรับตาม
+        Event::listen(AssignmentChanged::class, [SyncAccountLifecycle::class, 'handleAssignment']);
+        Event::listen(PersonnelStatusChanged::class, [SyncAccountLifecycle::class, 'handlePersonnelStatus']);
+
+        // R-05: token ใช้ได้เฉพาะบัญชีที่ยัง active — บัญชีที่ถูกระงับ/ล็อก/ปิดใช้ token เดิมไม่ได้ แม้ token ยังไม่ถูกลบ
+        Sanctum::authenticateAccessTokensUsing(
+            fn (PersonalAccessToken $token, bool $isValid): bool => $isValid && $token->tokenable instanceof User && $token->tokenable->isActive()
+        );
+
         foreach ([RoleGrant::class, PermissionOverride::class, TemplatePermission::class, PositionTemplate::class, PermissionTemplate::class, Permission::class] as $model) {
             $model::saved(fn () => app(PermissionEngine::class)->flushAll());
             $model::deleted(fn () => app(PermissionEngine::class)->flushAll());
@@ -158,6 +171,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('password', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
         RateLimiter::for('token-refresh', fn (Request $request) => Limit::perMinute(10)->by($perUser($request)));
         RateLimiter::for('personal-data', fn (Request $request) => Limit::perMinute(10)->by($perUser($request)));
+
+        // R-05: ความปลอดภัยบัญชีของตนเอง (รหัสผ่าน รหัส MFA) — กันเดารหัสผ่านเดิม/รหัส MFA ผ่านหน้า /me/security
+        RateLimiter::for('mfa', fn (Request $request) => Limit::perMinute(20)->by($perUser($request)));
 
         // R-04: นำเข้าข้อมูลบุคลากรทั้งไฟล์ — งานหนักและเปลี่ยนข้อมูลจำนวนมาก
         RateLimiter::for('imports', fn (Request $request) => Limit::perMinute(5)->by($perUser($request)));

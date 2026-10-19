@@ -27,7 +27,7 @@ return [
 
     'templates' => [
         'admin' => [
-            'name' => 'ผู้ดูแลระบบ', 'kind' => 'functional',
+            'name' => 'ผู้ดูแลระบบ', 'kind' => 'functional', 'mfa' => true,
             'description' => 'ดูแลระบบและสิทธิ์ ไม่อยู่ในสายอนุมัติ และไม่เห็นข้อมูลบุคลากรของผู้อื่น (PROJECT_RULES ข้อ 8)',
             'permissions' => [
                 'system.module.manage' => 'all',

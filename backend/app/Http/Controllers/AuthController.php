@@ -2,20 +2,39 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Personnel;
-use App\Models\PersonnelProfile;
+use App\Authz\PermissionEngine;
 use App\Models\User;
+use App\Services\Access\AuthenticationService;
+use App\Services\Access\MfaPolicy;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
+/**
+ * เข้าสู่ระบบ / MFA / ออกจากระบบ (CORE-03 · R-05) — ตรรกะอยู่ที่ AuthenticationService
+ *
+ * endpoint ก่อนยืนยันตัวตน (`/login`, `/login/mfa*`) ประกาศ ->permission() ไม่ได้ เพราะยังไม่รู้ว่าเป็นใคร
+ * จึงจำกัดอัตราด้วย `throttle:login` ต่อ IP และล็อกบัญชีเมื่อผิดครบ 5 ครั้ง
+ */
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function __construct(private readonly AuthenticationService $auth) {}
+
+    /** ตัวเลือกของหน้าเข้าสู่ระบบ (สาธารณะ) — แสดงช่องเลขประจำตัวประชาชนเฉพาะเมื่อเปิด ADR-R-013 */
+    public function options(): JsonResponse
+    {
+        return response()->json([
+            'allow_national_id_login' => (bool) config('auth.allow_national_id_login', false),
+            'remember_device_days' => (int) config('auth.devices.remember_days', 30),
+        ]);
+    }
+
+    public function login(Request $request): JsonResponse
     {
         /*
          * ADR-R-013 (Q10) — ตัวระบุหลักคืออีเมลหรือรหัสบุคลากร (`personnel_code`)
@@ -25,76 +44,57 @@ class AuthController extends Controller
         $request->validate([
             'login' => ['required_without:email', 'nullable', 'string', 'max:255'],
             'email' => ['required_without:login', 'nullable', 'string', 'max:255'],
-            'password' => 'required|string',
+            'password' => ['required', 'string', 'max:255'],
+            'device_id' => ['nullable', 'string', 'max:120'],
+            'remember_device' => ['nullable', 'boolean'],
         ], [
             'login.required_without' => 'กรุณากรอกอีเมลหรือรหัสบุคลากร',
             'email.required_without' => 'กรุณากรอกอีเมลหรือรหัสบุคลากร',
         ]);
 
-        $loginField = trim((string) ($request->input('login') ?? $request->input('email')));
-        $lockKey = 'login-account:'.hash('sha256', mb_strtolower(trim($loginField)));
+        $identifier = trim((string) ($request->input('login') ?? $request->input('email')));
+        $result = $this->auth->attempt($identifier, (string) $request->input('password'), $request);
 
-        if (RateLimiter::tooManyAttempts($lockKey, 5)) {
-            return response()->json([
-                'message' => 'บัญชีถูกล็อกชั่วคราว กรุณาลองใหม่ในภายหลัง',
-                'retry_after' => RateLimiter::availableIn($lockKey),
-            ], 429);
-        }
-        $user = $this->findUserByIdentifier($loginField);
+        if ($result['type'] === 'mfa') {
+            unset($result['type']);
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            RateLimiter::hit($lockKey, 900);
-            throw ValidationException::withMessages([
-                'email' => ['ข้อมูลการเข้าสู่ระบบไม่ถูกต้อง'],
-            ]);
+            return response()->json($result);
         }
 
-        // CORE-03: เข้าสู่ระบบได้เฉพาะบัญชี active ที่ไม่ถูกล็อก · บัญชี service ห้าม interactive login
-        if (! $user->isActive() || $user->account_type === 'service') {
-            throw ValidationException::withMessages([
-                'email' => ['บัญชีผู้ใช้นี้ยังไม่เปิดใช้งานหรือถูกระงับการใช้งาน'],
-            ]);
-        }
-
-        RateLimiter::clear($lockKey);
-
-        $user->forceFill(['last_login_at' => now()])->saveQuietly();
-
-        Auth::login($user);
-        $expiration = (int) config('sanctum.expiration', 480);
-        $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;
-
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'expires_in' => $expiration * 60,
-            'user' => $this->present($user),
-        ]);
+        return $this->tokenResponse($result);
     }
 
-    /**
-     * อีเมล → รหัสบุคลากร → (ถ้าเปิดไว้) เลขประจำตัวประชาชนผ่าน hash
-     */
-    private function findUserByIdentifier(string $identifier): ?User
+    /** ยืนยัน MFA ด้วยรหัส 6 หลัก หรือรหัสสำรอง */
+    public function verifyMfa(Request $request): JsonResponse
     {
-        if ($identifier === '') {
-            return null;
-        }
+        $data = $request->validate([
+            'challenge' => ['required', 'string', 'size:64'],
+            'code' => ['required_without:recovery_code', 'nullable', 'string', 'max:10'],
+            'recovery_code' => ['required_without:code', 'nullable', 'string', 'max:20'],
+        ]);
 
-        if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
-            return User::where('email', $identifier)->first();
-        }
-
-        $personnelId = Personnel::where('personnel_code', $identifier)->value('id');
-
-        if ($personnelId === null && config('auth.allow_national_id_login', false) && preg_match('/^\d{13}$/', $identifier)) {
-            $personnelId = PersonnelProfile::where('national_id_hash', PersonnelProfile::hashNationalId($identifier))->value('personnel_id');
-        }
-
-        return $personnelId === null ? null : User::where('personnel_id', $personnelId)->first();
+        return $this->tokenResponse($this->auth->verifyChallenge($data['challenge'], $data['code'] ?? null, $data['recovery_code'] ?? null, $request));
     }
 
-    public function logout(Request $request)
+    /** ถูกบังคับใช้ MFA แต่ยังไม่เคยตั้ง → ขอ secret และ QR */
+    public function startMfaSetup(Request $request): JsonResponse
+    {
+        $data = $request->validate(['challenge' => ['required', 'string', 'size:64']]);
+
+        return response()->json($this->auth->beginEnrollment($data['challenge']));
+    }
+
+    public function confirmMfaSetup(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'challenge' => ['required', 'string', 'size:64'],
+            'code' => ['required', 'string', 'max:10'],
+        ]);
+
+        return $this->tokenResponse($this->auth->confirmEnrollment($data['challenge'], $data['code'], $request));
+    }
+
+    public function logout(Request $request): JsonResponse
     {
         $accessToken = $request->user()?->currentAccessToken();
 
@@ -113,17 +113,19 @@ class AuthController extends Controller
         return response()->json(['message' => 'ออกจากระบบเรียบร้อยแล้ว']);
     }
 
-    public function refresh(Request $request)
+    /** หมุน token — คงสถานะ MFA ของ token เดิม (ชื่อ token) */
+    public function refresh(Request $request): JsonResponse
     {
         $user = $request->user();
         $accessToken = $user->currentAccessToken();
+        $name = $accessToken instanceof PersonalAccessToken ? $accessToken->name : AuthenticationService::TOKEN_SESSION;
 
         if ($accessToken && method_exists($accessToken, 'delete')) {
             $accessToken->delete();
         }
 
         $expiration = (int) config('sanctum.expiration', 480);
-        $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;
+        $token = $user->createToken($name, ['*'], now()->addMinutes($expiration))->plainTextToken;
 
         return response()->json([
             'access_token' => $token,
@@ -132,7 +134,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function forgotPassword(Request $request)
+    public function forgotPassword(Request $request): JsonResponse
     {
         $request->validate(['email' => 'required|email']);
         Password::sendResetLink($request->only('email'));
@@ -141,7 +143,7 @@ class AuthController extends Controller
         return response()->json(['message' => 'หากพบบัญชี ระบบจะส่งลิงก์ตั้งรหัสผ่านใหม่ให้ทางอีเมล']);
     }
 
-    public function resetPassword(Request $request)
+    public function resetPassword(Request $request): JsonResponse
     {
         $data = $request->validate([
             'token' => 'required|string',
@@ -166,17 +168,27 @@ class AuthController extends Controller
         return response()->json(['message' => 'ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว']);
     }
 
-    public function user(Request $request)
+    public function user(Request $request): JsonResponse
     {
         return response()->json($this->present($request->user()));
     }
 
+    /** @param  array<string, mixed>  $result */
+    private function tokenResponse(array $result): JsonResponse
+    {
+        $user = $result['user'];
+        unset($result['user'], $result['type']);
+
+        return response()->json($result + ['user' => $this->present($user)]);
+    }
+
     /**
-     * ข้อมูลบัญชีของตนเอง — สิทธิ์ว่างไว้จนกว่า R-04 จะต่อ PermissionEngine (`GET /api/me/permissions`)
+     * ข้อมูลบัญชีของตนเอง — `permission_names` มาจาก PermissionEngine ใช้ซ่อน/แสดงในหน้าเว็บเท่านั้น
      */
     private function present(User $user): array
     {
         $personnel = $user->personnel;
+        $engine = app(PermissionEngine::class);
 
         return [
             'uuid' => $user->uuid,
@@ -187,9 +199,14 @@ class AuthController extends Controller
             'last_login_at' => $user->last_login_at?->toIso8601String(),
             'personnel' => $personnel ? [
                 'uuid' => $personnel->uuid,
+                'personnel_code' => $personnel->personnel_code,
                 'full_name' => $personnel->full_name,
             ] : null,
-            'permission_names' => [],
+            'mfa' => [
+                'enabled' => $user->confirmedMfa() !== null,
+                'required' => app(MfaPolicy::class)->requires($user),
+            ],
+            'permission_names' => $engine->effective($user)->pluck('permission')->unique()->sort()->values()->all(),
         ];
     }
 }

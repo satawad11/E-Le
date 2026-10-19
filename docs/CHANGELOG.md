@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-10-19 — REBUILD-2569 · R-05 บัญชีและความปลอดภัย
+- JML อัตโนมัติ: `AccountLifecycleService` + event `PersonnelStatusChanged` + listener `SyncAccountLifecycle` (Mover แจ้งเจ้าของบัญชี) · job รายวัน `accounts:reconcile` (แทน `access:expire-role-grants` ที่ไม่มีอยู่จริง) — idempotent · `users.status_reason` บอกผู้ตั้งสถานะ (ADR-R-021)
+- MFA TOTP + รหัสสำรอง (`pragmarx/google2fa` 9.1.0 · ADR-R-019) · `MfaPolicy` บังคับ L1–L3, ชุดสิทธิ์ที่ประกาศ `mfa` (งานบุคคล, ผู้ดูแลระบบ), break-glass · ไม่มี token ก่อนผ่าน MFA · `EnsureMfaSatisfied` ตรวจทุก request (ADR-R-020)
+- login events ครบ (success, bad_password, locked, mfa_failed, new_device, blocked) · ล็อก 30 นาทีหลังผิด 5 ครั้ง (ตอบ 423) · อีเมลแจ้งอุปกรณ์ใหม่ · แจ้ง ผอ./ผู้ตรวจสอบทุกครั้งที่ใช้ break-glass · token ใช้ได้เฉพาะบัญชี active
+- API มอบ/ถอน role grant และ override: grant_ceiling (ตรวจตอนยื่นและตอนยืนยัน) · two_person ผ่าน `permission_change_requests` · maker_checker · not_own · วันหมดอายุบังคับ (ADR-R-022)
+- ทบทวนสิทธิ์: ออกรอบ · หัวหน้าหน่วยยืนยัน/ถอนตาม scope · ปิดรอบเมื่อเลยกำหนดถอนอัตโนมัติ
+- `/api/me/security`, `/api/me/password` (สิทธิ์ `access.self.security` จากชุดสิทธิ์ `access.self_service` L5) · `/api/auth/options` สาธารณะ
+- migration `r05_account_security` (status_reason, status_changed_at, failed_login_attempts, mfa last_timestep, known_devices, login_events.device_hash)
+- frontend: หน้าเข้าสู่ระบบ + MFA (ต้นแบบหน้า 1) และหน้าบัญชีผู้ใช้ `/access/accounts` (ต้นแบบหน้า 7 · `/admin/users` redirect) · ลบรายชื่อบัญชีทดสอบและรหัสผ่านที่เคยแสดงในหน้าเข้าสู่ระบบเดิม
+- ลบ `AccountSeparationService` เดิม · ลบเทสต์ Legacy 5 ไฟล์ที่ R-05 แทนแล้ว
+
 ## 2026-10-19 — REBUILD-2569 · R-04 Permission Engine + manifest + เมนู
 - **แก้ไขหลังตรวจรอบสอง:** ผู้ดูแลระบบ deny reveal เพดาน own (เปิดดูข้อมูลของตนเองได้) · override deny จำกัดหน่วยไม่ตัด scope own ทั้ง can() และ scopeQuery (PDPA มาตรา 30)
 - **แก้ไขหลังตรวจ:** `scopeQuery` เคารพ override deny ที่จำกัดหน่วยทุก scope (AuthzScope แยกเงื่อนไขต่อแหล่งพร้อมหน่วยที่ถูกตัด) และ `can()` ใช้กติกาเดียวกัน · ADR-R-015 แก้ไข: ผู้ดูแลระบบ deny เฉพาะ reveal + approve/review · ผู้ตรวจสอบไม่มี deny · sync บังคับ/ลบ deny ตาม manifest · ลบอักขระ NUL ในไฟล์เทสต์ + เทสต์กันอักขระควบคุมในซอร์ส

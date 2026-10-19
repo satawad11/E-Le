@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class MfaCredential extends Model
 {
-    protected $fillable = ['user_id', 'type', 'secret', 'confirmed_at', 'recovery_codes', 'last_used_at'];
+    protected $fillable = ['user_id', 'type', 'secret', 'confirmed_at', 'recovery_codes', 'last_used_at', 'last_timestep'];
 
     protected $hidden = ['secret', 'recovery_codes'];
 
@@ -21,6 +21,7 @@ class MfaCredential extends Model
             'recovery_codes' => 'encrypted:array',
             'confirmed_at' => 'datetime',
             'last_used_at' => 'datetime',
+            'last_timestep' => 'integer',
         ];
     }
 

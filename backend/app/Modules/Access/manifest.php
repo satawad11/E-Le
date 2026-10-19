@@ -2,6 +2,9 @@
 
 /*
  * Manifest โมดูล access — กลุ่มเมนู "บัญชีและสิทธิ์" (PLAN §8.2 ช.) · CORE-03/04
+ *
+ * R-05: `access.self.security` = ความปลอดภัยบัญชีของตนเอง (รหัสผ่าน MFA อุปกรณ์ · `/me/security`)
+ * ให้ทุกคนที่มีตำแหน่งหลักผ่านชุดสิทธิ์ `access.self_service` (L5) — endpoint ของตนเองจึงต่อ engine เหมือนทุก route
  */
 return [
     'code' => 'access',
@@ -9,6 +12,9 @@ return [
     'version' => '1.0.0',
 
     'features' => [
+        'self' => ['name' => 'ความปลอดภัยบัญชีของตนเอง', 'actions' => [
+            'security' => ['name' => 'เปลี่ยนรหัสผ่าน ตั้งค่า MFA และดูอุปกรณ์ของตนเอง', 'scopes' => ['own']],
+        ]],
         'account' => ['name' => 'บัญชีผู้ใช้', 'actions' => [
             'view' => ['name' => 'ดูบัญชีผู้ใช้และที่มาของสิทธิ์', 'scopes' => ['all']],
             'manage' => ['name' => 'ระงับ/ปลดล็อก/ปิดบัญชี', 'scopes' => ['all'], 'requires' => ['account.view'], 'risk' => 'high', 'rules' => ['not_own']],
@@ -32,6 +38,10 @@ return [
     ],
 
     'templates' => [
+        'self_service' => [
+            'name' => 'ความปลอดภัยบัญชีของตนเอง (ทุกคน)', 'kind' => 'positional',
+            'permissions' => ['access.self.security' => 'own'],
+        ],
         'reviewer' => [
             'name' => 'ผู้ยืนยันการทบทวนสิทธิ์ของหน่วย (L1–L4)', 'kind' => 'positional',
             'permissions' => ['access.review.confirm' => 'subtree'],
@@ -47,6 +57,7 @@ return [
         'L2' => ['reviewer'],
         'L3' => ['reviewer'],
         'L4' => ['reviewer'],
+        'L5' => ['self_service'],
     ],
 
     'menu_groups' => [

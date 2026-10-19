@@ -178,6 +178,8 @@ class ModuleRegistry
                 'attributes_schema' => $template['attributes_schema'] ?? null,
                 'permissions' => $template['permissions'] ?? [],
                 'denies' => $template['denies'] ?? [],
+                // ผู้ถือชุดสิทธิ์นี้ต้องใช้ MFA (CORE-03) — เช่น งานบุคคล ผู้ดูแลระบบ
+                'mfa' => (bool) ($template['mfa'] ?? false),
             ];
         }
 

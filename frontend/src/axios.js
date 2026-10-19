@@ -23,6 +23,14 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // R-05: ตำแหน่ง/ชุดสิทธิ์ใหม่บังคับ MFA ระหว่างที่ยังล็อกอินอยู่ → ต้องเข้าสู่ระบบใหม่พร้อม MFA
+    if (error.response?.status === 403 && error.response?.data?.code === 'mfa_required') {
+      localStorage.removeItem('token');
+      sessionStorage.setItem('login_notice', error.response.data.message || 'กรุณาเข้าสู่ระบบใหม่พร้อมยืนยันตัวตนด้วย MFA');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
     if (error.response?.status === 401) {
       // Token หมดอายุหรือไม่ถูกต้อง — clear แล้วไป login
       localStorage.removeItem('token');

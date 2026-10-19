@@ -140,11 +140,16 @@ class CoreModelsTest extends TestCase
 
         $this->assertNotNull($user->fresh()->last_login_at);
 
-        foreach ([User::STATUS_PENDING, User::STATUS_SUSPENDED, User::STATUS_SEPARATED, User::STATUS_LOCKED] as $status) {
+        foreach ([User::STATUS_PENDING, User::STATUS_SUSPENDED, User::STATUS_SEPARATED] as $status) {
             $user->forceFill(['status' => $status])->saveQuietly();
             $this->postJson('/api/login', ['email' => 'teacher@example.test', 'password' => 'correct-horse-battery'])
                 ->assertStatus(422);
         }
+
+        // R-05: บัญชีที่ถูกล็อกตอบ 423 พร้อมเวลาที่ปลดล็อก (ไม่มีวันปลด = ติดต่อผู้ดูแล)
+        $user->forceFill(['status' => User::STATUS_LOCKED])->saveQuietly();
+        $this->postJson('/api/login', ['email' => 'teacher@example.test', 'password' => 'correct-horse-battery'])
+            ->assertStatus(423);
     }
 
     public function test_national_id_login_is_disabled_by_default(): void

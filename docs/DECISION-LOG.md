@@ -112,3 +112,36 @@ public เห็นเสมอ · internal ← `personnel.profile.view` · conf
 `App\Authz\Manifest\ModuleRegistry` (manifest: สิทธิ์ ชุดสิทธิ์ เมนู) ใช้กับ core ทั้งหมด · `App\Services\Modules\ModuleRegistry` + `config/modules.php` ยังโหลด providers/route ของโมดูลลา ลงเวลา OT สารบรรณ แจ้งเตือน
 R-08 ย้ายข้อมูลของแต่ละโมดูลเข้า manifest แล้วลบทะเบียนเดิม
 
+## ADR-R-019 ไลบรารี TOTP: pragmarx/google2fa
+2026-10-19 · R-05 · R05-2
+ใช้ `pragmarx/google2fa` 9.1.0 (พึ่ง `paragonie/constant_time_encoding` 3.1.3 ตัวเดียว) · QR ใช้ `chillerlan/php-qrcode` ที่มีอยู่แล้ว ไม่เพิ่ม dependency
+เหตุผล: ตรง RFC 6238 ใช้ได้กับ Google/Microsoft Authenticator · เป็นตัวที่ Laravel Fortify ใช้ · ดูแลต่อเนื่อง · เทียบรหัสแบบ constant-time · มี `verifyKeyNewer` กันใช้รหัสเดิมซ้ำ
+ทางเลือกที่ไม่เลือก: `spomky-labs/otphp` (dependency มากกว่า ความสามารถที่ต้องใช้เท่ากัน) · เขียนเอง (โค้ดเข้ารหัส ไม่ควรเขียนเองต่างจาก ADR-R-014)
+ค่าที่ใช้: secret 32 ตัวอักษร base32 (160 bit) เข้ารหัสที่ฐานข้อมูล · ยอมคลาดเวลา ±1 ช่วง (30 วินาที) · บันทึก timestep ที่ใช้แล้ว · รหัสสำรอง 8 รหัส × 10 ตัวอักษร เก็บเป็น HMAC-SHA256 (กุญแจ APP_KEY) ในคอลัมน์ที่เข้ารหัส ใช้ได้รหัสละครั้ง
+คำถาม Q6 (MFA แบบ TOTP) ดำเนินตามคำสั่งเฟส R-05 (TOTP + รหัสสำรอง)
+
+## ADR-R-020 MFA บังคับทุก request · "จดจำอุปกรณ์" ไม่ข้าม MFA · อายุเซสชัน 8 ชั่วโมง
+2026-10-19 · R-05 · R05-2, R05-3
+- กลุ่มที่ต้องใช้ MFA (`App\Services\Access\MfaPolicy`): ผู้มี assignment บริหาร/รักษาการที่มีผลวันนี้ในหน่วยระดับ `auth.mfa.levels` (L1–L3) · ผู้ถือชุดสิทธิ์ที่ manifest ประกาศ `'mfa' => true` จากแหล่งใดก็ได้ที่ engine นับ (ตอนนี้ `personnel.hr_officer`, `system.admin`) · บัญชี break-glass — โมดูลใหม่ที่มีชุดสิทธิ์อ่อนไหวประกาศ `mfa` ใน manifest ได้โดยไม่แก้โค้ด
+- ไม่ออก token จนกว่าจะผ่าน MFA · ยังไม่เคยตั้ง MFA แต่ถูกบังคับ → ตั้งผ่าน challenge (อายุ 5 นาที ผิดได้ 5 ครั้ง) ก่อนจึงได้ token · รหัส MFA ผิดนับรวมกับรหัสผ่านผิดเพื่อล็อกบัญชี
+- token ที่ผ่าน MFA ชื่อ `session:mfa` · middleware `EnsureMfaSatisfied` ตรวจทุก request: ผู้ที่เพิ่งเข้ากลุ่มบังคับระหว่างล็อกอินอยู่ได้ 403 `mfa_required` จนกว่าจะเข้าสู่ระบบใหม่ · หมุน token คงสถานะ MFA
+- "จดจำอุปกรณ์นี้ 30 วัน" ในต้นแบบหน้า 1 = อุปกรณ์ถือว่ารู้จัก 30 วัน (ไม่ส่งอีเมลอุปกรณ์ใหม่) **ไม่ข้าม MFA** (Security > UI preference) · ไม่ติ๊ก = รู้จัก 12 ชั่วโมง · เก็บเฉพาะ hash ของรหัสอุปกรณ์
+- ทบทวน ADR-005: อายุ token คง 8 ชั่วโมง (`sanctum.expiration` 480) ตรงกับนโยบายในต้นแบบหน้า 7 · บัญชีถูกล็อกตอบ HTTP 423 พร้อมเวลาปลดล็อก
+- token ใช้ได้เฉพาะบัญชีที่ active (`Sanctum::authenticateAccessTokensUsing`) แม้ token ยังไม่ถูกลบ
+
+## ADR-R-021 สถานะบัญชีมีเจ้าของ (`users.status_reason`) · JML จากสถานะบุคลากร
+2026-10-19 · R-05 · R05-1
+- `status_reason`: `personnel:<สถานะ>` (JML) · `manual` (ผู้ดูแล) · `inactive_90_days` · `failed_logins` — JML และ `accounts:reconcile` คืนสถานะเฉพาะที่ตนตั้ง (`personnel:*`) การระงับโดยผู้ดูแลหรือเพราะไม่เข้าใช้ต้องให้ผู้ดูแลเปิด
+- Joiner ทำงานเมื่อสถานะบุคลากรเปลี่ยน (event `PersonnelStatusChanged` จาก `Personnel::updated` หลัง commit) และใน job รายวัน · ไม่สร้างบัญชีตอนสร้างแถวบุคลากร (ตัวนำเข้า R-03 ไม่สร้างบัญชี — job รายวันสร้างให้) · ต้องมี `email_work` ไม่มีให้รายงาน `missing_email`
+- ชื่อผู้ใช้ = `personnel_code` · รหัสผ่านสุ่มที่ไม่มีใครรู้ + ลิงก์ตั้งรหัสผ่าน (broker เดียวกับลืมรหัสผ่าน) — ไม่มีรหัสผ่านเริ่มต้นส่งทางใดเลย · กลับเข้ารับราชการหลังพ้นสภาพได้รหัสผ่านสุ่มใหม่ + ลิงก์
+- Leaver: ปิด assignment ที่ยังมีผล ณ วันพ้นสภาพ (ผ่าน `AssignmentService::end`) · ถอน role grant/override · ยกเลิกคำขอเปลี่ยนสิทธิ์ค้าง · ตัด token · แจ้งงานบุคคลพร้อมจำนวนงานค้าง — การส่งงานอนุมัติที่ค้างในสายให้ผู้อื่นเป็นงานของ workflow (R08-leave-2)
+- บัญชีไม่เข้าใช้ 90 วันเฉพาะบัญชีบุคลากร (ไม่รวม break-glass และบัญชีระบบ)
+- `AccountSeparationService` เดิม (อ้างตารางที่ถูกตัดใน R-02) ถูกลบ
+
+## ADR-R-022 มอบสิทธิ์ผ่าน API: two_person ตามเนื้อหา · เพดานตรวจสองครั้ง · ทุก endpoint ผ่าน engine
+2026-10-19 · R-05 · R05-4, R05-5
+- two_person ตัดสินจากสิ่งที่ให้ (`requiresSecondPerson` ของทุก permission ในชุดสิทธิ์/override) → `permission_change_requests` · สิทธิ์ความเสี่ยงต่ำมีผลทันที · การถอนสิทธิ์และ deny ลดอำนาจจึงมีผลทันที
+- grant_ceiling ตรวจกับผู้ยื่นทั้งตอนยื่นและตอนยืนยัน · ผู้ยืนยันต้องถือ `access.change.approve` ไม่ใช่ผู้ยื่น (maker_checker) และไม่ใช่ผู้รับสิทธิ์ (not_own)
+- role grant มอบได้เฉพาะชุดสิทธิ์ functional · ชุดสิทธิ์ positional มาจากคำสั่งแต่งตั้งเท่านั้น · ทุกการเปลี่ยนบันทึก `permission_audit_logs`
+- endpoint ความปลอดภัยบัญชีของตนเอง (`/api/me/security`, `/api/me/password`) ประกาศ `access.self.security` (own) จากชุดสิทธิ์ `access.self_service` ที่ทุกตำแหน่งหลักได้ (L5) — ทุก endpoint ที่ยืนยันตัวตนผ่าน engine · endpoint ก่อนยืนยันตัวตน (`/login`, `/login/mfa*`, `/auth/options`) เป็นสาธารณะพร้อม throttle
+- ข้อจำกัดที่รู้: บัญชีที่ไม่มีตำแหน่งหลัก (break-glass, บัญชีระบบ) ไม่ได้ `access.self.security` — ตั้ง MFA ผ่านขั้นตอนเข้าสู่ระบบแทน · การมอบชุดสิทธิ์แรกสุด (ผู้ดูแลระบบคนแรก, งานบุคคล) ติดเพดาน — ดู Q11

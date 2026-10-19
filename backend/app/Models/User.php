@@ -22,7 +22,7 @@ use Laravel\Sanctum\HasApiTokens;
  * ชื่อ สังกัด และตำแหน่งมาจากข้อมูลบุคลากร (`personnel`, `assignments`) ไม่เก็บซ้ำที่บัญชี
  * สิทธิ์ไม่ได้อยู่ที่บัญชี: คำนวณจาก assignment / role grant / override โดย App\Authz\PermissionEngine
  */
-#[Fillable(['personnel_id', 'username', 'email', 'password', 'status', 'account_type'])]
+#[Fillable(['personnel_id', 'username', 'email', 'password', 'status', 'status_reason', 'account_type'])]
 #[Hidden(['id', 'personnel_id', 'password', 'remember_token'])]
 class User extends Authenticatable implements AuthzResource, ScopedByAuthz
 {
@@ -38,6 +38,14 @@ class User extends Authenticatable implements AuthzResource, ScopedByAuthz
 
     public const STATUS_SEPARATED = 'separated';
 
+    public const STATUSES = [self::STATUS_PENDING, self::STATUS_ACTIVE, self::STATUS_LOCKED, self::STATUS_SUSPENDED, self::STATUS_SEPARATED];
+
+    public const TYPE_PERSONNEL = 'personnel';
+
+    public const TYPE_SERVICE = 'service';
+
+    public const TYPE_EXTERNAL = 'external';
+
     protected function casts(): array
     {
         return [
@@ -45,6 +53,8 @@ class User extends Authenticatable implements AuthzResource, ScopedByAuthz
             'password' => 'hashed',
             'locked_until' => 'datetime',
             'separated_at' => 'date',
+            'status_changed_at' => 'datetime',
+            'failed_login_attempts' => 'integer',
             'last_login_at' => 'datetime',
             'is_break_glass' => 'boolean',
         ];
@@ -69,6 +79,22 @@ class User extends Authenticatable implements AuthzResource, ScopedByAuthz
     public function mfaCredentials(): HasMany
     {
         return $this->hasMany(MfaCredential::class);
+    }
+
+    public function knownDevices(): HasMany
+    {
+        return $this->hasMany(KnownDevice::class);
+    }
+
+    /** MFA ที่ยืนยันแล้ว (TOTP) */
+    public function confirmedMfa(): ?MfaCredential
+    {
+        return $this->mfaCredentials()->where('type', 'totp')->whereNotNull('confirmed_at')->first();
+    }
+
+    public function isService(): bool
+    {
+        return $this->account_type === self::TYPE_SERVICE;
     }
 
     public function loginEvents(): HasMany

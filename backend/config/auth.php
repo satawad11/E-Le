@@ -126,4 +126,49 @@ return [
 
     'allow_national_id_login' => (bool) env('AUTH_ALLOW_NATIONAL_ID_LOGIN', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | นโยบายบัญชีและความปลอดภัย (CORE-03 · R-05)
+    |--------------------------------------------------------------------------
+    |
+    | - ล็อกบัญชี lockout.minutes นาทีเมื่อรหัสผ่าน/รหัส MFA ผิดครบ lockout.attempts ครั้ง
+    | - MFA บังคับ: ผู้มี management/acting ในหน่วยระดับ mfa.levels · ชุดสิทธิ์ที่ manifest ประกาศ `mfa` · break-glass
+    | - บัญชีบุคลากรที่ไม่เข้าใช้ inactive_days วัน ถูกระงับโดย accounts:reconcile
+    | - อายุ token (เซสชัน) ใช้ sanctum.expiration (8 ชั่วโมง ตาม ADR-005 · ทบทวนแล้วใน R-05)
+    |
+    */
+
+    'lockout' => [
+        'attempts' => (int) env('AUTH_LOCKOUT_ATTEMPTS', 5),
+        'minutes' => (int) env('AUTH_LOCKOUT_MINUTES', 30),
+    ],
+
+    'mfa' => [
+        'issuer' => env('AUTH_MFA_ISSUER', 'DMTC'),
+        'levels' => [1, 2, 3],
+        'challenge_seconds' => 300,
+        'challenge_attempts' => 5,
+        'recovery_codes' => 8,
+    ],
+
+    /*
+     * อุปกรณ์ที่รู้จัก: ติ๊ก "จดจำอุปกรณ์นี้" = รู้จัก remember_days วัน · ไม่ติ๊ก = session_hours ชั่วโมง
+     * มีผลเฉพาะการแจ้งเตือนอุปกรณ์ใหม่ — ไม่ข้าม MFA (ADR-R-020)
+     */
+    'devices' => [
+        'remember_days' => 30,
+        'session_hours' => 12,
+    ],
+
+    'inactive_days' => (int) env('AUTH_INACTIVE_DAYS', 90),
+
+    /*
+     * ผู้รับแจ้งเตือนเรื่องบัญชี — ระบุด้วยชุดสิทธิ์ (template) ไม่ใช่ชื่อ role
+     * งานบุคคล: บัญชีถูกระงับเพราะไม่เข้าใช้ และงานค้างของผู้พ้นสภาพ · ผู้ตรวจสอบ: ทุกการเข้าใช้บัญชี break-glass
+     */
+    'notify' => [
+        'hr_templates' => ['personnel.hr_officer'],
+        'auditor_templates' => ['audit.auditor'],
+    ],
+
 ];

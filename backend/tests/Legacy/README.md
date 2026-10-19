@@ -22,8 +22,8 @@ R-02 ถอด spatie/laravel-permission, ตาราง `departments`, `user_p
 | แจ้งเตือน | NotificationCenterTest | R-08 notification |
 | Document engine / รายงาน | DocumentEngineTest, DocumentReportEngineTest, DocumentTemplateSecurityTest, ReportingLayerTest, DashboardReportScopeTest | R-04 (สิทธิ์) + R-08 |
 | Workflow engine | Workflow/{ApprovalWorkflowManagement,EngineApproverFidelity,SarabanWorkflowPinning,WorkflowAuthorization,WorkflowEngine}Test | R-04 (resolver) + R-08 |
-| บัญชีและการยืนยันตัวตน | AuthTest, AuthenticationHardeningTest, RateLimitBucketIsolationTest, UserAccountGovernanceTest, Unit/UserTest | R-05 |
-| องค์กร/บุคลากร | PersonnelApiAlignmentTest, PersonnelDomainCoreServicesTest, PositionCatalogTest (เมื่อ API ตำแหน่งเปิดใน R-04), PersonalDataProtectionTest, SecureFileAuthorizationTest | R-04 / R-06 |
+| บัญชีและการยืนยันตัวตน | RateLimitBucketIsolationTest (เหลือเฉพาะถังจำกัดอัตราของเอกสารใบลา/รายงาน — ย้ายพร้อมโมดูลลา) | R-08 leave |
+| องค์กร/บุคลากร | PersonnelDomainCoreServicesTest, PositionCatalogTest (เมื่อ API ตำแหน่งเปิดใน R-04), PersonalDataProtectionTest, SecureFileAuthorizationTest | R-04 / R-06 |
 | ตั้งค่าระบบ audit โมดูล | SystemSettingsTest, CentralAuditLogTest, ModuleRegistryTest (ทะเบียนโมดูลธุรกิจเดิม `config/modules.php`) | R-07 / R-08 |
 
 ## บันทึกการย้าย/ลบ (Q7 — ทุกเฟสต้องบันทึก)
@@ -43,3 +43,8 @@ R-02 ถอด spatie/laravel-permission, ตาราง `departments`, `user_p
 | R-04 | PrivilegeEscalationGuardTest | ลบ | `Authz/PermissionEngineTest::test_grant_ceiling_and_two_person` |
 | R-04 | LegacyModernizationMigrationRollbackTest | ลบ (migration ชุดเดิมไม่ถูกโหลดแล้ว) | `Rebuild/SchemaBaselineTest` |
 | R-04 | Workflow/LeaveWorkflowShadowParityTest | ลบ (ยกเลิก shadow — ADR-R-006) | `Authz/ApproverChainResolverTest` |
+| R-05 | AuthTest | ลบ | `Access/LoginSecurityTest` (เข้าสู่ระบบ/ผิดรหัส/ออกจากระบบ/token มีวันหมดอายุ) · `Rebuild/CoreModelsTest`, `Rebuild/DenyByDefaultTest` (`/api/user`, ไม่ยืนยันตัวตน = 401) |
+| R-05 | AuthenticationHardeningTest | ลบ | `Access/LoginSecurityTest` (ล็อก 5 ครั้ง 30 นาที, refresh หมุน token, เปลี่ยน/รีเซ็ตรหัสผ่านตัด token, ลืมรหัสผ่านไม่บอกว่ามีบัญชี) · `Access/AccountsApiTest` (ระงับบัญชีตัด token) |
+| R-05 | UserAccountGovernanceTest | ลบ (จัดการผู้ใช้แบบ role/department ถูกตัด) | `Access/AccountsApiTest` (ระงับมี audit และตัด API, จัดการบัญชีตนเองไม่ได้, ไม่มี endpoint ลบบัญชี) · `Access/AccountLifecycleTest` (สร้างบัญชีมี audit ไม่มี hash รหัสผ่าน) · `Access/AccessGrantApiTest` (เปลี่ยนสิทธิ์มี audit ก่อน/หลัง) · `Access/LoginSecurityTest` (เปลี่ยนรหัสผ่านต้องใส่รหัสเดิม) |
+| R-05 | PersonnelApiAlignmentTest | ลบ (อ้าง AccountSeparationService และ /admin/users เดิม) | `Access/MfaTest::test_user_outside_required_groups_logs_in_without_mfa` (payload บุคลากรตอนเข้าสู่ระบบ) · `Access/AccountsApiTest` (รายการบัญชีพร้อมรหัสบุคลากร) |
+| R-05 | Unit/UserTest | ลบ (คุณลักษณะชื่อ/แผนก/role ของ User เดิมถูกตัด — ชื่ออยู่ที่ Personnel) | `Rebuild/CoreModelsTest` (ความสัมพันธ์ User ↔ Personnel) |
