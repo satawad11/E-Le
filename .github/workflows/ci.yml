@@ -54,8 +54,13 @@ jobs:
       - run: composer install --no-interaction --prefer-dist --no-progress
       - name: Pint
         run: vendor/bin/pint --test
+      # REBUILD-2569 · CODEX-RUNBOOK §2.3 — ห้าม hasRole / Gate::before / spatie และชื่อ role เป็น literal ในโค้ดใหม่
+      - name: Authorization pattern check
+        run: bash scripts/check-authz-patterns.sh
       - name: Migrate from empty MySQL 8 database
         run: php artisan migrate --force
+      - name: Sync module manifests
+        run: php artisan modules:sync --no-interaction
       # Document Engine เรนเดอร์แบบฟอร์ม PDF ด้วยฟอนต์ไทยที่สร้างจาก TTF ในโครงการ
       # ถ้าไม่ติดตั้ง เทสต์ที่เรนเดอร์เอกสารจะล้มด้วยข้อความ "ยังไม่ได้ติดตั้งฟอนต์ไทย"
       - name: Install document engine Thai fonts

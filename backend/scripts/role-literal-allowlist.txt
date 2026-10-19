@@ -1,0 +1,9 @@
+# ไฟล์โมดูลเดิมที่ยังมีชื่อ role/ตำแหน่งเป็น literal ในตรรกะ — ต้องว่างก่อนจบ R-08 (runbook §2.3)
+# ห้ามเพิ่มไฟล์ใหม่ · ลบบรรทัดเมื่อย้ายโมดูลนั้นแล้ว
+app/Http/Controllers/Admin/DocumentTemplateController.php
+app/Http/Controllers/Admin/ExportSettingController.php
+app/Services/DocumentEngine/LeaveFormFieldMap.php
+app/Services/LeaveApproverBlocks.php
+app/Services/LeaveDocumentFields.php
+app/Services/Workflow/ApproverResolverService.php
+app/Services/Workflow/OvertimeOrderWorkflowProvisioner.php
