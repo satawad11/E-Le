@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## 2026-10-19 — REBUILD-2569 · R-04 Permission Engine + manifest + เมนู
+- **แก้ไขหลังตรวจ:** `scopeQuery` เคารพ override deny ที่จำกัดหน่วยทุก scope (AuthzScope แยกเงื่อนไขต่อแหล่งพร้อมหน่วยที่ถูกตัด) และ `can()` ใช้กติกาเดียวกัน · ADR-R-015 แก้ไข: ผู้ดูแลระบบ deny เฉพาะ reveal + approve/review · ผู้ตรวจสอบไม่มี deny · sync บังคับ/ลบ deny ตาม manifest · ลบอักขระ NUL ในไฟล์เทสต์ + เทสต์กันอักขระควบคุมในซอร์ส
 - manifest 9 โมดูล (`app/Modules/*/manifest.php`): core, personnel, org, access, audit, system + workflow/document/notification (เฉพาะสิทธิ์ที่เมนูตั้งค่าระบบต้องใช้) · เมนูตรง PLAN §8.2 ก., ข., ช., ซ. ทุกแถว
 - `App\Authz\Manifest\ModuleRegistry` + `ManifestValidator` + `ModuleSynchronizer` · คำสั่ง `modules:sync` (`--reset-defaults`) idempotent · retire ไม่ลบ · ไม่ทับการปรับของผู้ดูแล · `ModuleManifestSeeder` ใน DatabaseSeeder
 - `App\Authz\PermissionEngine` (`can`, `scopeQuery`, `effective`, `explain`, `canGrant`, `requiresSecondPerson`) · กฎกลาง not_own, maker_checker, hr_field_guard, grant_ceiling, two_person · cache ต่อผู้ใช้ล้างเมื่อ AssignmentChanged/grant/override/template เปลี่ยน

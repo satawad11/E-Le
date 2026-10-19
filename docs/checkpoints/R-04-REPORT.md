@@ -43,8 +43,8 @@
 
 | การตรวจ | ผล |
 |---|---|
-| `php artisan test` | ✅ **210 tests, 1,221 assertions, 0 failures** (R-03 จบที่ 166/1,133) |
-| `vendor/bin/pint --test` | ✅ 637 files PASS |
+| `php artisan test` | ✅ **216 tests, 1,248 assertions, 0 failures** (หลังแก้ไขหลังตรวจ · ส่งตรวจครั้งแรก 210/1,221 · R-03 จบที่ 166/1,133) |
+| `vendor/bin/pint --test` | ✅ 638 files PASS |
 | `bash scripts/check-authz-patterns.sh` (CI grep §2.3) | ✅ ผ่าน — ไม่พบ hasRole/Gate::before/spatie · ชื่อ role เป็น literal เหลือ 7 ไฟล์โมดูลเดิมใน allowlist (ห้ามเพิ่ม ต้องว่างก่อนจบ R-08) |
 | `migrate:fresh --seed` บน MySQL (`eleave_r02_new`) | ✅ รวม sync manifest · `modules:sync` รอบสองไม่สร้างอะไรเพิ่ม (idempotent) |
 
@@ -69,7 +69,7 @@
 | กลุ่มเมนู | บุคลากร L5 | หัวหน้า L4 | หัวหน้า L3 | รองฯ L2 | ผอ. L1 | งานบุคคล | ผู้ดูแลระบบ | ผู้ตรวจสอบ |
 |---|---|---|---|---|---|---|---|---|
 | ส่วนบุคคล | ✔ หน้าหลัก · ข้อมูลของฉัน (+ประวัติการเข้าถึง) · การแจ้งเตือน | ✔ (เหมือน L5) | ✔ (เหมือน L5) | ✔ (เหมือน L5) | ✔ + งานรออนุมัติ | ✔ + งานรออนุมัติ | ✔ + งานรออนุมัติ | ✔ (เหมือน L5) |
-| ข้อมูลบุคลากร | โครงสร้างองค์กร | "บุคลากรสาขางานยานยนต์" (T) · โครงสร้าง | "บุคลากรงานบุคลากร" (T) · โครงสร้าง | "บุคลากรฝ่ายวิชาการ" (T) · โครงสร้าง · รายงาน | รายชื่อบุคลากร (A) · โครงสร้าง · รายงาน | ครบ 6 เมนู | — | — |
+| ข้อมูลบุคลากร | โครงสร้างองค์กร | "บุคลากรสาขางานยานยนต์" (T) · โครงสร้าง | "บุคลากรงานบุคลากร" (T) · โครงสร้าง | "บุคลากรฝ่ายวิชาการ" (T) · โครงสร้าง · รายงาน | รายชื่อบุคลากร (A) · โครงสร้าง · รายงาน | ครบ 6 เมนู | โครงสร้างองค์กร (จากตำแหน่งบุคลากร — ชุดสิทธิ์ไม่ให้เพิ่ม) | โครงสร้างองค์กร (เช่นเดียวกัน) |
 | บัญชีและสิทธิ์ | — | 5 ทบทวนสิทธิ์ | 5 | 5 | 4, 5 | 1 บัญชีผู้ใช้ (อ่าน) | ครบ 6 (ข้อ 4 ยืนยันคำขอของตนเองไม่ได้ด้วยกฎ maker_checker) | 1, 2, 5, 6 |
 | ตั้งค่าระบบ | — | — | — | — | — | 2 สายอนุมัติ (เสนอ — two_person) | ครบ 5 | — |
 
@@ -81,10 +81,10 @@ Permission Matrix (scope ที่กว้างที่สุด) — 184 ช
 |---|---|---|---|---|---|---|---|---|
 | personnel.profile.view | own | subtree | subtree | subtree | all | all | own | own |
 | personnel.profile.view_confidential | own | own | own | subtree | all | all | own | own |
-| personnel.profile.reveal | own | own | own | own | own | all | own | own |
+| personnel.profile.reveal | own | own | own | own | own | all | — (deny) | own |
 | personnel.report.view | — | — | — | subtree | all | all | — | — |
 | personnel.change_request.review / assignment.manage / import.manage | — | — | — | — | — | all | — | — |
-| org.unit.view | all | all | all | all | all | all | — | — |
+| org.unit.view | all | all | all | all | all | all | all | all |
 | access.review.confirm | — | subtree | subtree | subtree | subtree | — | — | — |
 | access.change.approve | — | — | — | — | all | — | all | — |
 | access.account.view | — | — | — | — | — | all | all | all |
@@ -94,7 +94,7 @@ Permission Matrix (scope ที่กว้างที่สุด) — 184 ช
 **หมายเหตุการตีความตาราง 8.3**
 - "งานรออนุมัติของฉัน" แสดงเมื่อมีสิทธิ์ `*.*.approve` หรือ `*.*.review` — ใน R-04 หัวหน้า L2–L4 ยังไม่มี (ได้เมื่อโมดูลลามี `leave.approval.approve` ใน R-08) จึงยังไม่เห็นเมนูนี้
 - L2/L1 เห็น "โครงสร้างองค์กร" ด้วย เพราะ §8.2 ข.3 กำหนด "ทุกคนดูได้" (ตาราง 8.3 ไม่ได้ระบุซ้ำ)
-- ผู้ดูแลระบบและผู้ตรวจสอบไม่เห็นกลุ่มข้อมูลบุคลากรด้วยชุดสิทธิ์ที่ประกาศ `denies` (ADR-R-015) แต่ยังดูข้อมูลของตนเองได้
+- "—" ในตาราง 8.3 = ชุดสิทธิ์ของ persona นั้นไม่ให้สิทธิ์เพิ่ม ไม่ใช่ตัดสิทธิ์จากตำแหน่งอื่น (ADR-R-015 ฉบับแก้ไข) — ผู้ดูแลระบบ/ผู้ตรวจสอบที่เป็นบุคลากรจึงเห็น "โครงสร้างองค์กร" แต่ไม่เห็นรายชื่อ/ประวัติผู้อื่น · ผู้ดูแลระบบถูก deny การเปิดดูข้อมูลอ่อนไหวและการอนุมัติ/ตรวจทุกชนิดตามหลักการข้อ 8
 - แถว ระบบการลา · ลงเวลา · OT · สารบรรณ ของตาราง 8.3 ทดสอบใน R-08 เมื่อโมดูลเหล่านั้นมี manifest
 
 ## 5. เทสต์ใน `tests/Legacy` ที่ย้ายหรือลบในเฟสนี้ (Q7)
@@ -140,5 +140,18 @@ vendor/bin/pint --test
 bash scripts/check-authz-patterns.sh
 php artisan modules:sync
 ```
+
+
+## 9. แก้ไขหลังตรวจ (ผลตรวจ R-04 ไม่ผ่าน 3 ประเด็น — แก้แล้วทั้งหมด)
+
+| # | ประเด็น | การแก้ | เทสต์ |
+|---|---|---|---|
+| 1 | `scopeQuery` ทิ้ง `excludedPaths` ของ override deny ที่จำกัดหน่วย → หน้ารายการคืนรายการที่ `can()` ปฏิเสธ | `AuthzScope` เก็บเงื่อนไขต่อแหล่ง (all/own/units/subtree) พร้อม `excluded_paths` ของแหล่งนั้น · `applyAuthzScope` ของ `AuthorizesByPersonnel` และ `OrgUnit` ตัดรายการในหน่วยที่ถูก deny ทุกเงื่อนไข รวม scope all · `can()` ใช้กติกาเดียวกัน: หน่วยใดของรายการอยู่ใต้หน่วยที่ถูก deny = ไม่ครอบคลุมทุก scope รวม own (deny ชนะ) | `PermissionEngineTest::test_override_deny_limited_to_a_unit_only_excludes_that_subtree` (เพิ่มระดับรายการ) · **`ScopeConsistencyTest`**: 9 persona × ทุกบุคลากร × `personnel.profile.view` และ × ทุกหน่วย × `org.unit.view` ตรงกันทุกคู่ ทั้งก่อนและหลังตั้ง deny จำกัดหน่วย 6 แบบ (all, subtree จาก L2, งานบุคคล, own, หน่วยงาน, ทั้งต้นไม้) |
+| 2 | deny ในชุดสิทธิ์ตัดสิทธิ์จากทุกแหล่ง ทำให้หัวหน้าแผนกที่ได้ชุดสิทธิ์ผู้ตรวจสอบเสียสิทธิ์ดูบุคลากรในแผนกตน | ผู้ดูแลระบบ: deny เฉพาะ `personnel.profile.reveal` และ `*.*.approve`, `*.*.review` (pattern ไม่ปฏิเสธ `access.change.approve` ที่ชุดสิทธิ์ให้เอง) · ผู้ตรวจสอบ: ไม่มี deny · sync บังคับ deny ตาม manifest และลบ deny ที่เลิกประกาศ (ฐานข้อมูลที่ sync ฉบับแรกไว้ถูกแก้อัตโนมัติ — ตรวจบน MySQL แล้ว เหลือ deny 2 แถวที่ตั้งใจ) · แก้คำอธิบายใต้ตาราง PLAN §8.3 · ADR-R-015 ฉบับแก้ไข | `PermissionEngineTest::test_department_head_who_is_also_auditor_keeps_viewing_their_department` · `test_administrator_who_is_also_department_head_views_but_never_approves_or_reveals` (มี override allow + ชุดสิทธิ์งานบุคคลเพิ่มก็ยังถูก deny) · `test_admin_and_auditor_sets_add_no_personnel_rights_and_admin_cannot_reveal_or_approve` · `ManifestSyncTest::test_denies_follow_the_manifest_exactly_*` · persona matrix/เมนูปรับตามข้อ 4 |
+| 3 | `CoreApiAuthorizationTest.php` มีอักขระ NUL จริง → git มองเป็น binary | เปลี่ยนเป็น escape `"\x00\x01\x02"` · สแกนไฟล์ข้อความใน `backend/` ทั้งหมดแล้วไม่พบอักขระควบคุมอื่น (ไฟล์ binary ที่ git เห็นเหลือเฉพาะฟอนต์ใน `public/fonts` ซึ่งเป็น binary จริง) | **`ForbiddenPatternsTest::test_source_files_contain_no_control_bytes`** กันไม่ให้เกิดซ้ำใน app, bootstrap, config, routes, database, tests, scripts |
+
+ผลกระทบต่อ persona (ข้อ 4): ผู้ดูแลระบบและผู้ตรวจสอบเห็นเมนู "โครงสร้างองค์กร" (สิทธิ์ดูทั่วไปจากตำแหน่งบุคลากร) · ผู้ดูแลระบบ `personnel.profile.reveal` = ไม่มี (deny) · ผู้ตรวจสอบ reveal = own (ข้อมูลของตนเอง) · ส่วนอื่นของตารางไม่เปลี่ยน
+
+ผลตรวจหลังแก้: `php artisan test` 216 tests / 1,248 assertions ผ่าน · `pint --test` ผ่าน · `scripts/check-authz-patterns.sh` ผ่าน · `modules:sync` บน MySQL ผ่าน
 
 **หยุดรอคำสั่ง**
