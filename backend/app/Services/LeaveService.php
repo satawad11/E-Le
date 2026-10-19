@@ -11,11 +11,9 @@ use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\User;
 use App\Services\Time\TimeService;
-use App\Services\Workflow\LeaveWorkflowShadow;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -30,8 +28,6 @@ class LeaveService
         private LeaveVerificationService $verification,
         // LEGACY-06 — บริการเวลากลาง โมดูลนี้ไม่คำนวณวันทำงานเองอีกต่อไป
         private TimeService $time,
-        // LEGACY-07 — เปิด workflow instance ให้ใบลาใหม่ (ยังเป็น shadow)
-        private LeaveWorkflowShadow $workflow,
     ) {}
 
     /**
@@ -155,24 +151,7 @@ class LeaveService
             return $leave;
         }, 5);
 
-        /*
-         * LEGACY-07 — เปิด workflow instance ให้ใบลาใบใหม่ (shadow mode)
-         *
-         * ทำนอก transaction และห่อ try/catch เพราะ workflow engine ยังเป็น
-         * shadow อยู่ (LEGACY-05 · ADR-009) ตรรกะเดิมใน `leave_approvals`
-         * ยังเป็น source of truth การเปิด instance ไม่สำเร็จจึงต้องไม่ทำให้
-         * การยื่นใบลาล้ม
-         */
-        if (config('workflow.shadow_mode', true)) {
-            try {
-                $this->workflow->prepare($leave);
-            } catch (\Throwable $exception) {
-                Log::warning('เปิด workflow instance ให้ใบลาไม่สำเร็จ', [
-                    'leave_id' => $leave->id,
-                    'error' => $exception->getMessage(),
-                ]);
-            }
-        }
+        // R02: ยกเลิกโหมด shadow (ADR-R-006) — R-08 ให้ workflow engine เป็น source of truth ของใบลา
 
         return $leave;
     }

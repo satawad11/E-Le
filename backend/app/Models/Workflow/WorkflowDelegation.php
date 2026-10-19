@@ -3,7 +3,6 @@
 namespace App\Models\Workflow;
 
 use App\Models\Concerns\HasPublicUuid;
-use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
  * แถวในตารางนี้ที่มี `legacy_delegation_id` คือภาพสะท้อนของแถวนั้น ไม่ใช่ข้อมูลคู่ขนาน
  */
 #[Fillable([
-    'delegator_id', 'delegate_id', 'workflow_definition_id', 'scope_role_id',
+    'delegator_id', 'delegate_id', 'workflow_definition_id',
     'delegation_type', 'effective_from', 'effective_to', 'is_active', 'reason',
     'legacy_delegation_id', 'created_by',
 ])]
@@ -45,11 +44,6 @@ class WorkflowDelegation extends Model
     public function delegate()
     {
         return $this->belongsTo(User::class, 'delegate_id');
-    }
-
-    public function scopeRole()
-    {
-        return $this->belongsTo(Role::class, 'scope_role_id');
     }
 
     /**

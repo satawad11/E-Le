@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Personnel;
+use App\Models\PersonnelProfile;
 use App\Models\User;
-use App\Models\UserProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -16,16 +17,21 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
+        /*
+         * ADR-R-013 (Q10) — ตัวระบุหลักคืออีเมลหรือรหัสบุคลากร (`personnel_code`)
+         * เลขประจำตัวประชาชนใช้ได้เฉพาะเมื่อเปิด `auth.allow_national_id_login` (ค่าเริ่มต้นปิด)
+         * รับชื่อช่อง `login` และ `email` (หน้าเข้าสู่ระบบเดิมส่ง `email`)
+         */
         $request->validate([
-            'email' => ['required', 'string', function ($attribute, $value, $fail) {
-                if (! filter_var($value, FILTER_VALIDATE_EMAIL) && ! preg_match('/^[0-9]{13}$/', $value)) {
-                    $fail('รูปแบบอีเมล หรือเลขประจำตัวประชาชน (13 หลัก) ไม่ถูกต้อง');
-                }
-            }],
+            'login' => ['required_without:email', 'nullable', 'string', 'max:255'],
+            'email' => ['required_without:login', 'nullable', 'string', 'max:255'],
             'password' => 'required|string',
+        ], [
+            'login.required_without' => 'กรุณากรอกอีเมลหรือรหัสบุคลากร',
+            'email.required_without' => 'กรุณากรอกอีเมลหรือรหัสบุคลากร',
         ]);
 
-        $loginField = $request->email;
+        $loginField = trim((string) ($request->input('login') ?? $request->input('email')));
         $lockKey = 'login-account:'.hash('sha256', mb_strtolower(trim($loginField)));
 
         if (RateLimiter::tooManyAttempts($lockKey, 5)) {
@@ -34,18 +40,7 @@ class AuthController extends Controller
                 'retry_after' => RateLimiter::availableIn($lockKey),
             ], 429);
         }
-        $user = null;
-
-        if (filter_var($loginField, FILTER_VALIDATE_EMAIL)) {
-            $user = User::where('email', $loginField)->first();
-        } else {
-            // Check if it matches id_card_number in user_profiles
-            $idCardHash = hash('sha256', $loginField.config('app.key'));
-            $profile = UserProfile::where('id_card_number_hash', $idCardHash)->first();
-            if ($profile) {
-                $user = $profile->user;
-            }
-        }
+        $user = $this->findUserByIdentifier($loginField);
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             RateLimiter::hit($lockKey, 900);
@@ -54,32 +49,49 @@ class AuthController extends Controller
             ]);
         }
 
-        if (! $user->is_active) {
+        // CORE-03: เข้าสู่ระบบได้เฉพาะบัญชี active ที่ไม่ถูกล็อก · บัญชี service ห้าม interactive login
+        if (! $user->isActive() || $user->account_type === 'service') {
             throw ValidationException::withMessages([
-                'email' => ['บัญชีผู้ใช้นี้ถูกระงับการใช้งาน'],
+                'email' => ['บัญชีผู้ใช้นี้ยังไม่เปิดใช้งานหรือถูกระงับการใช้งาน'],
             ]);
         }
 
         RateLimiter::clear($lockKey);
 
-        // ใช้ในรายงานทบทวนสิทธิ์รายปี (ACCESS-GOV-01) — saveQuietly เพื่อไม่ให้ไปซิงก์ทะเบียนบุคลากรทุกครั้งที่ login
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
 
         Auth::login($user);
         $expiration = (int) config('sanctum.expiration', 480);
         $token = $user->createToken('auth_token', ['*'], now()->addMinutes($expiration))->plainTextToken;
 
-        $user->load(['department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']);
-        $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
-        $user->direct_permissions = array_values(array_unique($user->getDirectPermissions()->pluck('name')->toArray()));
-        $user->role_names = array_values(array_unique($user->roles->pluck('name')->toArray()));
-
         return response()->json([
             'access_token' => $token,
             'token_type' => 'Bearer',
             'expires_in' => $expiration * 60,
-            'user' => $user,
+            'user' => $this->present($user),
         ]);
+    }
+
+    /**
+     * อีเมล → รหัสบุคลากร → (ถ้าเปิดไว้) เลขประจำตัวประชาชนผ่าน hash
+     */
+    private function findUserByIdentifier(string $identifier): ?User
+    {
+        if ($identifier === '') {
+            return null;
+        }
+
+        if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            return User::where('email', $identifier)->first();
+        }
+
+        $personnelId = Personnel::where('personnel_code', $identifier)->value('id');
+
+        if ($personnelId === null && config('auth.allow_national_id_login', false) && preg_match('/^\d{13}$/', $identifier)) {
+            $personnelId = PersonnelProfile::where('national_id_hash', PersonnelProfile::hashNationalId($identifier))->value('personnel_id');
+        }
+
+        return $personnelId === null ? null : User::where('personnel_id', $personnelId)->first();
     }
 
     public function logout(Request $request)
@@ -156,11 +168,28 @@ class AuthController extends Controller
 
     public function user(Request $request)
     {
-        $user = $request->user()->load(['department', 'profile', 'personnel', 'currentAssignment.orgUnit', 'currentAssignment.personnelType', 'orgUnit', 'personnelType']);
-        $user->permission_names = array_values(array_unique($user->getAllPermissions()->pluck('name')->toArray()));
-        $user->direct_permissions = array_values(array_unique($user->getDirectPermissions()->pluck('name')->toArray()));
-        $user->role_names = array_values(array_unique($user->roles->pluck('name')->toArray()));
+        return response()->json($this->present($request->user()));
+    }
 
-        return response()->json($user);
+    /**
+     * ข้อมูลบัญชีของตนเอง — สิทธิ์ว่างไว้จนกว่า R-04 จะต่อ PermissionEngine (`GET /api/me/permissions`)
+     */
+    private function present(User $user): array
+    {
+        $personnel = $user->personnel;
+
+        return [
+            'uuid' => $user->uuid,
+            'username' => $user->username,
+            'email' => $user->email,
+            'status' => $user->status,
+            'account_type' => $user->account_type,
+            'last_login_at' => $user->last_login_at?->toIso8601String(),
+            'personnel' => $personnel ? [
+                'uuid' => $personnel->uuid,
+                'full_name' => $personnel->full_name,
+            ] : null,
+            'permission_names' => [],
+        ];
     }
 }

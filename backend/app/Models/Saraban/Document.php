@@ -3,7 +3,7 @@
 namespace App\Models\Saraban;
 
 use App\Models\Concerns\HasPublicUuid;
-use App\Models\Department;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,7 +27,7 @@ class Document extends Model
         'secrecy',
         'status',
         'created_by',
-        'department_id',
+        'org_unit_id',
         'document_date',
         'to',
         'reference',
@@ -51,9 +51,9 @@ class Document extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    public function department(): BelongsTo
+    public function orgUnit(): BelongsTo
     {
-        return $this->belongsTo(Department::class);
+        return $this->belongsTo(OrgUnit::class);
     }
 
     public function incoming(): HasOne

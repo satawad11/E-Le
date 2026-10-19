@@ -2,7 +2,6 @@
 
 namespace App\Services\DocumentEngine;
 
-use App\Models\ApprovalStep;
 use App\Models\Department;
 use App\Models\Leave;
 use App\Models\LeaveType;
@@ -10,6 +9,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use App\Services\LeaveDocumentFields;
 use App\Services\ThaiDateService;
+use App\Support\Leave\SignerCapacity;
 use Dompdf\Dompdf;
 use Dompdf\Frame;
 use Dompdf\Options;
@@ -127,7 +127,7 @@ class LeaveFormLayoutProbe
             'stats' => [],
             'extra' => $extra,
             'requester_signature' => '',
-            'approverBlocks' => collect([ApprovalStep::CAPACITY_CHECKER, ApprovalStep::CAPACITY_DEPUTY, ApprovalStep::CAPACITY_DIRECTOR])->map(fn (string $capacity) => [
+            'approverBlocks' => collect([SignerCapacity::CHECKER, SignerCapacity::DEPUTY, SignerCapacity::DIRECTOR])->map(fn (string $capacity) => [
                 'name' => '', 'position' => '', 'comment' => '', 'date' => null,
                 'signature' => null, 'signature_path' => null, 'status' => '', 'role_name' => '', 'capacity' => $capacity, 'acting_line' => '',
             ])->all(),

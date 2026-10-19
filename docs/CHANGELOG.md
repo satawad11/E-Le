@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## 2026-10-19 — REBUILD-2569 · R-03 Core องค์กรและบุคลากร
+- บันทึกผลตัดสิน Q7, Q9, Q10 (ADR-R-010 อนุมัติ, ADR-R-012, ADR-R-013) · เพิ่มงาน R08-leave-1, R08-notification-1, R09-5
+- ล็อกอินด้วยอีเมลหรือ `personnel_code` · เลขประจำตัวประชาชนปิดเป็นค่าเริ่มต้น (`auth.allow_national_id_login`)
+- `OrgTree` (create/move/close, ancestors, subtreeIds, nearestOfLevel, headOf) · `AssignmentService` (add/end + event `AssignmentChanged`)
+- `PersonnelPresenter` (ปิดบังตามชั้น, sensitive ไม่ออกจาก presenter), `SensitiveReveal` (เหตุผล + log), `PersonnelEditor` (hr_field_guard), `PersonnelChangeRequestService` (Maker–Checker) · contract `PersonnelFieldAccess` ผูก deny-by-default จนถึง R-04
+- `FieldClassificationSeeder` จัดชั้นฟิลด์บุคลากรครบทุกฟิลด์
+- นำเข้า Excel/CSV: `PersonnelImporter`, `php artisan personnel:import` (dry-run เป็นค่าเริ่มต้น), `personnel:import-template` · ตัวอ่าน/เขียน xlsx ในตัว (ADR-R-014)
+- API `/api/org/*`, `/api/personnel/*` ประกาศ `permission:` ที่จะใช้ — ตอบ 403 ทุก endpoint จนถึง R-04
+- ลบเทสต์ Legacy 5 ไฟล์ที่เทสต์ใหม่ครอบคลุมแล้ว (รายการใน `backend/tests/Legacy/README.md`)
+
+## 2026-10-19 — REBUILD-2569 · R-02 Schema baseline
+- migration เดิม 141 ไฟล์ย้ายไป `backend/database/migrations-legacy/` (Laravel ไม่โหลด) · baseline ใหม่ 14 ไฟล์ (`*_r02_2_*` … `*_r02_7i_*`)
+- ตาราง core ใหม่ตาม CORE-01..04: องค์กร 4 · บุคลากร 11 · บัญชี 3 (+ `users` แบบใหม่) · สิทธิ์ 12
+- ตารางโมดูลเดิม 69 ตารางสร้างในรูปสุดท้ายของชุดเดิม (สร้างจาก schema ของฐานข้อมูลทดสอบที่รัน migration เดิมครบ) ตัด 18 ตารางตาม PLAN §4.2 · `department_id` → `org_unit_id` (สารบรรณ 2 ตาราง, ปฏิทิน) · ตัดคอลัมน์อ้าง `roles` 4 จุด
+- ถอด `spatie/laravel-permission` (composer, `config/permission.php`, trait, middleware, seeders) · ถอด allow-all ก่อน Gate ใน `AppServiceProvider`
+- deny by default: `DenyUntilPermissionEngine` ตอบ 403 ทุก route ที่ต้องยืนยันตัวตน ยกเว้น logout/refresh-token/user จนถึง R-04 · alias `permission:` ปฏิเสธเสมอ
+- ลบ model/service/command/controller ที่อ้างตารางที่ตัดหรือ spatie (ดูรายงาน R-02) และ seeders ตาม PLAN §4.3 · ยกเลิก shadow mode ของ workflow (ADR-R-006) · ปิด `approver_role_fallback` ถาวร
+- seeders ใหม่: ประเภทหน่วย 6 · root + 4 ฝ่าย · ประเภทบุคลากร 8 · ระเบียบการลา (fixture JSON) · แคตตาล็อกการแจ้งเตือน (fixture JSON) · ไม่มีบัญชี/บทบาท/รหัสผ่านตั้งต้น
+- model ใหม่ของ core (`App\Models\*`, `App\Models\Authz\*`) พร้อม cast `encrypted` และบันทึกแบบเพิ่มได้อย่างเดียว
+- เทสต์ชุดเดิม 85 ไฟล์พักไว้ที่ `backend/tests/Legacy/` (ADR-R-010) · เทสต์ใหม่ `tests/Feature/Rebuild/*`
+
+## 2026-10-18 — REBUILD-2569 · R-01 กติกาใหม่
+- เริ่มโหมด REBUILD-2569 (ADR-R-001) ยกเลิกกติกาและเอกสารชุด LEGACY/PROD-00
+- ลบเอกสาร checkpoint/audit/governance ชุดเดิม 90+ ไฟล์ (อยู่ใน git history)
+- เขียนใหม่: PROJECT_RULES, AGENTS, CURRENT_PHASE, START-HERE, README, TASKS, CORE-01..04, 00/02/06/08/18, REQUIREMENTS, TRACEABILITY, ACCEPTANCE, DECISION-LOG
+- เพิ่ม: docs/REBUILD-PLAN-2569.md (แผน + ผังเมนู), docs/CODEX-RUNBOOK.md
+- ยังไม่มีการเปลี่ยนโค้ดหรือ schema
+
 All notable changes to the E-la project will be documented in this file.
 
 ## [Unreleased]

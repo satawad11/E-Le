@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Personnel;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -25,12 +26,29 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
+            'username' => fake()->unique()->userName(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'status' => User::STATUS_ACTIVE,
+            'account_type' => 'personnel',
             'remember_token' => Str::random(10),
         ];
+    }
+
+    /**
+     * บัญชีที่ผูกกับบุคลากร (CORE-03: บุคลากร ≠ บัญชีผู้ใช้)
+     */
+    public function withPersonnel(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'personnel_id' => Personnel::factory(),
+        ]);
+    }
+
+    public function status(string $status): static
+    {
+        return $this->state(fn (array $attributes) => ['status' => $status]);
     }
 
     /**

@@ -1,28 +1,36 @@
-# PROJECT RULES
+# PROJECT RULES — REBUILD-2569
+
+> ใช้ตั้งแต่ 2026-10-18 แทนกติกาชุดเดิมทั้งหมด (LEGACY / PROD-00)
+> ที่มาและเหตุผล: `docs/REBUILD-PLAN-2569.md` หัวข้อ 2
 
 ## Non-negotiable
-1. Modular Monolith แยก domain ชัดเจน
-2. PostgreSQL เป็น authoritative transactional store
-3. Redis ใช้ cache/session/queue ไม่ใช่ source of truth
-4. UUID เป็น public identifier; หลีกเลี่ยง sequential ID ใน URL
-5. Deny by default
-6. RBAC + ABAC + organization scope
-7. Policy/Workflow/Template ต้อง versioned + effective dated
-8. Audit log เป็น append-oriented
-9. Server timestamp เป็น source of truth ของ attendance ingestion
-10. Vendor biometric system เป็น source ของ raw event ไม่ใช่ final attendance status
-11. ไม่เก็บ biometric template ในระบบกลางหากไม่จำเป็น
-12. เอกสารสำคัญใช้ private storage + signed URL หรือ authenticated download
-13. UI ภาษาไทย 100%
-14. รองรับ Mobile/Tablet/Desktop
-15. เพิ่ม module ใหม่ผ่าน Module Registry
+
+1. **บุคลากร ≠ บัญชีผู้ใช้** ข้อมูลบุคลากรเป็นแหล่งความจริง บัญชีและสิทธิ์ตามตำแหน่งคำนวณจากข้อมูลบุคลากรโดยอัตโนมัติ
+2. **สิทธิ์ผูกกับการดำรงตำแหน่ง (assignment) ไม่ผูกกับคน** คนเดียวมีได้หลาย assignment พร้อมกัน (`primary`, `management`, `duty`, `acting`)
+3. **สิทธิ์คือคู่ (permission, scope) ต่อ assignment** แล้ว union กัน ห้ามรวมแบบ "ระดับสูงสุด + scope กว้างสุด"
+4. **Deny by default · Deny ชนะเสมอ** ทุก endpoint ตรวจสิทธิ์และ scope ที่ server ผ่าน `PermissionEngine` การซ่อนเมนูเป็นแค่ UX
+5. **Permission มาจาก manifest ของโมดูลเท่านั้น** ผู้ดูแลจัดการได้เฉพาะการจับคู่ชุดสิทธิ์กับตำแหน่ง/บุคคล ไม่สร้าง permission จากหน้าจอ
+6. **กฎกลางบังคับทุกโมดูล** ห้ามใช้อำนาจกับข้อมูลตนเอง (`not_own`) · Maker–Checker · ให้สิทธิ์ได้ไม่เกินที่ตนมีและภายในขอบเขตตน
+7. **สายอนุมัติเดินตามต้นไม้องค์กรตามประเภทหน่วย** ไม่นับชั้น ไม่มี fallback ตามชื่อ role ไม่พบผู้อนุมัติ = เข้าคิวงานบุคคล
+8. **ไม่มีบัญชีใดข้ามการตรวจสิทธิ์** ห้าม `Gate::before` แบบ allow-all ผู้ดูแลระบบไม่อยู่ในสายอนุมัติและไม่เห็นข้อมูลอ่อนไหว
+9. **ทุกสิทธิ์พิเศษมีเลขคำสั่ง ผู้อนุมัติ และวันหมดอายุ** (functional grant, override, acting)
+10. **ข้อมูลมีวันที่มีผล ไม่เขียนทับ** ตำแหน่ง สังกัด สถานะ บันทึกเป็นแถวใหม่ ปิดแถวเดิมด้วย `effective_to`
+11. **ฟิลด์มีชั้นความลับ 4 ชั้น** `public` / `internal` / `confidential` / `sensitive` การเปิดดู `sensitive` ต้องระบุเหตุผลและถูกบันทึก ฟิลด์ `sensitive` เข้ารหัสที่ฐานข้อมูล
+12. **Audit แบบเพิ่มได้อย่างเดียว** แยก log การเข้าถึงข้อมูล การเปลี่ยนสิทธิ์ และการเข้าสู่ระบบ ไม่มีใครแก้หรือลบได้
+13. **เมนูมาจาก manifest และกรองตามสิทธิ์** ตามผังใน `docs/REBUILD-PLAN-2569.md` หัวข้อ 8
+14. Laravel + Vue 3 + MySQL 8 · UUID เป็น public identifier · UI ภาษาไทย 100% · วันที่แสดง พ.ศ. เก็บ ค.ศ. · รองรับมือถือ
 
 ## Forbidden
-- hard-code ชื่อฝ่าย/แผนก/ประเภทบุคลากร
-- hard-code approval chain
-- hard-code leave entitlement ใน UI/API
-- authorization เฉพาะการซ่อนเมนู
-- direct DB writes จาก client
-- overwrite ประวัติ effective-dated
-- public bucket สำหรับเอกสารบุคลากร
-- **PROD PHASE**: ห้ามแก้ไขโครงสร้างฐานข้อมูล (schema modifications) เว้นแต่เป็นการแก้ไขบั๊กร้ายแรง (Critical Bug Fix)
+
+- hard-code ชื่อหน่วย ตำแหน่ง ประเภทบุคลากร สายอนุมัติ สิทธิ์การลา หรือชื่อ role ในตรรกะ (CI ตรวจด้วย grep)
+- ตรวจสิทธิ์ด้วย `hasRole()` หรือเทียบชื่อ role
+- สิทธิ์รายบุคคลที่ไม่มีวันหมดอายุหรือไม่มีเหตุผล
+- authorization เฉพาะการซ่อนเมนูหรือปุ่ม
+- เขียนทับประวัติที่มีวันที่มีผล
+- เก็บข้อมูลอ่อนไหวแบบ plaintext หรือส่งข้อมูลอ่อนไหวไปยัง client โดยไม่ผ่านการปิดบัง
+- direct DB writes จาก client · public bucket สำหรับเอกสารบุคลากร
+- เพิ่มโมดูลธุรกิจใหม่ก่อนจบ R-09
+
+## Order of precedence
+
+Security > Data integrity > `PROJECT_RULES.md` > `docs/REBUILD-PLAN-2569.md` > module spec > UI preference

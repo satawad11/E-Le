@@ -9,6 +9,7 @@ use App\Models\LeaveApproval;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\UserDelegation;
+use App\Support\Leave\SignerCapacity;
 use App\Support\StoredFile;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -28,9 +29,9 @@ class LeaveApproverBlocks
 {
     /** ชื่อผู้บริหารตามฐานะผู้ลงนามจากหน้าตั้งค่า — ใช้เมื่อขั้นนั้นยังไม่มีผู้ลงนาม */
     private const DEFAULT_NAME_SETTINGS = [
-        ApprovalStep::CAPACITY_CHECKER => 'head_hr_name',
-        ApprovalStep::CAPACITY_DEPUTY => 'deputy_admin_name',
-        ApprovalStep::CAPACITY_DIRECTOR => 'director_name',
+        SignerCapacity::CHECKER => 'head_hr_name',
+        SignerCapacity::DEPUTY => 'deputy_admin_name',
+        SignerCapacity::DIRECTOR => 'director_name',
     ];
 
     private const BLANK_NAME = '........................................................';
@@ -133,7 +134,7 @@ class LeaveApproverBlocks
             'status' => $log->action === 'Cancellation Approved' ? 'Approved' : 'Rejected',
             'position' => (string) ($log->user->profile?->position ?? ''),
             'role_name' => 'Director',
-            'capacity' => ApprovalStep::CAPACITY_DIRECTOR,
+            'capacity' => SignerCapacity::DIRECTOR,
             'acting_line' => '',
             'recorded' => false,
         ];

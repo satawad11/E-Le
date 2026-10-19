@@ -2,10 +2,10 @@
 
 namespace App\Services\DocumentEngine;
 
-use App\Models\ApprovalStep;
 use App\Models\Leave;
 use App\Models\LeaveType;
 use App\Services\LeaveDocumentFields;
+use App\Support\Leave\SignerCapacity;
 use Illuminate\Support\Arr;
 
 /**
@@ -254,13 +254,13 @@ class LeaveFormFieldMap
         $values = $this->values($sample + [
             'leave' => $leave,
             'approverBlocks' => collect([
-                ApprovalStep::CAPACITY_CHECKER => 'หัวหน้างานบุคลากร',
-                ApprovalStep::CAPACITY_DEPUTY => 'รองผู้อำนวยการ',
-                ApprovalStep::CAPACITY_DIRECTOR => 'ผู้อำนวยการ',
+                SignerCapacity::CHECKER => 'หัวหน้างานบุคลากร',
+                SignerCapacity::DEPUTY => 'รองผู้อำนวยการ',
+                SignerCapacity::DIRECTOR => 'ผู้อำนวยการ',
             ])->map(fn (string $position, string $capacity) => [
                 'name' => 'ตัวอย่าง ผู้ลงนาม', 'position' => $position, 'comment' => 'เห็นควรอนุญาต',
                 'date' => now(), 'signature_path' => null, 'status' => 'Approved', 'role_name' => '', 'capacity' => $capacity,
-                'acting_line' => $capacity === ApprovalStep::CAPACITY_DIRECTOR ? 'ปฏิบัติราชการแทน ผู้อำนวยการ' : '',
+                'acting_line' => $capacity === SignerCapacity::DIRECTOR ? 'ปฏิบัติราชการแทน ผู้อำนวยการ' : '',
             ])->values()->all(),
         ]);
 
@@ -320,11 +320,8 @@ class LeaveFormFieldMap
      */
     public static function isChecker(array $block): bool
     {
-        if (array_key_exists('capacity', $block)) {
-            return $block['capacity'] === ApprovalStep::CAPACITY_CHECKER;
-        }
-
-        return ApprovalStep::capacityOf(null, (string) ($block['role_name'] ?? ''), null) === ApprovalStep::CAPACITY_CHECKER;
+        // R02: ไม่อ่านชื่อบทบาทแทนฐานะผู้ลงนามอีกต่อไป (PROJECT_RULES ห้าม hard-code ชื่อ role)
+        return ($block['capacity'] ?? null) === SignerCapacity::CHECKER;
     }
 
     /**

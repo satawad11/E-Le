@@ -129,8 +129,8 @@ class LeaveApprovalSigner
     /** ผู้ดูแลที่บันทึกการลงนามแทนได้ */
     public function canRecord(User $actor): bool
     {
-        return $actor->can('leave.management.manage')
-            || $actor->roles->contains(fn ($role) => in_array($role->name, ['Super Admin', 'SuperAdmin'], true));
+        // R02-11: ไม่มีบัญชีใดข้ามการตรวจสิทธิ์ด้วยชื่อบทบาทอีกต่อไป — R-08 เปลี่ยนเป็น PermissionEngine
+        return $actor->can('leave.management.manage');
     }
 
     /**

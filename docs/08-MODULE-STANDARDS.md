@@ -1,10 +1,14 @@
-# MODULE STANDARDS
-Every module registers code, Thai/English name, route, icon key, version, enabled flag, dependencies, permissions, order.
+# MODULE STANDARDS (REBUILD-2569)
 
-A module must provide: schema/migration, service/API, authorization policies, UI, audit events, tests, docs, health/observability where relevant.
+ทุกโมดูลต้องมี:
 
-Sidebar is generated from enabled modules + effective permissions; hiding menu is not authorization.
+1. `backend/app/Modules/<Studly>/manifest.php` ตามรูปแบบ `REBUILD-PLAN-2569.md` §3.4 ประกอบด้วย
+   `code`, `name`, `version`, `order`, `dependencies`, `features` (actions + `allowed scopes`, `requires`, `risk`, `rules`),
+   `templates`, `defaults` (ต่อระดับ L1–L5), `menus` (ตามผัง §8), `workflows`, `notifications`, `audit_events`, `settings`
+2. ServiceProvider ของโมดูลที่ลงทะเบียน route, policy, listener — ไม่แตะ core ของโมดูลอื่น
+3. ทุก controller action เรียก `PermissionEngine::can` และทุก list เรียก `scopeQuery`
+4. ทุกสายอนุมัติประกาศใน `workflows` ด้วย resolver ตามระดับหน่วย (CORE-05)
+5. เทสต์สิทธิ์ที่สร้างจาก manifest + Permission Matrix และเทสต์ IDOR
+6. ปิดโมดูลได้โดยไม่กระทบ core: เมนูหาย, API ตอบ 404, ข้อมูลคงอยู่
 
-LEGACY-12 implements this contract through `ModuleContract`, `ModuleRegistry`, and `config/module_registry.php`. New permissions must use `module.resource.action`; legacy aliases are compatibility-only. Dependencies are evaluated transitively, disabled modules expose neither routes nor menus, and backend policies/permissions remain mandatory independently of menu visibility.
-
-Registration, migration, deployment and test steps are documented in `docs/MODULE-EXTENSION-GUIDE.md`.
+หลังแก้ manifest ต้องรัน `php artisan modules:sync` และ commit ผลเทสต์

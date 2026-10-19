@@ -6,9 +6,9 @@ use App\Models\FiscalYear;
 use App\Models\Time\WorkSchedule;
 use App\Models\Time\WorkScheduleDay;
 use App\Models\User;
+use App\Services\OrgScopeResolver;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Illuminate\Support\Facades\DB;
 
 /**
  * LEGACY-06 — บริการเวลากลางของระบบ
@@ -91,19 +91,14 @@ class TimeService
      *
      * ลำดับ: exception รายหน่วยงาน > exception ระดับองค์กร > วันหยุดราชการ > ตารางเวลา
      */
-    public function isWorkingDay(CarbonInterface $date, ?User $user = null, ?int $departmentId = null): bool
+    public function isWorkingDay(CarbonInterface $date, ?User $user = null, ?int $orgUnitId = null): bool
     {
-        if ($departmentId === null && $user !== null) {
-            $orgUnitId = $user->currentAssignment?->org_unit_id ?? $user->org_unit_id;
-            if ($orgUnitId) {
-                $departmentId = DB::table('department_org_unit_map')
-                    ->where('org_unit_id', $orgUnitId)
-                    ->value('department_id');
-            }
-            $departmentId ??= $user->department_id;
+        // R02: exception รายหน่วยอ้าง org_units (ตาราง departments ถูกตัด) — หน่วยของผู้ใช้คือหน่วยต้นสังกัด (assignment primary)
+        if ($orgUnitId === null && $user !== null) {
+            $orgUnitId = app(OrgScopeResolver::class)->homeOrgUnitId($user);
         }
 
-        $exception = $this->calendar->calendarException($date, $departmentId);
+        $exception = $this->calendar->calendarException($date, $orgUnitId);
 
         if ($exception !== null) {
             // วันหยุดชดเชย/วันทำงานพิเศษที่ผู้ดูแลกำหนดเอง ชนะทุกอย่าง
@@ -120,9 +115,9 @@ class TimeService
         return $day === null ? $date->isWeekday() : $day->is_working_day;
     }
 
-    public function isHoliday(CarbonInterface $date, ?User $user = null, ?int $departmentId = null): bool
+    public function isHoliday(CarbonInterface $date, ?User $user = null, ?int $orgUnitId = null): bool
     {
-        return ! $this->isWorkingDay($date, $user, $departmentId);
+        return ! $this->isWorkingDay($date, $user, $orgUnitId);
     }
 
     /**
@@ -134,7 +129,7 @@ class TimeService
         CarbonInterface $start,
         CarbonInterface $end,
         ?User $user = null,
-        ?int $departmentId = null,
+        ?int $orgUnitId = null,
     ): float {
         $from = CarbonImmutable::parse($start)->startOfDay();
         $to = CarbonImmutable::parse($end)->startOfDay();
@@ -146,7 +141,7 @@ class TimeService
         $days = 0;
 
         for ($date = $from; $date->lte($to); $date = $date->addDay()) {
-            if ($this->isWorkingDay($date, $user, $departmentId)) {
+            if ($this->isWorkingDay($date, $user, $orgUnitId)) {
                 $days++;
             }
         }

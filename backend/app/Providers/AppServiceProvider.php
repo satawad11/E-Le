@@ -2,22 +2,17 @@
 
 namespace App\Providers;
 
-use App\Models\Personnel;
-use App\Models\PersonnelAssignment;
+use App\Contracts\Personnel\PersonnelFieldAccess;
 use App\Models\User;
-use App\Models\UserProfile;
-use App\Observers\PersonnelAssignmentObserver;
-use App\Observers\PersonnelObserver;
 use App\Observers\UserObserver;
-use App\Observers\UserProfileObserver;
 use App\Services\AuditLogger;
-use App\Services\PermissionEvaluator;
+use App\Services\Personnel\DenyByDefaultPersonnelFieldAccess;
+use App\Services\Personnel\FieldClassificationRegistry;
 use App\Services\SystemSettingService;
 use App\Support\ProductionEnvironmentGuard;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -28,7 +23,12 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
-    public function register(): void {}
+    public function register(): void
+    {
+        // R03: deny by default จนกว่า R-04 จะผูกตัวที่ถาม PermissionEngine
+        $this->app->bind(PersonnelFieldAccess::class, DenyByDefaultPersonnelFieldAccess::class);
+        $this->app->scoped(FieldClassificationRegistry::class);
+    }
 
     /**
      * Bootstrap any application services.
@@ -63,42 +63,17 @@ class AppServiceProvider extends ServiceProvider
         }
 
         User::observe(UserObserver::class);
-        Personnel::observe(PersonnelObserver::class);
-        UserProfile::observe(UserProfileObserver::class);
-        PersonnelAssignment::observe(PersonnelAssignmentObserver::class);
 
         User::created(fn (User $user) => app(AuditLogger::class)->log('user.created', 'user', $user->id, null, $user->attributesToArray()));
         User::updated(fn (User $user) => app(AuditLogger::class)->log('user.updated', 'user', $user->id, collect($user->getOriginal())->except(['password', 'remember_token'])->all(), $user->attributesToArray()));
         User::deleted(fn (User $user) => app(AuditLogger::class)->log('user.deleted', 'user', $user->id, collect($user->getOriginal())->except(['password', 'remember_token'])->all()));
+
         /*
-         * LEGACY-04 (04-2 / 04-5) — ลำดับ: explicit deny > allow > default deny
+         * REBUILD-2569 (R02-11) — ถอด hook allow-all ก่อน Gate ของระบบเดิมแล้ว (PROJECT_RULES ข้อ 8)
          *
-         * เดิม Super Admin ผ่านทุก ability โดยไม่มีทางปฏิเสธได้เลย
-         * ตอนนี้ explicit deny ชนะแม้กระทั่ง Super Admin
-         *
-         * ตัว evaluator ยังเทียบชื่อ permission ข้ามรุ่นให้ด้วย (ชื่อเก่า <-> canonical)
-         * ซึ่งจำเป็น เพราะฐานข้อมูลจริงยังถือชื่อเก่าอยู่ ขณะที่โค้ดเช็คชื่อ canonical
-         *
-         * คืน null เมื่อไม่ตัดสิน เพื่อให้ Policy/Gate ปกติทำงานต่อ
+         * ไม่มีบัญชีใดข้ามการตรวจสิทธิ์ และระหว่าง R-02–R-03 ไม่มี ability ใดถูกประกาศใน Gate
+         * `$user->can(...)` ทุกครั้งจึงได้ false (deny by default) จนกว่า R-04 จะต่อ PermissionEngine
          */
-        Gate::before(function ($user, $ability) {
-            if (! config('authorization.use_new_engine')) {
-                return $user->hasRole(['Super Admin', 'SuperAdmin']) ? true : null;
-            }
-
-            $evaluator = app(PermissionEvaluator::class);
-
-            if ($user instanceof User && $evaluator->isDenied($user, $ability)) {
-                return false;
-            }
-
-            if ($user->hasRole(['Super Admin', 'SuperAdmin'])) {
-                return true;
-            }
-
-            // ให้ผ่านเฉพาะเมื่อถือชื่อที่เทียบเท่ากันอยู่ มิฉะนั้นปล่อยให้ Gate เดิมตัดสิน
-            return ($user instanceof User && $evaluator->allows($user, $ability)) ? true : null;
-        });
 
         try {
             if (Schema::hasTable('settings')) {

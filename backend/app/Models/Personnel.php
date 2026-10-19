@@ -5,64 +5,86 @@ namespace App\Models;
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * บุคลากร (CORE-02) — แหล่งความจริงของบัญชีและสิทธิ์ตามตำแหน่ง
+ *
+ * ข้อมูลที่ส่งออก API ต้องผ่าน PersonnelPresenter (R-03) เพื่อปิดบังตามชั้นความลับ
+ */
 class Personnel extends Model
 {
     use HasFactory, HasPublicUuid;
 
+    public const STATUSES = ['pending', 'active', 'study_leave', 'seconded', 'suspended', 'separated'];
+
     protected $table = 'personnel';
 
     protected $fillable = [
-        'uuid',
-        'user_id',
-        'personnel_code',
-        'title',
-        'first_name',
-        'last_name',
-        'status',
-        'effective_from',
-        'effective_to',
+        'personnel_code', 'title', 'first_name', 'last_name', 'first_name_en', 'last_name_en',
+        'personnel_type_id', 'academic_standing', 'status', 'started_at', 'separated_at', 'separation_reason', 'photo_path',
     ];
 
-    protected $casts = [
-        'effective_from' => 'date',
-        'effective_to' => 'date',
-    ];
+    protected $casts = ['started_at' => 'date', 'separated_at' => 'date'];
 
-    /**
-     * accessor `full_name` มีอยู่แล้วแต่ไม่เคยถูกประกาศเป็น appends
-     * ทำให้ payload ของ API ไม่มีคีย์นี้ทั้งที่ contract ฝั่งเรียกใช้ต้องการ
-     */
+    protected $hidden = ['id', 'personnel_type_id'];
+
     protected $appends = ['full_name'];
 
-    public function user()
+    public function getRouteKeyName(): string
     {
-        return $this->belongsTo(User::class);
-    }
-
-    public function assignments()
-    {
-        return $this->hasMany(PersonnelAssignment::class, 'user_id', 'user_id');
-    }
-
-    public function currentAssignment()
-    {
-        return $this->hasOne(PersonnelAssignment::class, 'user_id', 'user_id')
-            ->where(function ($q) {
-                $q->whereNull('effective_to')
-                    ->orWhereDate('effective_to', '>=', today());
-            })
-            ->whereDate('effective_from', '<=', today())
-            ->latest('effective_from');
+        return 'uuid';
     }
 
     public function getFullNameAttribute(): string
     {
-        $fullName = trim(($this->first_name ?? '').' '.($this->last_name ?? ''));
-        if ($this->title && ! str_starts_with($fullName, $this->title)) {
-            return $this->title.$fullName;
-        }
+        return trim(($this->title ?? '').($this->first_name ?? '').' '.($this->last_name ?? ''));
+    }
 
-        return $fullName;
+    public function type(): BelongsTo
+    {
+        return $this->belongsTo(PersonnelType::class, 'personnel_type_id');
+    }
+
+    public function user(): HasOne
+    {
+        return $this->hasOne(User::class);
+    }
+
+    public function profile(): HasOne
+    {
+        return $this->hasOne(PersonnelProfile::class);
+    }
+
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(Assignment::class);
+    }
+
+    public function educations(): HasMany
+    {
+        return $this->hasMany(PersonnelEducation::class);
+    }
+
+    public function trainings(): HasMany
+    {
+        return $this->hasMany(PersonnelTraining::class);
+    }
+
+    public function licenses(): HasMany
+    {
+        return $this->hasMany(PersonnelLicense::class);
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(PersonnelDocument::class);
+    }
+
+    public function changeRequests(): HasMany
+    {
+        return $this->hasMany(PersonnelChangeRequest::class);
     }
 }
