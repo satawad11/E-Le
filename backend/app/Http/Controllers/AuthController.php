@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Personnel;
 use App\Models\PersonnelProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -16,16 +17,21 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
+        /*
+         * ADR-R-013 (Q10) — ตัวระบุหลักคืออีเมลหรือรหัสบุคลากร (`personnel_code`)
+         * เลขประจำตัวประชาชนใช้ได้เฉพาะเมื่อเปิด `auth.allow_national_id_login` (ค่าเริ่มต้นปิด)
+         * รับชื่อช่อง `login` และ `email` (หน้าเข้าสู่ระบบเดิมส่ง `email`)
+         */
         $request->validate([
-            'email' => ['required', 'string', function ($attribute, $value, $fail) {
-                if (! filter_var($value, FILTER_VALIDATE_EMAIL) && ! preg_match('/^[0-9]{13}$/', $value)) {
-                    $fail('รูปแบบอีเมล หรือเลขประจำตัวประชาชน (13 หลัก) ไม่ถูกต้อง');
-                }
-            }],
+            'login' => ['required_without:email', 'nullable', 'string', 'max:255'],
+            'email' => ['required_without:login', 'nullable', 'string', 'max:255'],
             'password' => 'required|string',
+        ], [
+            'login.required_without' => 'กรุณากรอกอีเมลหรือรหัสบุคลากร',
+            'email.required_without' => 'กรุณากรอกอีเมลหรือรหัสบุคลากร',
         ]);
 
-        $loginField = $request->email;
+        $loginField = trim((string) ($request->input('login') ?? $request->input('email')));
         $lockKey = 'login-account:'.hash('sha256', mb_strtolower(trim($loginField)));
 
         if (RateLimiter::tooManyAttempts($lockKey, 5)) {
@@ -34,17 +40,7 @@ class AuthController extends Controller
                 'retry_after' => RateLimiter::availableIn($lockKey),
             ], 429);
         }
-        $user = null;
-
-        if (filter_var($loginField, FILTER_VALIDATE_EMAIL)) {
-            $user = User::where('email', $loginField)->first();
-        } else {
-            // เลขประจำตัวประชาชนค้นผ่าน hash เท่านั้น (CORE-02: national_id เข้ารหัส)
-            $profile = PersonnelProfile::where('national_id_hash', PersonnelProfile::hashNationalId($loginField))->first();
-            if ($profile) {
-                $user = User::where('personnel_id', $profile->personnel_id)->first();
-            }
-        }
+        $user = $this->findUserByIdentifier($loginField);
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             RateLimiter::hit($lockKey, 900);
@@ -74,6 +70,28 @@ class AuthController extends Controller
             'expires_in' => $expiration * 60,
             'user' => $this->present($user),
         ]);
+    }
+
+    /**
+     * อีเมล → รหัสบุคลากร → (ถ้าเปิดไว้) เลขประจำตัวประชาชนผ่าน hash
+     */
+    private function findUserByIdentifier(string $identifier): ?User
+    {
+        if ($identifier === '') {
+            return null;
+        }
+
+        if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            return User::where('email', $identifier)->first();
+        }
+
+        $personnelId = Personnel::where('personnel_code', $identifier)->value('id');
+
+        if ($personnelId === null && config('auth.allow_national_id_login', false) && preg_match('/^\d{13}$/', $identifier)) {
+            $personnelId = PersonnelProfile::where('national_id_hash', PersonnelProfile::hashNationalId($identifier))->value('personnel_id');
+        }
+
+        return $personnelId === null ? null : User::where('personnel_id', $personnelId)->first();
     }
 
     public function logout(Request $request)
