@@ -2,8 +2,8 @@
 
 use App\Http\Middleware\AttachRequestContext;
 use App\Http\Middleware\CanViewClassifiedDocument;
-use App\Http\Middleware\DenyUntilPermissionEngine;
 use App\Http\Middleware\EnsureModuleEnabled;
+use App\Http\Middleware\EnsureRouteUsesPermissionEngine;
 use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
@@ -23,9 +23,9 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // R02-11: deny by default จนกว่า R-04 จะต่อ PermissionEngine — ต้องทำงานก่อน route model binding
+        // deny by default: route ต้องประกาศ ->permission() ที่ต่อ PermissionEngine — ทำงานก่อน route model binding
         $middleware->api(prepend: [
-            DenyUntilPermissionEngine::class,
+            EnsureRouteUsesPermissionEngine::class,
         ]);
         $middleware->api(append: [
             EnsureModuleEnabled::class,

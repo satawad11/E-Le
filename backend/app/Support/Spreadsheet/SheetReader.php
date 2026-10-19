@@ -16,6 +16,16 @@ use ZipArchive;
  */
 class SheetReader
 {
+    /** ขนาดรวมหลังแตกไฟล์สูงสุดของ .xlsx — กัน zip bomb (R-04 แก้ตามผลตรวจ R-03) */
+    public const MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024;
+
+    public const MAX_ENTRIES = 1000;
+
+    public function __construct(
+        private readonly int $maxUncompressedBytes = self::MAX_UNCOMPRESSED_BYTES,
+        private readonly int $maxEntries = self::MAX_ENTRIES,
+    ) {}
+
     /** @return array<string, array<int, array<string, string>>> */
     public function read(string $path, ?string $csvSheetName = null): array
     {
@@ -73,10 +83,11 @@ class SheetReader
         }
 
         try {
+            $this->assertSafeArchive($zip);
             $shared = $this->sharedStrings($zip);
             $sheets = [];
             foreach ($this->sheetPaths($zip) as $name => $sheetPath) {
-                $xml = $zip->getFromName($sheetPath);
+                $xml = $this->readEntry($zip, $sheetPath);
                 if ($xml === false) {
                     continue;
                 }
@@ -89,10 +100,48 @@ class SheetReader
         }
     }
 
+    /**
+     * ตรวจจำนวนไฟล์และขนาดรวมหลังแตกไฟล์จาก central directory ก่อนแตกจริง
+     * (ค่าที่ zip ประกาศไว้อาจปลอมได้ จึงจำกัดการอ่านแต่ละ entry ด้วยขนาดเดียวกันใน readEntry())
+     */
+    private function assertSafeArchive(ZipArchive $zip): void
+    {
+        if ($zip->numFiles > $this->maxEntries) {
+            throw new RuntimeException("ไฟล์ .xlsx มีส่วนประกอบมากผิดปกติ ({$zip->numFiles} รายการ)");
+        }
+
+        $total = 0;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $stat = $zip->statIndex($i);
+            $total += (int) ($stat['size'] ?? 0);
+            if ($total > $this->maxUncompressedBytes) {
+                throw new RuntimeException('ไฟล์ .xlsx ใหญ่เกินกำหนดเมื่อแตกไฟล์ (สูงสุด '.intdiv($this->maxUncompressedBytes, 1024 * 1024).' MB)');
+            }
+        }
+    }
+
+    /** อ่าน entry โดยจำกัดขนาดจริงที่แตกออกมา ไม่เชื่อค่าที่ประกาศใน zip อย่างเดียว */
+    private function readEntry(ZipArchive $zip, string $name): string|false
+    {
+        $stream = $zip->getStream($name);
+        if ($stream === false) {
+            return false;
+        }
+
+        $data = stream_get_contents($stream, $this->maxUncompressedBytes + 1);
+        fclose($stream);
+
+        if ($data !== false && strlen($data) > $this->maxUncompressedBytes) {
+            throw new RuntimeException('ไฟล์ .xlsx ใหญ่เกินกำหนดเมื่อแตกไฟล์');
+        }
+
+        return $data;
+    }
+
     /** @return array<int, string> */
     private function sharedStrings(ZipArchive $zip): array
     {
-        $xml = $zip->getFromName('xl/sharedStrings.xml');
+        $xml = $this->readEntry($zip, 'xl/sharedStrings.xml');
         if ($xml === false) {
             return [];
         }
@@ -120,7 +169,7 @@ class SheetReader
     private function sheetPaths(ZipArchive $zip): array
     {
         $rels = [];
-        $relsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
+        $relsXml = $this->readEntry($zip, 'xl/_rels/workbook.xml.rels');
         if ($relsXml !== false) {
             $doc = simplexml_load_string($relsXml, options: LIBXML_NONET);
             foreach ($doc->Relationship as $rel) {
@@ -129,7 +178,7 @@ class SheetReader
             }
         }
 
-        $workbook = simplexml_load_string((string) $zip->getFromName('xl/workbook.xml'), options: LIBXML_NONET);
+        $workbook = simplexml_load_string((string) $this->readEntry($zip, 'xl/workbook.xml'), options: LIBXML_NONET);
         $paths = [];
         foreach ($workbook->sheets->sheet as $sheet) {
             $rid = (string) $sheet->attributes('http://schemas.openxmlformats.org/officeDocument/2006/relationships')['id'];

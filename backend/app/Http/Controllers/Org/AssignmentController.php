@@ -21,12 +21,16 @@ class AssignmentController extends Controller
 
     public function index(Personnel $personnel): JsonResponse
     {
+        $this->authorizeResource('personnel.profile.view', $personnel);
+
         return response()->json($personnel->assignments()->with(['orgUnit:id,uuid,name', 'position:id,uuid,name,kind', 'actingFor:id,uuid'])
             ->orderByDesc('effective_from')->get()->map(fn (Assignment $a) => $this->present($a))->values());
     }
 
     public function store(Request $request, Personnel $personnel): JsonResponse
     {
+        $this->authorizeResource('personnel.assignment.manage', $personnel);
+
         $data = $request->validate([
             'kind' => ['required', Rule::in(Assignment::KINDS)],
             'org_unit_uuid' => ['required_unless:kind,acting', 'nullable', 'uuid', 'exists:org_units,uuid'],
@@ -54,6 +58,8 @@ class AssignmentController extends Controller
 
     public function end(Request $request, Assignment $assignment): JsonResponse
     {
+        $this->authorizeResource('personnel.assignment.manage', $assignment);
+
         $data = $request->validate([
             'effective_to' => ['required', 'date'],
             'end_reason' => ['required', 'string', 'max:255'],

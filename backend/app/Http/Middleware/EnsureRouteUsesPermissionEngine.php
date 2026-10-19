@@ -2,53 +2,83 @@
 
 namespace App\Http\Middleware;
 
+use App\Authz\Manifest\ModuleRegistry;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * R02-11 — deny by default ระหว่าง R-02 ถึง R-04 (PROJECT_RULES ข้อ 4)
+ * deny by default ระดับ route (R-04 แทน DenyUntilPermissionEngine ของ R-02)
  *
- * แบบจำลองสิทธิ์เดิม (spatie, allow-all ก่อน Gate, ตารางสิทธิ์เสริม) ถูกถอดแล้ว แต่ PermissionEngine
- * จะต่อใน R-04 ระหว่างนี้ทุก route ที่ต้องยืนยันตัวตนตอบ 403 ยกเว้นรายการ ALLOWED
- * ซึ่งเป็นการเข้า/ออกจากระบบและข้อมูลบัญชีของตนเองเท่านั้น
+ * route ที่ต้องยืนยันตัวตนใช้ได้เมื่อ:
+ *   (ก) ประกาศ `->permission(...)` ด้วยชื่อ permission ที่มีอยู่ใน manifest (ต่อ PermissionEngine แล้ว) หรือ
+ *   (ข) อยู่ใน SELF_SERVICE — การเข้า/ออกจากระบบและข้อมูลสิทธิ์/เมนูของตนเอง
+ * route อื่นทั้งหมด — โมดูลเดิมที่ยังตรวจสิทธิ์แบบเก่า (`can:`, ชื่อสิทธิ์เดิม, ไม่ตรวจเลย) — ตอบ 403
+ * จนกว่าจะย้ายใน R-08 จึงไม่มี endpoint ใดผ่านโดยไม่ถาม engine
  *
- * ทำงานก่อน route model binding (prepend ในกลุ่ม api) จึงไม่แตะ controller หรือ model ของโมดูลเดิม
- * ที่ยังอ้างตารางที่ถูกตัด — คำขอที่ไม่ได้ยืนยันตัวตนปล่อยให้ `auth:sanctum` ตอบ 401 ตามเดิม
- *
- * R-04: ถอด middleware นี้ออกเมื่อทุก route มี `->permission(...)` ที่ต่อ PermissionEngine แล้ว
+ * ทำงานก่อน route model binding (prepend ในกลุ่ม api) — ไม่แตะ controller ของโมดูลเดิมที่อ้างตารางที่ถูกตัด
  */
-class DenyUntilPermissionEngine
+class EnsureRouteUsesPermissionEngine
 {
-    /** route (METHOD uri) ที่ผู้ใช้ที่ยืนยันตัวตนแล้วใช้ได้ระหว่าง R-02–R-03 */
-    public const ALLOWED = [
+    /** route (METHOD uri) ของตนเองที่ผู้ใช้ที่ยืนยันตัวตนแล้วทุกคนใช้ได้ */
+    public const SELF_SERVICE = [
         'POST api/logout',
         'POST api/refresh-token',
         'GET api/user',
+        'GET api/me/permissions',
+        'GET api/me/menu',
     ];
 
-    public const MESSAGE = 'ฟังก์ชันนี้ปิดชั่วคราวระหว่างปรับระบบสิทธิ์ (REBUILD-2569) จะเปิดใช้เมื่อเชื่อมระบบตรวจสิทธิ์ใหม่';
+    public const MESSAGE = 'ฟังก์ชันนี้ยังไม่ได้ย้ายเข้าระบบตรวจสิทธิ์ใหม่ (REBUILD-2569) จะเปิดใช้เมื่อย้ายโมดูลเสร็จ';
+
+    public function __construct(private readonly ModuleRegistry $registry) {}
 
     public function handle(Request $request, Closure $next): Response
     {
         $route = $request->route();
 
-        if ($route === null || ! $this->requiresAuthentication($route->gatherMiddleware())) {
+        if (! $route instanceof Route || ! self::requiresAuthentication($route->gatherMiddleware())) {
             return $next($request);
         }
 
         if (! Auth::guard('sanctum')->check()) {
+            return $next($request); // ให้ auth:sanctum ตอบ 401
+        }
+
+        if ($this->isSelfService($route) || $this->declaresEnginePermission($route)) {
             return $next($request);
         }
 
+        return response()->json(['message' => self::MESSAGE], Response::HTTP_FORBIDDEN);
+    }
+
+    public function isSelfService(Route $route): bool
+    {
         foreach ($route->methods() as $method) {
-            if (in_array($method.' '.$route->uri(), self::ALLOWED, true)) {
-                return $next($request);
+            if (in_array($method.' '.$route->uri(), self::SELF_SERVICE, true)) {
+                return true;
             }
         }
 
-        return response()->json(['message' => self::MESSAGE], Response::HTTP_FORBIDDEN);
+        return false;
+    }
+
+    /** route ประกาศ `permission:` ที่ทุกชื่อมีอยู่ใน manifest */
+    public function declaresEnginePermission(Route $route): bool
+    {
+        $known = $this->registry->permissions();
+
+        foreach ($route->gatherMiddleware() as $middleware) {
+            if (is_string($middleware) && str_starts_with($middleware, 'permission:')) {
+                $names = array_filter(explode('|', str_replace(',', '|', substr($middleware, strlen('permission:')))));
+
+                return $names !== [] && array_diff($names, array_keys($known)) === [];
+            }
+        }
+
+        return false;
     }
 
     /** @param  array<int, mixed>  $middleware */
