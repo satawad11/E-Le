@@ -51,6 +51,24 @@ class ForbiddenPatternsTest extends TestCase
         $this->assertSame([], $hits);
     }
 
+    public function test_source_files_contain_no_control_bytes(): void
+    {
+        // อักขระควบคุมจริง (เช่น NUL) ทำให้ git มองไฟล์ข้อความเป็น binary และ diff/รีวิวไม่ได้ — ต้องเขียนเป็น escape
+        $offenders = [];
+        foreach (['app', 'bootstrap', 'config', 'routes', 'database', 'tests', 'scripts'] as $dir) {
+            foreach (File::allFiles(base_path($dir)) as $file) {
+                if (! in_array($file->getExtension(), ['php', 'json', 'md', 'txt', 'sh', 'csv', 'xml'], true)) {
+                    continue;
+                }
+                if (preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $file->getContents())) {
+                    $offenders[] = $dir.'/'.$file->getRelativePathname();
+                }
+            }
+        }
+
+        $this->assertSame([], $offenders);
+    }
+
     public function test_spatie_permission_package_is_removed(): void
     {
         $composer = json_decode(File::get(base_path('composer.json')), true);
