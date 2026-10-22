@@ -5,8 +5,10 @@ namespace Tests\Feature\Access;
 use App\Models\AuditLog;
 use App\Models\Authz\Permission;
 use App\Models\Authz\PermissionOverride;
+use App\Models\LoginEvent;
 use App\Models\MfaCredential;
 use App\Models\User;
+use App\Notifications\AccountNotice;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
@@ -120,20 +122,61 @@ class AccountsApiTest extends TestCase
         $this->postJson("/api/access/accounts/{$this->f->users['teacher']->uuid}/reactivate", ['note' => 'ขอเปิด'])->assertStatus(422);
     }
 
-    public function test_admin_unlocks_and_resets_mfa_but_never_their_own_account(): void
+    public function test_admin_unlocks_but_never_manages_their_own_account(): void
     {
         $director = $this->f->users['director'];
         $director->forceFill(['status' => User::STATUS_LOCKED, 'locked_until' => now()->addMinutes(20), 'failed_login_attempts' => 5])->saveQuietly();
-        MfaCredential::create(['user_id' => $director->id, 'secret' => 'JBSWY3DPEHPK3PXP', 'confirmed_at' => now()]);
         Sanctum::actingAs($this->f->users['admin']);
 
         $this->postJson("/api/access/accounts/{$director->uuid}/unlock", ['note' => 'ยืนยันทางโทรศัพท์'])->assertOk()->assertJsonPath('status', 'active');
         $this->assertSame(0, $director->fresh()->failed_login_attempts);
-        $this->postJson("/api/access/accounts/{$director->uuid}/reset-mfa", ['note' => 'โทรศัพท์หาย'])->assertOk()->assertJsonPath('mfa.enabled', false);
-        $this->assertTrue(AuditLog::where('action', 'account.mfa_reset')->exists());
 
         $this->postJson("/api/access/accounts/{$this->f->users['admin']->uuid}/suspend", ['note' => 'x'])->assertForbidden();
         $this->postJson("/api/access/accounts/{$this->f->users['admin']->uuid}/reset-mfa", ['note' => 'x'])->assertForbidden();
+    }
+
+    public function test_mfa_reset_of_an_ordinary_account_is_immediate_and_the_owner_is_told(): void
+    {
+        $teacher = $this->f->users['teacher'];
+        MfaCredential::create(['user_id' => $teacher->id, 'secret' => 'JBSWY3DPEHPK3PXP', 'confirmed_at' => now()]);
+        $teacher->createToken('session');
+        Sanctum::actingAs($this->f->users['admin']);
+
+        $this->postJson("/api/access/accounts/{$teacher->uuid}/reset-mfa", ['note' => 'โทรศัพท์หาย'])->assertOk()->assertJsonPath('mfa.enabled', false);
+
+        $this->assertSame(0, $teacher->tokens()->count());
+        $this->assertTrue(LoginEvent::where('user_id', $teacher->id)->where('result', 'mfa_reset')->exists());
+        $this->assertTrue(AuditLog::where('action', 'account.mfa_reset')->where('resource_id', (string) $teacher->id)->where('reason', 'โทรศัพท์หาย')->exists());
+        Notification::assertSentTo($teacher, AccountNotice::class, fn (AccountNotice $n) => $n->kind === AccountNotice::MFA_RESET
+            && str_contains(implode(' ', $n->lines), 'สมคิด ผู้ดูแลระบบ') && str_contains(implode(' ', $n->lines), now()->format('d/m/Y')));
+    }
+
+    public function test_mfa_reset_of_an_mfa_required_account_needs_a_second_person(): void
+    {
+        $director = $this->f->users['director']; // L1 — MfaPolicy บังคับ
+        MfaCredential::create(['user_id' => $director->id, 'secret' => 'JBSWY3DPEHPK3PXP', 'confirmed_at' => now()]);
+        Sanctum::actingAs($this->f->users['admin']);
+
+        $uuid = $this->postJson("/api/access/accounts/{$director->uuid}/reset-mfa", ['note' => 'โทรศัพท์หาย'])
+            ->assertStatus(202)->assertJsonPath('change_request.status', 'pending')->json('change_request.uuid');
+        $this->assertNotNull($director->fresh()->confirmedMfa(), 'ยังไม่มีผลจนกว่าคนที่สองยืนยัน');
+        Notification::assertNotSentTo($director, AccountNotice::class);
+
+        // ผู้ยื่นยืนยันเองไม่ได้ · เจ้าของบัญชี (ผู้ถือ access.change.approve) ยืนยันคำขอของตนเองไม่ได้
+        $this->postJson("/api/access/change-requests/{$uuid}/approve")->assertForbidden();
+        Sanctum::actingAs($director);
+        $this->postJson("/api/access/change-requests/{$uuid}/approve")->assertForbidden();
+        $this->assertNotNull($director->fresh()->confirmedMfa());
+
+        // ผู้ดูแลคนที่สองยืนยัน → มีผล แจ้งเจ้าของพร้อมชื่อผู้ยื่นและผู้ยืนยัน
+        $this->f->grant('section_head', 'system.admin', 'คำสั่ง 64/2569');
+        Sanctum::actingAs($this->f->users['section_head']->fresh());
+        $this->postJson("/api/access/change-requests/{$uuid}/approve")->assertOk()->assertJsonPath('status', 'approved');
+
+        $this->assertNull($director->fresh()->confirmedMfa());
+        $this->assertTrue(LoginEvent::where('user_id', $director->id)->where('result', 'mfa_reset')->exists());
+        Notification::assertSentTo($director, AccountNotice::class, fn (AccountNotice $n) => $n->kind === AccountNotice::MFA_RESET
+            && str_contains(implode(' ', $n->lines), 'สมพร หัวหน้างานบุคลากร') && str_contains(implode(' ', $n->lines), 'ยื่นโดย นายสมคิด ผู้ดูแลระบบ'));
     }
 
     public function test_there_is_no_endpoint_that_deletes_an_account(): void

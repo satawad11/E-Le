@@ -149,6 +149,8 @@ return [
         'challenge_seconds' => 300,
         'challenge_attempts' => 5,
         'recovery_codes' => 8,
+        // ไม่อ่านจาก env โดยตั้งใจ — มีผลเฉพาะเมื่อ runningUnitTests() และเทสต์ตั้งเอง (EnsureMfaSatisfied)
+        'allow_transient_in_tests' => false,
     ],
 
     /*

@@ -12,6 +12,7 @@ use App\Models\Authz\PermissionOverride;
 use App\Models\Authz\RoleGrant;
 use App\Models\LoginEvent;
 use App\Models\User;
+use App\Services\Access\AccessGrantService;
 use App\Services\Access\AccessReviewService;
 use App\Services\Access\AccountLifecycleService;
 use App\Services\Access\MfaPolicy;
@@ -151,9 +152,22 @@ class AccountController extends Controller
         return response()->json($this->presentRow($request->user(), $this->lifecycle->unlock($user, $request->user(), $note)));
     }
 
-    public function resetMfa(Request $request, User $user): JsonResponse
+    /**
+     * รีเซ็ต MFA — บัญชีที่ MfaPolicy บังคับ (L1–L3, งานบุคคล, ผู้ดูแลระบบ, break-glass) ต้องผ่านผู้ยืนยันคนที่สอง (202 + คำขอ)
+     * บัญชีอื่นมีผลทันที · ทั้งสองทางแจ้งเจ้าของบัญชีและบันทึก login_events/audit
+     */
+    public function resetMfa(Request $request, User $user, AccessGrantService $grants): JsonResponse
     {
         $note = $this->authorizeManage($request, $user);
+
+        if ($this->mfa->requires($user)) {
+            $changeRequest = $grants->requestMfaReset($request->user(), $user, $note);
+
+            return response()->json([
+                'message' => 'บัญชีนี้ถูกบังคับใช้ MFA — ส่งคำขอให้ผู้ดูแลคนที่สองยืนยันแล้ว ยังไม่มีผลจนกว่าจะได้รับการยืนยัน',
+                'change_request' => ['uuid' => $changeRequest->uuid, 'status' => $changeRequest->status],
+            ], 202);
+        }
 
         return response()->json($this->presentRow($request->user(), $this->lifecycle->resetMfa($user, $request->user(), $note)));
     }

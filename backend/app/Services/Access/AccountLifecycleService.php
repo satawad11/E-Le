@@ -6,6 +6,7 @@ use App\Models\Assignment;
 use App\Models\Authz\PermissionChangeRequest;
 use App\Models\Authz\PermissionOverride;
 use App\Models\Authz\RoleGrant;
+use App\Models\LoginEvent;
 use App\Models\Personnel;
 use App\Models\PersonnelChangeRequest;
 use App\Models\User;
@@ -349,14 +350,47 @@ class AccountLifecycleService
         return $user;
     }
 
-    /** ล้าง MFA (เช่น โทรศัพท์หาย) — ผู้ใช้ต้องตั้งใหม่ตอนเข้าสู่ระบบครั้งถัดไป · ตัด token ทั้งหมด */
-    public function resetMfa(User $user, User $actor, string $note): User
+    /**
+     * ล้าง MFA (เช่น โทรศัพท์หาย) — ผู้ใช้ต้องตั้งใหม่ตอนเข้าสู่ระบบครั้งถัดไป · ตัด token ทั้งหมด
+     *
+     * แจ้งเจ้าของบัญชีทุกครั้ง (เวลาและผู้ดำเนินการ) · บันทึก login_events (`mfa_reset`) และ audit
+     * บัญชีที่ MfaPolicy บังคับต้องผ่านคำขอเปลี่ยนสิทธิ์ (two_person) ก่อน — AccountController/AccessGrantService ตัดสิน
+     * ($actor = ผู้ทำให้มีผล · $requester = ผู้ยื่นคำขอเมื่อผ่านคนที่สอง)
+     */
+    public function resetMfa(User $user, User $actor, string $note, ?User $requester = null, ?int $changeRequestId = null): User
     {
         $removed = $user->mfaCredentials()->delete();
-        $user->tokens()->delete();
-        $this->audit->log('account.mfa_reset', $user, null, ['credentials' => $removed], null, $note, $actor->id);
+        $tokens = $user->tokens()->delete();
+
+        $request = app()->bound('request') ? request() : null;
+        LoginEvent::create([
+            'user_id' => $user->id,
+            'username_attempted' => $user->username,
+            'result' => 'mfa_reset',
+            'ip' => $request?->ip(),
+            'user_agent' => mb_substr((string) $request?->userAgent(), 0, 1000),
+            'created_at' => now(),
+        ]);
+        $this->audit->log('account.mfa_reset', $user, null, ['credentials' => $removed, 'tokens' => $tokens],
+            ['requested_by' => $requester?->id ?? $actor->id, 'approved_by' => $requester ? $actor->id : null, 'change_request_id' => $changeRequestId], $note, $actor->id);
+
+        $by = $this->displayName($actor).($requester ? ' (ยื่นโดย '.$this->displayName($requester).')' : '');
+        $user->notify(new AccountNotice(
+            AccountNotice::MFA_RESET,
+            'MFA ของบัญชีระบบบุคลากรของคุณถูกรีเซ็ต',
+            [
+                'ผู้ดูแลรีเซ็ตการยืนยันตัวตน (MFA) ของบัญชี '.$user->username.' เมื่อ '.now()->format('d/m/Y H:i').' โดย '.$by,
+                'เหตุผล: '.$note,
+                'การเข้าสู่ระบบครั้งถัดไปต้องตั้ง MFA ใหม่ ถ้าคุณไม่ได้ขอให้รีเซ็ต ให้แจ้งงานศูนย์ข้อมูลสารสนเทศทันที',
+            ],
+        ));
 
         return $user;
+    }
+
+    private function displayName(User $user): string
+    {
+        return $user->personnel?->full_name ?? $user->username;
     }
 
     // ------------------------------------------------------------------ ภายใน

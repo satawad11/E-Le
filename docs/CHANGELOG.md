@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## 2026-10-19 — REBUILD-2569 · R-05 บัญชีและความปลอดภัย
+- **แก้ไขหลังตรวจ (2026-10-22):** `EnsureMfaSatisfied` fail-closed (session ของ guard web/token ที่ไม่ผ่าน MFA ถูกปฏิเสธ · ยกเว้นเฉพาะเทสต์ที่ตั้งค่าเอง) · รีเซ็ต MFA แจ้งเจ้าของบัญชี + login_events และต้องผ่านคนที่สองเมื่อบัญชีถูกบังคับ MFA · คำสั่ง `access:bootstrap` ตอบ Q11 (ADR-R-023)
 - JML อัตโนมัติ: `AccountLifecycleService` + event `PersonnelStatusChanged` + listener `SyncAccountLifecycle` (Mover แจ้งเจ้าของบัญชี) · job รายวัน `accounts:reconcile` (แทน `access:expire-role-grants` ที่ไม่มีอยู่จริง) — idempotent · `users.status_reason` บอกผู้ตั้งสถานะ (ADR-R-021)
 - MFA TOTP + รหัสสำรอง (`pragmarx/google2fa` 9.1.0 · ADR-R-019) · `MfaPolicy` บังคับ L1–L3, ชุดสิทธิ์ที่ประกาศ `mfa` (งานบุคคล, ผู้ดูแลระบบ), break-glass · ไม่มี token ก่อนผ่าน MFA · `EnsureMfaSatisfied` ตรวจทุก request (ADR-R-020)
 - login events ครบ (success, bad_password, locked, mfa_failed, new_device, blocked) · ล็อก 30 นาทีหลังผิด 5 ครั้ง (ตอบ 423) · อีเมลแจ้งอุปกรณ์ใหม่ · แจ้ง ผอ./ผู้ตรวจสอบทุกครั้งที่ใช้ break-glass · token ใช้ได้เฉพาะบัญชี active

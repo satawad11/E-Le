@@ -34,6 +34,7 @@ class AccessGrantService
     public function __construct(
         private readonly PermissionEngine $engine,
         private readonly PermissionAudit $audit,
+        private readonly AccountLifecycleService $lifecycle,
     ) {}
 
     // ------------------------------------------------------------------ role grants
@@ -141,6 +142,16 @@ class AccessGrantService
         return $override;
     }
 
+    // ------------------------------------------------------------------ รีเซ็ต MFA ของบัญชีที่ถูกบังคับใช้ MFA (two_person)
+
+    /** ผู้ดูแลยื่นคำขอรีเซ็ต MFA — มีผลเมื่อผู้ยืนยันคนที่สองอนุมัติ (แก้ไขหลังตรวจ R-05 ข้อ 2) */
+    public function requestMfaReset(User $actor, User $target, string $note): PermissionChangeRequest
+    {
+        $this->guardTarget($actor, $target);
+
+        return $this->openRequest($actor, $target, ['action' => 'account.mfa_reset', 'note' => $note], $note);
+    }
+
     // ------------------------------------------------------------------ คำขอเปลี่ยนสิทธิ์ (two_person)
 
     /** ผู้ยืนยันคนที่สอง — controller ตรวจ access.change.approve + maker_checker ผ่าน engine แล้ว */
@@ -157,6 +168,23 @@ class AccessGrantService
 
         $requester = $request->requester;
         $diff = $request->diff;
+
+        if ($diff['action'] === 'account.mfa_reset') {
+            if (! $this->engine->allows($requester, 'access.account.manage', $target)) {
+                throw new HttpException(403, 'ผู้ยื่นคำขอไม่มีสิทธิ์จัดการบัญชีนี้แล้ว — ปฏิเสธคำขอนี้');
+            }
+
+            return DB::transaction(function () use ($approver, $request, $target, $requester, $diff, $note) {
+                $locked = PermissionChangeRequest::whereKey($request->id)->lockForUpdate()->firstOrFail();
+                $this->assertPending($locked);
+                $this->lifecycle->resetMfa($target, $approver, (string) $diff['note'], $requester, $locked->id);
+                $locked->forceFill(['status' => 'approved', 'approved_by' => $approver->id, 'decided_at' => now(), 'decision_note' => $note])->save();
+                $this->audit->log('permission_change_request.approved', $locked, ['status' => 'pending'], ['status' => 'approved'], $approver->id, $locked->id);
+
+                return $locked;
+            });
+        }
+
         $permissions = $diff['action'] === 'role_grant.create'
             ? $this->templatePermissions(PermissionTemplate::where('code', $diff['template_code'])->whereNull('retired_at')->firstOrFail())
             : [$diff['permission'] => $diff['scope']];

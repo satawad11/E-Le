@@ -10,7 +10,7 @@ use Illuminate\Notifications\Notification;
 /**
  * อีเมลเรื่องบัญชีและความปลอดภัย (CORE-03 · R-05) — ส่งผ่านคิว ไม่ถ่วงการเข้าสู่ระบบ
  *
- * kind: account_setup · new_device · break_glass_used · inactive_suspended · leaver_handover · access_changed
+ * kind: account_setup · new_device · break_glass_used · inactive_suspended · leaver_handover · access_changed · mfa_reset · bootstrap_grant
  * เนื้อหาไม่ใส่ข้อมูลอ่อนไหว (เลขประจำตัว รหัสผ่าน รหัส MFA)
  */
 class AccountNotice extends Notification implements ShouldQueue
@@ -28,6 +28,10 @@ class AccountNotice extends Notification implements ShouldQueue
     public const LEAVER_HANDOVER = 'leaver_handover';
 
     public const ACCESS_CHANGED = 'access_changed';
+
+    public const MFA_RESET = 'mfa_reset';
+
+    public const BOOTSTRAP_GRANT = 'bootstrap_grant';
 
     /** @param  array<int, string>  $lines */
     public function __construct(

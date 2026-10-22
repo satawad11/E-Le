@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\Sanctum;
 use PragmaRX\Google2FA\Google2FA;
 use Tests\Fixtures\CollegeFixture;
 use Tests\TestCase;
@@ -173,6 +174,33 @@ class MfaTest extends TestCase
 
         $this->withToken($token)->getJson('/api/me/permissions')->assertForbidden()->assertJsonPath('code', 'mfa_required');
         $this->withToken($token)->postJson('/api/logout')->assertOk();
+    }
+
+    public function test_mfa_check_is_fail_closed_for_every_way_of_authenticating(): void
+    {
+        config(['auth.mfa.allow_transient_in_tests' => false]);
+        $director = $this->f->users['director'];
+
+        // session ของ guard web (Sanctum ให้ TransientToken) — ไม่มี token MFA จึงถูกปฏิเสธ
+        $this->actingAs($director, 'web')->getJson('/api/me/permissions')->assertForbidden()->assertJsonPath('code', 'mfa_required');
+        $this->app['auth']->forgetGuards();
+
+        // token จำลองของ Sanctum::actingAs ก็ไม่ผ่านเมื่อไม่ได้เปิดข้อยกเว้นของเทสต์
+        Sanctum::actingAs($director);
+        $this->getJson('/api/me/permissions')->assertForbidden()->assertJsonPath('code', 'mfa_required');
+        $this->app['auth']->forgetGuards();
+
+        // token จริงที่ไม่ได้ผ่าน MFA และ token ชื่อ session:mfa ปลอมที่ไม่มีแถวไม่ได้ช่วย
+        $plain = $director->createToken('session')->plainTextToken;
+        $this->withToken($plain)->getJson('/api/me/permissions')->assertForbidden();
+        $this->app['auth']->forgetGuards();
+
+        $mfa = $director->createToken(AuthenticationService::TOKEN_SESSION_MFA)->plainTextToken;
+        $this->withToken($mfa)->getJson('/api/me/permissions')->assertOk();
+
+        // ผู้ที่ไม่อยู่ในกลุ่มบังคับใช้ session ได้ตามปกติ
+        $this->app['auth']->forgetGuards();
+        $this->actingAs($this->f->users['teacher'], 'web')->getJson('/api/me/permissions')->assertOk();
     }
 
     public function test_five_wrong_mfa_codes_lock_the_account(): void
