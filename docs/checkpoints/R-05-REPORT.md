@@ -71,7 +71,7 @@
 
 | ตรวจ | ผล |
 |---|---|
-| `php artisan test` | ✅ **278 tests, 1,711 assertions, 0 failures** (เทสต์ใหม่ R-05: 59 ข้อ / 393 assertions) (R-04 จบที่ 219/1,264) |
+| `php artisan test` | ✅ **278 tests, 1,711 assertions, 0 failures** ตอนส่งตรวจ (เทสต์ใหม่ R-05: 59 ข้อ / 393 assertions · หลังแก้ไขหลังตรวจดูข้อ 8) (R-04 จบที่ 219/1,264) |
 | `vendor/bin/pint --test` | ✅ ผ่าน (658 ไฟล์) |
 | `scripts/check-authz-patterns.sh` | ✅ ผ่าน |
 | MySQL (`eleave_r02_new`, ไม่แตะฐานจริง) | ✅ migration ขึ้น → ถอย → ขึ้น · `modules:sync` เพิ่มชุดสิทธิ์ L5 `access.self_service` · `accounts:reconcile` รันได้ |
@@ -93,13 +93,23 @@
 
 ## 7. ข้อจำกัด งานที่ส่งต่อ และสิ่งที่ต้องให้เจ้าของระบบตัดสิน
 
-1. **Q11 (ใหม่) การมอบชุดสิทธิ์ครั้งแรก** — grant_ceiling ทำให้ `system.admin` และ `personnel.hr_officer` มอบผ่าน API ได้เฉพาะผู้ที่ถือสิทธิ์ครบอยู่แล้ว ระบบใหม่ที่ว่างเปล่าจึงต้องมีทางตั้งต้น · ไม่ได้สร้างทางลัดใด ๆ ในเฟสนี้ · ข้อเสนออยู่ใน `TASKS.md` (ตัดสินก่อน R-09)
+1. ~~Q11 การมอบชุดสิทธิ์ครั้งแรก~~ — ตัดสินแล้ว: `access:bootstrap` (ข้อ 8, ADR-R-023)
 2. หน้า 7 อยู่ในแถบเมนูของระบบเดิม (ยังไม่ใช่แถบเมนูของต้นแบบ) จนกว่า R-06 จะเปลี่ยนโครงหน้าเป็นเมนูจาก `/api/me/menu` · ปุ่ม "สร้างบัญชีระบบ / สร้างบัญชีบุคคลภายนอก" และลิงก์ไปหน้า 8 ยังไม่แสดง (ต้องมี API สร้างบัญชีระบบและหน้ารายละเอียดใน R-07) · ปุ่ม "แก้ไขนโยบาย" ไม่แสดง (นโยบายอยู่ใน config)
 3. หน้า 1 ไม่มีปุ่ม "เข้าสู่ระบบด้วยบัญชีอีเมลวิทยาลัย (SSO)" เพราะยังไม่มี SSO ในขอบเขต · "จดจำอุปกรณ์นี้ 30 วัน" ไม่ข้าม MFA (ADR-R-020)
 4. หน้าจอคำขอเปลี่ยนสิทธิ์ ทบทวนสิทธิ์ และความปลอดภัยของฉัน (`/me/security`) — API พร้อม หน้าจออยู่ใน R07-4 และ R07-7 (ต้นแบบไม่มีหน้าเหล่านี้)
 5. "ส่งงานค้างให้งานบุคคล" ของ Leaver = อีเมลแจ้งงานบุคคลพร้อมจำนวนคำขอแก้ไขและใบลาที่ค้าง · การโอนงานอนุมัติที่ค้างในสายเป็นงานของ workflow (`R08-leave-2`)
 6. บัญชี break-glass และบัญชีระบบไม่มีตำแหน่งหลักจึงไม่ได้ `access.self.security` — break-glass ตั้ง MFA ผ่านขั้นตอนเข้าสู่ระบบ
 7. อีเมลทุกฉบับส่งผ่านคิว (`AccountNotice` · ShouldQueue) — ต้องมี worker และ SMTP ที่ตั้งค่าแล้วจึงถึงผู้รับ
-8. เทสต์ที่ใช้ `Sanctum::actingAs` ข้ามการตรวจ MFA โดยออกแบบ (token จำลองไม่มีแถวในฐานข้อมูล) — การบังคับ MFA ทดสอบด้วย token จริงใน `MfaTest`
+8. เทสต์ที่ใช้ `Sanctum::actingAs` ผ่านการตรวจ MFA ได้เพราะ `tests/TestCase` ตั้ง `auth.mfa.allow_transient_in_tests` อย่างชัดแจ้ง (มีผลเฉพาะ `runningUnitTests()`) — `MfaTest` ปิดค่านี้เพื่อตรวจการบังคับจริง
+
+## 8. แก้ไขหลังตรวจ (ผลตรวจ PR #34)
+
+| # | ประเด็น | การแก้ | เทสต์ |
+|---|---|---|---|
+| 1 | `EnsureMfaSatisfied` เป็น fail-open — token ที่ไม่ใช่ `PersonalAccessToken` ที่มีแถว (TransientToken จาก session ของ guard web) ผ่านโดยไม่ตรวจ MFA | fail-closed: ผู้ที่ MfaPolicy บังคับผ่านได้เฉพาะ token `session:mfa` ที่มีแถวจริง ทางอื่นทุกทางได้ 403 `mfa_required` · ข้อยกเว้นเฉพาะ `app()->runningUnitTests()` และ `config('auth.mfa.allow_transient_in_tests') === true` ที่เทสต์ตั้งเอง (ค่าใน `config/auth.php` เป็น false และไม่อ่านจาก env) · `tests/TestCase` ตั้งค่านี้ให้เทสต์สิทธิ์ที่ใช้ `Sanctum::actingAs` โดยชัดแจ้ง | `MfaTest::test_mfa_check_is_fail_closed_for_every_way_of_authenticating` — session ของ guard web 403 · token จำลองเมื่อปิดข้อยกเว้น 403 · token ที่ไม่ผ่าน MFA 403 · `session:mfa` จริง 200 · ผู้ไม่อยู่ในกลุ่มบังคับใช้ session ได้ |
+| 2 | `resetMfa` ไม่แจ้งเจ้าของบัญชี | แจ้ง `AccountNotice` (`mfa_reset`) ทุกครั้งพร้อมเวลา ผู้ยื่น และผู้ยืนยัน · บันทึก `login_events` (`mfa_reset`) + audit · บัญชีที่ MfaPolicy บังคับ → `POST …/reset-mfa` ตอบ 202 และสร้าง `permission_change_requests` (diff `account.mfa_reset`) · ยืนยันด้วย `access.change.approve` ผู้ยื่นและเจ้าของบัญชียืนยันเองไม่ได้ · ตรวจซ้ำว่าผู้ยื่นยังมี `access.account.manage` | `AccountsApiTest::test_mfa_reset_of_an_ordinary_account_is_immediate_and_the_owner_is_told` · `test_mfa_reset_of_an_mfa_required_account_needs_a_second_person` |
+| 3 | Q11 ตัดสินแล้ว | `php artisan access:bootstrap {template} {user} --order-number= --expires=` เฉพาะ `system.admin`/`personnel.hr_officer` เมื่อไม่มีผู้ถือที่มีผล · หมดอายุไม่เกิน 90 วัน · บัญชี active ไม่ใช่บัญชีระบบ · ล้าง MFA/token → ตั้ง MFA ตอนเข้าสู่ระบบครั้งแรก · `permission_audit_logs` (`role_grant.bootstrapped`) · แจ้ง L1 ทุกครั้ง · ไม่มี API/หน้าจอ · migration ให้ `role_grants.granted_by` เป็น null ได้ (null = คำสั่งนี้) · ADR-R-023 · ปิด Q11 ใน `TASKS.md` | `AccessBootstrapTest` 4 ข้อ — ใช้ได้ครั้งแรก (audit, แจ้ง ผอ., บังคับตั้ง MFA) และใช้ซ้ำถูกปฏิเสธ · มีผู้ถือที่มีผลถูกปฏิเสธ/ผู้ถือหมดอายุหรือบัญชีไม่ active ไม่กีดขวาง · ไม่มีเลขคำสั่ง/ไม่มีหรือเกิน 90 วัน/วันนี้/รูปแบบผิด/ชุดสิทธิ์อื่น/บัญชีไม่ active ถูกปฏิเสธ (90 วันพอดีผ่าน) |
+
+ผลตรวจหลังแก้: `php artisan test` **285 tests, 1,764 assertions** ผ่าน · `pint --test` ผ่าน (661 ไฟล์) · `scripts/check-authz-patterns.sh` ผ่าน · migration ใหม่ ขึ้น → ถอย → ขึ้น บน MySQL scratch (`eleave_r02_new`) ผ่าน — `granted_by` เป็น null ได้และ FK ยังอยู่
 
 **หยุดรอคำสั่ง**
