@@ -66,7 +66,7 @@ return [
             ],
         ],
         'hr_officer' => [
-            'name' => 'งานบุคคล (ทะเบียนประวัติ)', 'kind' => 'functional',
+            'name' => 'งานบุคคล (ทะเบียนประวัติ)', 'kind' => 'functional', 'mfa' => true,
             'description' => 'มอบผ่าน role grant พร้อมเลขคำสั่งและวันหมดอายุ',
             'permissions' => [
                 'personnel.profile.view' => 'all',

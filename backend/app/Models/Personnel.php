@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Authz\Contracts\AuthzResource;
 use App\Authz\Contracts\ScopedByAuthz;
+use App\Events\PersonnelStatusChanged;
 use App\Models\Concerns\AuthorizesByPersonnel;
 use App\Models\Concerns\HasPublicUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 
 /**
  * บุคลากร (CORE-02) — แหล่งความจริงของบัญชีและสิทธิ์ตามตำแหน่ง
@@ -35,6 +37,17 @@ class Personnel extends Model implements AuthzResource, ScopedByAuthz
     protected $hidden = ['id', 'personnel_type_id'];
 
     protected $appends = ['full_name'];
+
+    protected static function booted(): void
+    {
+        // JML (R-05): สถานะเปลี่ยนจากทางใดก็ตาม → บัญชีปรับตาม หลัง commit
+        static::updated(function (Personnel $personnel): void {
+            if ($personnel->wasChanged('status')) {
+                $from = $personnel->getOriginal('status');
+                DB::afterCommit(fn () => PersonnelStatusChanged::dispatch($personnel, $from));
+            }
+        });
+    }
 
     public function getRouteKeyName(): string
     {

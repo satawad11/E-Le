@@ -407,7 +407,7 @@
         </div>
 
         <!-- SuperAdmin & HR: จัดการผู้ใช้งาน Collapsible -->
-        <div v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasAnyPermission(['view_users', 'edit_users', 'system.user.view', 'system.user.manage'])">
+        <div v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasAnyPermission(['access.account.view', 'view_users', 'edit_users', 'system.user.view', 'system.user.manage'])">
           <button
             @click="userMenuOpen = !userMenuOpen; if(isSidebarCollapsed) isSidebarCollapsed = false"
             class="nav-link w-full flex justify-between items-center"
@@ -427,8 +427,8 @@
           </button>
 
           <div v-show="userMenuOpen && !isSidebarCollapsed" class="mt-1 space-y-1 pl-9">
-            <router-link v-if="authStore.isAdmin || authStore.hasAnyPermission(['view_users', 'system.user.view'])" to="/admin/users" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
-              รายชื่อผู้ใช้งาน
+            <router-link v-if="authStore.hasPermission('access.account.view')" to="/access/accounts" class="nav-link !py-2 !text-sm" active-class="nav-link-active">
+              บัญชีผู้ใช้
             </router-link>
             <router-link
               v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage'])"
@@ -791,7 +791,7 @@
           </div>
 
           <!-- จัดการผู้ใช้งาน Collapsible (Mobile) -->
-          <div v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasAnyPermission(['view_users', 'edit_users', 'system.user.view', 'system.user.manage'])">
+          <div v-if="authStore.isAdmin || authStore.isHRHead || authStore.hasAnyPermission(['access.account.view', 'view_users', 'edit_users', 'system.user.view', 'system.user.manage'])">
             <button
               @click="userMenuOpen = !userMenuOpen"
               class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-white/80 hover:bg-white/10"
@@ -810,8 +810,8 @@
             </button>
 
             <div v-show="userMenuOpen" class="mt-1 pl-6 space-y-1">
-              <router-link v-if="authStore.isAdmin || authStore.hasAnyPermission(['view_users', 'system.user.view'])" to="/admin/users" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
-                รายชื่อผู้ใช้งาน
+              <router-link v-if="authStore.hasPermission('access.account.view')" to="/access/accounts" @click="mobileMenu = false" class="block px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10" active-class="!bg-white/20 !text-white font-semibold">
+                บัญชีผู้ใช้
               </router-link>
               <router-link
                 v-if="authStore.isAdmin || authStore.hasAnyPermission(['edit_users', 'system.user.manage'])"
@@ -1101,8 +1101,8 @@ const isSarabanRouteActive = computed(() => {
 })
 
 const isUserRouteActive = computed(() => {
-  return ['admin-users', 'admin-menus', 'admin-roles', 'admin-personnel-assignments', 'admin-positions', 'admin-org-structure'].includes(route.name) ||
-    ['/admin/users', '/admin/menus', '/admin/roles', '/admin/personnel-assignments', '/admin/positions', '/admin/org-structure'].includes(route.path)
+  return ['access-accounts', 'admin-users', 'admin-menus', 'admin-roles', 'admin-personnel-assignments', 'admin-positions', 'admin-org-structure'].includes(route.name) ||
+    ['/access/accounts', '/admin/users', '/admin/menus', '/admin/roles', '/admin/personnel-assignments', '/admin/positions', '/admin/org-structure'].includes(route.path)
 })
 
 // Auto open active collapsible menu on navigation & close mobile drawer

@@ -230,13 +230,14 @@ const router = createRouter({
       meta: { requiresAuth: true, permission: 'saraban.document.edit', title: 'แก้ไขหนังสือราชการ', parent: 'ระบบสารบรรณ' }
     },
 
-    // === จัดการผู้ใช้งาน ===
+    // === บัญชีและสิทธิ์ (R-05 · ต้นแบบหน้า 7) — /admin/users เดิมย้ายมาที่นี่ (PLAN §8.4) ===
     {
-      path: '/admin/users',
-      name: 'admin-users',
-      component: () => import('../views/admin/UsersManagementView.vue'),
-      meta: { requiresAuth: true, permissions: ['view_users', 'system.user.view'], title: 'รายชื่อผู้ใช้งาน', parent: 'จัดการผู้ใช้งาน' }
+      path: '/access/accounts',
+      name: 'access-accounts',
+      component: () => import('../views/access/AccountsView.vue'),
+      meta: { requiresAuth: true, permission: 'access.account.view', title: 'บัญชีผู้ใช้', parent: 'บัญชีและสิทธิ์' }
     },
+    { path: '/admin/users', redirect: '/access/accounts' },
     {
       path: '/admin/personnel-assignments',
       name: 'admin-personnel-assignments',

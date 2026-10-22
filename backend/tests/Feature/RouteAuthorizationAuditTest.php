@@ -10,7 +10,11 @@ class RouteAuthorizationAuditTest extends TestCase
 {
     private const PUBLIC_API_URIS = [
         'api/ping',
+        'api/auth/options',
         'api/login',
+        'api/login/mfa',
+        'api/login/mfa/setup',
+        'api/login/mfa/setup/confirm',
         'api/forgot-password',
         'api/reset-password',
         'api/saraban/verify/{hash}',

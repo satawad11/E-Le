@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AttachRequestContext;
 use App\Http\Middleware\CanViewClassifiedDocument;
+use App\Http\Middleware\EnsureMfaSatisfied;
 use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\EnsureRouteUsesPermissionEngine;
 use App\Http\Middleware\RequirePermission;
@@ -24,8 +25,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // deny by default: route ต้องประกาศ ->permission() ที่ต่อ PermissionEngine — ทำงานก่อน route model binding
+        // R-05: ผู้ที่ต้องใช้ MFA ต้องถือ token ที่ผ่าน MFA แล้ว (ตรวจทุก request)
         $middleware->api(prepend: [
             EnsureRouteUsesPermissionEngine::class,
+            EnsureMfaSatisfied::class,
         ]);
         $middleware->api(append: [
             EnsureModuleEnabled::class,

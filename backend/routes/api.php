@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Access\AccessReviewController;
+use App\Http\Controllers\Access\AccountController;
+use App\Http\Controllers\Access\GrantController;
+use App\Http\Controllers\Access\SecurityController;
 use App\Http\Controllers\Admin\DelegationController;
 use App\Http\Controllers\Admin\DocumentEngineController;
 use App\Http\Controllers\Admin\DocumentReportController;
@@ -48,6 +52,7 @@ Route::middleware('throttle:public-api')->group(function () {
     Route::get('/ping', function () {
         return response()->json(['message' => 'pong']);
     });
+    Route::get('/auth/options', [AuthController::class, 'options']);
 
     // Public Saraban verify routes
     Route::get('/saraban/verify/{hash}', [SignatureController::class, 'verify'])->middleware('throttle:verify');
@@ -60,6 +65,12 @@ Route::middleware('throttle:public-api')->group(function () {
     });
 });
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login');
+// R-05: ขั้นที่สองของการเข้าสู่ระบบ (ยังไม่มีตัวตน จึงประกาศ ->permission() ไม่ได้ — คุมด้วย challenge อายุ 5 นาที + throttle + ล็อกบัญชี)
+Route::middleware('throttle:login')->group(function () {
+    Route::post('/login/mfa', [AuthController::class, 'verifyMfa']);
+    Route::post('/login/mfa/setup', [AuthController::class, 'startMfaSetup']);
+    Route::post('/login/mfa/setup/confirm', [AuthController::class, 'confirmMfaSetup']);
+});
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:password');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:password');
 
@@ -183,6 +194,45 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      */
     Route::get('/me/permissions', [MeController::class, 'permissions']);
     Route::get('/me/menu', [MeController::class, 'menu']);
+
+    /*
+     * R-05 บัญชีและความปลอดภัย (CORE-03/04) — ทุก route ประกาศ ->permission() จาก manifest ของโมดูล access
+     * การตรวจระดับรายการ (not_own, maker_checker, scope หน่วย) อยู่ใน controller/service ผ่าน PermissionEngine
+     */
+    Route::prefix('me')->middleware('throttle:mfa')->group(function () {
+        Route::get('/security', [SecurityController::class, 'show'])->permission('access.self.security');
+        Route::post('/password', [SecurityController::class, 'changePassword'])->permission('access.self.security');
+        Route::post('/security/mfa/setup', [SecurityController::class, 'startMfa'])->permission('access.self.security');
+        Route::post('/security/mfa/confirm', [SecurityController::class, 'confirmMfa'])->permission('access.self.security');
+        Route::post('/security/mfa/recovery-codes', [SecurityController::class, 'regenerateRecoveryCodes'])->permission('access.self.security');
+        Route::post('/security/mfa/disable', [SecurityController::class, 'disableMfa'])->permission('access.self.security');
+        Route::delete('/security/devices/{device:uuid}', [SecurityController::class, 'forgetDevice'])->permission('access.self.security');
+    });
+
+    Route::prefix('access')->group(function () {
+        Route::get('/accounts', [AccountController::class, 'index'])->permission('access.account.view');
+        Route::get('/accounts/{user:uuid}/access', [AccountController::class, 'access'])->permission('access.account.view');
+        Route::post('/accounts/{user:uuid}/suspend', [AccountController::class, 'suspend'])->permission('access.account.manage');
+        Route::post('/accounts/{user:uuid}/reactivate', [AccountController::class, 'reactivate'])->permission('access.account.manage');
+        Route::post('/accounts/{user:uuid}/unlock', [AccountController::class, 'unlock'])->permission('access.account.manage');
+        Route::post('/accounts/{user:uuid}/reset-mfa', [AccountController::class, 'resetMfa'])->permission('access.account.manage');
+
+        Route::post('/accounts/{user:uuid}/role-grants', [GrantController::class, 'grantRole'])->permission('access.grant.manage');
+        Route::post('/role-grants/{grant:uuid}/end', [GrantController::class, 'endRoleGrant'])->permission('access.grant.manage');
+        Route::post('/accounts/{user:uuid}/overrides', [GrantController::class, 'addOverride'])->permission('access.grant.manage');
+        Route::post('/overrides/{override:uuid}/end', [GrantController::class, 'endOverride'])->permission('access.grant.manage');
+
+        Route::get('/change-requests', [GrantController::class, 'changeRequests'])->permission('access.change.approve');
+        Route::post('/change-requests/{changeRequest:uuid}/approve', [GrantController::class, 'approve'])->permission('access.change.approve');
+        Route::post('/change-requests/{changeRequest:uuid}/reject', [GrantController::class, 'reject'])->permission('access.change.approve');
+        Route::post('/change-requests/{changeRequest:uuid}/cancel', [GrantController::class, 'cancel'])->permission('access.grant.manage');
+
+        Route::get('/reviews', [AccessReviewController::class, 'index'])->permission('access.review.confirm', 'access.review.manage');
+        Route::post('/reviews', [AccessReviewController::class, 'store'])->permission('access.review.manage');
+        Route::get('/reviews/{review:uuid}/items', [AccessReviewController::class, 'items'])->permission('access.review.confirm', 'access.review.manage');
+        Route::post('/reviews/{review:uuid}/items/{item}/decide', [AccessReviewController::class, 'decide'])->permission('access.review.confirm');
+        Route::post('/reviews/{review:uuid}/close', [AccessReviewController::class, 'close'])->permission('access.review.manage');
+    });
 
     Route::prefix('org')->group(function () {
         Route::get('/units', [OrgUnitController::class, 'index'])->permission('org.unit.view');

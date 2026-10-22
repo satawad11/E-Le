@@ -25,8 +25,8 @@ user_id null, username_attempted, result (`success`,`bad_password`,`locked`,`mfa
 Job รายวัน `accounts:reconcile` ทำซ้ำทุกข้อให้ idempotent
 
 ## นโยบาย
-- MFA บังคับเมื่อผู้ใช้มี assignment L1–L3, functional grant กลุ่ม HR, ผู้ดูแลระบบ หรือ break-glass
-- ล็อก 30 นาทีหลังรหัสผ่านผิด 5 ครั้ง · token อายุตาม ADR-005 เดิม (ทบทวนใน R-05)
+- MFA บังคับเมื่อผู้ใช้มี assignment L1–L3, functional grant กลุ่ม HR, ผู้ดูแลระบบ หรือ break-glass (ชุดสิทธิ์ประกาศ `'mfa' => true` ใน manifest · ตรวจทุก request — ADR-R-020)
+- ล็อก 30 นาทีหลังรหัสผ่านผิด 5 ครั้ง (รวมรหัส MFA ผิด) · token อายุ 8 ชั่วโมง (ทบทวนแล้วใน R-05 · ADR-R-020)
 - อุปกรณ์ใหม่ → อีเมลแจ้งเตือน
 - บัญชี `service` ไม่มี personnel ได้เฉพาะ permission ที่ระบุ ห้าม interactive login
 - บัญชี break-glass: 1–2 บัญชี · ทุกการเข้าใช้แจ้ง ผอ. และผู้ตรวจสอบ · ไม่อยู่ในสายอนุมัติ

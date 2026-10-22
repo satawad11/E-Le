@@ -4,6 +4,26 @@ import { useLeaveStore } from './leave';
 
 let fetchUserPromise = null;
 
+/**
+ * รหัสอุปกรณ์สุ่ม (R-05 แจ้งเตือนอุปกรณ์ใหม่) — server เก็บเฉพาะ hash
+ * "จดจำอุปกรณ์นี้" เก็บไว้ใน localStorage · ไม่ติ๊ก ใช้ sessionStorage (ปิดเบราว์เซอร์แล้วนับเป็นอุปกรณ์ใหม่)
+ */
+const deviceId = (remember) => {
+  const make = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+  try {
+    let id = localStorage.getItem('device_id') || sessionStorage.getItem('device_id');
+    if (!id) id = make();
+    if (remember) {
+      localStorage.setItem('device_id', id);
+    } else if (!localStorage.getItem('device_id')) {
+      sessionStorage.setItem('device_id', id);
+    }
+    return id;
+  } catch (e) {
+    return null;
+  }
+};
+
 // Helper to extract flat string array of permission names regardless of whether permissions is array of objects or strings
 const getPermissionNames = (state) => {
   if (!state.user) return [];
@@ -186,7 +206,7 @@ export const useAuthStore = defineStore('auth', {
     // Check if user has any admin menu permission
     hasAnyAdminMenu: (state) => {
       if (isSuperAdminUser(state)) return true;
-      const adminPerms = ['view_users', 'edit_users', 'manage_departments', 'manage_leave_types', 'manage_settings', 'attendance.view_all', 'system.user.view', 'system.menu.manage'];
+      const adminPerms = ['access.account.view', 'view_users', 'edit_users', 'manage_departments', 'manage_leave_types', 'manage_settings', 'attendance.view_all', 'system.user.view', 'system.menu.manage'];
       const perms = getPermissionNames(state);
       return perms.some(p => adminPerms.includes(p));
     },
@@ -220,19 +240,46 @@ export const useAuthStore = defineStore('auth', {
     },
   },
   actions: {
-    async login(email, password) {
-      try {
-        const response = await api.post('/login', { email, password });
-        this.token = response.data.access_token;
-        this.user = response.data.user;
-        localStorage.setItem('token', this.token);
-        this.tokenExpiresAt = Date.now() + (response.data.expires_in * 1000);
-        localStorage.setItem('token_expires_at', String(this.tokenExpiresAt));
-        return true;
-      } catch (error) {
-        console.error('Login failed', error);
-        throw error;
+    /**
+     * R-05 เข้าสู่ระบบ — ขั้นแรก (รหัสผ่าน)
+     *
+     * คืน { mfa: true, challenge, enrolled, reasons } เมื่อบัญชีต้องยืนยัน MFA (ยังไม่มี token)
+     * หรือ { mfa: false } เมื่อเข้าสู่ระบบสำเร็จแล้ว
+     */
+    async login(identifier, password, { remember = false } = {}) {
+      const response = await api.post('/login', {
+        login: identifier,
+        password,
+        device_id: deviceId(remember),
+        remember_device: remember,
+      });
+      if (response.data.mfa_required) {
+        return { mfa: true, ...response.data };
       }
+      this.setSession(response.data);
+      return { mfa: false };
+    },
+    async verifyMfa(challenge, { code = null, recoveryCode = null } = {}) {
+      const response = await api.post('/login/mfa', { challenge, code, recovery_code: recoveryCode });
+      this.setSession(response.data);
+      return response.data;
+    },
+    async startMfaSetup(challenge) {
+      const response = await api.post('/login/mfa/setup', { challenge });
+      return response.data;
+    },
+    /** ยืนยันการตั้งค่า MFA → ได้ token และรหัสสำรอง (แสดงครั้งเดียว) */
+    async confirmMfaSetup(challenge, code) {
+      const response = await api.post('/login/mfa/setup/confirm', { challenge, code });
+      this.setSession(response.data);
+      return response.data.recovery_codes || [];
+    },
+    setSession(data) {
+      this.token = data.access_token;
+      this.user = data.user;
+      localStorage.setItem('token', this.token);
+      this.tokenExpiresAt = Date.now() + (data.expires_in * 1000);
+      localStorage.setItem('token_expires_at', String(this.tokenExpiresAt));
     },
     async fetchUser({ force = false } = {}) {
       if (!this.token) return;
