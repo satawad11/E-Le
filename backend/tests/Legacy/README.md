@@ -23,7 +23,7 @@ R-02 ถอด spatie/laravel-permission, ตาราง `departments`, `user_p
 | Document engine / รายงาน | DocumentEngineTest, DocumentReportEngineTest, DocumentTemplateSecurityTest, ReportingLayerTest, DashboardReportScopeTest | R-04 (สิทธิ์) + R-08 |
 | Workflow engine | Workflow/{ApprovalWorkflowManagement,EngineApproverFidelity,SarabanWorkflowPinning,WorkflowAuthorization,WorkflowEngine}Test | R-04 (resolver) + R-08 |
 | บัญชีและการยืนยันตัวตน | RateLimitBucketIsolationTest (เหลือเฉพาะถังจำกัดอัตราของเอกสารใบลา/รายงาน — ย้ายพร้อมโมดูลลา) | R-08 leave |
-| องค์กร/บุคลากร | PersonnelDomainCoreServicesTest, PositionCatalogTest (เมื่อ API ตำแหน่งเปิดใน R-04), PersonalDataProtectionTest, SecureFileAuthorizationTest | R-04 / R-06 |
+| องค์กร/บุคลากร (R-06 ทบทวนแล้ว: ส่วนที่เหลือเป็นของโมดูลลา/ลงเวลาและ R-07) | PersonnelDomainCoreServicesTest, PositionCatalogTest (เมื่อ API ตำแหน่งเปิดใน R-04), PersonalDataProtectionTest, SecureFileAuthorizationTest | R-04 / R-06 |
 | ตั้งค่าระบบ audit โมดูล | SystemSettingsTest, CentralAuditLogTest, ModuleRegistryTest (ทะเบียนโมดูลธุรกิจเดิม `config/modules.php`) | R-07 / R-08 |
 
 ## บันทึกการย้าย/ลบ (Q7 — ทุกเฟสต้องบันทึก)
@@ -48,3 +48,7 @@ R-02 ถอด spatie/laravel-permission, ตาราง `departments`, `user_p
 | R-05 | UserAccountGovernanceTest | ลบ (จัดการผู้ใช้แบบ role/department ถูกตัด) | `Access/AccountsApiTest` (ระงับมี audit และตัด API, จัดการบัญชีตนเองไม่ได้, ไม่มี endpoint ลบบัญชี) · `Access/AccountLifecycleTest` (สร้างบัญชีมี audit ไม่มี hash รหัสผ่าน) · `Access/AccessGrantApiTest` (เปลี่ยนสิทธิ์มี audit ก่อน/หลัง) · `Access/LoginSecurityTest` (เปลี่ยนรหัสผ่านต้องใส่รหัสเดิม) |
 | R-05 | PersonnelApiAlignmentTest | ลบ (อ้าง AccountSeparationService และ /admin/users เดิม) | `Access/MfaTest::test_user_outside_required_groups_logs_in_without_mfa` (payload บุคลากรตอนเข้าสู่ระบบ) · `Access/AccountsApiTest` (รายการบัญชีพร้อมรหัสบุคลากร) |
 | R-05 | Unit/UserTest | ลบ (คุณลักษณะชื่อ/แผนก/role ของ User เดิมถูกตัด — ชื่ออยู่ที่ Personnel) | `Rebuild/CoreModelsTest` (ความสัมพันธ์ User ↔ Personnel) |
+| R-06 | PersonnelDomainCoreServicesTest | คงไว้ ย้ายเฟสเป็น R-08 leave | ทดสอบ OrgScopeResolver/LeavePolicyService/ReportingDataService ของโมดูลลาเดิม ซึ่งยังไม่ย้าย |
+| R-06 | PositionCatalogTest | คงไว้ ย้ายเฟสเป็น R-07 (R07-9) และ R-08 leave | ส่วนตำแหน่งครอบคลุมแล้วที่ `Core/AssignmentServiceTest` + API `/api/org/positions` (ไม่มี endpoint ลบ, audit) · ที่เหลือ: กลุ่มตำแหน่ง คำสั่งจับคู่ ทะเบียน/รายงานราชการ |
+| R-06 | PersonalDataProtectionTest | คงไว้ ย้ายเฟสเป็น R-07 (R07-8) | ส่วนประวัติการเข้าถึงของตนเองครอบคลุมแล้วที่ `Core/PersonnelScreensApiTest::test_owner_always_sees_their_access_log_and_others_need_reveal_rights` · ที่เหลือ: สำเนาข้อมูลของตนเอง บันทึกการเปิดแบบกลุ่ม ล้างหลักฐานการลา |
+| R-06 | SecureFileAuthorizationTest | คงไว้ ย้ายเฟสเป็น R-08 attendance | เอกสารบุคลากรครอบคลุมแล้วที่ `Core/PersonnelScreensApiTest::test_documents_live_on_private_storage_*` · ที่เหลือ: รูปถ่ายโปรไฟล์และภาพลงเวลาของระบบเดิม |

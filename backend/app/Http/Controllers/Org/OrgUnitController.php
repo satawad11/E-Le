@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Org;
 
 use App\Authz\PermissionEngine;
+use App\Authz\Workflow\ApproverChainResolver;
 use App\Http\Controllers\Controller;
+use App\Models\Assignment;
 use App\Models\OrgUnit;
 use App\Models\OrgUnitType;
+use App\Models\Personnel;
 use App\Services\AuditLogger;
 use App\Services\Org\OrgTree;
 use Illuminate\Http\JsonResponse;
@@ -25,8 +28,75 @@ class OrgUnitController extends Controller
         $units = $this->engine->scopeQuery($request->user(), 'org.unit.view', OrgUnit::query())
             ->with('type:id,code,name,level')->orderBy('depth')->orderBy('sort_order')->get();
         $parents = OrgUnit::whereIn('id', $units->pluck('parent_id')->filter())->pluck('uuid', 'id');
+        $members = Assignment::where('kind', Assignment::KIND_PRIMARY)->effectiveOn(today()->toDateString())
+            ->selectRaw('org_unit_id, count(*) as n')->groupBy('org_unit_id')->pluck('n', 'org_unit_id');
 
-        return response()->json($units->map(fn (OrgUnit $u) => $this->present($u) + ['parent_uuid' => $parents[$u->parent_id] ?? null])->values());
+        return response()->json($units->map(fn (OrgUnit $u) => $this->present($u) + [
+            'parent_uuid' => $parents[$u->parent_id] ?? null,
+            'head' => $this->head($u),
+            // จำนวนรวมหน่วยย่อย (ตัวเลขรวม ไม่ใช่รายชื่อ — รายชื่อดูที่หน้ารายชื่อบุคลากรตาม scope)
+            'members' => (int) $units->filter(fn (OrgUnit $x) => str_starts_with($x->path, $u->path))->sum(fn (OrgUnit $x) => $members[$x->id] ?? 0),
+        ])->values());
+    }
+
+    /**
+     * รายละเอียดหน่วย (ต้นแบบหน้า 6): หัวหน้า (รวมรักษาการ) · หน่วยย่อย · สายอนุมัติที่ ApproverChainResolver คำนวณจริงจากต้นไม้
+     */
+    public function show(Request $request, OrgUnit $unit, ApproverChainResolver $resolver): JsonResponse
+    {
+        $this->authorizeResource('org.unit.view', $unit);
+        $unit->load('type');
+
+        $ancestors = $this->tree->ancestors($unit);
+        $children = OrgUnit::with('type')->where('parent_id', $unit->id)->whereNull('effective_to')->orderBy('sort_order')->get();
+        $steps = ApproverChainResolver::defaultStepsFor($unit);
+        $chain = $resolver->resolveForUnit($unit, $steps);
+
+        $chainOut = [];
+        foreach ($steps as $index => $step) {
+            $resolved = collect($chain['steps'])->first(fn (array $s) => in_array($index, $s['merged_steps'], true));
+            $skipped = collect($chain['skipped'])->first(fn (array $s) => $s['index'] === $index);
+            $levelUnit = $this->tree->nearestOfLevel($unit, (int) $step['level']);
+            $chainOut[] = [
+                'step' => $index + 1,
+                'level' => $step['level'],
+                'unit' => $levelUnit?->name,
+                'approvers' => $resolved ? collect($resolved['approvers'])->map(fn ($a) => [
+                    'name' => Personnel::whereKey($a['personnel_id'])->first()?->full_name,
+                    'position' => $a['position'],
+                    'acting' => $a['acting'],
+                ])->unique('name')->values() : [],
+                'merged_with_previous' => $resolved !== null && $resolved['merged_steps'][0] !== $index,
+                'skipped' => $skipped !== null,
+                'skip_reason' => $skipped['reason'] ?? null,
+            ];
+        }
+
+        return response()->json($this->present($unit) + [
+            'path' => $ancestors->map(fn (OrgUnit $u) => $u->name)->reverse()->push($unit->name)->values(),
+            'head' => $this->head($unit),
+            'children' => $children->map(fn (OrgUnit $c) => $this->present($c) + ['head' => $this->head($c)])->values(),
+            'approval_chain' => $chainOut,
+            'chain_unresolved' => $chain['unresolved'],
+            'can' => ['manage' => $this->engine->allows($request->user(), 'org.unit.manage', $unit)],
+        ]);
+    }
+
+    /** @return array{name: ?string, position: ?string, acting: bool, effective_to: ?string}|null */
+    private function head(OrgUnit $unit): ?array
+    {
+        $head = $this->tree->headOf($unit);
+        if ($head === null) {
+            return null;
+        }
+        $head->loadMissing(['personnel', 'position', 'actingFor.position']);
+
+        return [
+            'name' => $head->personnel?->full_name,
+            'position' => $head->kind === Assignment::KIND_ACTING ? $head->actingFor?->position?->name : $head->position?->name,
+            'acting' => $head->kind === Assignment::KIND_ACTING,
+            'effective_to' => $head->effective_to?->toDateString(),
+        ];
     }
 
     public function store(Request $request): JsonResponse

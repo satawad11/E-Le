@@ -6,16 +6,7 @@ import router from './router'
 import canDirective from './directives/can'
 import secureSrcDirective from './directives/secureSrc'
 
-router.addRoute({ path: '/leave-services', name: 'leave-services', component: () => import('./views/LeaveServicesView.vue'), meta: { requiresAuth: true } })
-// หน้าตรวจสอบใบลาจาก QR — เปิดสาธารณะ ไม่ต้องล็อกอิน
-router.addRoute({ path: '/verify-leave/:hash', name: 'verify-leave', component: () => import('./views/VerifyLeaveView.vue'), meta: { public: true } })
-router.addRoute({ path: '/my-access-history', name: 'my-access-history', component: () => import('./views/MyAccessHistoryView.vue'), meta: { requiresAuth: true } })
-router.addRoute({ path: '/leave-card', name: 'leave-card', component: () => import('./views/LeaveCardView.vue'), meta: { requiresAuth: true } })
-router.addRoute({ path: '/admin/promotion-screening', name: 'admin-promotion-screening', component: () => import('./views/admin/PromotionScreeningView.vue'), meta: { requiresAuth: true, permission: 'leave.report.view' } })
-router.addRoute({ path: '/admin/leave-governance', name: 'admin-leave-governance', component: () => import('./views/admin/LeaveGovernanceView.vue'), meta: { requiresAuth: true, permission: 'leave.approval.hr' } })
-router.addRoute({ path: '/admin/leave-policies', name: 'admin-leave-policies', component: () => import('./views/admin/LeavePoliciesView.vue'), meta: { requiresAuth: true, permission: 'leave.policy.manage' } })
-router.addRoute({ path: '/admin/personnel-types', name: 'admin-personnel-types', component: () => import('./views/admin/PersonnelAssignmentsView.vue'), meta: { requiresAuth: true, permission: 'edit_users' } })
-router.addRoute({ path: '/admin/leave-calendar', name: 'admin-leave-calendar', component: () => import('./views/admin/WorkCalendarView.vue'), meta: { requiresAuth: true, permission: 'leave.calendar.manage' } })
+// R-06: route ทั้งหมดประกาศใน router/index.js (ระบบใหม่) และ router/legacy.js (ระบบเดิมที่รอย้ายใน R-08)
 
 const app = createApp(App)
 const pinia = createPinia()

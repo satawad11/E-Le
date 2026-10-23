@@ -29,6 +29,7 @@ class EnsureRouteUsesPermissionEngine
         'GET api/user',
         'GET api/me/permissions',
         'GET api/me/menu',
+        'GET api/me/home',
     ];
 
     public const MESSAGE = 'ฟังก์ชันนี้ยังไม่ได้ย้ายเข้าระบบตรวจสิทธิ์ใหม่ (REBUILD-2569) จะเปิดใช้เมื่อย้ายโมดูลเสร็จ';

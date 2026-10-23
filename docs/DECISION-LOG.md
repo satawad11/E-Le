@@ -156,3 +156,28 @@ grant_ceiling ทำให้ระบบที่ยังไม่มีผู
 - ล้าง MFA และ token ของบัญชีเป้าหมาย → เข้าสู่ระบบครั้งแรกต้องตั้ง MFA (สองชุดสิทธิ์นี้บังคับ MFA อยู่แล้ว)
 - `role_grants.granted_by` = null (migration `r05_role_grants_granted_by_nullable` — null หมายถึงคำสั่งนี้เท่านั้น ไม่บันทึกผู้มอบที่ไม่ได้มอบจริง) · `permission_audit_logs` action `role_grant.bootstrapped` (ผู้สั่ง = เซิร์ฟเวอร์ · host · ผู้ใช้ระบบปฏิบัติการ) · แจ้งผู้ดำรงตำแหน่ง L1 ทุกครั้ง (ไม่มี L1 = แสดงคำเตือน)
 - ไม่มี API หรือหน้าจอสำหรับงานนี้
+
+## ADR-R-024 โครงหน้าใหม่: เมนูจาก `/api/me/menu` เท่านั้น · route ระบบเดิมพักไว้หลังหน้า "ยังไม่เปิดใช้"
+2026-10-23 · R-06 · R06-1
+- `layouts/AppShell.vue` ตามต้นแบบ "ระบบบุคลากร DMTC" แทนแถบเมนูของระบบเดิมทั้งหมด · รายการเมนู ชื่อ (ตาม scope) และ badge มาจาก API — โค้ดหน้าเว็บมีเพียงไอคอนตามรหัสเมนู (การแสดงผล)
+- เมนูที่ manifest ประกาศแต่ยังไม่มีหน้า (เฟสถัดไป) แสดง "เร็วๆ นี้" โดยดูว่า router มีหน้านั้นหรือไม่ ไม่ใช่รายชื่อเมนูในโค้ด
+- route ของ frontend ระบุ `meta.permission` (อย่างใดอย่างหนึ่ง) และ `meta.scopes` ตามสิทธิ์ของเมนูใน manifest · guard โหลด `/api/me/permissions` แล้วส่ง URL ที่ไม่มีสิทธิ์ไปหน้า 403 · ไม่มี Super Admin bypass ฝั่งหน้าเว็บ
+- `v-can` / `useCan` ใช้ซ่อนปุ่มและแท็บเท่านั้น · ปุ่มระดับรายการใช้ `abilities`/`can` ที่ server คำนวณต่อรายการ
+- route ของระบบเดิม 51 รายการย้ายไป `router/legacy.js` และ guard ส่งไปหน้า "ยังไม่เปิดใช้" (API ของโมดูลเหล่านั้นตอบ 403 จนถึง R-08) · route เดิมที่มีหน้าใหม่แล้ว redirect ตาม PLAN §8.4
+- สิทธิ์และเมนูของผู้ใช้คนก่อนถูกล้างทุกครั้งที่ออกจากระบบหรือเริ่มเซสชันใหม่
+
+## ADR-R-025 เอกสารบุคลากร: private disk + signed URL แบบ relative บน route ที่ยังต้องยืนยันตัวตน
+2026-10-23 · R-06
+- ไฟล์อยู่บน disk `local` (`storage/app/private/personnel/{uuid}/…`) ชื่อไฟล์สุ่ม ชนิดไฟล์ตรวจจากเนื้อไฟล์ (PDF/JPG/PNG ≤ 10 MB)
+- `GET …/documents/{uuid}/link` ออก `URL::temporarySignedRoute` อายุ 5 นาที ผูกกับผู้ขอ (`u`) แบบ relative (ไม่ผูก host — ใช้ผ่าน proxy ได้)
+- route ดาวน์โหลดต้องผ่านทั้ง `auth:sanctum` + `->permission()` + `signed:relative` และตรวจซ้ำว่าผู้ใช้ยังดูเอกสารนั้นได้ (เจ้าของ หรือผู้เห็นข้อมูลชั้นลับของบุคคลนั้น) · หน้าเว็บเรียกด้วย token แล้วเปิดเป็น blob · ทุกการดาวน์โหลดบันทึก audit
+- เหตุผล: ลิงก์หลุดไปก็ใช้ไม่ได้ทั้งกับคนอื่นและหลังหมดอายุ และไม่มี endpoint ใดที่ข้าม PermissionEngine
+
+## ADR-R-026 ประวัติรายหมวด · คำขอแก้ไขรายหมวด · ชุดสิทธิ์ HR พัฒนาบุคลากร
+2026-10-23 · R-06
+- การศึกษา การอบรม ใบอนุญาต: งานบุคคล (`personnel.profile.edit` + hr_field_guard ด้วยชื่อฟิลด์ที่แก้) บันทึกให้ผู้อื่นและถือว่าตรวจแล้ว · เจ้าของแก้ตรงไม่ได้ ต้องยื่นคำขอ (`personnel_change_requests.entity` = หมวด, `entity_id` = แถว หรือ null = เพิ่มใหม่) ผ่าน Maker–Checker เดิม
+- feature ใหม่ `personnel.training.manage` (unit/subtree/all · not_own) และชุดสิทธิ์ functional `personnel.hr_development` ("HR พัฒนาบุคลากร": profile.view + training.manage แบบ subtree มอบรายหน่วยผ่าน `attributes.org_unit_ids`) — ต้นแบบหน้า 12 · งานบุคคลได้ training.manage ทั้งวิทยาลัย
+- แก้ข้อมูลรายคน (`PATCH /api/personnel/{uuid}`): ผู้อื่นแก้ได้เฉพาะชั้นที่ตนมองเห็น (ชั้นอ่อนไหวต้องมีสิทธิ์เปิดดู) · เจ้าของแก้ได้เฉพาะฟิลด์ `self`
+- `GET /api/me/home` อยู่ใน SELF_SERVICE แบบเดียวกับ `/api/me/menu` (ทุกคนที่เข้าสู่ระบบต้องมีหน้าหลัก และทุกตัวเลขในหน้าคำนวณผ่าน engine ตามสิทธิ์ของผู้ใช้)
+- `Controller::authorizeAnyResource`: ผ่านเมื่อ permission ใดอนุญาต · ผิดกฎกลางของตัวที่ครอบคลุม = 403 · นอก scope = 404 · ไม่มีสิทธิ์เลย = 403
+- สายอนุมัติในหน้าโครงสร้างองค์กรมาจาก `ApproverChainResolver::resolveForUnit` + `workflow.default_chain_levels` (L4→L1) — ไม่จำลองฝั่งหน้าเว็บ

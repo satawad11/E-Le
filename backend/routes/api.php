@@ -23,6 +23,7 @@ use App\Http\Controllers\AttendanceCorrectionController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FiscalYearController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LeaveCancellationController;
 use App\Http\Controllers\LeaveDocumentController;
 use App\Http\Controllers\LeaveQueryController;
@@ -38,7 +39,11 @@ use App\Http\Controllers\Overtime\OvertimeOrderController;
 use App\Http\Controllers\Overtime\OvertimeReportController;
 use App\Http\Controllers\Overtime\OvertimeTimeController;
 use App\Http\Controllers\PersonalDataController;
+use App\Http\Controllers\Personnel\ChangeRequestQueueController;
 use App\Http\Controllers\Personnel\PersonnelController;
+use App\Http\Controllers\Personnel\PersonnelDirectoryController;
+use App\Http\Controllers\Personnel\PersonnelDocumentController;
+use App\Http\Controllers\Personnel\PersonnelRecordController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReportingController;
@@ -194,6 +199,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
      */
     Route::get('/me/permissions', [MeController::class, 'permissions']);
     Route::get('/me/menu', [MeController::class, 'menu']);
+    Route::get('/me/home', [HomeController::class, 'show']);
 
     /*
      * R-05 บัญชีและความปลอดภัย (CORE-03/04) — ทุก route ประกาศ ->permission() จาก manifest ของโมดูล access
@@ -236,6 +242,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     Route::prefix('org')->group(function () {
         Route::get('/units', [OrgUnitController::class, 'index'])->permission('org.unit.view');
+        Route::get('/units/{unit:uuid}', [OrgUnitController::class, 'show'])->permission('org.unit.view');
+        Route::get('/assignments', [AssignmentController::class, 'all'])->permission('personnel.assignment.manage');
         Route::post('/units', [OrgUnitController::class, 'store'])->permission('org.unit.manage');
         Route::put('/units/{unit:uuid}', [OrgUnitController::class, 'update'])->permission('org.unit.manage');
         Route::post('/units/{unit:uuid}/move', [OrgUnitController::class, 'move'])->permission('org.unit.manage');
@@ -246,14 +254,36 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         Route::post('/assignments/{assignment:uuid}/end', [AssignmentController::class, 'end'])->permission('personnel.assignment.manage');
     });
     Route::prefix('personnel')->group(function () {
+        // R-06: path เฉพาะต้องมาก่อน /{personnel:uuid}
+        Route::get('/', [PersonnelDirectoryController::class, 'index'])->permission('personnel.profile.view');
+        Route::get('/reports', [PersonnelDirectoryController::class, 'reports'])->permission('personnel.report.view');
+        Route::get('/field-rules', [PersonnelController::class, 'fieldRules'])->permission('personnel.profile.view');
+        Route::get('/change-requests', [ChangeRequestQueueController::class, 'index'])->permission('personnel.change_request.review');
         Route::post('/import', [PersonnelController::class, 'import'])->permission('personnel.import.manage')->middleware('throttle:imports');
         Route::post('/change-requests/{changeRequest:uuid}/review', [PersonnelController::class, 'reviewChange'])->permission('personnel.change_request.review');
         Route::get('/{personnel:uuid}', [PersonnelController::class, 'show'])->permission('personnel.profile.view');
+        Route::patch('/{personnel:uuid}', [PersonnelController::class, 'update'])->permission('personnel.profile.edit', 'personnel.change_request.create');
+        Route::get('/{personnel:uuid}/records', [PersonnelController::class, 'records'])->permission('personnel.profile.view');
+        Route::get('/{personnel:uuid}/access-log', [PersonnelController::class, 'accessLog'])->permission('personnel.profile.view');
+        Route::get('/{personnel:uuid}/change-requests', [PersonnelController::class, 'changeRequests'])->permission('personnel.change_request.create', 'personnel.change_request.review');
+        Route::post('/{personnel:uuid}/records/{type}', [PersonnelRecordController::class, 'store'])->permission('personnel.profile.edit', 'personnel.training.manage')
+            ->whereIn('type', ['educations', 'trainings', 'licenses']);
+        Route::patch('/{personnel:uuid}/records/{type}/{record}', [PersonnelRecordController::class, 'update'])->permission('personnel.profile.edit', 'personnel.training.manage')
+            ->whereIn('type', ['educations', 'trainings', 'licenses'])->whereUuid('record');
+        Route::delete('/{personnel:uuid}/records/{type}/{record}', [PersonnelRecordController::class, 'destroy'])->permission('personnel.profile.edit', 'personnel.training.manage')
+            ->whereIn('type', ['educations', 'trainings', 'licenses'])->whereUuid('record');
+        Route::post('/{personnel:uuid}/documents', [PersonnelDocumentController::class, 'store'])->permission('personnel.profile.edit', 'personnel.change_request.create')
+            ->middleware('throttle:files');
+        Route::get('/{personnel:uuid}/documents/{document:uuid}/link', [PersonnelDocumentController::class, 'link'])->permission('personnel.profile.view');
+        Route::delete('/{personnel:uuid}/documents/{document:uuid}', [PersonnelDocumentController::class, 'destroy'])->permission('personnel.profile.edit');
         Route::post('/{personnel:uuid}/reveal', [PersonnelController::class, 'reveal'])->permission('personnel.profile.reveal')->middleware('throttle:personal-data');
         Route::post('/{personnel:uuid}/change-requests', [PersonnelController::class, 'submitChange'])->permission('personnel.change_request.create');
         Route::get('/{personnel:uuid}/assignments', [AssignmentController::class, 'index'])->permission('personnel.profile.view');
         Route::post('/{personnel:uuid}/assignments', [AssignmentController::class, 'store'])->permission('personnel.assignment.manage');
     });
+    // ดาวน์โหลดเอกสารบุคลากร: ต้องยืนยันตัวตน + สิทธิ์ + ลายเซ็นอายุ 5 นาทีที่ออกให้ผู้ใช้คนนั้น (R-06)
+    Route::get('/personnel-documents/{document:uuid}/download', [PersonnelDocumentController::class, 'download'])
+        ->permission('personnel.profile.view')->middleware(['signed:relative', 'throttle:files'])->name('personnel.documents.download');
 
     // Admin: ทะเบียนการรักษาราชการแทน / ปฏิบัติราชการแทน (DELEGATION-01) — ไม่มี delete โดยตั้งใจ
     // สิทธิ์ตรวจใน DelegationController (LeaveApprovalSigner::canRecord) แบบเดียวกับงานจัดการวันลาอื่น

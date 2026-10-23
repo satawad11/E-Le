@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Org;
 
+use App\Authz\PermissionEngine;
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\OrgUnit;
@@ -19,11 +20,41 @@ class AssignmentController extends Controller
 {
     public function __construct(private readonly AssignmentService $service) {}
 
+    /**
+     * คำสั่งแต่งตั้งและมอบหมายทั้งหมดในขอบเขต (เมนู `/org/assignments` · R06-6) — บุคลากรกรองด้วย scopeQuery ของ `personnel.assignment.manage`
+     */
+    public function all(Request $request, PermissionEngine $engine): JsonResponse
+    {
+        $data = $request->validate([
+            'state' => ['nullable', Rule::in(['active', 'upcoming', 'ended'])],
+            'kind' => ['nullable', Rule::in(Assignment::KINDS)],
+            'q' => ['nullable', 'string', 'max:100'],
+        ]);
+        $today = today()->toDateString();
+        $people = $engine->scopeQuery($request->user(), 'personnel.assignment.manage', Personnel::query())->select('personnel.id');
+
+        $query = Assignment::with(['personnel', 'orgUnit.type', 'position', 'actingFor:id,uuid'])
+            ->whereIn('personnel_id', $people)
+            ->when($data['kind'] ?? null, fn ($q, $kind) => $q->where('kind', $kind))
+            ->when($data['q'] ?? null, fn ($q, $term) => $q->where(fn ($w) => $w->where('order_number', 'like', '%'.$term.'%')
+                ->orWhereHas('personnel', fn ($p) => $p->where('first_name', 'like', '%'.$term.'%')->orWhere('last_name', 'like', '%'.$term.'%')->orWhere('personnel_code', 'like', '%'.$term.'%'))));
+
+        match ($data['state'] ?? 'active') {
+            'active' => $query->effectiveOn($today),
+            'upcoming' => $query->whereDate('effective_from', '>', $today)->whereNull('end_reason'),
+            'ended' => $query->whereNotNull('effective_to')->whereDate('effective_to', '<', $today),
+        };
+
+        return response()->json(['data' => $query->orderByDesc('effective_from')->limit(300)->get()->map(fn (Assignment $a) => $this->present($a) + [
+            'personnel' => ['uuid' => $a->personnel->uuid, 'full_name' => $a->personnel->full_name, 'personnel_code' => $a->personnel->personnel_code],
+        ])->values()]);
+    }
+
     public function index(Personnel $personnel): JsonResponse
     {
         $this->authorizeResource('personnel.profile.view', $personnel);
 
-        return response()->json($personnel->assignments()->with(['orgUnit:id,uuid,name', 'position:id,uuid,name,kind', 'actingFor:id,uuid'])
+        return response()->json($personnel->assignments()->with(['orgUnit.type', 'position:id,uuid,name,kind', 'actingFor:id,uuid'])
             ->orderByDesc('effective_from')->get()->map(fn (Assignment $a) => $this->present($a))->values());
     }
 
@@ -84,6 +115,12 @@ class AssignmentController extends Controller
             'effective_from' => $a->effective_from->toDateString(),
             'effective_to' => $a->effective_to?->toDateString(),
             'end_reason' => $a->end_reason,
+            'level' => $a->kind === Assignment::KIND_PRIMARY ? 5 : $a->orgUnit?->type?->level,
+            'state' => match (true) {
+                $a->effective_from->isFuture() => 'upcoming',
+                $a->effective_to !== null && $a->effective_to->lt(today()) => 'ended',
+                default => 'active',
+            },
         ];
     }
 }
