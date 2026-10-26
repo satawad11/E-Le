@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import api from '../axios';
 import { useLeaveStore } from './leave';
+import { useMenuStore } from './menuStore';
+import { usePermissionStore } from './permissions';
 
 let fetchUserPromise = null;
 
@@ -280,6 +282,9 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('token', this.token);
       this.tokenExpiresAt = Date.now() + (data.expires_in * 1000);
       localStorage.setItem('token_expires_at', String(this.tokenExpiresAt));
+      // เริ่มเซสชันใหม่: สิทธิ์และเมนูต้องโหลดใหม่ของผู้ใช้คนนี้
+      usePermissionStore().reset();
+      useMenuStore().reset();
     },
     async fetchUser({ force = false } = {}) {
       if (!this.token) return;
@@ -314,9 +319,9 @@ export const useAuthStore = defineStore('auth', {
 
       useLeaveStore().reset();
 
-      import('./menuStore').then(({ useMenuStore }) => {
-        useMenuStore().reset();
-      }).catch(() => {});
+      // R-06: เมนูและสิทธิ์ของผู้ใช้คนก่อนต้องไม่ค้างให้ผู้ใช้คนถัดไปบนเครื่องเดียวกัน
+      useMenuStore().reset();
+      usePermissionStore().reset();
 
       if (token) {
         api.post('/logout').catch(() => {});

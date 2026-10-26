@@ -36,6 +36,11 @@ class RoleGrant extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
     public function template(): BelongsTo
     {
         return $this->belongsTo(PermissionTemplate::class, 'template_id');

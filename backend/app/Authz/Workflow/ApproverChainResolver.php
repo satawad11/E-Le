@@ -4,6 +4,7 @@ namespace App\Authz\Workflow;
 
 use App\Models\Assignment;
 use App\Models\Authz\RoleGrant;
+use App\Models\OrgUnit;
 use App\Models\Personnel;
 use App\Models\User;
 use App\Services\Org\OrgTree;
@@ -38,12 +39,46 @@ class ApproverChainResolver
         $home = Assignment::with('orgUnit.type')->where('personnel_id', $requester->id)
             ->where('kind', Assignment::KIND_PRIMARY)->effectiveOn($date)->first()?->orgUnit;
 
+        return $this->resolveFrom($home, $requester->id, $steps, $date);
+    }
+
+    /**
+     * สายอนุมัติของบุคลากรที่สังกัดหน่วยนี้ (หน้าโครงสร้างองค์กร R-06) — กติกาเดียวกับ resolve()
+     * ไม่ระบุผู้ยื่น จึงไม่ตัดขั้นที่ "ผู้อนุมัติคือผู้ยื่นเอง" (ข้ามเฉพาะตอนยื่นจริง)
+     *
+     * @param  array<int, array<string, mixed>>  $steps
+     * @return array{steps: array<int, array<string, mixed>>, skipped: array<int, array<string, mixed>>, unresolved: bool}
+     */
+    public function resolveForUnit(OrgUnit $unit, array $steps, ?string $on = null): array
+    {
+        return $this->resolveFrom($unit->loadMissing('type'), null, $steps, Carbon::parse($on ?? today())->toDateString());
+    }
+
+    /**
+     * ขั้นมาตรฐานตามระดับ: หัวหน้าหน่วยระดับที่ต่ำกว่าหรือเท่ากับระดับของหน่วย ไล่ขึ้นถึง L1 (`workflow.default_chain_levels`)
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function defaultStepsFor(OrgUnit $unit): array
+    {
+        $level = (int) $unit->loadMissing('type')->type->level;
+        $levels = array_values(array_filter((array) config('workflow.default_chain_levels', [4, 3, 2, 1]), fn ($l) => (int) $l <= $level));
+
+        return array_map(fn ($l) => ['resolver' => 'head_of_level', 'level' => (int) $l], $levels);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $steps
+     * @return array{steps: array<int, array<string, mixed>>, skipped: array<int, array<string, mixed>>, unresolved: bool}
+     */
+    private function resolveFrom(?OrgUnit $home, ?int $requesterPersonnelId, array $steps, string $date): array
+    {
         $resolved = [];
         $skipped = [];
 
         foreach (array_values($steps) as $index => $step) {
-            $candidates = $this->candidates($step, $requester, $home, $date);
-            $eligible = array_values(array_filter($candidates, fn (array $c) => $c['personnel_id'] !== $requester->id));
+            $candidates = $this->candidates($step, $home, $date);
+            $eligible = array_values(array_filter($candidates, fn (array $c) => $c['personnel_id'] !== $requesterPersonnelId));
 
             if ($eligible === []) {
                 $skipped[] = ['index' => $index, 'step' => $step,
@@ -84,7 +119,7 @@ class ApproverChainResolver
      * @param  array<string, mixed>  $step
      * @return array<int, array{personnel_id: int, user_id: ?int, assignment_id: ?int, acting: bool, position: string}>
      */
-    private function candidates(array $step, Personnel $requester, $home, string $date): array
+    private function candidates(array $step, ?OrgUnit $home, string $date): array
     {
         return match ($step['resolver'] ?? null) {
             'head_of_level' => $this->headOfLevel((int) $step['level'], $home, $date),

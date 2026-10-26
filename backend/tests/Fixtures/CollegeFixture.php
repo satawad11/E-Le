@@ -118,6 +118,22 @@ class CollegeFixture
         return $this;
     }
 
+    /**
+     * persona ต้นแบบหน้า 12 (R-06): ครูแผนกวิชาช่างยนต์ที่ได้ชุดสิทธิ์ "HR พัฒนาบุคลากร" เฉพาะแผนกตน (`trainer`)
+     * ต้องเรียกหลัง withAccessPersonas()
+     */
+    public function withLimitedHrPersona(): self
+    {
+        $this->people['trainer'] = Personnel::factory()->create(['personnel_code' => 'T004', 'title' => 'นาย', 'first_name' => 'สมเกียรติ', 'last_name' => 'ครูพัฒนา']);
+        app(AssignmentService::class)->add($this->people['trainer'], ['kind' => 'primary', 'org_unit_id' => $this->units['auto']->id,
+            'position_id' => $this->positions['teacher']->id, 'effective_from' => self::START, 'order_number' => 'คำสั่ง 19/2569', 'order_date' => '2026-05-01']);
+        $this->users['trainer'] = User::factory()->create(['personnel_id' => $this->people['trainer']->id, 'username' => 'trainer']);
+        $grant = $this->grant('trainer', 'personnel.hr_development', 'คำสั่ง 503/2569', ['org_unit_ids' => [$this->units['auto']->id]], '2027-03-31');
+        $grant->forceFill(['approved_by' => $this->users['section_head']->id])->save();
+
+        return $this;
+    }
+
     /** @param  array<string, mixed>  $attributes */
     public function grant(string $userKey, string $templateCode, string $orderNumber, array $attributes = [], string $expires = '2027-05-15'): RoleGrant
     {

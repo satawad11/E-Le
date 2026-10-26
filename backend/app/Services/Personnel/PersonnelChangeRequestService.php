@@ -17,6 +17,8 @@ use Illuminate\Validation\ValidationException;
  * - ยื่นได้เฉพาะเจ้าของข้อมูล และเฉพาะฟิลด์ `self_with_review` (ฟิลด์ `self` แก้เองได้ ฟิลด์ `hr_only` ยื่นไม่ได้)
  * - ผู้พิจารณาต้อง ≠ ผู้ยื่น และ ≠ เจ้าของข้อมูล และต้องมีสิทธิ์พิจารณา (canReviewChanges)
  * - ค่าเดิมแสดงต่อจนกว่าคำขอได้รับอนุมัติ — อนุมัติแล้วจึงบันทึกค่าใหม่ผ่าน PersonnelEditor::apply
+ * - R-06: ยื่นเพิ่ม/แก้ประวัติรายหมวด (การศึกษา การอบรม ใบอนุญาต) ได้ด้วย — `entity_id` = แถวที่ขอแก้ (null = เพิ่มใหม่)
+ *   อนุมัติแล้วบันทึกผ่าน PersonnelRecordService
  */
 class PersonnelChangeRequestService
 {
@@ -27,19 +29,35 @@ class PersonnelChangeRequestService
         private readonly FieldClassificationRegistry $classes,
         private readonly PersonnelEditor $editor,
         private readonly AuditLogger $audit,
+        private readonly PersonnelRecordService $records,
     ) {}
 
     /**
      * @param  array<string, mixed>  $payload
      * @param  array<int, string>  $evidenceDocumentUuids
      */
-    public function submit(User $requester, Personnel $personnel, string $entity, array $payload, array $evidenceDocumentUuids = []): PersonnelChangeRequest
+    public function submit(User $requester, Personnel $personnel, string $entity, array $payload, array $evidenceDocumentUuids = [], ?string $recordUuid = null): PersonnelChangeRequest
     {
         if ($requester->personnel_id === null || $requester->personnel_id !== $personnel->id) {
             throw new AuthorizationException('ยื่นคำขอแก้ไขได้เฉพาะข้อมูลของตนเอง');
         }
         if ($payload === []) {
             throw ValidationException::withMessages(['payload' => 'ต้องระบุข้อมูลที่ต้องการแก้ไข']);
+        }
+
+        $entityId = null;
+        if (isset(PersonnelRecordService::ENTITIES[$entity])) {
+            $type = PersonnelRecordService::ENTITIES[$entity];
+            if ($recordUuid !== null) {
+                $model = PersonnelRecordService::modelOf($type);
+                $entityId = $model::where('uuid', $recordUuid)->where('personnel_id', $personnel->id)->value('id');
+                if ($entityId === null) {
+                    throw ValidationException::withMessages(['record_uuid' => 'ไม่พบรายการที่ขอแก้ไขในข้อมูลของคุณ']);
+                }
+            }
+            $payload = $this->records->validate($type, $payload, $recordUuid !== null);
+        } elseif ($recordUuid !== null) {
+            throw ValidationException::withMessages(['record_uuid' => 'หมวดนี้ไม่มีรายการย่อย']);
         }
 
         foreach (array_keys($payload) as $field) {
@@ -60,6 +78,7 @@ class PersonnelChangeRequestService
             'personnel_id' => $personnel->id,
             'requested_by' => $requester->id,
             'entity' => $entity,
+            'entity_id' => $entityId,
             'payload' => $payload,
             'evidence_document_ids' => $documentIds,
             'status' => 'pending',
@@ -94,7 +113,7 @@ class PersonnelChangeRequestService
             }
 
             if ($decision === 'approved') {
-                $this->editor->apply($request->personnel, $request->entity, $request->payload, $reviewer->id, 'personnel.change_request_applied');
+                $this->applyApproved($request, $reviewer);
             }
 
             $request->forceFill([
@@ -108,5 +127,28 @@ class PersonnelChangeRequestService
 
             return $request;
         });
+    }
+
+    private function applyApproved(PersonnelChangeRequest $request, User $reviewer): void
+    {
+        $type = PersonnelRecordService::ENTITIES[$request->entity] ?? null;
+        if ($type === null) {
+            $this->editor->apply($request->personnel, $request->entity, $request->payload, $reviewer->id, 'personnel.change_request_applied');
+
+            return;
+        }
+
+        if ($request->entity_id === null) {
+            $this->records->create($type, $request->personnel, $request->payload, $reviewer->id, 'personnel.change_request_applied');
+
+            return;
+        }
+
+        $model = PersonnelRecordService::modelOf($type);
+        $record = $model::where('personnel_id', $request->personnel_id)->find($request->entity_id);
+        if ($record === null) {
+            throw ValidationException::withMessages(['entity_id' => 'รายการที่ขอแก้ไขถูกลบไปแล้ว — ส่งกลับให้ผู้ยื่น']);
+        }
+        $this->records->update($type, $record, $request->payload, $reviewer->id, 'personnel.change_request_applied');
     }
 }

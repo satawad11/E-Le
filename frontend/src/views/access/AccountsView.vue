@@ -1,19 +1,15 @@
 <template>
   <div class="acc">
-    <header class="topbar">
-      <span class="crumb">บัญชีบุคลากร บัญชีระบบ และบัญชีฉุกเฉินในขอบเขตที่คุณดูได้</span>
-      <label class="search">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-        <input v-model="q" type="search" aria-label="ค้นหาบัญชี" placeholder="ค้นหาชื่อ อีเมล รหัสบุคลากร">
-      </label>
-    </header>
-
     <div class="content">
       <div class="heading">
         <div class="heading-text">
           <h1>บัญชีผู้ใช้</h1>
           <span>บัญชีบุคลากรเปิด ปรับ และปิดอัตโนมัติตามข้อมูลบุคลากร</span>
         </div>
+        <label class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+          <input v-model="q" type="search" aria-label="ค้นหาบัญชี" placeholder="ค้นหาชื่อ อีเมล รหัสบุคลากร">
+        </label>
       </div>
 
       <div class="chips" role="group" aria-label="กรองตามสถานะ">
@@ -159,6 +155,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../../axios'
 import { useAlertStore } from '../../stores/alert'
 
@@ -167,7 +164,8 @@ const alertStore = useAlertStore()
 const rows = ref([])
 const meta = ref({})
 const page = ref(1)
-const status = ref('all')
+const route = useRoute()
+const status = ref(typeof route.query.status === 'string' ? route.query.status : 'all')
 const q = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -328,8 +326,6 @@ const runAction = async () => {
   --ink: #1B2430; --ink-2: #3F4853; --muted: #5F6875; --line: #E1E4DF; --bg: #F4F5F2; --pri: #1F5F8B;
   font-family: 'IBM Plex Sans Thai', var(--font-sans); color: var(--ink); background: var(--bg); min-height: 100%;
 }
-.topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 32px; background: #fff; border-bottom: 1px solid var(--line); }
-.crumb { flex: 1 1 200px; font-size: 13px; color: var(--muted); }
 .search { display: flex; align-items: center; gap: 8px; border: 1px solid #D5D9D3; border-radius: 8px; padding: 0 12px; height: 40px; background: #F8F9F7; flex: 0 1 320px; color: var(--muted); box-sizing: border-box; min-width: 0; }
 .search input { border: 0; background: transparent; outline: none; font: inherit; font-size: 14px; width: 100%; color: var(--ink); min-width: 0; }
 .search:focus-within { outline: 2px solid var(--pri); outline-offset: 1px; }
@@ -348,7 +344,7 @@ const runAction = async () => {
 .layout { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
 .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; }
 .table-card { flex: 3 1 600px; min-width: 0; overflow: hidden; }
-.table-scroll { overflow-x: auto; }
+.table-scroll { overflow-x: auto; position: relative; }
 table { border-collapse: collapse; width: 100%; min-width: 900px; }
 th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 12px 14px; border-bottom: 1px solid #DCE0DA; background: #F8F9F7; white-space: nowrap; }
 td { padding: 13px 14px; border-bottom: 1px solid #E8EBE6; font-size: 14px; vertical-align: top; }
@@ -396,7 +392,7 @@ textarea { border: 1px solid #C9CEC7; border-radius: 10px; padding: 10px 12px; f
 .dialog-buttons { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 
 @media (max-width: 640px) {
-  .topbar, .content { padding-left: 16px; padding-right: 16px; }
+  .content { padding-left: 16px; padding-right: 16px; }
   .heading h1 { font-size: 24px; }
 }
 </style>

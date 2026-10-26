@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 2026-10-23 — REBUILD-2569 · R-06 หน้าจอบุคลากร
+- โครงหน้าใหม่ตามต้นแบบ (`AppShell`): เมนูจาก `/api/me/menu` เท่านั้น · ชื่อเมนูตาม scope และ badge จาก API · ถอดแถบเมนูของระบบเดิม · route ระบบเดิมพักไว้หลังหน้า "ยังไม่เปิดใช้" (ADR-R-024)
+- `v-can` / `useCan` จาก `/api/me/permissions` · guard ของ route ตาม permission ของเมนู → หน้า 403
+- หน้า 2 หน้าหลัก · 3/12 รายชื่อบุคลากร (แถบขอบเขตและสิทธิ์ของคุณในหน้านี้จาก engine) · 4 ประวัติบุคลากร 4 แท็บ + `/me` · 5 คำขอแก้ไขรอตรวจ · 6 โครงสร้างองค์กรพร้อมสายอนุมัติที่คำนวณจริง · ตำแหน่ง · คำสั่งแต่งตั้ง · รายงานบุคลากร · หน้า 7 บัญชีผู้ใช้ย้ายเข้าโครงหน้าใหม่
+- API ใหม่: รายชื่อ/รายงาน (scopeQuery), แก้ข้อมูลรายคน (hr_field_guard), ประวัติการศึกษา อบรม ใบอนุญาต, เอกสาร (private + signed URL · ADR-R-025), คิวคำขอแก้ไข, ประวัติการเข้าถึง, กติกาฟิลด์, หน้าหลัก, รายละเอียดหน่วย + สายอนุมัติ, ทะเบียนคำสั่ง — ทุก endpoint ประกาศ `->permission()`
+- คำขอแก้ไขรายหมวด (เพิ่ม/แก้ประวัติการศึกษา อบรม ใบอนุญาต) · feature `personnel.training.manage` + ชุดสิทธิ์ `personnel.hr_development` (ADR-R-026)
+- ค่าที่เปิดดูข้อมูลอ่อนไหวอยู่ในหน่วยความจำของหน้าเท่านั้น ไม่เข้า store/localStorage และล้างเมื่อออกจากหน้า
+
 ## 2026-10-19 — REBUILD-2569 · R-05 บัญชีและความปลอดภัย
 - **แก้ไขหลังตรวจ (2026-10-22):** `EnsureMfaSatisfied` fail-closed (session ของ guard web/token ที่ไม่ผ่าน MFA ถูกปฏิเสธ · ยกเว้นเฉพาะเทสต์ที่ตั้งค่าเอง) · รีเซ็ต MFA แจ้งเจ้าของบัญชี + login_events และต้องผ่านคนที่สองเมื่อบัญชีถูกบังคับ MFA · คำสั่ง `access:bootstrap` ตอบ Q11 (ADR-R-023)
 - JML อัตโนมัติ: `AccountLifecycleService` + event `PersonnelStatusChanged` + listener `SyncAccountLifecycle` (Mover แจ้งเจ้าของบัญชี) · job รายวัน `accounts:reconcile` (แทน `access:expire-role-grants` ที่ไม่มีอยู่จริง) — idempotent · `users.status_reason` บอกผู้ตั้งสถานะ (ADR-R-021)

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Authz\PermissionEngine;
+use App\Models\Assignment;
 use App\Models\User;
 use App\Services\Access\AuthenticationService;
 use App\Services\Access\MfaPolicy;
@@ -201,6 +202,12 @@ class AuthController extends Controller
                 'uuid' => $personnel->uuid,
                 'personnel_code' => $personnel->personnel_code,
                 'full_name' => $personnel->full_name,
+                'first_name' => $personnel->first_name,
+                'last_name' => $personnel->last_name,
+                // แสดงที่ท้ายแถบเมนู (R-06): ตำแหน่งหลัก · สังกัด
+                'primary' => ($primary = Assignment::with(['position', 'orgUnit'])->where('personnel_id', $personnel->id)
+                    ->where('kind', Assignment::KIND_PRIMARY)->effectiveOn(today()->toDateString())->first())
+                    ? ['position' => $primary->position?->name, 'unit' => $primary->orgUnit?->name] : null,
             ] : null,
             'mfa' => [
                 'enabled' => $user->confirmedMfa() !== null,

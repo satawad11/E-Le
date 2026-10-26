@@ -23,6 +23,10 @@ return [
             'create' => ['name' => 'ยื่นคำขอแก้ไขข้อมูลของตนเอง', 'scopes' => ['own']],
             'review' => ['name' => 'พิจารณาคำขอแก้ไขข้อมูล', 'scopes' => ['subtree', 'all'], 'requires' => ['profile.view'], 'risk' => 'medium', 'rules' => ['not_own', 'maker_checker']],
         ]],
+        'training' => ['name' => 'ประวัติการอบรม', 'actions' => [
+            // R-06 (ต้นแบบหน้า 12): ผู้ได้รับมอบบันทึกการอบรมของคนในหน่วยได้ แต่ของตนเองต้องยื่นคำขอแก้ไข
+            'manage' => ['name' => 'บันทึก/แก้ไขประวัติการอบรมของบุคลากร', 'scopes' => ['unit', 'subtree', 'all'], 'requires' => ['profile.view'], 'rules' => ['not_own']],
+        ]],
         'assignment' => ['name' => 'คำสั่งแต่งตั้งและมอบหมาย', 'actions' => [
             'manage' => ['name' => 'บันทึกการแต่งตั้ง/สิ้นสุดตำแหน่ง', 'scopes' => ['subtree', 'all'], 'requires' => ['profile.view'], 'risk' => 'high', 'rules' => ['not_own']],
         ]],
@@ -77,10 +81,19 @@ return [
                 'personnel.assignment.manage' => 'all',
                 'personnel.report.view' => 'all',
                 'personnel.import.manage' => 'all',
+                'personnel.training.manage' => 'all',
                 'org.unit.manage' => 'all',
                 'org.position.manage' => 'all',
                 'access.account.view' => 'all',
                 'workflow.definition.manage' => 'all',
+            ],
+        ],
+        'hr_development' => [
+            'name' => 'HR พัฒนาบุคลากร', 'kind' => 'functional',
+            'description' => 'มอบรายหน่วยผ่าน role grant (attributes.org_unit_ids) — ดูรายชื่อและบันทึกการอบรมของคนในหน่วย ไม่เห็นข้อมูลลับ/อ่อนไหว (ต้นแบบหน้า 12)',
+            'permissions' => [
+                'personnel.profile.view' => 'subtree',
+                'personnel.training.manage' => 'subtree',
             ],
         ],
     ],
